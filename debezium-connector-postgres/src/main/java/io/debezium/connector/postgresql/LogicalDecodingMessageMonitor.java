@@ -12,7 +12,6 @@ import java.util.Base64;
 import java.util.Base64.Encoder;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -65,6 +64,8 @@ public class LogicalDecodingMessageMonitor {
     private final Schema blockSchema;
     private final Schema valueSchema;
 
+    private static final PostgresSchemaFactory postgresSchemaFactoryObject = new PostgresSchemaFactory();
+
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
         this.schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         this.sender = sender;
@@ -73,28 +74,15 @@ public class LogicalDecodingMessageMonitor {
         this.base64Encoder = Base64.getEncoder();
         this.base64UrlSafeEncoder = Base64.getUrlEncoder();
 
-        this.keySchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageKey"))
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
+        this.keySchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorKeySchema(schemaNameAdjuster);
 
         // pg_logical_emit_message accepts null for prefix and content, but these
         // messages are not received actually via logical decoding still marking these
         // schemas as optional, just in case we will receive null values for either
         // field at some point
-        this.blockSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.Message"))
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().optional().build())
-                .build();
+        this.blockSchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorBlockSchema(schemaNameAdjuster, binaryMode);
 
-        this.valueSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageValue"))
-                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
-                .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(Envelope.FieldName.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, blockSchema)
-                .build();
+        this.valueSchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorValueSchema(schemaNameAdjuster, connectorConfig, binaryMode);
     }
 
     public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,
