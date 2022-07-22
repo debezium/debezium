@@ -7,7 +7,7 @@ package io.debezium.connector.mysql.signal;
 
 import java.util.List;
 
-public class ExecuteSnapshotKafkaSignal {
+public class ExecuteSnapshotKafkaSignal implements KafkaSignal {
     private final List<String> dataCollections;
     private final long signalOffset;
 

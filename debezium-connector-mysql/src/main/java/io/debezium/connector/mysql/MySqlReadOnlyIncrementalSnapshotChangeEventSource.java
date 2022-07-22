@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Consumer;
 
+import io.debezium.connector.mysql.signal.KafkaSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,7 +157,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset) {
-        getContext().enqueueDataCollectionsToSnapshot(dataCollectionIds, signalOffset);
+        getContext().enqueueKafkaSignal(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset));
     }
 
     @Override
@@ -235,8 +236,11 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     private void checkEnqueuedSnapshotSignals(MySqlPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        while (getContext().hasExecuteSnapshotSignals()) {
-            addDataCollectionNamesToSnapshot(getContext().getExecuteSnapshotSignals(), partition, offsetContext);
+        while (getContext().hasKafkaSignals()) {
+            KafkaSignal signal = getContext().getKafkaSignals();
+            if (signal instanceof ExecuteSnapshotKafkaSignal) {
+                addDataCollectionNamesToSnapshot((ExecuteSnapshotKafkaSignal) signal, partition, offsetContext);
+            }
         }
     }
 
