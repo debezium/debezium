@@ -692,6 +692,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 }
                 catch (Throwable t) {
                     fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
+                    offsetStore.stop();
                     return;
                 }
 
