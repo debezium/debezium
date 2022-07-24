@@ -1577,7 +1577,7 @@ Members of the `db_owner` database role can view information for all of the defi
 +
 Queries should not return empty results.
 +
-The following example runs the stored precedure `sys.sp_cdc_help_change_data_capture` on the database `MyDB`:
+The following example runs the stored procedure `sys.sp_cdc_help_change_data_capture` on the database `MyDB`:
 +
 .Example: Querying a table for CDC configuration information
 [source, sql]
