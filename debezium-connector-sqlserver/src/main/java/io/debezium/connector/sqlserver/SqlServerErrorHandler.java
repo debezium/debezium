@@ -39,6 +39,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage().contains("The server failed to resume the transaction")
                         || throwable.getMessage().contains("Verify the connection properties")
+                        || throwable.getMessage().contains("Broken pipe (Write failed)")
                         || throwable.getMessage()
                                 .startsWith("An insufficient number of arguments were supplied for the procedure or function cdc.fn_cdc_get_all_changes_")
                         || throwable.getMessage()
