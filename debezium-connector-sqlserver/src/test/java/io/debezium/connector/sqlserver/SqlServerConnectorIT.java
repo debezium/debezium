@@ -2618,6 +2618,57 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-5423")
+    public void verifyRenameTable() throws Exception {
+        connection.execute(
+                "CREATE TABLE account (id int, name varchar(30), amount integer primary key(id))");
+        TestHelper.enableTableCdc(connection, "account");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.setAutoCommit(false);
+
+        connection.execute("INSERT INTO account VALUES(10, 'some_name', 120)");
+        connection.execute("EXEC sp_rename 'account', 'account_new'");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.account_new");
+
+        Assertions.assertThat(tableA).isNotEmpty();
+        Schema expectedSchemaA = SchemaBuilder.struct()
+                .optional()
+                .name("server1.testDB1.dbo.account_new.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        Struct expectedValueA = new Struct(expectedSchemaA)
+                .put("id", 10)
+                .put("name", "some_name")
+                .put("amount", 120);
+
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldIsEqualTo(expectedValueA)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
+
+        Struct value = (Struct) tableA.get(0).value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").get("id")).isEqualTo(10);
+            assertThat(value.getStruct("after").get("name")).isEqualTo("some_name");
+            assertThat(value.getStruct("after").get("amount")).isEqualTo(120);
+        }
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
