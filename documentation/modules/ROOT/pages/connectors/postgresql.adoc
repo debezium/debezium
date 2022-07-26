@@ -1283,7 +1283,7 @@ a|Mandatory field that describes the source metadata for the event. In a _messag
 * {prodname} version
 * Connector type and name
 * Database name
-* Schema name (always `""` for _mesage_ events)
+* Schema name (always `""` for _message_ events)
 * Table name (always `""` for _message_ events)
 * If the event was part of a snapshot (always `false` for _message_ events)
 * ID of the transaction in which the operation was performed (`null` for non-transactional _message_ events)
