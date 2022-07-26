@@ -6,6 +6,7 @@
 package io.debezium.testing.system.tools.kafka.builders;
 
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_VERSION_KAFKA;
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -124,6 +125,10 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
                 .withType(KafkaListenerType.LOADBALANCER)
                 .build();
 
+        // External services not needed when running from inside OCP
+        if (isRunningFromOcp()) {
+            return Arrays.asList(plainInternal, tlsInternal);
+        }
         return Arrays.asList(plainInternal, tlsInternal, loadBalancerExternal);
     }
 

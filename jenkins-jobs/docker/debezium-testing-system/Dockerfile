@@ -13,8 +13,6 @@ RUN curl -s "https://get.sdkman.io" | bash
 RUN source $sdkman_init &&\
     sdk install java 17.0.2-open
 
-# this runs when only when dbz repo/branch is changed
-
 COPY testsuite.sh /testsuite/testsuite.sh
 RUN chmod a+x /testsuite/testsuite.sh
 
