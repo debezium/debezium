@@ -14,5 +14,5 @@ By taking advantage of Kafka's reliable streaming platform, {prodname} makes it 
 Even if your application stops unexpectedly, or loses its connection, it does not miss events that occur during the outage.
 After the application restarts, it resumes reading from the log from the point where it left off.
 
-{prodname} includes multiple connectors, and each of them share similar capabilities.
+{prodname} includes multiple connectors, which share similar capabilities.
 The tutorial that follows focuses on the {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector].
