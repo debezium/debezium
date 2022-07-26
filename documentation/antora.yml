@@ -8,8 +8,8 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '2.0.0.Alpha3'
-    debezium-kafka-version: '3.1.0'
+    debezium-version: '2.0.0.Beta1'
+    debezium-kafka-version: '3.2.0'
     debezium-docker-label: '1.9'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '3.0.11'
@@ -17,9 +17,9 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
-    apicurio-version: '2.1.5.Final'
+    apicurio-version: '2.2.5.Final'
     db2-version: '11.5.0.0'
-    ojdbc8-version: '21.5.0.0'
+    ojdbc8-version: '21.6.0.0'
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
