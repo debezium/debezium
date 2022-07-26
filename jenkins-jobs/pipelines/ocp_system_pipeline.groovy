@@ -128,44 +128,76 @@ pipeline {
                     cd ${DEBEZIUM_LOCATION}
                     source ./${OCP_PROJECT_NAME}.ocp.env
 
-                    GROUPS_ARG="!docker"
+                    DBZ_GROUPS_ARG="!docker"
                     if [ ${TEST_APICURIO_REGISTRY} == false ]; then
-                        GROUPS_ARG="${GROUPS_ARG} & !avro"
+                        DBZ_GROUPS_ARG="${DBZ_GROUPS_ARG} & !avro"
                     fi
 
-                    FILENAME="testsuite-job"
+                    JOB_DESC_FILE="testsuite-job.yml"
                     PULL_SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
 
-                    cd ${WORKSPACE}/debezium
-                    jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${FILENAME}" \
-                    --dbz-git-repository "${DBZ_GIT_REPOSITORY}" \
-                    --dbz-git-branch "${DBZ_GIT_BRANCH}" \
-                    --pull-secret-name "${PULL_SECRET_NAME}" \
-                    --docker-tag "${DOCKER_TAG}" \
-                    --project-name "${OCP_PROJECT_NAME}" \
-                    --product-build "${PRODUCT_BUILD}" \
-                    --strimzi-kc-build ${STRIMZI_KC_BUILD} \
-                    --apicurio-version "${APICURIO_VERSION}" \
-                    --kafka-version "${KAFKA_VERSION}" \
-                    --groups-arg "${GROUPS_ARG}" \
-                    --dbz-connect-image "${DBZ_CONNECT_IMAGE}" \
-                    --artifact-server-image "${ARTIFACT_SERVER_IMAGE}" \
-                    --apicurio-version "${APICURIO_VERSION}"
+                    printf "%s" "apiVersion: batch/v1
+kind: Job
+metadata:
+  name: \\"testsuite\\"
+spec:
+  template:
+    metadata:
+      labels:
+        name: \\"testsuite\\"
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ${PULL_SECRET_NAME}
+      containers:
+        - name: \\"dbz-testing-system\\"
+          image: \\"quay.io/rh_integration/dbz-testing-system:${DOCKER_TAG}\\"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: \\"TCP\\"
+          env:
+            - name: DBZ_GIT_REPOSITORY
+              value: \\"${DBZ_GIT_REPOSITORY}\\"
+            - name: DBZ_GIT_BRANCH
+              value: \\"${DBZ_GIT_BRANCH}\\"
+            - name: DBZ_OCP_PROJECT_DEBEZIUM
+              value: \\"${OCP_PROJECT_NAME}\\"
+            - name: DBZ_SECRET_NAME
+              value: \\"${PULL_SECRET_NAME}\\"
+            - name: DBZ_TEST_WAIT_SCALE
+              value: \\"10\\"
+            - name: DBZ_PRODUCT_BUILD
+              value: \\"${PRODUCT_BUILD}\\"
+            - name: DBZ_STRIMZI_KC_BUILD
+              value: \\"${STRIMZI_KC_BUILD}\\"
+            - name: DBZ_CONNECT_IMAGE
+              value: \\"${DBZ_CONNECT_IMAGE}\\"
+            - name: DBZ_ARTIFACT_SERVER_IMAGE
+              value: \\"${ARTIFACT_SERVER_IMAGE}\\"
+            - name: DBZ_APICURIO_VERSION
+              value: \\"${APICURIO_VERSION}\\"
+            - name: DBZ_KAFKA_VERSION
+              value: \\"${KAFKA_VERSION}\\"
+            - name: DBZ_GROUPS_ARG
+              value: \\"${DBZ_GROUPS_ARG}\\"
+            - name: DBZ_OCP_DELETE_PROJECTS
+              value: \\"true\\"
+  triggers:
+    - type: \\"ConfigChange\\"
+  paused: false
+  revisionHistoryLimit: 2
+  minReadySeconds: 0
+" >> "${JOB_DESC_FILE}"
 
-                    oc delete -f "${FILENAME}.yml" --ignore-not-found
-                    oc create -f "${FILENAME}.yml"
+                    oc delete -f "${JOB_DESC_FILE}" --ignore-not-found
+                    oc create -f "${JOB_DESC_FILE}"
 
                     for i in {1..100}; do
                         sleep 2
                         pod_name=$(oc get pods | tail -1 | awk '{print $1;}')
                         oc logs -f ${pod_name} && break
                     done
-
-                    oc rsync ${pod_name}:/testsuite/debezium/debezium-testing/debezium-testing-system/target/failsafe-reports ./debezium-testing-system/target/failsafe-reports
-                    archiveArtifacts '**/debezium-testing/debezium-testing-system/target/failsafe-reports/*.xml'
-
-                    oc rsync ${pod_name}:/testsuite/debezium/target/failsafe-reports ./failsafe-reports
-                    archiveArtifacts '**/target/failsafe-reports/*.xml'\
                     '''
                 }
             }

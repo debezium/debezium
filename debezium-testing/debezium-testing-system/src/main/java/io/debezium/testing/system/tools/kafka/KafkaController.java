@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
@@ -48,7 +49,12 @@ public interface KafkaController {
      */
     default Properties getDefaultConsumerProperties() {
         Properties consumerProps = new Properties();
-        consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
+        if (!isRunningFromOcp()) {
+            consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
+        }
+        else {
+            consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getBootstrapAddress());
+        }
         consumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
         consumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
