@@ -77,7 +77,11 @@ public class HttpIT {
             return events.size() == MESSAGE_COUNT;
         });
 
-        Assertions.assertEquals(MESSAGE_COUNT, events.size());
+        assertEvents(events, MESSAGE_COUNT);
+    }
+
+    private void assertEvents(List<ServeEvent> events, int expectedSize) {
+        Assertions.assertEquals(expectedSize, events.size());
 
         for (ServeEvent e : events) {
             LoggedRequest request = e.getRequest();
