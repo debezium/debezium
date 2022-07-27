@@ -46,6 +46,10 @@ The following table lists the shapshot metrics that are available.
 |`boolean`
 |Whether the snapshot was started.
 
+|[[connectors-snaps-metric-snapshotpaused_{context}]]<<connectors-snaps-metric-snapshotpaused_{context}, `SnapshotPaused`>>
+|`boolean`
+|Whether the snapshot was paused.
+
 |[[connectors-snaps-metric-snapshotaborted_{context}]]<<connectors-snaps-metric-snapshotaborted_{context}, `SnapshotAborted`>>
 |`boolean`
 |Whether the snapshot was aborted.
@@ -56,7 +60,11 @@ The following table lists the shapshot metrics that are available.
 
 |[[connectors-snaps-metric-snapshotdurationinseconds_{context}]]<<connectors-snaps-metric-snapshotdurationinseconds_{context}, `SnapshotDurationInSeconds`>>
 |`long`
-|The total number of seconds that the snapshot has taken so far, even if not complete.
+|The total number of seconds that the snapshot has taken so far, even if not complete. Includes also time when snapshot was paused.
+
+|[[connectors-snaps-metric-snapshotpauseddurationinseconds_{context}]]<<connectors-snaps-metric-snapshotpauseddurationinseconds_{context}, `SnapshotPausedDurationInSeconds`>>
+|`long`
+|The total number of seconds that the snapshot was paused. If the snapshot was paused several times, the paused time adds up.
 
 |[[connectors-snaps-metric-rowsscanned_{context}]]<<connectors-snaps-metric-rowsscanned_{context}, `RowsScanned`>>
 |`Map<String, Long>`
