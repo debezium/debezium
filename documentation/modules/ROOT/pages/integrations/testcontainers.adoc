@@ -170,7 +170,7 @@ private KafkaConsumer<String, String> getConsumer(
             KafkaContainer kafkaContainer) {
 
     return new KafkaConsumer<>(
-            ImmutableMap.of(
+            Map.of(
                     ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                             kafkaContainer.getBootstrapServers(),
                     ConsumerConfig.GROUP_ID_CONFIG,
