@@ -2,8 +2,7 @@ FROM fedora:35 AS base
 
 RUN dnf -y install git unzip zip findutils
 
-ARG OCP_CLIENT=3.7.23
-RUN curl --retry 7 -Lo /tmp/client-tools.tar.gz "https://mirror.openshift.com/pub/openshift-v3/clients/${OCP_CLIENT}/linux/oc.tar.gz"
+RUN curl --retry 7 -Lo /tmp/client-tools.tar.gz "https://mirror.openshift.com/pub/openshift-v4/amd64/clients/ocp/latest/openshift-client-linux.tar.gz"
 RUN tar zxf /tmp/client-tools.tar.gz -C /usr/local/bin oc \
     && rm /tmp/client-tools.tar.gz
 

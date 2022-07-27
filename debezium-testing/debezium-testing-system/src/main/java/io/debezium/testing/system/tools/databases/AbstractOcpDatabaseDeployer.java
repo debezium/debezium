@@ -29,6 +29,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
+    public static final String EXTERNAL_SERVICE_TYPE_LB = "LoadBalancer";
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseDeployer.class);
     private final OpenShiftClient ocp;
     private final OpenShiftUtils ocpUtils;
@@ -140,7 +141,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         private boolean isLbService(String yamlPath) {
             Service service = YAML.fromResource(yamlPath, Service.class);
-            return "LoadBalancer".equals(service.getSpec().getType());
+            return EXTERNAL_SERVICE_TYPE_LB.equals(service.getSpec().getType());
         }
     }
 }
