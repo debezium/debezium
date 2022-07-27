@@ -925,7 +925,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getLong((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Long.valueOf((String) data));
+                r.deliver(Long.valueOf(((String) data).trim()));
             }
         });
     }
