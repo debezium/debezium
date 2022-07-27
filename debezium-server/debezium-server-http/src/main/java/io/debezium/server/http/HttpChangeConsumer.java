@@ -99,27 +99,36 @@ public class HttpChangeConsumer extends BaseChangeConsumer implements DebeziumEn
             LOGGER.trace("Received event '{}'", record);
 
             if (record.value() != null) {
-                String value = (String) record.value();
-                HttpResponse r;
-
-                HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(value)).build();
-
-                try {
-                    r = client.send(request, HttpResponse.BodyHandlers.ofString());
-                }
-                catch (IOException ioe) {
-                    throw new InterruptedException(ioe.toString());
-                }
-
-                if ((r.statusCode() == HTTP_OK) || (r.statusCode() == HTTP_NO_CONTENT) || (r.statusCode() == HTTP_ACCEPTED)) {
+                if (recordSent(record)) {
                     committer.markProcessed(record);
-                }
-                else {
-                    LOGGER.info("Failed to publish event: " + r.body());
                 }
             }
         }
 
         committer.markBatchFinished();
+    }
+
+    private boolean recordSent(ChangeEvent<Object, Object> record) throws InterruptedException {
+        boolean sent = false;
+        String value = (String) record.value();
+        HttpResponse r;
+
+        HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(value)).build();
+
+        try {
+            r = client.send(request, HttpResponse.BodyHandlers.ofString());
+        }
+        catch (IOException ioe) {
+            throw new InterruptedException(ioe.toString());
+        }
+
+        if ((r.statusCode() == HTTP_OK) || (r.statusCode() == HTTP_NO_CONTENT) || (r.statusCode() == HTTP_ACCEPTED)) {
+            sent = true;
+        }
+        else {
+            LOGGER.info("Failed to publish event: " + r.body());
+        }
+
+        return sent;
     }
 }
