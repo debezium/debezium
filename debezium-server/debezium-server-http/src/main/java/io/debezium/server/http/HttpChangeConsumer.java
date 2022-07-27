@@ -27,9 +27,12 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.server.BaseChangeConsumer;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 /**
  * Implementation of the consumer that delivers the messages to an HTTP Webhook destination.
@@ -44,10 +47,16 @@ public class HttpChangeConsumer extends BaseChangeConsumer implements DebeziumEn
     private static final String PROP_PREFIX = "debezium.sink.http.";
     private static final String PROP_WEBHOOK_URL = "url";
     private static final String PROP_CLIENT_TIMEOUT = "timeout.ms";
+    private static final String PROP_RETRIES = "retries";
+    private static final String PROP_RETRY_INTERVAL = "retry.interval.ms";
 
     private static final Long HTTP_TIMEOUT = Integer.toUnsignedLong(60000); // Default to 60s
+    private static final int DEFAULT_RETRIES = 5;
+    private static final Long RETRY_INTERVAL = Integer.toUnsignedLong(1_000); // Default to 1s
 
     private static Duration timeoutDuration;
+    private static int retries;
+    private static Duration retryInterval;
 
     private HttpClient client;
     private HttpRequest.Builder requestBuilder;
@@ -63,6 +72,8 @@ public class HttpChangeConsumer extends BaseChangeConsumer implements DebeziumEn
         final Config config = ConfigProvider.getConfig();
         String sink = System.getenv("K_SINK");
         timeoutDuration = Duration.ofMillis(HTTP_TIMEOUT);
+        retries = DEFAULT_RETRIES;
+        retryInterval = Duration.ofMillis(RETRY_INTERVAL);
 
         if (sink != null) {
             sinkUrl = sink;
@@ -73,6 +84,12 @@ public class HttpChangeConsumer extends BaseChangeConsumer implements DebeziumEn
 
         config.getOptionalValue(PROP_PREFIX + PROP_CLIENT_TIMEOUT, String.class)
                 .ifPresent(t -> timeoutDuration = Duration.ofMillis(Long.parseLong(t)));
+
+        config.getOptionalValue(PROP_PREFIX + PROP_RETRIES, String.class)
+                .ifPresent(n -> retries = Integer.parseInt(n));
+
+        config.getOptionalValue(PROP_PREFIX + PROP_RETRY_INTERVAL, String.class)
+                .ifPresent(t -> retryInterval = Duration.ofMillis(Long.parseLong(t)));
 
         switch (config.getValue("debezium.format.value", String.class)) {
             case "avro":
@@ -99,9 +116,15 @@ public class HttpChangeConsumer extends BaseChangeConsumer implements DebeziumEn
             LOGGER.trace("Received event '{}'", record);
 
             if (record.value() != null) {
-                if (recordSent(record)) {
-                    committer.markProcessed(record);
+                int attempts = 0;
+                while (!recordSent(record)) {
+                    attempts++;
+                    if (attempts >= retries) {
+                        throw new DebeziumException("Exceeded maximum number of attempts to publish event " + record);
+                    }
+                    Metronome.sleeper(retryInterval, Clock.SYSTEM).pause();
                 }
+                committer.markProcessed(record);
             }
         }
 
