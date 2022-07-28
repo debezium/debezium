@@ -5,12 +5,12 @@
 
 {prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides a set of {link-kafka-docs}.html#connect[Kafka Connect] compatible connectors.
 Each of the connectors works with a specific database management system (DBMS).
-Connectors record the history of data changes in the DBMS by detecting changes as they occur, and streaming a record of each change event to the Kafka logs.
-Consuming applications can then read the resulting event records from the log.
+Connectors record the history of data changes in the DBMS by detecting changes as they occur, and streaming a record of each change event to a Kafka topic.
+Consuming applications can then read the resulting event records from the Kafka topic.
 
 By taking advantage of Kafka's reliable streaming platform, {prodname} makes it possible for applications to consume changes that occur in a database correctly and completely.
 Even if your application stops unexpectedly, or loses its connection, it does not miss events that occur during the outage.
-After the application restarts, it resumes reading from the log from the point where it left off.
+After the application restarts, it resumes reading from the topic from the point where it left off.
 
 The tutorial that follows shows you how to deploy and use the {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} MySQL connector] with a simple configuration.
 For more information about deploying and using {prodname} connectors, see the connector documentation.
