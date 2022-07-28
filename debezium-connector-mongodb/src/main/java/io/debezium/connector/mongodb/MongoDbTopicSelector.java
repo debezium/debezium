@@ -14,7 +14,9 @@ import io.debezium.schema.TopicSelector;
  * Factory for this connector's {@link TopicSelector}.
  *
  * @author Randall Hauch
+ * @deprecated Use {@link io.debezium.schema.DefaultTopicNamingStrategy} instead.
  */
+@Deprecated
 @ThreadSafe
 public class MongoDbTopicSelector {
 
