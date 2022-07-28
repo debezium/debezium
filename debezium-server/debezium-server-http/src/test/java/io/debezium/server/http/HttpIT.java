@@ -10,6 +10,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.getAllServeEvents;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.removeServeEvent;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 
 import java.io.IOException;
@@ -118,7 +119,13 @@ public class HttpIT {
         stubFor(post("/").willReturn(aResponse().withStatus(200)));
 
         Awaitility.await().atMost(Duration.ofSeconds(60)).until(() -> {
-            events.addAll(getAllServeEvents());
+            List<ServeEvent> currentEvents = getAllServeEvents();
+            events.addAll(currentEvents);
+            // Remove already added events, if e.g. 3 out of 4 events are added, in next attempt all 4 events
+            // are added again and test fails.
+            for (ServeEvent e : currentEvents) {
+                removeServeEvent(e.getId());
+            }
 
             return events.size() == MESSAGE_COUNT;
         });
