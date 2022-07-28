@@ -18,6 +18,7 @@ import io.debezium.schema.TopicSelector;
  * @author Randall Hauch
  *
  */
+@Deprecated
 public class TopicSelectorTest {
 
     private TopicSelector<CollectionId> noPrefix;
