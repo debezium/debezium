@@ -202,9 +202,7 @@ ifdef::community[]
 * MongoDB
 endif::community[]
 * MySQL
-ifdef::community[]
 * Oracle
-endif::community[]
 * PostgreSQL
 * SQL Server
 
@@ -237,9 +235,7 @@ ifdef::community[]
 * xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshot[MongoDB connector ad hoc snapshots]
 endif::community[]
 * xref:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
-ifdef::community[]
 * xref:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
-endif::community[]
 * xref:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
 
@@ -268,8 +264,6 @@ ifdef::community[]
 * xref:{link-mongodb-connector}#mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
 endif::community[]
 * xref:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
-ifdef::community[]
 * xref:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
-endif::community[]
 * xref:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
