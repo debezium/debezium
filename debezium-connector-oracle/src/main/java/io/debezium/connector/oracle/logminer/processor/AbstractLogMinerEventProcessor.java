@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -908,6 +909,17 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                                                           OracleOffsetContext offsetContext,
                                                                           EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
+
+        final String tableDdl;
+        try {
+            tableDdl = getTableMetadataDdl(tableId);
+        }
+        catch (NonRelationalTableException e) {
+            LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+            metrics.incrementWarningCount();
+            return null;
+        }
+
         LOGGER.info("Table '{}' is new and will now be captured.", tableId);
         offsetContext.event(tableId, Instant.now());
         dispatcher.dispatchSchemaChangeEvent(partition,
@@ -918,7 +930,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         tableId,
                         tableId.catalog(),
                         tableId.schema(),
-                        getTableMetadataDdl(tableId),
+                        tableDdl,
                         getSchema(),
                         Instant.now(),
                         metrics,
@@ -933,13 +945,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param tableId the table identifier, must not be {@code null}
      * @return the table's create DDL statement, never {@code null}
      * @throws SQLException if an exception occurred obtaining the DDL statement
+     * @throws NonRelationalTableException if the table is not a relational table
      */
-    private String getTableMetadataDdl(TableId tableId) throws SQLException {
+    private String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
         counters.tableMetadataCount++;
         LOGGER.info("Getting database metadata for table '{}'", tableId);
         // A separate connection must be used for this out-of-bands query while processing LogMiner results.
         // This should have negligible overhead since this use case should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader(), false)) {
             connection.setAutoCommit(false);
             final String pdbName = getConfig().getPdbName();
             if (pdbName != null) {
