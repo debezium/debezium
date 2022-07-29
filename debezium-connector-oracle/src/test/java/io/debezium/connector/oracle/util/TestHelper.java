@@ -21,6 +21,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -130,7 +131,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
+        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
         }
         else {
@@ -500,9 +501,9 @@ public class TestHelper {
         return 120;
     }
 
-    public static OracleConnectorConfig.ConnectorAdapter adapter() {
+    public static ConnectorAdapter adapter() {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
-        return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.LOG_MINER : OracleConnectorConfig.ConnectorAdapter.parse(s);
+        return (s == null || s.length() == 0) ? ConnectorAdapter.LOG_MINER : ConnectorAdapter.parse(s);
     }
 
     /**
@@ -610,4 +611,15 @@ public class TestHelper {
         // if the property is not specified, we default to using PDB mode.
         return Strings.isNullOrEmpty(properties.get(PDB_NAME));
     }
+
+    /**
+     * Returns the connector adapter from the provided configuration.
+     *
+     * @param config the connector configuration, must not be {@code null}
+     * @return the connector adapter being used.
+     */
+    public static ConnectorAdapter getAdapter(Configuration config) {
+        return ConnectorAdapter.parse(config.getString(OracleConnectorConfig.CONNECTOR_ADAPTER));
+    }
+
 }
