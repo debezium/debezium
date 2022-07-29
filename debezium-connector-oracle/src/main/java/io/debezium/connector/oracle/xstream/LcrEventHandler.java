@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -30,6 +31,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
@@ -164,7 +166,18 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 LOGGER.trace("Table {} is new but excluded, schema change skipped.", tableId);
                 return;
             }
-            LOGGER.info("Table {} is new and will be captured.", tableId);
+
+            final String tableDdl;
+            try {
+                tableDdl = getTableMetadataDdl(tableId);
+            }
+            catch (NonRelationalTableException e) {
+                LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+                streamingMetrics.incrementWarningCount();
+                return;
+            }
+
+            LOGGER.info("Table {} will be captured.", tableId);
             dispatcher.dispatchSchemaChangeEvent(
                     partition,
                     tableId,
@@ -175,13 +188,16 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                             tableId,
                             tableId.catalog(),
                             tableId.schema(),
-                            getTableMetadataDdl(tableId),
+                            tableDdl,
                             schema,
                             Instant.now(),
                             streamingMetrics,
                             null));
 
             table = schema.tableFor(tableId);
+            if (table == null) {
+                return;
+            }
         }
 
         // Xstream does not provide any before state for LOB columns and so this map will be
@@ -281,12 +297,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
     }
 
-    private String getTableMetadataDdl(TableId tableId) {
+    private String getTableMetadataDdl(TableId tableId) throws NonRelationalTableException {
+        LOGGER.info("Getting database metadata for table '{}'", tableId);
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader())) {
-            if (pdbName != null) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), () -> getClass().getClassLoader(), false)) {
+            if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }
             connection.setAutoCommit(false);

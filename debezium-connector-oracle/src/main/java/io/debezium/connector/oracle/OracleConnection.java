@@ -316,9 +316,20 @@ public class OracleConnection extends JdbcConnection {
      * @param tableId table identifier, should never be {@code null}
      * @return generated DDL
      * @throws SQLException if an exception occurred obtaining the DDL metadata
+     * @throws NonRelationalTableException the table is not a relational table
      */
-    public String getTableMetadataDdl(TableId tableId) throws SQLException {
+    public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
         try {
+            // This table contains all available objects that are considered relational & object based.
+            // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
+            // that the table is in-fact a relational table and if the result set is empty, the object
+            // is another type, likely an object-based table, in which case we cannot generate DDL.
+            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema()
+                    + "' AND TABLE_NAME='" + tableId.table() + "' AND TABLE_TYPE IS NULL";
+            if (queryAndMap(tableType, rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
+                throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
+            }
+
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
@@ -521,5 +532,14 @@ public class OracleConnection extends JdbcConnection {
             tableName = tableName.replace("/", "//");
         }
         return super.getColumnsDetails(databaseCatalog, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+    }
+
+    /**
+     * An exception that indicates the operation failed because the table is not a relational table.
+     */
+    public static class NonRelationalTableException extends DebeziumException {
+        public NonRelationalTableException(String message) {
+            super(message);
+        }
     }
 }
