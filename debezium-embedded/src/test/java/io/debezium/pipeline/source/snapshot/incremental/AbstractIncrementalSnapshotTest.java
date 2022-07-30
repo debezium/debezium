@@ -813,7 +813,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     public void testPauseDuringSnapshot() throws Exception {
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
@@ -842,9 +842,11 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendResumeSignal();
 
         final int expectedRecordCount = ROW_COUNT;
-        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
-        for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        if ((expectedRecordCount - beforeResume) > 0) {
+            Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
+            for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
+                Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            }
         }
     }
 
