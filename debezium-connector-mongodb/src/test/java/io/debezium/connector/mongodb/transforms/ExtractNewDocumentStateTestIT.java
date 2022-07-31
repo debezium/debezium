@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -1683,6 +1684,62 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         struct.put(matrixSchema.field("_1"), secondSubStruct);
         struct.put(matrixSchema.field("_2"), thirdSubStruct);
         assertThat(transformedInsertValue.get("matrix")).isEqualTo(struct);
+    }
+
+    @Test
+    @FixFor("DBZ-5434")
+    public void shouldSupportNestedArrays() throws InterruptedException {
+        // Test insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6c\"),\"f1\":{\"f2\":[{\"f3\":{}},{\"f3\":{\"f5\":5}}]}}"));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        SourceRecord transformedInsert = transformation.apply(insertRecord);
+        Struct transformedInsertValue = (Struct) transformedInsert.value();
+        Schema transformedInsertSchema = transformedInsert.valueSchema();
+        transformedInsertSchema.field("f1").schema().field("f2");
+        assertThat(transformedInsertSchema.field("f1").schema()
+                .field("f2").schema().valueSchema()
+                .field("f3").schema()
+                .field("f5").schema().type()).isEqualTo(Schema.INT32_SCHEMA.type());
+        assertThat(transformedInsertValue.getStruct("f1").getArray("f2").size()).isEqualTo(2);
+
+        // Test delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME)
+                    .getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{'_id' : ObjectId('6182b1a25711ed59dd6a1d6c')}"));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+
+        // Test insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertMany(Collect.arrayListOf(
+                            "{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6c\"),\"f1\":{\"f2\":[{\"f3\":[]},{\"f3\":[{\"f5\":5}]}]}}",
+                            "{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6d\"),\"f1\":{\"f2\":[{\"f3\":[]},{\"f3\":[]}]}}")
+                            .stream().map(Document::parse).collect(Collectors.toList()));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+
+        List<SourceRecord> transformedInserts = records.allRecordsInOrder().stream().map(m -> transformation.apply(m))
+                .collect(Collectors.toList());
+        transformedInsertValue = (Struct) transformedInserts.get(0).value();
+        assertThat(transformedInsertValue.getStruct("f1").getArray("f2").size()).isEqualTo(2);
+
+        transformedInsertValue = (Struct) transformedInserts.get(1).value();
+        List<Struct> f2 = transformedInsertValue.getStruct("f1").getArray("f2");
+        assertThat(f2.size()).isEqualTo(2);
+        assertThat(f2.get(0).getArray("f3").size()).isEqualTo(0);
     }
 
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
