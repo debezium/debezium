@@ -813,7 +813,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     public void testPauseDuringSnapshot() throws Exception {
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100));
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
