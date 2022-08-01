@@ -842,9 +842,11 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendResumeSignal();
 
         final int expectedRecordCount = ROW_COUNT;
-        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
-        for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        if ((expectedRecordCount - beforeResume) > 0) {
+            Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
+            for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
+                Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            }
         }
     }
 
