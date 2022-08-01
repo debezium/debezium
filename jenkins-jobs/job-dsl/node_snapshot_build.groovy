@@ -17,7 +17,7 @@ pipelineJob('node-snapshot-build') {
 //      OPENSTACK INSTANCE AND SNAPSHOT CONFIG
         stringParam('CLOUD_NAME', 'openstack', 'Name of openstack cloud')
         stringParam('SNAPSHOT_NAME', 'debezium-jenkins-node-centos8', 'Name of created snapshot')
-        stringParam('BASE_IMAGE', 'CentOS-8-x86_64-GenericCloud-released-latest', 'Base image for created snapshot')
+        stringParam('BASE_IMAGE', 'CentOS-Stream-8-x86_64-GenericCloud', 'Base image for created snapshot')
         stringParam('INSTANCE_NAME', 'Ansible_temporary_instance', 'Name of created instance in Openstack')
         stringParam('INSTANCE_USER', 'centos', 'User used to connect to the instance')
         stringParam('KEYPAIR', 'jenkins', 'Keypair used to connect to the instance')
