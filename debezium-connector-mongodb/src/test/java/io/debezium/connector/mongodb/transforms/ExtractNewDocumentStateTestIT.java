@@ -1689,6 +1689,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     @Test
     @FixFor("DBZ-5434")
     public void shouldSupportNestedArrays() throws InterruptedException {
+        waitForStreamingRunning();
+
         // Test insert
         primary().execute("insert", client -> {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
