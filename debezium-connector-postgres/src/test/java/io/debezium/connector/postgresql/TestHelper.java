@@ -244,7 +244,6 @@ public final class TestHelper {
     public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         return new PostgresSchema(
                 config,
-                typeRegistry,
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
                 getPostgresValueConverter(typeRegistry, config));
