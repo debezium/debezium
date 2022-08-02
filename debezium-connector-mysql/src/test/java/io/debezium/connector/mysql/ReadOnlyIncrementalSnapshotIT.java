@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.AfterClass;
@@ -35,8 +37,11 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.mysql.signal.KafkaSignalThread;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -98,6 +103,17 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     protected void sendExecuteSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
         String signalValue = String.format(
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
+                fullTableNames);
+        sendKafkaSignal(signalValue);
+    }
+
+    protected void sendStopSnapshotKafkaSignal() throws ExecutionException, InterruptedException {
+        sendStopSnapshotKafkaSignal(tableDataCollectionId());
+    }
+
+    protected void sendStopSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
+        String signalValue = String.format(
+                "{\"type\":\"stop-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
                 fullTableNames);
         sendKafkaSignal(signalValue);
     }
@@ -236,6 +252,48 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         if (e != null) {
             throw (RuntimeException) e;
         }
+    }
+
+    @Test
+    @FixFor("DBZ-5453")
+    public void testStopSnapshotKafkaSignal() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        assertNoRecordsToConsume();
+
+        sendExecuteSnapshotKafkaSignal();
+
+        consumeMixedWithIncrementalSnapshot(1);
+
+        sendStopSnapshotKafkaSignal();
+
+        final List<SourceRecord> records = new ArrayList<>();
+        final String topicName = topicName();
+        final String tableRemoveMessage = String.format("Removed '%s' from incremental snapshot collection list.", tableDataCollectionId());
+
+        Awaitility.await()
+                .atMost(Duration.ofMinutes(2))
+                .until(() -> {
+                    consumeAvailableRecords(record -> {
+                        if (topicName.equalsIgnoreCase(record.topic())) {
+                            records.add(record);
+                        }
+                    });
+
+                    boolean stopProcessed = logInterceptor.containsMessage(tableRemoveMessage);
+                    boolean ended = logInterceptor.containsMessage("No data returned by the query");
+
+                    // We should never see "No data returned by the query", we should see the table removed.
+                    Assertions.assertThat(ended).isFalse();
+                    return stopProcessed;
+                });
+
+        stopConnector();
     }
 
     @Test

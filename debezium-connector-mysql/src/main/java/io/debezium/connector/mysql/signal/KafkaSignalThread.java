@@ -28,9 +28,11 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.pipeline.signal.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.ExecuteSnapshot;
 import io.debezium.pipeline.signal.PauseIncrementalSnapshot;
 import io.debezium.pipeline.signal.ResumeIncrementalSnapshot;
+import io.debezium.pipeline.signal.StopSnapshot;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
@@ -153,6 +155,9 @@ public class KafkaSignalThread<T extends DataCollectionId> {
             case ExecuteSnapshot.NAME:
                 executeSnapshot(data, record.offset());
                 break;
+            case StopSnapshot.NAME:
+                executeStopSnapshot(data, record.offset());
+                break;
             case PauseIncrementalSnapshot.NAME:
                 executePause(data);
                 break;
@@ -172,6 +177,20 @@ public class KafkaSignalThread<T extends DataCollectionId> {
             if (snapshotType == ExecuteSnapshot.SnapshotType.INCREMENTAL) {
                 eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset);
             }
+        }
+    }
+
+    private void executeStopSnapshot(Document data, long signalOffset) {
+        final List<String> dataCollections = StopSnapshot.getDataCollections(data);
+        final AbstractSnapshotSignal.SnapshotType snapshotType = StopSnapshot.getSnapshotType(data);
+        if (dataCollections == null || dataCollections.isEmpty()) {
+            LOGGER.info("Requested stop of '{}' snapshot", snapshotType);
+        }
+        else {
+            LOGGER.info("Requested stop of '{}' snapshot of data collections '{}'", snapshotType, dataCollections);
+        }
+        if (snapshotType == AbstractSnapshotSignal.SnapshotType.INCREMENTAL) {
+            eventSource.stopSnapshot(dataCollections, signalOffset);
         }
     }
 
