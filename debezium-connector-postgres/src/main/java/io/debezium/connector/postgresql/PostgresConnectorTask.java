@@ -93,7 +93,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final PostgresDefaultValueConverter defaultValueConverter = jdbcConnection.getDefaultValueConverter();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, defaultValueConverter, topicNamingStrategy, valueConverterBuilder.build(typeRegistry));
+        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                 new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));

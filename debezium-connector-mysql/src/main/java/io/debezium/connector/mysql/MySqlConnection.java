@@ -34,7 +34,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 
 /**
@@ -613,9 +612,7 @@ public class MySqlConnection extends JdbcConnection {
     }
 
     @Override
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return mysqlFieldReader.readField(rs, columnIndex, column, table);
     }
 

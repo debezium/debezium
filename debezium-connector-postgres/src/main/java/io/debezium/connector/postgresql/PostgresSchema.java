@@ -44,8 +44,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected final static String PUBLIC_SCHEMA_NAME = "public";
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
-    private final TypeRegistry typeRegistry;
-
     private final Map<TableId, List<String>> tableIdToToastableColumns;
     private final Map<Integer, TableId> relationIdToTableId;
     private final boolean readToastableColumns;
@@ -55,13 +53,12 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, PostgresDefaultValueConverter defaultValueConverter,
+    protected PostgresSchema(PostgresConnectorConfig config, PostgresDefaultValueConverter defaultValueConverter,
                              TopicNamingStrategy<TableId> topicNamingStrategy, PostgresValueConverter valueConverter) {
         super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(),
                 config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter),
                 false, config.getKeyMapper());
 
-        this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
@@ -206,10 +203,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
             return null;
         }
         return tableId.schema() == null ? new TableId(tableId.catalog(), PUBLIC_SCHEMA_NAME, tableId.table()) : tableId;
-    }
-
-    public TypeRegistry getTypeRegistry() {
-        return typeRegistry;
     }
 
     public List<String> getToastableColumnsForTableId(TableId tableId) {

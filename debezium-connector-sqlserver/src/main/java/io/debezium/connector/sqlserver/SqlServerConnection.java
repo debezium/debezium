@@ -39,7 +39,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DatabaseSchema;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -532,9 +531,7 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         final ResultSetMetaData metaData = rs.getMetaData();
         final int columnType = metaData.getColumnType(columnIndex);
 
@@ -542,7 +539,7 @@ public class SqlServerConnection extends JdbcConnection {
             return rs.getTimestamp(columnIndex);
         }
         else {
-            return super.getColumnValue(rs, columnIndex, column, table, schema);
+            return super.getColumnValue(rs, columnIndex, column, table);
         }
     }
 

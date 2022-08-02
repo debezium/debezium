@@ -364,7 +364,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
 
                     rows++;
-                    final Object[] row = jdbcConnection.rowToArray(table, schema(), rs, columnArray);
+                    final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
 
                     if (logTimer.expired()) {
                         long stop = clock.currentTimeInMillis();
@@ -528,10 +528,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     protected RelationalDatabaseSchema schema() {
         return schema;
-    }
-
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema());
     }
 
     /**

@@ -326,7 +326,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                     if (!rs.next()) {
                                         return null;
                                     }
-                                    return keyFromRow(jdbcConnection.rowToArray(currentTable, databaseSchema, rs,
+                                    return keyFromRow(jdbcConnection.rowToArray(currentTable, rs,
                                             ColumnUtils.toArray(rs, currentTable)));
                                 });
                         context.maximumKey(maximumKey);
@@ -584,7 +584,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             Object[] firstRow = null;
             while (rs.next()) {
                 rows++;
-                final Object[] row = jdbcConnection.rowToArray(currentTable, databaseSchema, rs, columnArray);
+                final Object[] row = jdbcConnection.rowToArray(currentTable, rs, columnArray);
                 if (firstRow == null) {
                     firstRow = row;
                 }

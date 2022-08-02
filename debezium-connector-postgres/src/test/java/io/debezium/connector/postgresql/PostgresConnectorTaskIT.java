@@ -51,7 +51,6 @@ public class PostgresConnectorTaskIT {
         postgresConnectorTask.createReplicationConnection(new FakeContext(config, new PostgresSchema(
                 config,
                 null,
-                null,
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config), null)), true, 3, Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds

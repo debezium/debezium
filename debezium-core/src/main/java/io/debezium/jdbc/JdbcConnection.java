@@ -63,7 +63,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
@@ -1535,22 +1534,18 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Reads a value from JDBC result set and execute per-connector conversion if needed
      */
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return rs.getObject(columnIndex);
     }
 
     /**
      * Converts a {@link ResultSet} row to an array of Objects
      */
-    public <T extends DatabaseSchema<TableId>> Object[] rowToArray(Table table, T databaseSchema, ResultSet rs,
-                                                                   ColumnUtils.ColumnArray columnArray)
-            throws SQLException {
+    public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
         final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
         for (int i = 0; i < columnArray.getColumns().length; i++) {
             row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
-                    columnArray.getColumns()[i], table, databaseSchema);
+                    columnArray.getColumns()[i], table);
         }
         return row;
     }
