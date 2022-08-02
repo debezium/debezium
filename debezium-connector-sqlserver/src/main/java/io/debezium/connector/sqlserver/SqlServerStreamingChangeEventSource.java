@@ -87,6 +87,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final ElapsedTimeStrategy pauseBetweenCommits;
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
 
+    private boolean lsnNotAvailable;
+
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
                                                EventDispatcher<SqlServerPartition, TableId> dispatcher,
@@ -154,8 +156,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
-                    LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
+                    if (!lsnNotAvailable) {
+                        lsnNotAvailable = true;
+                        LOGGER.warn("""
+                                No maximum LSN recorded in the database; \
+                                this may happen if there are no changes recorded in the change table yet or \
+                                low activity database where the cdc clean up job periodically clears entries from the cdc tables. \
+                                Otherwise, this may be an indication that the SQL Server Agent is not running.""");
+                    }
                     return false;
+                } else if (lsnNotAvailable) {
+                    lsnNotAvailable = false;
                 }
                 // There is no change in the database
                 if (toLsn.compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && streamingExecutionContext.getShouldIncreaseFromLsn()) {
