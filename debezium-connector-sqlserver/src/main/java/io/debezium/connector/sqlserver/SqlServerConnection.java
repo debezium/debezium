@@ -33,6 +33,7 @@ import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -108,6 +109,11 @@ public class SqlServerConnection extends JdbcConnection {
     private final SqlServerDefaultValueConverter defaultValueConverter;
 
     private boolean optionRecompile;
+
+    private static final Field AGENT_STATUS_QUERY = Field.create("sqlserver.agent.status.query")
+            .withDescription("Query to get the running status of the SQL Server Agent")
+            .withDefault(
+                    "SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';");
 
     /**
      * Creates a new connection using the supplied configuration.
@@ -587,5 +593,12 @@ public class SqlServerConnection extends JdbcConnection {
 
     public SqlServerDefaultValueConverter getDefaultValueConverter() {
         return defaultValueConverter;
+    }
+
+    public boolean isAgentRunning(String databaseName) throws SQLException {
+        final String query = replaceDatabaseNamePlaceholder(config().getString(AGENT_STATUS_QUERY), databaseName);
+        final boolean isRunning = queryAndMap(query,
+                singleResultMapper(rs -> rs.getBoolean(1), "SQL Server Agent running status query must return exactly one value"));
+        return isRunning;
     }
 }
