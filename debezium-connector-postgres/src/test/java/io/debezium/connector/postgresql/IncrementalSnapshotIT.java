@@ -9,17 +9,20 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -209,6 +212,28 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4329")
+    public void obsoleteSourceInfoIsExcludedFromRecord() throws Exception {
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        final Map<Integer, Struct> dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                record -> ((Struct) record.value()).getStruct("source"),
+                x -> true,
+                null);
+        Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
+        Assertions.assertThat(ROW_COUNT == entries.size());
+        for (Map.Entry<Integer, Struct> e : entries) {
+            Assert.assertTrue(e.getValue().getInt64("xmin") == null);
+            Assert.assertTrue(e.getValue().getInt64("lsn") == null);
+            Assert.assertTrue(e.getValue().getInt64("txId") == null);
         }
     }
 
