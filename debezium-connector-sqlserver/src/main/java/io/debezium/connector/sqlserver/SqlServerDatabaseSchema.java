@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.util.AbstractMap.SimpleEntry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,27 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
         }
 
         record(schemaChange, tableChanges);
+    }
+
+    @Override
+    public void applySchemaChange(SchemaChangeEvent schemaChange, SimpleEntry<String, String> changeTableSyncInfoPair) {
+        // just a single table per DDL event for SQL Server
+        Table table = schemaChange.getTables().iterator().next();
+        buildAndRegisterSchema(table);
+        storeChangeTableSyncInfo(table, changeTableSyncInfoPair);
+        tables().overwriteTable(table);
+
+        TableChanges tableChanges = null;
+        if (schemaChange.getType() == SchemaChangeEventType.CREATE) {
+            tableChanges = new TableChanges();
+            tableChanges.create(table);
+        }
+        else if (schemaChange.getType() == SchemaChangeEventType.ALTER) {
+            tableChanges = new TableChanges();
+            tableChanges.alter(table);
+        }
+
+        record(schemaChange, tableChanges, changeTableSyncInfoPair);
     }
 
     @Override

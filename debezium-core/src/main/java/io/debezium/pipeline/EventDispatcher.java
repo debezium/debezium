@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.time.Instant;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Objects;
@@ -138,6 +139,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 .field(Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Fields.TABLE_CHANGES, SchemaBuilder.array(tableChangesSerializer.getChangeSchema()).build())
+                .field(Fields.CHANGE_TABLE_NAME, SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .field(Fields.START_LSN, SchemaBuilder.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -536,6 +539,19 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             return result;
         }
 
+        private Struct schemaChangeRecordValue(SchemaChangeEvent event, SimpleEntry<String, String> changeTableSyncInfo) {
+            Struct result = new Struct(schemaChangeValueSchema);
+            result.put(Fields.SOURCE, event.getSource());
+            result.put(Fields.TIMESTAMP, event.getTimestamp().toEpochMilli());
+            result.put(Fields.DATABASE_NAME, event.getDatabase());
+            result.put(Fields.SCHEMA_NAME, event.getSchema());
+            result.put(Fields.DDL_STATEMENTS, event.getDdl());
+            result.put(Fields.TABLE_CHANGES, tableChangesSerializer.serialize(event.getTableChanges()));
+            result.put(Fields.CHANGE_TABLE_NAME, changeTableSyncInfo.getKey());
+            result.put(Fields.START_LSN, changeTableSyncInfo.getValue());
+            return result;
+        }
+
         @Override
         public void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException {
             historizedSchema.applySchemaChange(event);
@@ -545,6 +561,21 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 final Integer partition = 0;
                 final Struct key = schemaChangeRecordKey(event);
                 final Struct value = schemaChangeRecordValue(event);
+                final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
+                        schemaChangeKeySchema, key, schemaChangeValueSchema, value);
+                enqueueSchemaChangeMessage(record);
+            }
+        }
+
+        @Override
+        public void schemaChangeEvent(SchemaChangeEvent event, SimpleEntry<String, String> changeTableSyncInfoPair) throws InterruptedException {
+            historizedSchema.applySchemaChange(event, changeTableSyncInfoPair);
+
+            if (connectorConfig.isSchemaChangesHistoryEnabled()) {
+                final String topicName = topicNamingStrategy.schemaChangeTopic();
+                final Integer partition = 0;
+                final Struct key = schemaChangeRecordKey(event);
+                final Struct value = schemaChangeRecordValue(event, changeTableSyncInfoPair);
                 final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value);
                 enqueueSchemaChangeMessage(record);

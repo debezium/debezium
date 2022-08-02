@@ -615,15 +615,15 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                 throw new IllegalStateException(e);
             }
         });
-        // 3 tables from snapshot + 1 ALTER
-        Assertions.assertThat(changes).hasSize(3 + 1);
-        changes.subList(0, 3).forEach(change -> {
+        // 3 tables from snapshot + 1 SyncInfo + 1 ALTER
+        Assertions.assertThat(changes).hasSize(3 + 1 + 1);
+        changes.subList(0, 4).forEach(change -> {
             final Array changeArray = change.getArray("tableChanges");
             Assertions.assertThat(changeArray.size()).isEqualTo(1);
             final String type = changeArray.get(0).asDocument().getString("type");
             Assertions.assertThat(type).isEqualTo("CREATE");
         });
-        final Array changeArray = changes.get(3).getArray("tableChanges");
+        final Array changeArray = changes.get(4).getArray("tableChanges");
         Assertions.assertThat(changeArray.size()).isEqualTo(1);
         final String type = changeArray.get(0).asDocument().getString("type");
         final String tableIid = changeArray.get(0).asDocument().getString("id");

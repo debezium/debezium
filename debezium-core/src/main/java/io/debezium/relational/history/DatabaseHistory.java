@@ -6,6 +6,7 @@
 package io.debezium.relational.history;
 
 import java.time.Instant;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +22,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
+import io.debezium.relational.Table;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
@@ -120,6 +122,10 @@ public interface DatabaseHistory {
     void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes, Instant timestamp)
             throws DatabaseHistoryException;
 
+    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes,
+                Instant timestamp, SimpleEntry<String, String> changeTableSyncInfoPair)
+            throws DatabaseHistoryException;
+
     /**
      * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
      */
@@ -152,11 +158,28 @@ public interface DatabaseHistory {
         recover(offsetMap, schema, ddlParser);
     }
 
+    default void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser, Map<Table, SimpleEntry<String, String>> tableToChangeTableSyncInfoMap) {
+        Map<Map<String, ?>, Map<String, ?>> offsetMap = new HashMap<>();
+        for (Entry<? extends Partition, ? extends OffsetContext> entry : offsets) {
+            if (entry.getValue() != null) {
+                offsetMap.put(entry.getKey().getSourcePartition(), entry.getValue().getOffset());
+            }
+        }
+
+        recover(offsetMap, schema, ddlParser, tableToChangeTableSyncInfoMap);
+    }
+
     /**
      * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
      */
     @Deprecated
     void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser);
+
+    /**
+     * @deprecated Use {@link #recover(Offsets, Tables, DdlParser, Map)} instead.
+     */
+    @Deprecated
+    void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser, Map<Table, SimpleEntry<String, String>> tableToChangeTableSyncInfoMap);
 
     /**
      * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, DatabaseHistoryListener, boolean)}.

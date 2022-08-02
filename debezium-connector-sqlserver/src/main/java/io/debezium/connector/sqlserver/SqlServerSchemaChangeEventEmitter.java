@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.util.AbstractMap.SimpleEntry;
+
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.schema.SchemaChangeEvent;
@@ -22,14 +24,16 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
     private final SqlServerChangeTable changeTable;
     private final Table tableSchema;
     private final SchemaChangeEventType eventType;
+    private final SimpleEntry<String, String> changeTableSyncInfoPair;
 
     public SqlServerSchemaChangeEventEmitter(SqlServerPartition partition, SqlServerOffsetContext offsetContext, SqlServerChangeTable changeTable, Table tableSchema,
-                                             SchemaChangeEventType eventType) {
+                                             SchemaChangeEventType eventType, SimpleEntry<String, String> changeTableSyncInfoPair) {
         this.partition = partition;
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
         this.eventType = eventType;
+        this.changeTableSyncInfoPair = changeTableSyncInfoPair;
     }
 
     @Override
@@ -44,6 +48,6 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
                 tableSchema,
                 false);
 
-        receiver.schemaChangeEvent(event);
+        receiver.schemaChangeEvent(event, changeTableSyncInfoPair);
     }
 }

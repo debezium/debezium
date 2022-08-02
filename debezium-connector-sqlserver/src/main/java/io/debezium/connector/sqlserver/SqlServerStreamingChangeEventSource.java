@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -21,9 +22,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -174,8 +177,42 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
                 if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
-                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
+                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn, lastProcessedPosition);
                     tablesSlot.set(tables);
+
+                    EventProcessingFailureHandlingMode mode = connectorConfig.getEventProcessingFailureHandlingMode();
+                    LOGGER.debug("Event processing failure handling mode is set to {}", mode);
+                    if (!mode.equals(EventProcessingFailureHandlingMode.SKIP)) {
+                        for (SqlServerChangeTable table : tables) {
+                            if (table.getStartLsn().compareTo(lastProcessedPosition.getCommitLsn()) > 0) {
+                                LOGGER.debug("startLsn for table {} is higher than lastProcessedPosition", table.getSourceTableId());
+                                SimpleEntry<String, String> changeTableSyncInfo = schema.changeTableSyncInfoFor(table.getSourceTableId());
+                                if (changeTableSyncInfo != null
+                                        && changeTableSyncInfo.getKey() != null
+                                        && changeTableSyncInfo.getKey().equals(table.getChangeTableId().identifier())) {
+                                    if (!changeTableSyncInfo.getValue().equals(table.getStartLsn().toString())) {
+                                        // TODO: What if don't have this info for some table? (Check case where schema is altered)
+                                        if (mode.equals(EventProcessingFailureHandlingMode.WARN)) {
+                                            LOGGER.warn("Found out of sync lsn for table {} with capture instance {}", table.getSourceTableId(),
+                                                    table.getCaptureInstance());
+                                        }
+                                        else if (mode.equals(EventProcessingFailureHandlingMode.FAIL)) {
+                                            throw new ConnectException(String.format("Error: Found out of sync lsn for table " +
+                                                    table.getSourceTableId().identifier() + " with capture instance " + table.getCaptureInstance()));
+                                        }
+                                    }
+                                }
+                                else {
+                                    // TODO: when is this case applicable? When existing table is enabled for cdc?
+                                    offsetContext.event(table.getSourceTableId(), Instant.now());
+                                    dispatcher.dispatchSchemaChangeEvent(partition, table.getSourceTableId(),
+                                            new SqlServerSchemaChangeEventEmitter(partition, offsetContext, table, schema.tableFor(table.getSourceTableId()),
+                                                    SchemaChangeEventType.CREATE,
+                                                    new SimpleEntry(table.getChangeTableId().identifier(), table.getStartLsn().toString())));
+                                }
+                            }
+                        }
+                    }
                     for (SqlServerChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
@@ -184,7 +221,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     }
                 }
                 if (tablesSlot.get() == null) {
-                    tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn));
+                    tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn, lastProcessedPosition));
                 }
                 try {
                     dataConnection.getChangesForTables(databaseName, tablesSlot.get(), fromLsn, toLsn, resultSets -> {
@@ -333,13 +370,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         LOGGER.info("Migrating schema to {}", newTable);
         Table oldTableSchema = schema.tableFor(newTable.getSourceTableId());
         Table tableSchema = metadataConnection.getTableSchemaFromTable(partition.getDatabaseName(), newTable);
+        // TODO: why do we need to pass this info?
+        String oldChangeTable = schema.changeTableSyncInfoFor(oldTableSchema.id()).getKey();
+        String oldStartLsn = schema.changeTableSyncInfoFor(oldTableSchema.id()).getValue();
         if (oldTableSchema.equals(tableSchema)) {
             LOGGER.info("Migration skipped, no table schema changes detected.");
             return;
         }
         dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
                 new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema,
-                        SchemaChangeEventType.ALTER));
+                        SchemaChangeEventType.ALTER, new SimpleEntry(oldChangeTable, oldStartLsn)));
         newTable.setSourceTable(tableSchema);
     }
 
@@ -358,7 +398,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     private SqlServerChangeTable[] getChangeTablesToQuery(SqlServerPartition partition, SqlServerOffsetContext offsetContext,
-                                                          Lsn toLsn)
+                                                          Lsn toLsn, TxLogPosition lastProcessedPosition)
             throws SQLException, InterruptedException {
         final String databaseName = partition.getDatabaseName();
         final List<SqlServerChangeTable> changeTables = dataConnection.getChangeTables(databaseName, toLsn);
@@ -402,6 +442,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             }
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
+                String changeTable = currentTable.getChangeTableId().identifier();
+                String startLsn = currentTable.getStartLsn().toString();
                 // We need to read the source table schema - nullability information cannot be obtained from change table
                 // There might be no start LSN in the new change table at this time so current timestamp is used
                 offsetContext.event(
@@ -415,7 +457,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 offsetContext,
                                 currentTable,
                                 dataConnection.getTableSchemaFromTable(databaseName, currentTable),
-                                SchemaChangeEventType.CREATE));
+                                SchemaChangeEventType.CREATE, new SimpleEntry(changeTable, startLsn)));
             }
 
             // If a column was renamed, then the old capture instance had been dropped and a new one

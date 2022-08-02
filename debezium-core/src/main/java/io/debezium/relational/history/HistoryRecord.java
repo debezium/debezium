@@ -6,6 +6,7 @@
 package io.debezium.relational.history;
 
 import java.time.Instant;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -23,6 +24,8 @@ public class HistoryRecord {
         public static final String DDL_STATEMENTS = "ddl";
         public static final String TABLE_CHANGES = "tableChanges";
         public static final String TIMESTAMP = "ts_ms";
+        public static final String CHANGE_TABLE_NAME = "changeTableName";
+        public static final String START_LSN = "startLsn";
     }
 
     private final Document doc;
@@ -75,6 +78,59 @@ public class HistoryRecord {
 
     }
 
+    public HistoryRecord(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes,
+                         Instant timestamp, SimpleEntry<String, String> changeTableSyncInfoPair) {
+        this.doc = Document.create();
+
+        Document src = doc.setDocument(Fields.SOURCE);
+        if (source != null) {
+            source.forEach(src::set);
+        }
+
+        Document pos = doc.setDocument(Fields.POSITION);
+        if (position != null) {
+            for (Entry<String, ?> positionElement : position.entrySet()) {
+                if (positionElement.getValue() instanceof byte[]) {
+                    pos.setBinary(positionElement.getKey(), (byte[]) positionElement.getValue());
+                }
+                else {
+                    pos.set(positionElement.getKey(), positionElement.getValue());
+                }
+            }
+        }
+
+        if (timestamp != null) {
+            doc.setNumber(Fields.TIMESTAMP, timestamp.toEpochMilli());
+        }
+
+        if (databaseName != null) {
+            doc.setString(Fields.DATABASE_NAME, databaseName);
+        }
+
+        if (schemaName != null) {
+            doc.setString(Fields.SCHEMA_NAME, schemaName);
+        }
+
+        if (ddl != null) {
+            doc.setString(Fields.DDL_STATEMENTS, ddl);
+        }
+
+        if (changes != null) {
+            doc.setArray(Fields.TABLE_CHANGES, tableChangesSerializer.serialize(changes));
+        }
+
+        if (changeTableSyncInfoPair != null) {
+            if (changeTableSyncInfoPair.getKey() != null) {
+                doc.setString(Fields.CHANGE_TABLE_NAME, changeTableSyncInfoPair.getKey());
+            }
+
+            if (changeTableSyncInfoPair.getValue() != null) {
+                doc.setString(Fields.START_LSN, changeTableSyncInfoPair.getValue());
+            }
+        }
+
+    }
+
     public Document document() {
         return this.doc;
     }
@@ -105,6 +161,14 @@ public class HistoryRecord {
 
     protected long timestamp() {
         return doc.getLong(Fields.TIMESTAMP);
+    }
+
+    protected String changeTableName() {
+        return doc.getString(Fields.CHANGE_TABLE_NAME);
+    }
+
+    protected String startLsn() {
+        return doc.getString(Fields.START_LSN);
     }
 
     @Override

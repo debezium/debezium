@@ -5,6 +5,7 @@
  */
 package io.debezium.schema;
 
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Collection;
 
 import io.debezium.pipeline.spi.OffsetContext;
@@ -34,6 +35,8 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
     }
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
+
+    void applySchemaChange(SchemaChangeEvent schemaChange, SimpleEntry<String, String> changeTableSyncInfoPair);
 
     default void recover(Partition partition, OffsetContext offset) {
         recover(Offsets.of(partition, offset));
