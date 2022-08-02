@@ -133,7 +133,6 @@ public final class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
-    // TODO https://issues.redhat.com/browse/DBZ-4329, make this call the method above, so to reset the attributes not provided here
     protected SourceInfo update(Instant timestamp, TableId tableId) {
         this.timestamp = timestamp;
         if (tableId != null && tableId.schema() != null) {
