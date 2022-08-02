@@ -158,14 +158,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (!toLsn.isAvailable()) {
                     if (!lsnNotAvailable) {
                         lsnNotAvailable = true;
-                        LOGGER.warn("""
-                                No maximum LSN recorded in the database; \
-                                this may happen if there are no changes recorded in the change table yet or \
-                                low activity database where the cdc clean up job periodically clears entries from the cdc tables. \
-                                Otherwise, this may be an indication that the SQL Server Agent is not running.""");
+                        LOGGER.warn(
+                                "No maximum LSN recorded in the database; this may happen if there are no changes recorded in the change table yet or low activity database where the cdc clean up job periodically clears entries from the cdc tables. Otherwise, this may be an indication that the SQL Server Agent is not running.");
                     }
                     return false;
-                } else if (lsnNotAvailable) {
+                }
+                else if (lsnNotAvailable) {
                     lsnNotAvailable = false;
                 }
                 // There is no change in the database
