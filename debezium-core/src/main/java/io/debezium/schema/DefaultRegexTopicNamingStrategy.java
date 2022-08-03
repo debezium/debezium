@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,12 @@ public class DefaultRegexTopicNamingStrategy extends AbstractTopicNamingStrategy
     public void configure(Properties props) {
         super.configure(props);
         Configuration config = Configuration.from(props);
+        final Field.Set regexConfigFields = Field.setOf(TOPIC_REGEX, TOPIC_REPLACEMENT);
+
+        if (!config.validateAndRecord(regexConfigFields, LOGGER::error)) {
+            throw new ConnectException("Unable to validate config.");
+        }
+
         topicRegex = Pattern.compile(config.getString(TOPIC_REGEX));
         topicReplacement = config.getString(TOPIC_REPLACEMENT);
     }
