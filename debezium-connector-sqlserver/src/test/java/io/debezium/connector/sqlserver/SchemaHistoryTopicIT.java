@@ -406,7 +406,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         records = consumeRecordsByTopic(1 + 5);
         Assertions.assertThat(records.recordsForTopic("server1")).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
 
         schemaRecords = records.recordsForTopic("server1");
 
@@ -459,6 +459,6 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(((Struct) recordsAfterNewTableCreation.get(0).value())
                 .getString("startLsn")).isNotEmpty();
 
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(1);
     }
 }

@@ -2634,11 +2634,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.table_a.Value")
+                .name("server1.testDB1.dbo.table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
@@ -2694,11 +2694,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.table_a.Value")
+                .name("server1.testDB1.dbo.table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
@@ -2727,7 +2727,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         assertConnectorIsRunning();
         records = consumeRecordsByTopic(1);
-        tableA = records.recordsForTopic("server1.dbo.table_a");
+        tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
 
         expectedValueA = new Struct(expectedSchemaA)
                 .put("id", 30)
@@ -2762,11 +2762,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.table_a.Value")
+                .name("server1.testDB1.dbo.table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
@@ -2795,7 +2795,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(1);
         assertConnectorIsRunning();
 
-        tableA = records.recordsForTopic("server1.dbo.table_a");
+        tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         expectedValueA = new Struct(expectedSchemaA)
                 .put("id", 30)
                 .put("name", "yet_another_name")
@@ -2829,11 +2829,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(3);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.table_a.Value")
+                .name("server1.testDB1.dbo.table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
