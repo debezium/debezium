@@ -5,15 +5,22 @@
  */
 package io.debezium.relational.history;
 
-import io.debezium.DebeziumException;
-import io.debezium.annotation.NotThreadSafe;
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.config.Field.Validator;
-import io.debezium.document.DocumentReader;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
-import io.debezium.util.Threads;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
@@ -44,21 +51,15 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+import io.debezium.DebeziumException;
+import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.config.Field.Validator;
+import io.debezium.document.DocumentReader;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.util.Collect;
+import io.debezium.util.Threads;
 
 /**
  * A {@link DatabaseHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
@@ -116,7 +117,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
-                    + "kafka.recovery.poll.interval.ms")
+            + "kafka.recovery.poll.interval.ms")
             .withDisplayName("Poll interval during database history recovery (ms)")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
@@ -327,7 +328,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                 LOGGER.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
                                     LOGGER.warn("Skipping invalid database history record '{}'. " +
-                                                    "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                            "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
                                 }
                                 else {

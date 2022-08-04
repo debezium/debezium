@@ -33,7 +33,8 @@ import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**
- * A builder that creates a decorator around {@link EmbeddedEngine} that is responsible for the conversion
+ * A builder that creates a decorator around {@link
+ * EmbeddedEngine} that is responsible for the conversion
  * to the final format.
  *
  * @author Jiri Pechanec

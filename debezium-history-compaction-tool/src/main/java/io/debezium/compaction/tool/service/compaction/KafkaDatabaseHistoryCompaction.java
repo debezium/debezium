@@ -5,6 +5,36 @@
  */
 package io.debezium.compaction.tool.service.compaction;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.Array;
@@ -23,41 +53,12 @@ import io.debezium.relational.history.TableChanges;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.regex.Pattern;
 
 public class KafkaDatabaseHistoryCompaction {
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "database.history.";
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
-                    + "kafka.recovery.poll.interval.ms")
+            + "kafka.recovery.poll.interval.ms")
             .withDisplayName("Poll interval during database history recovery (ms)")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -126,7 +127,7 @@ public class KafkaDatabaseHistoryCompaction {
                 .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
                 .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1)
                 .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-                .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000)
+                .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 50000)
                 .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                         OffsetResetStrategy.EARLIEST.toString().toLowerCase())
                 .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
@@ -235,7 +236,8 @@ public class KafkaDatabaseHistoryCompaction {
                         }
                     }
                     listener.onChangeApplied(recovered);
-                } else if (ddl != null && ddlParser != null) {
+                }
+                else if (ddl != null && ddlParser != null) {
                     if (recovered.databaseName() != null) {
                         ddlParser.setCurrentDatabase(recovered.databaseName()); // may be null
                     }
@@ -251,15 +253,18 @@ public class KafkaDatabaseHistoryCompaction {
                         LOGGER.debug("Applying: {}", ddl);
                         ddlParser.parse(ddl, schema);
                         listener.onChangeApplied(recovered);
-                    } catch (final ParsingException | MultipleParsingExceptions e) {
+                    }
+                    catch (final ParsingException | MultipleParsingExceptions e) {
                         if (skipUnparseableDDL) {
                             LOGGER.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
-                        } else {
+                        }
+                        else {
                             throw e;
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 LOGGER.debug("Skipping: {}", recovered.ddl());
             }
         });
@@ -296,14 +301,16 @@ public class KafkaDatabaseHistoryCompaction {
                             if (record.value() == null) {
                                 LOGGER.warn("Skipping null database history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", offsetTopic);
-                            } else {
+                            }
+                            else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
                                 LOGGER.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
                                     LOGGER.warn("Skipping invalid database history record '{}'. " +
-                                                    "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                            "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, offsetTopic);
-                                } else {
+                                }
+                                else {
                                     records.accept(recordObj);
                                     LOGGER.trace("Recovered database history: {}", recordObj);
                                 }
@@ -311,9 +318,11 @@ public class KafkaDatabaseHistoryCompaction {
                             lastProcessedOffset = record.offset();
                             ++numRecordsProcessed;
                         }
-                    } catch (final IOException e) {
+                    }
+                    catch (final IOException e) {
                         LOGGER.error("Error while deserializing history record '{}'", record, e);
-                    } catch (final Exception e) {
+                    }
+                    catch (final Exception e) {
                         LOGGER.error("Unexpected exception while processing record '{}'", record, e);
                         throw e;
                     }
@@ -321,7 +330,8 @@ public class KafkaDatabaseHistoryCompaction {
                 if (numRecordsProcessed == 0) {
                     LOGGER.debug("No new records found in the database history; will retry");
                     recoveryAttempts++;
-                } else {
+                }
+                else {
                     LOGGER.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             } while (lastProcessedOffset < endOffset - 1);
@@ -358,11 +368,13 @@ public class KafkaDatabaseHistoryCompaction {
                 LOGGER.debug("Stored record in topic '{}' partition {} at offset {} ",
                         metadata.topic(), metadata.partition(), metadata.offset());
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             LOGGER.trace("Interrupted before record was written into database history: {}", record);
             Thread.currentThread().interrupt();
             throw new DatabaseHistoryException(e);
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);
         }
     }
