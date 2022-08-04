@@ -88,6 +88,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @SingleThreadAccess("polling thread")
     private Instant previousOutputInstant;
 
+    @SingleThreadAccess("polling thread")
+    private int previousOutputBatchSize;
+
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -176,13 +179,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         if (batchSize > 0) {
             SourceRecord lastRecord = records.get(batchSize - 1);
             lastOffset = lastRecord.sourceOffset();
+            previousOutputBatchSize += batchSize;
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
                 final Instant currentTime = clock.currentTime();
-                LOGGER.info("{} records sent during previous {}, last recorded offset: {}", batchSize,
+                LOGGER.info("{} records sent during previous {}, last recorded offset: {}", previousOutputBatchSize,
                         Strings.duration(Duration.between(previousOutputInstant, currentTime).toMillis()), lastOffset);
 
                 previousOutputInstant = currentTime;
+                previousOutputBatchSize = 0;
             }
         }
     }
