@@ -5,12 +5,6 @@
  */
 package io.debezium.compaction.tool.service.compaction;
 
-import java.io.File;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.kafka.KafkaCluster;
@@ -18,6 +12,11 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.io.File;
 
 class KafkaDatabaseHistoryCompactionTest {
 
