@@ -1132,6 +1132,44 @@ public class EventRouterTest {
         assertThat(payloadStruct.get("fullName")).isEqualTo("John Doe");
     }
 
+    @Test
+    public void canExpandJsonArrayWithFirstElementNull() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"numbers\": [null, 2, 3]}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+
+        assertThat(valueSchema.fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("numbers").schema().type().getName()).isEqualTo("array");
+        assertThat(valueSchema.field("numbers").schema().valueSchema().type().getName()).isEqualTo("int32");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        List<Object> numbers = valueStruct.getArray("numbers");
+        assertThat(numbers.size()).isEqualTo(3);
+        assertThat(numbers.get(0)).isEqualTo(null);
+        assertThat(numbers.get(1)).isEqualTo(2);
+        assertThat(numbers.get(2)).isEqualTo(3);
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
