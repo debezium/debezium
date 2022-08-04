@@ -14,7 +14,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.NullNode;
 
 /**
@@ -67,12 +66,6 @@ public class SchemaBuilderUtil {
                 if (node.isLong()) {
                     return Schema.OPTIONAL_INT64_SCHEMA;
                 }
-                if (node.isFloat()) {
-                    return Schema.OPTIONAL_FLOAT64_SCHEMA;
-                }
-                if (node.isDouble()) {
-                    return Schema.OPTIONAL_FLOAT64_SCHEMA;
-                }
                 return Schema.OPTIONAL_FLOAT64_SCHEMA;
             case ARRAY:
                 ArrayNode arrayNode = (ArrayNode) node;
@@ -87,21 +80,25 @@ public class SchemaBuilderUtil {
     /** */
     private static JsonNode getFirstArrayElement(ArrayNode array) throws ConnectException {
         JsonNode refNode = NullNode.getInstance();
-        JsonNodeType refType = null;
-
-        // Get first non null element type and check other member types.
+        // Get first non-null element type and check other member types.
         Iterator<JsonNode> elements = array.elements();
         while (elements.hasNext()) {
             JsonNode element = elements.next();
-            if (refType == null) {
-                refType = element.isNull() ? null : element.getNodeType();
+
+            // Skip null elements.
+            if (element.isNull()) {
+                continue;
+            }
+
+            // Set first non-null element if not set yet.
+            if (refNode.isNull()) {
                 refNode = element;
             }
-            else {
-                if (!element.isNull() && element.getNodeType() != refType) {
-                    throw new ConnectException(String.format("Field is not a homogenous array (%s x %s).",
-                            refNode.asText(), element.getNodeType().toString()));
-                }
+
+            // Check types of elements.
+            if (element.getNodeType() != refNode.getNodeType()) {
+                throw new ConnectException(String.format("Field is not a homogenous array (%s x %s).",
+                        refNode.asText(), element.getNodeType().toString()));
             }
         }
 
