@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -195,8 +196,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final SqlServerChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i],
-                                    connectorConfig.getSourceTimestampMode());
+                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i]);
                             changeTables[i].next();
                         }
 
@@ -280,11 +280,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             }
                             final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
 
+                            final ResultSet resultSet = tableWithSmallestLsn.getResultSet();
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.event(
                                     tableWithSmallestLsn.getChangeTable().getSourceTableId(),
-                                    connectorConfig.getSourceTimestampMode().getTimestamp(
-                                            clock, tableWithSmallestLsn.getResultSet()));
+                                    resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()).toInstant());
 
                             dispatcher
                                     .dispatchDataChangeEvent(
