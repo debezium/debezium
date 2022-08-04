@@ -7,18 +7,15 @@ package io.debezium.testing.system.tools.databases;
 
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -48,28 +45,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    private Service getLoadBalancedService() {
-        return ocp
-                .services()
-                .inNamespace(project)
-                .withName(deployment.getMetadata().getName() + "-lb")
-                .get();
-    }
-
     private Service getService() {
         return ocp
                 .services()
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName())
                 .get();
-    }
-
-    private void awaitIngress() {
-        LOGGER.info("Waiting for LoadBalancerIngress to be available");
-        await()
-                .atMost(scaled(2), MINUTES)
-                .pollInterval(3, SECONDS)
-                .until(() -> getLoadBalancedService().getStatus().getLoadBalancer().getIngress().size() > 0);
     }
 
     @Override
@@ -104,24 +85,11 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             LOGGER.info("Running from OCP, using internal database hostname");
             return getDatabaseHostname();
         }
-        awaitIngress();
-
-        LoadBalancerIngress ingres = getLoadBalancedService().getStatus().getLoadBalancer().getIngress().get(0);
-        String address = (ingres.getHostname() != null) ? ingres.getHostname() : ingres.getIp();
-
-        return Objects.requireNonNull(address, "Unable to retrieve hostname or ip for service ingres");
+        return "localhost";
     }
 
     @Override
     public int getPublicDatabasePort() {
-        if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database port");
-            return getDatabasePort();
-        }
-        awaitIngress();
-        return getLoadBalancedService().getSpec().getPorts().stream()
-                .filter(p -> p.getName().equals("db"))
-                .findAny()
-                .get().getPort();
+        return getDatabasePort();
     }
 }
