@@ -18,7 +18,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpOracle extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/oracle/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/oracle/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/oracle/service.yaml";
 
     public OcpOracle(ExtensionContext.Store store) {
@@ -32,8 +31,7 @@ public class OcpOracle extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_ORACLE)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .withPullSecrets(ConfigProperties.OCP_PULL_SECRET_PATH.get())
                 .build();
         return deployer.deploy();
