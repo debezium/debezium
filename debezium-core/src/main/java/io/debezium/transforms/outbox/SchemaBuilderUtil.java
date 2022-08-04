@@ -14,6 +14,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.NullNode;
 
 /**
@@ -80,6 +81,7 @@ public class SchemaBuilderUtil {
     /** */
     private static JsonNode getFirstArrayElement(ArrayNode array) throws ConnectException {
         JsonNode refNode = NullNode.getInstance();
+        Schema refSchema = null;
         // Get first non-null element type and check other member types.
         Iterator<JsonNode> elements = array.elements();
         while (elements.hasNext()) {
@@ -99,6 +101,18 @@ public class SchemaBuilderUtil {
             if (element.getNodeType() != refNode.getNodeType()) {
                 throw new ConnectException(String.format("Field is not a homogenous array (%s x %s).",
                         refNode.asText(), element.getNodeType().toString()));
+            }
+
+            // We may return different schemas for NUMBER type, check here they are same.
+            if (refNode.getNodeType() == JsonNodeType.NUMBER) {
+                if (refSchema == null) {
+                    refSchema = jsonValueToSchema(refNode);
+                }
+                Schema elementSchema = jsonValueToSchema(element);
+                if (refSchema != elementSchema) {
+                    throw new ConnectException(String.format("Field is not a homogenous array (%s x %s), different number types (%s x %s)",
+                            refNode.asText(), element.asText(), refSchema, elementSchema));
+                }
             }
         }
 
