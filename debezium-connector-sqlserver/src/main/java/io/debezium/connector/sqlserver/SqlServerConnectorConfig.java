@@ -42,7 +42,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
-    public static final String SOURCE_TIMESTAMP_MODE_CONFIG_NAME = "source.timestamp.mode";
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
@@ -258,18 +257,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
-    public static final Field SOURCE_TIMESTAMP_MODE = Field.create(SOURCE_TIMESTAMP_MODE_CONFIG_NAME)
-            .withDisplayName("Source timestamp mode")
-            .withDefault(SourceTimestampMode.COMMIT.getValue())
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms). " +
-                    "Options include: " +
-                    "'" + SourceTimestampMode.COMMIT.getValue()
-                    + "', (default) the source timestamp is set to the instant where the record was committed in the database.");
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -321,7 +308,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
-                    SOURCE_TIMESTAMP_MODE,
                     MAX_TRANSACTIONS_PER_ITERATION,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
@@ -346,7 +332,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final String instanceName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-    private final SourceTimestampMode sourceTimestampMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
     private final boolean optionRecompile;
@@ -376,7 +361,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         }
 
-        this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
@@ -400,10 +384,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
-    }
-
-    public SourceTimestampMode getSourceTimestampMode() {
-        return sourceTimestampMode;
     }
 
     public boolean isReadOnlyDatabaseConnection() {
