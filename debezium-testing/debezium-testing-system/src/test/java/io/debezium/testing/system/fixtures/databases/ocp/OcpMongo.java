@@ -31,8 +31,7 @@ public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MONGO)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .build();
         return deployer.deploy();
     }
