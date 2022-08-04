@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.Lsn;
-import io.debezium.connector.sqlserver.SourceTimestampMode;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
@@ -236,7 +235,7 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), SourceTimestampMode.getDefaultMode(),
+        return new SqlServerConnection(TestHelper.defaultJdbcConfig(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet());
     }
@@ -262,7 +261,7 @@ public class TestHelper {
     }
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
-        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
+        return new SqlServerConnection(config,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet());
     }
@@ -273,7 +272,7 @@ public class TestHelper {
                 .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE_1 + "]")
                 .build());
 
-        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
+        return new SqlServerConnection(config,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
                 Collections.emptySet(), true);
     }

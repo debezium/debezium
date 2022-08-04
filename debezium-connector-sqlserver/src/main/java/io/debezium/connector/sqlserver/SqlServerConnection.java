@@ -113,15 +113,13 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Creates a new connection using the supplied configuration.
      *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
+     * @param config              {@link Configuration} instance, may not be null.
+     * @param valueConverters     {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
+     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
-    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
-                               SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations) {
+    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
+                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
         super(config, createConnectionFactory(), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
@@ -157,7 +155,7 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
-                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement()));
+                Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
 
         this.optionRecompile = false;
     }
@@ -165,17 +163,16 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Creates a new connection using the supplied configuration.
      *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
+     * @param config              {@link Configuration} instance, may not be null.
+     * @param valueConverters     {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
-     * @param optionRecompile Includes query option RECOMPILE on incremental snapshots
+     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
+     * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
      */
-    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
-                               SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations, boolean optionRecompile) {
-        this(config, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations);
+    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
+                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations,
+                               boolean optionRecompile) {
+        this(config, valueConverters, classLoaderSupplier, skippedOperations);
 
         this.optionRecompile = optionRecompile;
     }
