@@ -26,7 +26,8 @@ public class MongoDbErrorHandler extends ErrorHandler {
             while ((cause != null) && (cause != throwable)) {
                 if (cause instanceof com.mongodb.MongoSocketException ||
                         cause instanceof com.mongodb.MongoTimeoutException ||
-                        cause instanceof com.mongodb.MongoExecutionTimeoutException) {
+                        cause instanceof com.mongodb.MongoExecutionTimeoutException ||
+                        cause instanceof com.mongodb.MongoNodeIsRecoveringException) {
                     return true;
                 }
                 else {
