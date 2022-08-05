@@ -66,4 +66,45 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
             return topicName;
         }
     }
+
+    default TopicSchemaAugment keySchemaAugment() {
+        return NO_SCHEMA_OP;
+    }
+
+    default TopicValueAugment keyValueAugment() {
+        return NO_VALUE_OP;
+    }
+
+    /**
+     * An interface that augments the field to topic key/value schema.
+     * @param <S> The schema builder
+     */
+    interface TopicSchemaAugment<S> {
+        /**
+         * Augment field to schema.
+         * @param schemaBuilder the schema builder
+         * @return {@code true} if augment the field to schema, or {@code false} otherwise
+         */
+        boolean augment(S schemaBuilder);
+    }
+
+    /**
+     * An interface that augments the field's value to topic key/value.
+     * @param <S> The schema of topic key/value
+     * @param <R> The struct represents the value of topic key/value
+     */
+    interface TopicValueAugment<I extends DataCollectionId, S, R> {
+        /**
+         * Augment value to the struct.
+         * @param id The data collection id, for example: TableId, CollectionId
+         * @param schema The schema which may contain the augmented field
+         * @param struct The struct represents the value
+         * @return {@code true} if augment the field's value to struct, or {@code false} otherwise
+         */
+        boolean augment(I id, S schema, R struct);
+    }
+
+    TopicSchemaAugment NO_SCHEMA_OP = schemaBuilder -> false;
+
+    TopicValueAugment NO_VALUE_OP = (id, schema, struct) -> false;
 }

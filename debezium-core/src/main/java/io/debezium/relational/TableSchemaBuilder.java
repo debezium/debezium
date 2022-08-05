@@ -134,6 +134,9 @@ public class TableSchemaBuilder {
             addField(keySchemaBuilder, table, column, null);
             hasPrimaryKey.set(true);
         });
+        if (topicNamingStrategy.keySchemaAugment().augment(keySchemaBuilder)) {
+            hasPrimaryKey.set(true);
+        }
 
         table.columns()
                 .stream()
@@ -158,7 +161,7 @@ public class TableSchemaBuilder {
                 .build();
 
         // Create the generators ...
-        StructGenerator keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns());
+        StructGenerator keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns(), topicNamingStrategy);
         StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
@@ -176,9 +179,11 @@ public class TableSchemaBuilder {
      *            will be null
      * @param columnSetName the name for the set of columns, used in error messages; may not be null
      * @param columns the column definitions for the table that defines the row; may not be null
+     * @param topicNamingStrategy the topic naming strategy
      * @return the key-generating function, or null if there is no key schema
      */
-    protected StructGenerator createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
+    protected StructGenerator createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns,
+                                                 TopicNamingStrategy topicNamingStrategy) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -206,6 +211,7 @@ public class TableSchemaBuilder {
                         }
                     }
                 }
+                topicNamingStrategy.keyValueAugment().augment(columnSetName, schema, result);
                 return result;
             };
         }

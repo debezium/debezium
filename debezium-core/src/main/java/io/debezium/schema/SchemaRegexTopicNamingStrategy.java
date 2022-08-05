@@ -12,19 +12,19 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 /**
- * Implement a regex expression strategy to determine data event topic names using {@link DataCollectionId#databaseParts()}.
+ * Implement a regex expression strategy to determine data event topic names using {@link DataCollectionId#schemaParts()}.
  *
  * @author Harvey Yue
  */
 @Incubating
-public class DefaultRegexTopicNamingStrategy extends AbstractRegexTopicNamingStrategy {
+public class SchemaRegexTopicNamingStrategy extends AbstractRegexTopicNamingStrategy {
 
-    public DefaultRegexTopicNamingStrategy(Properties props) {
+    public SchemaRegexTopicNamingStrategy(Properties props) {
         super(props);
     }
 
     @Override
     public String getOriginTopic(DataCollectionId id) {
-        return mkString(Collect.arrayListOf(prefix, id.databaseParts()), delimiter);
+        return mkString(Collect.arrayListOf(prefix, id.schemaParts()), delimiter);
     }
 }

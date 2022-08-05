@@ -104,7 +104,10 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "false")
                 .with(DefaultRegexTopicNamingStrategy.TOPIC_REGEX, "(.*)(dbz_4180)(.*)")
                 .with(DefaultRegexTopicNamingStrategy.TOPIC_REPLACEMENT, "$1$2_all_shards")
-                .with(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY, "io.debezium.schema.DefaultRegexTopicNamingStrategy")
+                .with(DefaultRegexTopicNamingStrategy.TOPIC_KEY_FIELD_NAME, "origin_table_name")
+                .with(DefaultRegexTopicNamingStrategy.TOPIC_KEY_FIELD_REGEX, "(.*)")
+                .with(DefaultRegexTopicNamingStrategy.TOPIC_KEY_FIELD_REPLACEMENT, "it_$1")
+                .with(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, "io.debezium.schema.DefaultRegexTopicNamingStrategy")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -125,6 +128,9 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
         String expectedTopic = DATABASE.topicForTable("dbz_4180_all_shards");
         SourceRecords sourceRecords = consumeRecordsByTopic(100);
         List<SourceRecord> records = sourceRecords.recordsForTopic(expectedTopic);
+        SourceRecord record = records.get(0);
+        assertThat(record.keySchema().field("origin_table_name")).isNotNull();
+        assertThat(((Struct) record.key()).get("origin_table_name").toString().startsWith("it_")).isTrue();
         assertEquals(2, records.size());
 
         stopConnector();
