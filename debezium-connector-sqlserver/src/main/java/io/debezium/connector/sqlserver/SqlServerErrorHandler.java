@@ -36,6 +36,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("Server is in script upgrade mode.")
                         || throwable.getMessage().contains("Try the statement later.")
                         || throwable.getMessage().contains("Connection reset")
+                        || throwable.getMessage().contains("Socket closed")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage().contains("The server failed to resume the transaction")
                         || throwable.getMessage().contains("Verify the connection properties")
