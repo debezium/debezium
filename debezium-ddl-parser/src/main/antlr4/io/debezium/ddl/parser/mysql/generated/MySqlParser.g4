@@ -107,7 +107,7 @@ administrationStatement
     | grantProxy | renameUser | revokeStatement
     | revokeProxy | analyzeTable | checkTable
     | checksumTable | optimizeTable | repairTable
-    | createUdfunction | installPlugin | uninstallPlugin
+    | createUdfFunction | installPlugin | uninstallPlugin
     | setStatement | showStatement | binlogStatement
     | cacheIndexStatement | flushStatement | killStatement
     | loadIndexIntoCache | resetStatement
@@ -166,20 +166,20 @@ createLogfileGroup
     ;
 
 createProcedure
-    : CREATE ownerStatement?
-    PROCEDURE fullId
+    : CREATE (OR REPLACE)? ownerStatement?
+      PROCEDURE fullId
       '(' procedureParameter? (',' procedureParameter)* ')'
       routineOption*
-    routineBody
+      routineBody
     ;
 
 createFunction
-    : CREATE ownerStatement?
-    FUNCTION fullId
+    : CREATE (OR REPLACE)? ownerStatement? AGGREGATE?
+      FUNCTION ifNotExists? fullId
       '(' functionParameter? (',' functionParameter)* ')'
       RETURNS dataType
       routineOption*
-    (routineBody | returnStatement)
+      (routineBody | returnStatement)
     ;
 
 createRole
@@ -277,7 +277,7 @@ createDatabaseOption
     ;
 
 ownerStatement
-    : DEFINER '=' (userName | CURRENT_USER ( '(' ')')?)
+    : DEFINER '=' (userName | CURRENT_USER ( '(' ')')? | CURRENT_ROLE) // CURRENT_ROLE is MariaDB-specific only
     ;
 
 scheduleExpression
@@ -333,11 +333,15 @@ indexOption
     ;
 
 procedureParameter
-    : direction=(IN | OUT | INOUT)? uid dataType
+    : parameter
     ;
 
 functionParameter
-    : uid dataType
+    : parameter
+    ;
+
+parameter
+    : direction=(IN | OUT | INOUT | IN_OUT)? uid dataType
     ;
 
 routineOption
@@ -1731,8 +1735,8 @@ checkTableOption
 
 //    Plugin and udf statements
 
-createUdfunction
-    : CREATE AGGREGATE? FUNCTION uid
+createUdfFunction
+    : CREATE (OR REPLACE)? AGGREGATE? FUNCTION ifNotExists? uid
       RETURNS returnType=(STRING | INTEGER | REAL | DECIMAL)
       SONAME STRING_LITERAL
     ;
@@ -2622,7 +2626,7 @@ keywordsCanBeId
     | COMPLETION | COMPRESSED | COMPRESSION | CONCURRENT | CONDITION | CONNECT
     | CONNECTION | CONNECTION_ADMIN | CONSISTENT | CONSTRAINT_CATALOG | CONSTRAINT_NAME
     | CONSTRAINT_SCHEMA | CONTAINS | CONTEXT
-    | CONTRIBUTORS | COPY | COUNT | CPU | CURRENT | CURSOR_NAME
+    | CONTRIBUTORS | COPY | COUNT | CPU | CURRENT | CURRENT_USER | CURSOR_NAME
     | DATA | DATAFILE | DEALLOCATE
     | DEFAULT_AUTH | DEFINER | DELAY_KEY_WRITE | DES_KEY_FILE | DIAGNOSTICS | DIRECTORY
     | DISABLE | DISCARD | DISK | DO | DUMPFILE | DUPLICATE
@@ -2679,7 +2683,7 @@ keywordsCanBeId
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
-    | ENCRYPTED | ENCRYPTION_KEY_ID
+    | ENCRYPTED | ENCRYPTION_KEY_ID | CURRENT_ROLE
     ;
 
 functionNameBase
