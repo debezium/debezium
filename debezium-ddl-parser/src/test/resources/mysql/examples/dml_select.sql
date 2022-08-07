@@ -10,6 +10,8 @@ select 'afdf' "erwhg" "ads" 'dgs' "rter" as tstDiffQuoteConcat;
 select 'some string' COLLATE latin1_danish_ci as tstCollate;
 select _latin1'some string' COLLATE latin1_danish_ci as tstCollate;
 select '\'' as c1, '\"' as c2, '\b' as c3, '\n' as c4, '\r' as c5, '\t' as c6, '\Z' as c7, '\\' as c8, '\%' as c9, '\_' as c10;
+select * from t1 for update skip locked;
+select * from t1 lock in share mode nowait;
 #end
 #begin
 -- -- -- String literal spec symbols
