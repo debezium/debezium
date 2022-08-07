@@ -38,6 +38,7 @@ alter table add_test add column optional bool default 0 null;
 alter table add_test drop foreign key fk;
 alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
+alter table add_test wait 100 add column col1 int not null;
 #end
 #begin
 -- Alter database

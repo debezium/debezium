@@ -145,7 +145,7 @@ createIndex
       (IF NOT EXISTS)?                                            // MariaDB-specific only
       uid indexType?
       ON tableName indexColumnNames
-      (WAIT decimalLiteral | NOWAIT)?                             // MariaDB-specific only
+      waitNowaitClause?                                           // MariaDB-specific only
       indexOption*
       (
         ALGORITHM EQUAL_SYMBOL? algType=(DEFAULT | INPLACE | COPY | NOCOPY | INSTANT)  // NOCOPY, INSTANT are MariaDB-specific only
@@ -605,7 +605,7 @@ alterServer
 
 alterTable
     : ALTER intimeAction=(ONLINE | OFFLINE)?
-      IGNORE? TABLE tableName
+      IGNORE? TABLE tableName waitNowaitClause?
       (alterSpecification (',' alterSpecification)*)?
       partitionDefinitions?
     ;
@@ -723,6 +723,7 @@ dropIndex
         | LOCK '='?
           lockType=(DEFAULT | NONE | SHARED | EXCLUSIVE)
       )*
+      waitNowaitClause?
     ;
 
 dropLogfileGroup
@@ -743,7 +744,7 @@ dropServer
 
 dropTable
     : DROP TEMPORARY? TABLE ifExists?
-      tables dropType=(RESTRICT | CASCADE)?
+      tables waitNowaitClause? dropType=(RESTRICT | CASCADE)?
     ;
 
 dropTablespace
@@ -777,11 +778,11 @@ renameTable
     ;
 
 renameTableClause
-    : tableName TO tableName
+    : tableName waitNowaitClause? TO tableName
     ;
 
 truncateTable
-    : TRUNCATE TABLE? tableName
+    : TRUNCATE TABLE? tableName waitNowaitClause?
     ;
 
 
@@ -918,7 +919,7 @@ assignmentField
     ;
 
 lockClause
-    : FOR UPDATE | LOCK IN SHARE MODE
+    : (FOR UPDATE | LOCK IN SHARE MODE) lockOption?
     ;
 
 //    Detailed DML Statements
@@ -1183,7 +1184,7 @@ releaseStatement
     ;
 
 lockTables
-    : LOCK TABLES lockTableElement (',' lockTableElement)*
+    : LOCK (TABLE | TABLES) lockTableElement (',' lockTableElement)* waitNowaitClause?
     ;
 
 unlockTables
@@ -1717,7 +1718,7 @@ checksumTable
 
 optimizeTable
     : OPTIMIZE actionOption=(NO_WRITE_TO_BINLOG | LOCAL)?
-      (TABLE | TABLES) tables
+      (TABLE | TABLES) tables waitNowaitClause?
     ;
 
 repairTable
@@ -2299,6 +2300,16 @@ ifExists
 ifNotExists
     : IF NOT EXISTS;
 
+// Mariadb-specific
+waitNowaitClause
+    : WAIT decimalLiteral
+    | NOWAIT
+    ;
+
+lockOption
+    : waitNowaitClause
+    | SKIP_ LOCKED
+    ;
 
 //    Functions
 
@@ -2683,7 +2694,7 @@ keywordsCanBeId
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
-    | ENCRYPTED | ENCRYPTION_KEY_ID | CURRENT_ROLE
+    | ENCRYPTED | ENCRYPTION_KEY_ID | CURRENT_ROLE | SKIP_ | LOCKED
     ;
 
 functionNameBase
