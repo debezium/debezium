@@ -284,7 +284,7 @@ create or replace definer = current_user sql security invoker view my_view4(c1, 
 #begin
 -- Create function
 -- delimiter //
-CREATE FUNCTION `func1`() RETURNS varchar(5) CHARSET utf8 COLLATE utf8_unicode_ci
+CREATE OR REPLACE FUNCTION `func1`() RETURNS varchar(5) CHARSET utf8 COLLATE utf8_unicode_ci
 BEGIN
 	RETURN '12345';
 END; -- //-- delimiter ;
@@ -304,7 +304,7 @@ RETURN
 #end
 #begin
 -- Use UTC_TIMESTAMP without parenthesis
-CREATE FUNCTION myfunc(a INT) RETURNS INT
+CREATE FUNCTION IF NOT EXISTS myfunc(IN a INT) RETURNS INT
 BEGIN
     DECLARE result INT;
     SET result = UTC_TIMESTAMP;
