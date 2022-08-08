@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -374,6 +376,38 @@ public class MySqlDatabaseSchemaTest {
         assertTableIncluded("captured.ct");
         assertTableExcluded("captured.nct");
         assertTableExcluded("non_captured.nct");
+    }
+
+    @Test
+    public void addCommentToSchemaTest() {
+        final Configuration config = DATABASE.defaultConfig()
+                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with("include.schema.comments", true)
+                .build();
+
+        mysql = getSchema(config);
+        mysql.initializeStorage();
+        final MySqlPartition partition = initializePartition(connectorConfig, config);
+        final MySqlOffsetContext offset = initializeOffset(connectorConfig);
+
+        // Set up the server ...
+        offset.setBinlogStartPoint("binlog.001", 400);
+        mysql.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-schema-captured.ddl"), "db1",
+                offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
+        mysql.close();
+
+        assertTableSchemaComments("captured.ct", "id", "");
+        assertTableSchemaComments("captured.ct", "code", "order code");
+    }
+
+    protected void assertTableSchemaComments(String tableName, String column, String comments){
+        TableId tableId = TableId.parse(tableName);
+        TableSchema tableSchema = mysql.schemaFor(tableId);
+        Schema valueSchema = tableSchema.valueSchema();
+        Field columnField = valueSchema.field(column);
+        assertThat(columnField.schema().doc()).isEqualTo(comments);
     }
 
     protected void assertTableIncluded(String fullyQualifiedTableName) {
