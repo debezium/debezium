@@ -285,12 +285,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                         }
                     });
 
-                    boolean stopProcessed = logInterceptor.containsMessage(tableRemoveMessage);
-                    boolean ended = logInterceptor.containsMessage("No data returned by the query");
-
-                    // We should never see "No data returned by the query", we should see the table removed.
-                    Assertions.assertThat(ended).isFalse();
-                    return stopProcessed;
+                    return logInterceptor.containsMessage(tableRemoveMessage);
                 });
 
         stopConnector();
