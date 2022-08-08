@@ -5,6 +5,8 @@
  */
 package io.debezium.server;
 
+import java.nio.file.Paths;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -98,7 +100,7 @@ public class DebeziumServer {
     @SuppressWarnings("unchecked")
     @PostConstruct
     public void start() {
-        final Config config = ConfigProvider.getConfig();
+        final Config config = loadConfigOrDie();
         final String name = config.getValue(PROP_SINK_TYPE, String.class);
 
         final Set<Bean<?>> beans = beanManager.getBeans(name).stream()
@@ -202,6 +204,22 @@ public class DebeziumServer {
         if (!event.isSuccess()) {
             returnCode = 1;
         }
+    }
+
+    private Config loadConfigOrDie() {
+        final Config config = ConfigProvider.getConfig();
+        // Check config and exit if we cannot load mandatory option.
+        try {
+            config.getValue(PROP_SINK_TYPE, String.class);
+        }
+        catch (NoSuchElementException e) {
+            final String configFile = Paths.get(System.getProperty("user.dir"), "conf", "application.properties").toString();
+            // CHECKSTYLE IGNORE check FOR NEXT 2 LINES
+            System.err.println(String.format("Failed to load mandatory config value '%s'. Please check you have a correct Debezium server config in %s or required "
+                    + "properties are defined via system or environment variables.", PROP_SINK_TYPE, configFile));
+            Quarkus.asyncExit();
+        }
+        return config;
     }
 
     /**
