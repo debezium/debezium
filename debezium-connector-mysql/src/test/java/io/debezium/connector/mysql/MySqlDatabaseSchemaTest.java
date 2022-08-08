@@ -384,7 +384,7 @@ public class MySqlDatabaseSchemaTest {
                 .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with("include.schema.comments", true)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
                 .build();
 
         mysql = getSchema(config);
@@ -402,7 +402,7 @@ public class MySqlDatabaseSchemaTest {
         assertTableSchemaComments("captured.ct", "code", "order code");
     }
 
-    protected void assertTableSchemaComments(String tableName, String column, String comments){
+    protected void assertTableSchemaComments(String tableName, String column, String comments) {
         TableId tableId = TableId.parse(tableName);
         TableSchema tableSchema = mysql.schemaFor(tableId);
         Schema valueSchema = tableSchema.valueSchema();
