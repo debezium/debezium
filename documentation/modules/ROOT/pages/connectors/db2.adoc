@@ -2330,6 +2330,13 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[db2-property-snapshot-include-collection-list]]<<db2-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:db2-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots.
+
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]
