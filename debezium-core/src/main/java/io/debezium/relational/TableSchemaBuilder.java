@@ -379,6 +379,10 @@ public class TableSchemaBuilder {
                 fieldBuilder.optional();
             }
 
+            if (column.comment() != null) {
+                fieldBuilder.doc(column.comment());
+            }
+
             // if the default value is provided
             if (column.hasDefaultValue() && defaultValue != null) {
                 try {
