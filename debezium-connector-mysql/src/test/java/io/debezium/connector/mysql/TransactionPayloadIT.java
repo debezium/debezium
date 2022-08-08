@@ -5,17 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.config.Configuration;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
-import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.util.Testing;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -23,8 +14,18 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.util.Testing;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 8, minor = 0, patch = 20, reason = "MySQL 8.0.20 started supporting binlog compression")
 public class TransactionPayloadIT extends AbstractConnectorTest {
@@ -60,11 +61,11 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
-
 
     @Test
     public void shouldCaptureMultipleWriteEvents() throws Exception {
