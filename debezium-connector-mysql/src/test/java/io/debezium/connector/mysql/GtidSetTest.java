@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -148,6 +149,22 @@ public class GtidSetTest {
         GtidSet gtidSetDiff = gtidSet2.subtract(gtidSet1);
         GtidSet expectedDiff = new GtidSet(diff);
         assertThat(gtidSetDiff).isEqualTo(expectedDiff);
+    }
+
+    @Test
+    public void removeInterval() {
+        Interval interval1 = new Interval(3, 7);
+        Interval interval2 = new Interval(2, 5);
+        Interval interval3 = new Interval(4, 5);
+        Interval interval4 = new Interval(9, 12);
+        Interval interval5 = new Interval(0, 2);
+        assertThat(interval1.remove(interval2)).isEqualTo(Collections.singletonList(new Interval(6, 7)));
+        assertThat(interval2.remove(interval1)).isEqualTo(Collections.singletonList(new Interval(2, 2)));
+        assertThat(interval1.remove(interval3)).isEqualTo(Arrays.asList(new Interval(3, 3), new Interval(6, 7)));
+        assertThat(interval1.remove(interval4)).isEqualTo(Collections.singletonList(interval1));
+        assertThat(interval1.remove(interval5)).isEqualTo(Collections.singletonList(interval1));
+        assertThat(interval3.remove(interval1)).isEqualTo(Collections.emptyList());
+        assertThat(interval3.remove(interval3)).isEqualTo(Collections.emptyList());
     }
 
     protected void asertIntervalCount(String uuid, int count) {

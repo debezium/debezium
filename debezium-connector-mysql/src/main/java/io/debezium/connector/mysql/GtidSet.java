@@ -19,11 +19,6 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.google.common.collect.BoundType;
-import com.google.common.collect.Range;
-import com.google.common.collect.RangeSet;
-import com.google.common.collect.TreeRangeSet;
-
 import io.debezium.annotation.Immutable;
 
 /**
@@ -347,13 +342,13 @@ public final class GtidSet {
             if (!uuid.equals(other.getUUID())) {
                 throw new IllegalArgumentException("UUIDSet subtraction is supported only within a single server UUID");
             }
-            RangeSet<Long> rangeSet = TreeRangeSet.create();
-            intervals.forEach(interval -> rangeSet.add(Range.closed(interval.getStart(), interval.getEnd())));
-            other.getIntervals().forEach(interval -> rangeSet.remove(Range.closed(interval.getStart(), interval.getEnd())));
-            List<Interval> intervalList = rangeSet.asRanges().stream()
-                    .map(range -> new Interval(range))
-                    .collect(Collectors.toList());
-            return new UUIDSet(uuid, intervalList);
+            List<Interval> result = new ArrayList<>();
+            for (Interval interval : intervals) {
+                for (Interval otherInterval : other.getIntervals()) {
+                    result.addAll(interval.remove(otherInterval));
+                }
+            }
+            return new UUIDSet(uuid, result);
         }
     }
 
@@ -366,14 +361,6 @@ public final class GtidSet {
         public Interval(long start, long end) {
             this.start = start;
             this.end = end;
-        }
-
-        private Interval(Range<Long> range) {
-            this.start = range.lowerBoundType() == BoundType.CLOSED ? range.lowerEndpoint() : range.lowerEndpoint() + 1;
-            this.end = range.upperBoundType() == BoundType.CLOSED ? range.upperEndpoint() : range.upperEndpoint() - 1;
-            if (start > end) {
-                throw new IllegalArgumentException("Empty interval: " + range);
-            }
         }
 
         /**
@@ -414,6 +401,33 @@ public final class GtidSet {
 
         public boolean contains(long transactionId) {
             return getStart() <= transactionId && transactionId <= getEnd();
+        }
+
+        public boolean contains(Interval other) {
+            return getStart() <= other.getStart() && getEnd() >= other.getEnd();
+        }
+
+        public boolean nonintersecting(Interval other) {
+            return other.getEnd() < this.getStart() || other.getStart() > this.getEnd();
+        }
+
+        public List<Interval> remove(Interval other) {
+            if (nonintersecting(other)) {
+                return Collections.singletonList(this);
+            }
+            if (other.contains(this)) {
+                return Collections.emptyList();
+            }
+            List<Interval> result = new ArrayList<>();
+            if (this.getStart() < other.getStart()) {
+                Interval part = new Interval(this.getStart(), other.getStart() - 1);
+                result.add(part);
+            }
+            if (other.getEnd() < this.getEnd()) {
+                Interval part = new Interval(other.getEnd() + 1, this.getEnd());
+                result.add(part);
+            }
+            return result;
         }
 
         @Override
