@@ -2161,7 +2161,7 @@ segment_attributes_clause
     ;
 
 external_table_clause
-    : '('? (TYPE access_driver_type)? external_table_data_props* ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
+    : '('? (TYPE access_driver_type)? external_table_data_props* ')'? parallel_clause? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
     ;
 
 access_driver_type
@@ -2170,7 +2170,7 @@ access_driver_type
 
 external_table_data_props
     : DEFAULT DIRECTORY quoted_string
-    | ACCESS PARAMETERS '(' (et_oracle_loader | et_oracle_datapump | et_oracle_hdfs_hive | USING CLOB subquery) ')'
+    | ACCESS PARAMETERS '(' (et_oracle_loader | et_oracle_datapump* | et_oracle_hdfs_hive | USING CLOB subquery) ')'
     | LOCATION '(' et_directory_spec? et_location_specifier (',' et_directory_spec? et_location_specifier )* ')'
     ;
 
@@ -2184,6 +2184,15 @@ et_oracle_datapump
       | COMPRESSION ( ENABLED (BASIC |LOW | MEDIUM | HIGH)? | DISABLED)?
       | HADOOP_TRAILERS (ENABLED | DISABLED) VERSION (COMPATIBLE | LATEST | quoted_string )
       | comments_oracle_datapump
+      // Undocumented, internal DATAPUMP operations used by Oracle
+      | DEBUG '=' '(' UNSIGNED_INTEGER ',' UNSIGNED_INTEGER ')'
+      | DATAPUMP INTERNAL TABLE tableview_name
+      | JOB '(' schema_name ',' tableview_name ',' UNSIGNED_INTEGER ')'
+      | WORKERID UNSIGNED_INTEGER
+      | PARALLEL UNSIGNED_INTEGER
+      | VERSION quoted_string
+      | ENCRYPTPASSWORDISNULL
+      | DBLINK quoted_string
     ;
 
 et_oracle_hdfs_hive
@@ -3231,7 +3240,7 @@ end_time_column
     ;
 
 column_definition
-    : column_name (datatype | type_name)
+    : column_name (datatype | type_name)?
          SORT?
          (VISIBLE | INVISIBLE)?
          (DEFAULT column_default_value | identity_clause)?
@@ -4198,13 +4207,19 @@ error_logging_reject_part
     ;
 
 dml_table_expression_clause
-    : table_collection_expression
+    : object_cast_relational_table_expression
+    | table_collection_expression
     | '(' select_statement subquery_restriction_clause? ')'
     | tableview_name sample_clause?
     ;
 
 table_collection_expression
     : (TABLE | THE) ('(' subquery ')' | '(' expression ')' outer_join_sign?)
+    ;
+
+// Deprecated Oracle 10/11 RELATIONAL alias for casting object-types to relational tables
+object_cast_relational_table_expression
+    : RELATIONAL '(' tableview_name NOT XMLTYPE ')'
     ;
 
 subquery_restriction_clause
