@@ -214,6 +214,7 @@ jobs:
           -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"
           -DskipTests=true
           -DskipITs=true
+          -Dmaven.artifact.threads=4
 
   check_style:
     name: "Checkstyle and Formatting"
