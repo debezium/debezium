@@ -398,7 +398,7 @@ public class MySqlDatabaseSchemaTest {
                 offset, Instant.now()).forEach(x -> mysql.applySchemaChange(x));
         mysql.close();
 
-        assertTableSchemaComments("captured.ct", "id", "");
+        assertTableSchemaComments("captured.ct", "id", null);
         assertTableSchemaComments("captured.ct", "code", "order code");
     }
 
