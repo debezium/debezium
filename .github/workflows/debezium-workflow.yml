@@ -770,7 +770,7 @@ jobs:
 
   build_ui:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' }}
     name: "UI"
     runs-on: ubuntu-latest
     steps:
