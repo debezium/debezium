@@ -2271,6 +2271,13 @@ Heartbeat messages are useful when there are many updates in a database that is 
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
 
+|[[db2-property-snapshot-include-collection-list]]<<db2-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
+The specified items must be named in the connector's xref:db2-property-table-include-list[`table.include.list`] property.
+This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots.
+
 |[[db2-property-snapshot-fetch-size]]<<db2-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`2000`
 |During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
@@ -2341,12 +2348,6 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
-|[[db2-property-snapshot-include-collection-list]]<<db2-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
-| All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
-The specified items must be named in the connector's xref:db2-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
-This property does not affect the behavior of incremental snapshots.
 
 |[[db2-property-topic-naming-strategy]]<<db2-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
