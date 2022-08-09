@@ -5,7 +5,6 @@
  */
 package io.debezium.compaction.tool.command;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +21,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 
 import picocli.CommandLine;
@@ -38,35 +35,28 @@ import picocli.CommandLine;
 public class CompactionCommand implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(CompactionCommand.class);
 
-    @ConfigProperty(name = "debezium.history.compaction.kafka.bootstrap.servers")
+    @CommandLine.Option(names = { "-s", "--bootstrap-server" }, required = true, description = "The bootstrap server address")
     String bootstrapServers;
 
-    @ConfigProperty(name = "debezium.history.compaction.kafka.offset.topic")
-    String offsetTopic;
+    @CommandLine.Option(names = { "-t", "--history-topic" }, required = true, description = "The offset topic name for compaction history needs to be stored")
+    String historyTopic;
 
-    @CommandLine.Option(names = { "-n", "--connector.name" }, description = "The debezium connector name for which compaction should be run")
+    @CommandLine.Option(names = { "-c", "--connector-name" }, required = true, description = "The debezium connector name for which compaction should be run")
     String connectorName;
 
-    @CommandLine.Option(names = { "-h", "--history.topic" }, description = "The new database history topic name")
+    @CommandLine.Option(names = { "-ht",
+            "--compacted-history-topic" }, required = true, description = "The new history topic name for compaction history needs to be stored")
     String compactedHistoryTopic;
 
     @Override
     public void run() {
-        LOGGER.info("compaction command executed {} {} {} {}", connectorName, compactedHistoryTopic, bootstrapServers, offsetTopic);
-        KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction(bootstrapServers, offsetTopic, compactedHistoryTopic);
+
+        LOGGER.info("compaction command executed {} {} {} {}", connectorName, compactedHistoryTopic, bootstrapServers, historyTopic);
+        KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction(bootstrapServers, historyTopic, compactedHistoryTopic);
 
         Configuration dbHistoryConfig = Configuration.create().build();
-        Configuration.create()
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                .with(KafkaDatabaseHistory.TOPIC, "schema-changes.inventory")
-                .with(DatabaseHistory.NAME, "my-db-history")
-                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
-                .with("database.history.consumer.max.poll.interval.ms", 100)
-                .with("database.history.consumer.session.timeout.ms", 50000)
-                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
-                .build();
+
+        Configuration.create().build();
 
         // configure
         databaseHistoryCompaction.configure(dbHistoryConfig, null, DatabaseHistoryListener.NOOP, false);

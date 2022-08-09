@@ -87,7 +87,7 @@ public class KafkaDatabaseHistoryCompaction {
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final String compactedHistoryTopic;
     private final String bootstrapServers;
-    private final String offsetTopic;
+    private final String historyTopic;
     private final boolean preferDdl = false;
     private final TableChanges.TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
     protected Configuration config;
@@ -102,9 +102,9 @@ public class KafkaDatabaseHistoryCompaction {
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
 
-    public KafkaDatabaseHistoryCompaction(String bootstrapServers, String offsetTopic, String compactedHistoryTopic) {
+    public KafkaDatabaseHistoryCompaction(String bootstrapServers, String historyTopic, String compactedHistoryTopic) {
         this.bootstrapServers = bootstrapServers;
-        this.offsetTopic = offsetTopic;
+        this.historyTopic = historyTopic;
         this.compactedHistoryTopic = compactedHistoryTopic;
     }
 
@@ -147,12 +147,13 @@ public class KafkaDatabaseHistoryCompaction {
                 .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000)
                 .build();
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
-            LOGGER.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
+            LOGGER.info("KafkaDatabaseHistoryCompaction Consumer config: {}", consumerConfig.withMaskedPasswords());
+            LOGGER.info("KafkaDatabaseHistoryCompaction Producer config: {}", producerConfig.withMaskedPasswords());
         }
     }
 
     public synchronized void start() {
+        LOGGER.debug("KafkaDatabaseHistoryCompaction start() method");
         listener.started();
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
@@ -161,10 +162,11 @@ public class KafkaDatabaseHistoryCompaction {
 
     public final void record(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser parser)
             throws DatabaseHistoryException {
-
+        LOGGER.debug("KafkaDatabaseHistoryCompaction record {} - {} - {} - {}", source, position, schema, parser);
         Tables compactedSchema = recover(source, position, schema, parser);
         compactedSchema.tableIds().forEach(tableId -> {
-
+            LOGGER.debug("KafkaDatabaseHistoryCompaction table ids: {}", tableId);
+            final Table table = compactedSchema.forTable(tableId);
             TableChanges tableChanges = new TableChanges();
             tableChanges.create(new Table() {
                 @Override
@@ -174,37 +176,37 @@ public class KafkaDatabaseHistoryCompaction {
 
                 @Override
                 public List<String> primaryKeyColumnNames() {
-                    return null;
+                    return table.primaryKeyColumnNames();
                 }
 
                 @Override
                 public List<String> retrieveColumnNames() {
-                    return null;
+                    return table.retrieveColumnNames();
                 }
 
                 @Override
                 public List<Column> columns() {
-                    return null;
+                    return table.columns();
                 }
 
                 @Override
                 public Column columnWithName(String s) {
-                    return null;
+                    return table.columnWithName(s);
                 }
 
                 @Override
                 public String defaultCharsetName() {
-                    return null;
+                    return table.defaultCharsetName();
                 }
 
                 @Override
                 public String comment() {
-                    return null;
+                    return table.comment();
                 }
 
                 @Override
                 public TableEditor edit() {
-                    return null;
+                    return table.edit();
                 }
             });
 
@@ -275,8 +277,8 @@ public class KafkaDatabaseHistoryCompaction {
     protected void recoverRecords(Consumer<HistoryRecord> records) {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
-            LOGGER.debug("Subscribing to database history topic '{}'", offsetTopic);
-            historyConsumer.subscribe(Collect.arrayListOf(offsetTopic));
+            LOGGER.debug("Subscribing to database history topic '{}'", historyTopic);
+            historyConsumer.subscribe(Collect.arrayListOf(historyTopic));
 
             // Read all messages in the topic ...
             long lastProcessedOffset = UNLIMITED_VALUE;
@@ -300,7 +302,7 @@ public class KafkaDatabaseHistoryCompaction {
                         if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
                                 LOGGER.warn("Skipping null database history record. " +
-                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", offsetTopic);
+                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", historyTopic);
                             }
                             else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
@@ -308,7 +310,7 @@ public class KafkaDatabaseHistoryCompaction {
                                 if (recordObj == null || !recordObj.isValid()) {
                                     LOGGER.warn("Skipping invalid database history record '{}'. " +
                                             "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
-                                            recordObj, offsetTopic);
+                                            recordObj, historyTopic);
                                 }
                                 else {
                                     records.accept(recordObj);
@@ -339,7 +341,7 @@ public class KafkaDatabaseHistoryCompaction {
     }
 
     private Long getEndOffsetOfDbHistoryTopic(Long previousEndOffset, KafkaConsumer<String, String> historyConsumer) {
-        Map<TopicPartition, Long> offsets = historyConsumer.endOffsets(Collections.singleton(new TopicPartition(offsetTopic, PARTITION)));
+        Map<TopicPartition, Long> offsets = historyConsumer.endOffsets(Collections.singleton(new TopicPartition(historyTopic, PARTITION)));
         Long endOffset = offsets.entrySet().iterator().next().getValue();
 
         // The end offset should never change during recovery; doing this check here just as - a rather weak - attempt
