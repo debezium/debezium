@@ -774,6 +774,11 @@ jobs:
     name: "UI"
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v2
+        with:
+          path: core
+
       - name: Checkout Action (UI)
         uses: actions/checkout@v2
         with:
@@ -793,6 +798,21 @@ jobs:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        working-directory: core
+        run: >
+          ./mvnw clean install 
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -am
+          -DskipTests=true
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
       - name: Build Debezium UI
         working-directory: debezium-ui
