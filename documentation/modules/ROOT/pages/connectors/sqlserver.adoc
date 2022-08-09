@@ -1478,6 +1478,12 @@ a|_n/a_
 For {prodname} to capture change events from SQL Server tables, a SQL Server administrator with the necessary privileges must first run a query to enable CDC on the database.
 The administrator must then enable CDC for each table that you want Debezium to capture.
 
+[NOTE]
+====
+By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
+If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of  the `database.encrypt` property in connector configuration to `false`.
+====
+
 ifdef::product[]
 
 For details about setting up SQL Server for use with the {prodname} connector, see the following sections:
@@ -1878,6 +1884,8 @@ spec:
     database.include.list: dbo.customers // <9>
     database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
     database.history.kafka.topic: dbhistory.fullfillment // <11>
+    database.ssl.truststore: path/to/trust-store // <12>
+    database.ssl.truststore.password: password-for-trust-store <13>
 ----
 +
 .Descriptions of connector configuration settings
@@ -1917,6 +1925,14 @@ spec:
 
 |11
 |The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+
+|12
+|The path to the SSL truststore that stores the server's signer certificates.
+This property is required unless database encryption is disabled (`database.encrypt=false`).
+
+|13
+|The SSL truststore password.
+This property is required unless database encryption is disabled (`database.encrypt=false`).
 
 |===
 
@@ -1962,6 +1978,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "table.include.list": "dbo.customers", // <9>
         "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
         "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
+        "database.ssl.truststore": "path/to/trust-store" // <12>
+        "database.ssl.truststore.password": "password-for-trust-store" // <13>
     }
 }
 ----
@@ -1976,7 +1994,10 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
-
+<12> The path to the SSL truststore that stores the server's signer certificates.
+This property is required unless database encryption is disabled (`database.encrypt=false`).
+<13> The SSL truststore password.
+This property is required unless database encryption is disabled (`database.encrypt=false`).
 endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see xref:{link-sqlserver-connector}#sqlserver-connector-properties[SQL Server connector properties].
