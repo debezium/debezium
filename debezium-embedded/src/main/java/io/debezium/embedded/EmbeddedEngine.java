@@ -78,7 +78,9 @@ import io.debezium.util.VariableLatch;
  * <p>
  * Embedded connectors are designed to be submitted to an {@link Executor} or {@link ExecutorService} for execution by a single
  * thread, and a running connector can be stopped either by calling {@link #stop()} from another thread or by interrupting
- * the running thread (e.g., as is the case with {@link ExecutorService#shutdownNow()}).
+ * the running thread (e.g., as is the case with {@link ExecutorService#shutdownNow()}). If the engine is stopped by calling
+ * {@link #stop()} method, the application that runs the engine is responsible for sufficient coordination of the threads to make
+ * sure that {@link #stop()} is not called before the engine is actually running.
  *
  * @author Randall Hauch
  */
@@ -672,8 +674,12 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     @Override
     public void run() {
-        if (runningThread.compareAndSet(null, Thread.currentThread())) {
+        boolean canStart = false;
+        synchronized (this) {
+            canStart = runningThread.compareAndSet(null, Thread.currentThread());
+        }
 
+        if (canStart) {
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
             final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
@@ -946,6 +952,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
             finally {
                 latch.countDown();
+                // No need to do the switch in synchronized block as we already shut down so there's no need to synchronize with stop() method.
                 runningThread.set(null);
                 // after we've "shut down" the engine, fire the completion callback based on the results we collected
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
@@ -1108,7 +1115,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      *         running when this method is called
      * @see #await(long, TimeUnit)
      */
-    public boolean stop() {
+    public synchronized boolean stop() {
         LOGGER.info("Stopping the embedded engine");
         // Signal that the run() method should stop ...
         Thread thread = this.runningThread.getAndSet(null);
