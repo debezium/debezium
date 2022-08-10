@@ -203,7 +203,7 @@ The MongoDB outbox event router SMT supports arbitrary payload formats. The `pay
 This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
-One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances.
+One possibility is to leverage the `KafkaAvroSerializer` class to serialize `GenericRecord` instances. Mongodb stores byte[] as a base64-encoded binary.
 To ensure that the Kafka message value is the exact Avro binary data,
 apply the following configuration to the connector:
 
@@ -211,7 +211,7 @@ apply the following configuration to the connector:
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-value.converter=io.debezium.converters.ByteArrayConverter
+value.converter=org.apache.kafka.connect.converters.ByteArrayConverter
 ----
 
 By default, the `payload` field value (the Avro data) is the only message value.
@@ -228,7 +228,7 @@ As an example, the following configuration illustrates using the Apache Kafka `J
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
-value.converter=io.debezium.converters.ByteArrayConverter
+value.converter=org.apache.kafka.connect.converters.ByteArrayConverter
 value.converter.delegate.converter.type=org.apache.kafka.connect.json.JsonConverter
 value.converter.delegate.converter.type.schemas.enable=false
 ----
