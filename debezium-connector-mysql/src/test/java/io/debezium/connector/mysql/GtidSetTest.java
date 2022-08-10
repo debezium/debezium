@@ -136,13 +136,14 @@ public class GtidSetTest {
     @Test
     public void subtract() {
         String gtidStr1 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-20,"
-                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
-                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200:3400-3800:3900-3990,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:5-8:12-18:25-55:60-65";
         String gtidStr2 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-21,"
-                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
-                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-49";
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200:3400-3800:4500,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-49:62-70:80-100";
         String diff = "036d85a9-64e5-11e6-9b48-42010af0000c:21,"
-                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:42-49";
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:4500,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-4:9-11:19-24:66-70:80-100";
         GtidSet gtidSet1 = new GtidSet(gtidStr1);
         GtidSet gtidSet2 = new GtidSet(gtidStr2);
 
@@ -165,6 +166,14 @@ public class GtidSetTest {
         assertThat(interval1.remove(interval5)).isEqualTo(Collections.singletonList(interval1));
         assertThat(interval3.remove(interval1)).isEqualTo(Collections.emptyList());
         assertThat(interval3.remove(interval3)).isEqualTo(Collections.emptyList());
+    }
+
+    @Test
+    public void removeAllIntervals() {
+        Interval interval = new Interval(1, 49);
+        List<Interval> intervalsToRemove = Arrays.asList(new Interval(5, 8), new Interval(12, 18), new Interval(25, 55), new Interval(60, 65));
+        List<Interval> diff = Arrays.asList(new Interval(1, 4), new Interval(9, 11), new Interval(19, 24));
+        assertThat(interval.removeAll(intervalsToRemove)).isEqualTo(diff);
     }
 
     protected void asertIntervalCount(String uuid, int count) {

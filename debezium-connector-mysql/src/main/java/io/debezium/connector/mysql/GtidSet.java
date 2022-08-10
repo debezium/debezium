@@ -344,9 +344,7 @@ public final class GtidSet {
             }
             List<Interval> result = new ArrayList<>();
             for (Interval interval : intervals) {
-                for (Interval otherInterval : other.getIntervals()) {
-                    result.addAll(interval.remove(otherInterval));
-                }
+                result.addAll(interval.removeAll(other.getIntervals()));
             }
             return new UUIDSet(uuid, result);
         }
@@ -418,7 +416,7 @@ public final class GtidSet {
             if (other.contains(this)) {
                 return Collections.emptyList();
             }
-            List<Interval> result = new ArrayList<>();
+            List<Interval> result = new LinkedList<>();
             if (this.getStart() < other.getStart()) {
                 Interval part = new Interval(this.getStart(), other.getStart() - 1);
                 result.add(part);
@@ -426,6 +424,21 @@ public final class GtidSet {
             if (other.getEnd() < this.getEnd()) {
                 Interval part = new Interval(other.getEnd() + 1, this.getEnd());
                 result.add(part);
+            }
+            return result;
+        }
+
+        public List<Interval> removeAll(List<Interval> otherIntervals) {
+            List<Interval> thisIntervals = new LinkedList<>();
+            thisIntervals.add(this);
+            List<Interval> result = new LinkedList<>();
+            result.add(this);
+            for (Interval other : otherIntervals) {
+                result = new LinkedList<>();
+                for (Interval thisInterval : thisIntervals) {
+                    result.addAll(thisInterval.remove(other));
+                }
+                thisIntervals = result;
             }
             return result;
         }
