@@ -780,11 +780,11 @@ jobs:
           repository: debezium/debezium-ui
           path: debezium-ui
 
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
-          java-version: 11
+          java-version: 17
 
       - name: Cache Maven Repository
         uses: actions/cache@v2
@@ -797,7 +797,7 @@ jobs:
       - name: Build Debezium UI
         working-directory: debezium-ui
         run: >
-          ./mvnw clean install -am -pl backend -B
+          ./mvnw clean install -am -pl backend -B -U
           -Ddebezium.test.records.waittime=20
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
