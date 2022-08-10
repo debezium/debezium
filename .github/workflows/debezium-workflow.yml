@@ -805,7 +805,7 @@ jobs:
         run: >
           ./mvnw clean install 
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
-          -Passembly,oracle-all
+          -Passembly
           -am
           -DskipTests=true
           -DskipITs=true
