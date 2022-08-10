@@ -820,7 +820,7 @@ jobs:
       - name: Build Debezium UI
         working-directory: debezium-ui
         run: >
-          ./mvnw clean install -am -pl backend -B -X
+          ./mvnw clean install -am -pl backend -B -X -U
           -Ddebezium.test.records.waittime=20
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
