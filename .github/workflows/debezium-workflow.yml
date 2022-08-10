@@ -14,6 +14,7 @@ on:
 
 env:
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
+  MAVEN_EXCLUDE_ORACLE: "\\!debezium-connector-oracle"
 
 jobs:
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
@@ -804,7 +805,7 @@ jobs:
         working-directory: core
         run: >
           ./mvnw clean install 
-          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }},${{ env.MAVEN_EXCLUDE_ORACLE }}
           -Passembly
           -am
           -DskipTests=true
