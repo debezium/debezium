@@ -60,7 +60,7 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
 
     @Test
     public void snapshotAndStreaming() throws Exception {
-        final Configuration config = TestHelper.defaultMultiPartitionConfig(
+        final Configuration config = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1,
                 TestHelper.TEST_DATABASE_2)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
@@ -94,7 +94,7 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
                 "USE " + TestHelper.TEST_DATABASE_2,
                 "INSERT INTO tableA VALUES(6, 'a2s')");
 
-        TestHelper.waitForTaskStreamingStarted();
+        TestHelper.waitForStreamingStarted();
         records = consumeRecordsByTopic(2);
 
         tableA1 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableA"));

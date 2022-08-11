@@ -5,13 +5,20 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_PREFIX;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_TRANSACTION;
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Properties;
 
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
@@ -93,5 +100,25 @@ public class MySqlTopicNamingStrategyTest {
         final DefaultRegexTopicNamingStrategy byLogicalStrategy = new DefaultRegexTopicNamingStrategy(props);
         String dataChangeTopic = byLogicalStrategy.dataChangeTopic(tableId);
         assertThat(dataChangeTopic).isEqualTo("mysql-server-1.test_db.dbz_4180_all_shards");
+    }
+
+    @Test
+    public void testValidateRelativeTopicNames() {
+        String errorMessageSuffix = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
+        Configuration config = Configuration.create().with(TOPIC_DELIMITER, "&").build();
+        List<String> errorList = config.validate(Field.setOf(TOPIC_DELIMITER)).get(TOPIC_DELIMITER.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("&" + errorMessageSuffix);
+
+        config = Configuration.create().with(TOPIC_PREFIX, "server@X").build();
+        errorList = config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("server@X" + errorMessageSuffix);
+
+        config = Configuration.create().with(TOPIC_HEARTBEAT_PREFIX, "#heartbeat#").build();
+        errorList = config.validate(Field.setOf(TOPIC_HEARTBEAT_PREFIX)).get(TOPIC_HEARTBEAT_PREFIX.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("#heartbeat#" + errorMessageSuffix);
+
+        config = Configuration.create().with(TOPIC_TRANSACTION, "*transaction*").build();
+        errorList = config.validate(Field.setOf(TOPIC_TRANSACTION)).get(TOPIC_TRANSACTION.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("*transaction*" + errorMessageSuffix);
     }
 }

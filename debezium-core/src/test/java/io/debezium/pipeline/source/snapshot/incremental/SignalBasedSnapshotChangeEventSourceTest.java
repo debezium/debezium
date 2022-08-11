@@ -96,7 +96,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                         OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?))
                         ORDER BY \"pk1\", \"pk2\", \"pk3\"
                         LIMIT 1024
-                """.replace(System.getProperty("line.separator"), "").replace("        ", " ").trim());
+                """.replace("\n", "").replace("        ", " ").trim());
     }
 
     @Test

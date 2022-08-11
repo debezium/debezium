@@ -34,7 +34,8 @@ public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_DB2)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withLocalServices(DB_SERVICE_PATH)
+                .withPublicServices(DB_SERVICE_PATH_LB)
                 .withPullSecrets(OCP_PULL_SECRET_PATH.get())
                 .build();
         return deployer.deploy();

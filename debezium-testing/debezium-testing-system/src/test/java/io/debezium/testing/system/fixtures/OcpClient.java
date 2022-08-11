@@ -5,11 +5,14 @@
  */
 package io.debezium.testing.system.fixtures;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.ConfigProperties;
-import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -21,21 +24,25 @@ import fixture5.annotations.FixtureContext;
 public class OcpClient extends TestFixture {
     private DefaultOpenShiftClient client;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpClient.class);
+
     public OcpClient(@NotNull ExtensionContext.Store store) {
         super(store);
     }
 
     @Override
     public void setup() {
-        Config cfg = new ConfigBuilder()
-                .withMasterUrl(ConfigProperties.OCP_URL)
-                .withUsername(ConfigProperties.OCP_USERNAME)
-                .withPassword(ConfigProperties.OCP_PASSWORD)
-                .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
-                .withTrustCerts(true)
-                .build();
+        ConfigBuilder configBuilder = new ConfigBuilder();
+        if (!isRunningFromOcp()) {
+            LOGGER.info("Running outside OCP, using OCP credentials passed from parameters");
+            configBuilder.withMasterUrl(ConfigProperties.OCP_URL.get())
+                    .withUsername(ConfigProperties.OCP_USERNAME.get())
+                    .withPassword(ConfigProperties.OCP_PASSWORD.get());
+        }
+        configBuilder.withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
+                .withTrustCerts(true);
 
-        client = new DefaultOpenShiftClient(cfg);
+        client = new DefaultOpenShiftClient(configBuilder.build());
         store(OpenShiftClient.class, client);
     }
 

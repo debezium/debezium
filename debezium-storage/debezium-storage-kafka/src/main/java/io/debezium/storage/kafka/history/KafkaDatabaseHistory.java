@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
@@ -42,6 +43,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -154,6 +156,16 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDefault(Duration.ofSeconds(3).toMillis())
             .withValidation(Field::isPositiveInteger);
 
+    public static final Field KAFKA_CREATE_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.create.timeout.ms")
+            .withDisplayName("Kafka admin client create timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 33))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of milliseconds to wait while create kafka history topic using Kafka admin client.")
+            .withDefault(Duration.ofSeconds(30).toMillis())
+            .withValidation(Field::isPositiveInteger);
+
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
             RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID,
             KAFKA_QUERY_TIMEOUT_MS);
@@ -175,6 +187,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private Duration pollInterval;
     private ExecutorService checkTopicSettingsExecutor;
     private Duration kafkaQueryTimeout;
+    private Duration kafkaCreateTimeout;
 
     private static final boolean USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR = hasNewTopicConstructorWithOptionals();
 
@@ -198,6 +211,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         this.pollInterval = Duration.ofMillis(config.getInteger(RECOVERY_POLL_INTERVAL_MS));
         this.maxRecoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
         this.kafkaQueryTimeout = Duration.ofMillis(config.getLong(KAFKA_QUERY_TIMEOUT_MS));
+        this.kafkaCreateTimeout = Duration.ofMillis(config.getLong(KAFKA_CREATE_TIMEOUT_MS));
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
@@ -532,9 +546,19 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
             topic.configs(Collect.hashMapOf(CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE, RETENTION_MS_NAME, Long.toString(RETENTION_MS_MAX), RETENTION_BYTES_NAME,
                     Long.toString(UNLIMITED_VALUE)));
-            admin.createTopics(Collections.singleton(topic));
-
-            LOGGER.info("Database history topic '{}' created", topic);
+            try {
+                CreateTopicsResult result = admin.createTopics(Collections.singleton(topic));
+                result.all().get(kafkaCreateTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                LOGGER.info("Database history topic '{}' created", topic);
+            }
+            catch (ExecutionException e) {
+                if (e.getCause() instanceof TopicExistsException) {
+                    LOGGER.info("Database history topic '{}' already exist", topic);
+                }
+                else {
+                    throw e;
+                }
+            }
         }
         catch (Exception e) {
             throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);

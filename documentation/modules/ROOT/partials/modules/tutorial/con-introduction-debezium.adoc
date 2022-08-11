@@ -1,19 +1,30 @@
-// Metadata created by nebel
-//
-// UserStory:
-
 [id="introduction-debezium"]
 = Introduction to {prodname}
 
-{prodname} is a distributed platform that turns your existing databases into event streams,
-so applications can see and respond immediately to each row-level change in the databases.
+{prodname} is a distributed platform that converts information from your existing databases into event streams, enabling applications to detect, and immediately respond to row-level changes in the databases.
 
-{prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides {link-kafka-docs}.html#connect[Kafka Connect] compatible connectors that monitor specific database management systems.
-{prodname} records the history of data changes in Kafka logs, from where your application consumes them.
-This makes it possible for your application to easily consume all of the events correctly and completely.
-Even if your application stops unexpectedly,
-it will not miss anything:
-when the application restarts, it will resume consuming the events where it left off.
+{prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides a set of {link-kafka-docs}.html#connect[Kafka Connect] compatible connectors.
+Each of the connectors works with a specific database management system (DBMS).
+Connectors record the history of data changes in the DBMS by detecting changes as they occur, and streaming a record of each change event to a Kafka topic.
+Consuming applications can then read the resulting event records from the Kafka topic.
 
-{prodname} includes multiple connectors.
-In this tutorial, you will use the xref:{link-mysql-connector}[MySQL connector].
+By taking advantage of Kafka's reliable streaming platform, {prodname} makes it possible for applications to consume changes that occur in a database correctly and completely.
+Even if your application stops unexpectedly, or loses its connection, it does not miss events that occur during the outage.
+After the application restarts, it resumes reading from the topic from the point where it left off.
+
+The tutorial that follows shows you how to deploy and use the {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} MySQL connector] with a simple configuration.
+For more information about deploying and using {prodname} connectors, see the connector documentation.
+
+.Additional resources
+ifdef::community[]
+* xref:{link-cassandra-connector}#debezium-connector-for-cassandra[{prodname} connector for Cassandra]
+endif::community[]
+* {link-prefix}:{link-db2-connector}#debezium-connector-for-db2[{prodname} connector for Db2]
+* {link-prefix}:{link-mongodb-connector}#debezium-connector-for-mongodb[{prodname} connector for MongoDB]
+* {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} connector for MySQL]
+* {link-prefix}:{link-oracle-connector}#debezium-connector-for-oracle[{prodname} connector for Oracle Database]
+* {link-prefix}:{link-postgresql-connector}#debezium-connector-for-postgresql[{prodname} connector for PostgreSQL]
+* {link-prefix}:{link-sqlserver-connector}#debezium-connector-for-sql-server[{prodname} connector for SQL Server]
+ifdef::community[]
+* xref:{link-vitess-connector}#debezium-connector-for-vitess[{prodname} connector for Vitess]
+endif::community[]

@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +45,7 @@ import io.debezium.util.Testing;
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
     protected static final int ROW_COUNT = 1_000;
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 3;
+    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
 
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
             .toAbsolutePath();
@@ -263,6 +264,28 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
         sendAdHocSnapshotSignal(tableDataCollectionId());
+    }
+
+    protected void sendPauseSignal() {
+        try (final JdbcConnection connection = databaseConnection()) {
+            String query = String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", signalTableName());
+            logger.info("Sending pause signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send pause signal", e);
+        }
+    }
+
+    protected void sendResumeSignal() {
+        try (final JdbcConnection connection = databaseConnection()) {
+            String query = String.format("INSERT INTO %s VALUES('test-resume', 'resume-snapshot', '')", signalTableName());
+            logger.info("Sending resume signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send resume signal", e);
+        }
     }
 
     protected void startConnector(DebeziumEngine.CompletionCallback callback) {
@@ -785,6 +808,46 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         }
 
         stopConnector();
+    }
+
+    @Test
+    public void testPauseDuringSnapshot() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+        consumeRecords(100, record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+
+        sendPauseSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+        int beforeResume = records.size();
+
+        sendResumeSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        if ((expectedRecordCount - beforeResume) > 0) {
+            Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
+            for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
+                Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            }
+        }
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {

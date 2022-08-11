@@ -119,7 +119,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
-        final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        final List<SourceRecord> table1 = records.recordsForTopic("server1.testDB1.dbo.table1");
 
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE);
 
@@ -153,7 +153,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         // Ignore initial records
         final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
-        final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        final List<SourceRecord> table1 = records.recordsForTopic("server1.testDB1.dbo.table1");
         assertThat(((Struct) table1.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("first");
         table1.subList(1, INITIAL_RECORDS_PER_TABLE - 1).forEach(record -> {
             assertThat(((Struct) record.value()).getStruct("source").getString("snapshot")).isEqualTo("true");
@@ -193,7 +193,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         TestHelper.waitForCdcRecord(connection, "table1", rs -> rs.getInt("id") == lastId);
 
         final SourceRecords records = consumeRecordsByTopic(STREAMING_RECORDS_PER_TABLE);
-        final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        final List<SourceRecord> table1 = records.recordsForTopic("server1.testDB1.dbo.table1");
 
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE);
 
@@ -256,7 +256,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
-        final List<SourceRecord> user = records.recordsForTopic("server1.dbo.User");
+        final List<SourceRecord> user = records.recordsForTopic("server1.testDB1.dbo.User");
 
         assertThat(user).hasSize(INITIAL_RECORDS_PER_TABLE);
 
@@ -317,8 +317,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
-        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_b");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableB).isNull();
@@ -327,8 +327,8 @@ public class SnapshotIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");
 
         records = consumeRecordsByTopic(2);
-        tableA = records.recordsForTopic("server1.dbo.table_a");
-        tableB = records.recordsForTopic("server1.dbo.table_b");
+        tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
+        tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableB).hasSize(1);
@@ -357,12 +357,12 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         final SourceRecords records = consumeRecordsByTopic(2);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.blacklist_column_table_b");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.blacklist_column_table_b");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.blacklist_column_table_a.Value")
+                .name("server1.testDB1.dbo.blacklist_column_table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
@@ -372,7 +372,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         Schema expectedSchemaB = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.blacklist_column_table_b.Value")
+                .name("server1.testDB1.dbo.blacklist_column_table_b.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
@@ -414,14 +414,14 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
-        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_b");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_b");
 
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableA).isNull();
 
         records = consumeRecordsByTopic(1);
-        tableA = records.recordsForTopic("server1.dbo.table_a");
+        tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         Assertions.assertThat(tableA).hasSize(1);
 
         stopConnector();
@@ -449,21 +449,21 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
-        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
-        List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
+        List<SourceRecord> tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
 
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableA).isNull();
         Assertions.assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
-        tableA = records.recordsForTopic("server1.dbo.table_a");
+        tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
-        tableC = records.recordsForTopic("server1.dbo.table_ac");
+        tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
         Assertions.assertThat(tableC).hasSize(1);
 
         stopConnector();
@@ -492,21 +492,21 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
-        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
-        List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
+        List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
+        List<SourceRecord> tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
 
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableB).isNull();
         Assertions.assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
-        tableB = records.recordsForTopic("server1.dbo.table_ab");
+        tableB = records.recordsForTopic("server1.testDB1.dbo.table_ab");
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableC).isNull();
 
         records = consumeRecordsByTopic(1);
-        tableC = records.recordsForTopic("server1.dbo.table_ac");
+        tableC = records.recordsForTopic("server1.testDB1.dbo.table_ac");
         Assertions.assertThat(tableC).hasSize(1);
 
         stopConnector();
@@ -521,7 +521,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         final SourceRecords snapshotRecords = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
-        final List<SourceRecord> snapshotTable1 = snapshotRecords.recordsForTopic("server1.dbo.table1");
+        final List<SourceRecord> snapshotTable1 = snapshotRecords.recordsForTopic("server1.testDB1.dbo.table1");
 
         assertThat(snapshotTable1).hasSize(INITIAL_RECORDS_PER_TABLE);
 
@@ -539,7 +539,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         }
 
         final SourceRecords streamingRecords = consumeRecordsByTopic(STREAMING_RECORDS_PER_TABLE);
-        final List<SourceRecord> streamingTable1 = streamingRecords.recordsForTopic("server1.dbo.table1");
+        final List<SourceRecord> streamingTable1 = streamingRecords.recordsForTopic("server1.testDB1.dbo.table1");
 
         assertThat(streamingTable1).hasSize(INITIAL_RECORDS_PER_TABLE);
 
@@ -572,7 +572,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.dbo.user_detail");
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.testDB1.dbo.user_detail");
         assertThat(recordsForTopic.get(0).key()).isNotNull();
         Struct value = (Struct) ((Struct) recordsForTopic.get(0).value()).get("after");
         System.out.println("DATA: " + value);

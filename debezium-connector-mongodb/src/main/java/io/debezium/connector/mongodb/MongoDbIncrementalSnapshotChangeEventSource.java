@@ -102,6 +102,27 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         readChunk(partition);
     }
 
+    @Override
+    public void pauseSnapshot(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning() && !context.isSnapshotPaused()) {
+            context.pauseSnapshot();
+            progressListener.snapshotPaused(partition);
+        }
+    }
+
+    @Override
+    public void resumeSnapshot(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        if (context.snapshotRunning() && context.isSnapshotPaused()) {
+            context.resumeSnapshot();
+            progressListener.snapshotResumed(partition);
+            window.clear();
+            context.revertChunk();
+            readChunk(partition);
+        }
+    }
+
     protected String getSignalCollectionName(String dataCollectionId) {
         return dataCollectionId;
     }
@@ -218,6 +239,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
+            return;
+        }
+        if (context.isSnapshotPaused()) {
+            LOGGER.info("Incremental snapshot was paused.");
             return;
         }
         try {

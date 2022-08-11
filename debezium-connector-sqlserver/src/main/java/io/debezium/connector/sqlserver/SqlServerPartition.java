@@ -5,12 +5,9 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAME;
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -29,14 +26,11 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
     private final Map<String, String> sourcePartition;
     private final int hashCode;
 
-    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
+    public SqlServerPartition(String serverName, String databaseName) {
         super(databaseName);
         this.serverName = serverName;
 
-        this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
-        if (multiPartitionMode) {
-            this.sourcePartition.put(DATABASE_PARTITION_KEY, databaseName);
-        }
+        this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
 
         this.hashCode = Objects.hash(serverName, databaseName);
     }
@@ -87,19 +81,9 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         @Override
         public Set<SqlServerPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
-            boolean multiPartitionMode = connectorConfig.isMultiPartitionModeEnabled();
 
-            List<String> databaseNames;
-
-            if (multiPartitionMode) {
-                databaseNames = Arrays.asList(taskConfig.getString(DATABASE_NAMES.name()).split(","));
-            }
-            else {
-                databaseNames = Collections.singletonList(taskConfig.getString(DATABASE_NAME.name()));
-            }
-
-            return databaseNames.stream()
-                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
+            return Arrays.stream(taskConfig.getString(DATABASE_NAMES.name()).split(","))
+                    .map(databaseName -> new SqlServerPartition(serverName, databaseName))
                     .collect(Collectors.toSet());
         }
     }

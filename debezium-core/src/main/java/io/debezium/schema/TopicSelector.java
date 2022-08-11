@@ -22,7 +22,9 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
  *
  * @param <I>
  *            The type of {@link DataCollectionId} used by a given implementation
+ * @deprecated Use {@link io.debezium.spi.topic.TopicNamingStrategy} instead.
  */
+@Deprecated
 public class TopicSelector<I extends DataCollectionId> {
 
     private final String prefix;

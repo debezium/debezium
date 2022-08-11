@@ -39,6 +39,16 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
     }
 
     @Override
+    public void snapshotPaused(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotPaused);
+    }
+
+    @Override
+    public void snapshotResumed(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotResumed);
+    }
+
+    @Override
     public void monitoredDataCollectionsDetermined(SqlServerPartition partition, Iterable<? extends DataCollectionId> dataCollectionIds) {
         onPartitionEvent(partition, bean -> bean.monitoredDataCollectionsDetermined(dataCollectionIds));
     }

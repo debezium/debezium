@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Beta1
+July 26th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12391139)
+
+### New features since 2.0.0.Alpha3
+
+* Pluggable topic selector [DBZ-4180](https://issues.redhat.com/browse/DBZ-4180)
+* Read Debezium Metrics From Debezium Server Consumer [DBZ-5235](https://issues.redhat.com/browse/DBZ-5235)
+* Treat SQLServerException with "Broken pipe (Write failed)" exception message as a retriable exception [DBZ-5292](https://issues.redhat.com/browse/DBZ-5292)
+* Include user that committed change in metadata (oracle) [DBZ-5358](https://issues.redhat.com/browse/DBZ-5358)
+* UI Add  debezium-ui i18n zh translation [DBZ-5379](https://issues.redhat.com/browse/DBZ-5379)
+* Support storing extended attributes in relational model and JSON schema history topic [DBZ-5396](https://issues.redhat.com/browse/DBZ-5396)
+* Validate topic naming strategy relative topic name properties [DBZ-5414](https://issues.redhat.com/browse/DBZ-5414)
+* Verify the unique index whether including function or arbitrary expression [DBZ-5424](https://issues.redhat.com/browse/DBZ-5424)
+* Remove the duplicated SimpleDdlParserListener from mysql connector [DBZ-5425](https://issues.redhat.com/browse/DBZ-5425)
+
+
+### Breaking changes since 2.0.0.Alpha3
+
+* Remove "single partition" mode [DBZ-4726](https://issues.redhat.com/browse/DBZ-4726)
+* Define Centralized and Modular aproach for debezium storage [DBZ-5229](https://issues.redhat.com/browse/DBZ-5229)
+
+
+### Fixes since 2.0.0.Alpha3
+
+* MongoConnector's field exclusion configuration does not work with fields with the same name but from different collections [DBZ-4846](https://issues.redhat.com/browse/DBZ-4846)
+* User input are not consistent on Filter step for the DBZ connectors [DBZ-5246](https://issues.redhat.com/browse/DBZ-5246)
+* KafkaDatabaseHistory without check database history topic create result  caused UnknowTopicOrPartitionException [DBZ-5249](https://issues.redhat.com/browse/DBZ-5249)
+* Lob type data is inconsistent between source and sink, after modifying the primary key [DBZ-5295](https://issues.redhat.com/browse/DBZ-5295)
+* Caused by: java.io.EOFException: Failed to read next byte from position 2005308603 [DBZ-5333](https://issues.redhat.com/browse/DBZ-5333)
+* Incremental Snapshot: Oracle table name parsing does not support periods in DB name [DBZ-5336](https://issues.redhat.com/browse/DBZ-5336)
+* Support PostgreSQL default value function calls with schema prefixes [DBZ-5340](https://issues.redhat.com/browse/DBZ-5340)
+* Unsigned tinyint conversion fails for MySQL 8.x [DBZ-5343](https://issues.redhat.com/browse/DBZ-5343)
+* Log a warning when an unsupported LogMiner operation is detected for a captured table [DBZ-5351](https://issues.redhat.com/browse/DBZ-5351)
+* NullPointerException thrown when unique index based on both system and non-system generated columns [DBZ-5356](https://issues.redhat.com/browse/DBZ-5356)
+* MySQL Connector column hash v2 does not work [DBZ-5366](https://issues.redhat.com/browse/DBZ-5366)
+* Outbox JSON expansion fails when nested arrays contain no elements [DBZ-5367](https://issues.redhat.com/browse/DBZ-5367)
+* docker-maven-plugin needs to be upgraded for Mac Apple M1 [DBZ-5369](https://issues.redhat.com/browse/DBZ-5369)
+* AWS DocumentDB (with MongoDB Compatibility) Connect Fail [DBZ-5371](https://issues.redhat.com/browse/DBZ-5371)
+* Oracle Xstream does not propagate commit timestamp to transaction metadata [DBZ-5373](https://issues.redhat.com/browse/DBZ-5373)
+* UI View connector config in non-first cluster return 404 [DBZ-5378](https://issues.redhat.com/browse/DBZ-5378)
+* CommitScn not logged in expected format [DBZ-5381](https://issues.redhat.com/browse/DBZ-5381)
+* org.postgresql.util.PSQLException: Bad value for type timestamp/date/time: CURRENT_TIMESTAMP [DBZ-5384](https://issues.redhat.com/browse/DBZ-5384)
+* Missing "previousId" property with parsing the rename statement in kafka history topic [DBZ-5386](https://issues.redhat.com/browse/DBZ-5386)
+* Check constraint introduces a column based on constraint in the schema change event. [DBZ-5390](https://issues.redhat.com/browse/DBZ-5390)
+* The column is referenced as PRIMARY KEY, but a matching column is not defined in table [DBZ-5398](https://issues.redhat.com/browse/DBZ-5398)
+* Clarify which database name to use for signal.data.collection when using Oracle with pluggable database support [DBZ-5399](https://issues.redhat.com/browse/DBZ-5399)
+* Timestamp with time zone column's default values not in GMT [DBZ-5403](https://issues.redhat.com/browse/DBZ-5403)
+* Upgrade to Kafka 3.1 broke build compatibility with Kafka 2.x and Kafka 3.0 [DBZ-5404](https://issues.redhat.com/browse/DBZ-5404)
+* PostgresConnectorIT#shouldRecoverFromRetriableException fails randomly [DBZ-5408](https://issues.redhat.com/browse/DBZ-5408)
+
+
+### Other changes since 2.0.0.Alpha3
+
+* Clean-up unused documentation variables [DBZ-2595](https://issues.redhat.com/browse/DBZ-2595)
+* Intermittent test failures on CI: EventProcessingFailureHandlingIT [DBZ-4004](https://issues.redhat.com/browse/DBZ-4004)
+* Clarify whether SQL Server on Azure is a supported configuration or not [DBZ-4312](https://issues.redhat.com/browse/DBZ-4312)
+* Remove redundant setting of last events [DBZ-5047](https://issues.redhat.com/browse/DBZ-5047)
+* Rename `docker-images` repository and JIRA component to `container-images` [DBZ-5048](https://issues.redhat.com/browse/DBZ-5048)
+* Update instructions for deploying Debezium on RHEL (downstream-only change) [DBZ-5293](https://issues.redhat.com/browse/DBZ-5293)
+* Add ts_ms field to examples of transaction boundary events and examples and update property description in documentation [DBZ-5334](https://issues.redhat.com/browse/DBZ-5334)
+* Oracle GitHub actions workflow no longer run tests on pushes [DBZ-5349](https://issues.redhat.com/browse/DBZ-5349)
+* Unify job names in jenkins system-tests [DBZ-5392](https://issues.redhat.com/browse/DBZ-5392)
+* Build stable branches for connector-specific repos [DBZ-5409](https://issues.redhat.com/browse/DBZ-5409)
+* Oracle non-cdb builds do not use the correct environment settings [DBZ-5411](https://issues.redhat.com/browse/DBZ-5411)
+* Update the topic naming strategy doc to all connectors [DBZ-5413](https://issues.redhat.com/browse/DBZ-5413)
+* Address User guide review comments for Oracle connector [DBZ-5418](https://issues.redhat.com/browse/DBZ-5418)
+* OracleSchemaMigrationIT fails on non-pluggable (non-CDB) databases [DBZ-5419](https://issues.redhat.com/browse/DBZ-5419)
+
+
+
 ## 2.0.0.Alpha3
 July 1st 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385342)
 

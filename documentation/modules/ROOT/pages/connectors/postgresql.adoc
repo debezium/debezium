@@ -445,8 +445,8 @@ If the data source does not provide {prodname} with the event time, then the fie
 }
 ----
 
-Unless overridden via the xref:{link-postgresql-connector}#postgresql-property-transaction-topic[`transaction.topic`] option,
-transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the xref:postgresql-property-topic-transaction[`topic.transaction`] option,
+transaction events are written to the topic named xref:postgresql-property-database-server-name[`_<database.server.name>_`]`.transaction`.
 
 .Change data event enrichment
 
@@ -1286,7 +1286,7 @@ a|Mandatory field that describes the source metadata for the event. In a _messag
 * {prodname} version
 * Connector type and name
 * Database name
-* Schema name (always `""` for _mesage_ events)
+* Schema name (always `""` for _message_ events)
 * Table name (always `""` for _message_ events)
 * If the event was part of a snapshot (always `false` for _message_ events)
 * ID of the transaction in which the operation was performed (`null` for non-transactional _message_ events)
@@ -2566,7 +2566,7 @@ endif::product[]
 // Title: Description of {prodname} PostgreSQL connector configuration properties
 // ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 [[postgresql-connector-properties]]
-=== Connector configuration properties
+=== Connector properties
 
 The {prodname} PostgreSQL connector has many configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows:
 
@@ -2654,8 +2654,8 @@ If the publication already exists, either for all tables or configured with a su
 |No default
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes.
 The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-+
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -3006,7 +3006,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 `skip` skips the problematic event and continues processing.
 
 |[[postgresql-property-max-batch-size]]<<postgresql-property-max-batch-size, `+max.batch.size+`>>
-|`10240`
+|`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
 |[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
@@ -3027,7 +3027,7 @@ If xref:postgresql-property-max-queue-size[`max.queue.size`] is also set, writin
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[postgresql-property-poll-interval-ms]]<<postgresql-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `+include.unknown.datatypes+`>>
@@ -3059,14 +3059,6 @@ The property also controls how frequently the database status is checked to dete
 Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
  +
 Heartbeat messages are needed when there are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that no offset updates are committed to Kafka and the connector does not have an opportunity to send the latest retrieved LSN to the database. The database retains WAL files that contain events that have already been processed by the connector. Sending heartbeat messages enables the connector to send the latest retrieved LSN to the database, which allows the database to reclaim disk space being used by no longer needed WAL files.
-
-|[[postgresql-property-heartbeat-topics-prefix]]<<postgresql-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
- +
-_<heartbeat.topics.prefix>_._<server.name>_ +
- +
-For example, if the database server name is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
@@ -3124,10 +3116,6 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
 
-|[[postgresql-property-transaction-topic]]<<postgresql-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
-
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
@@ -3156,6 +3144,42 @@ Adjust the chunk size to a value that provides the best performance in your envi
 |How often, in milliseconds, the XMIN will be read from the replication slot.
 The XMIN value provides the lower bounds of where a new replication slot could start from.
 The default value of `0` disables tracking XMIN tracking.
+
+|[[postgresql-property-topic-naming-strategy]]<<postgresql-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[postgresql-property-topic-delimiter]]<<postgresql-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[postgresql-property-topic-prefix]]<<postgresql-property-topic-prefix, `topic.prefix`>>
+|`${database.server.name}`
+|The name of the prefix to be used for all topics, defaults to xref:postgresql-property-database-server-name[`${database.server.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:postgresql-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
+====
+
+|[[postgresql-property-topic-cache-size]]<<postgresql-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[postgresql-property-topic-heartbeat-prefix]]<<postgresql-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[postgresql-property-topic-transaction]]<<postgresql-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

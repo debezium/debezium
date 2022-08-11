@@ -7,10 +7,17 @@ package io.debezium.schema;
 
 import java.util.Properties;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
+/**
+ * Determine data event topic names using {@link DataCollectionId#databaseParts()}.
+ *
+ * @author Harvey Yue
+ */
+@Incubating
 public class DefaultTopicNamingStrategy extends AbstractTopicNamingStrategy<DataCollectionId> {
 
     public DefaultTopicNamingStrategy(Properties props) {

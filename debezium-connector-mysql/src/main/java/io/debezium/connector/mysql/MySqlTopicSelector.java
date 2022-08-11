@@ -13,7 +13,9 @@ import io.debezium.schema.TopicSelector;
  * Factory for this connector's {@link TopicSelector}.
  *
  * @author Randall Hauch
+ * @deprecated Use {@link io.debezium.schema.DefaultTopicNamingStrategy} instead.
  */
+@Deprecated
 @ThreadSafe
 public class MySqlTopicSelector {
 
@@ -26,7 +28,6 @@ public class MySqlTopicSelector {
      *            {@code delimiter}
      * @return the topic selector; never null
      */
-    @Deprecated
     public static TopicSelector<TableId> defaultSelector(String prefix, String heartbeatPrefix) {
         return TopicSelector.defaultSelector(prefix, heartbeatPrefix, ".",
                 (t, pref, delimiter) -> String.join(delimiter, pref, t.catalog(), t.table()));

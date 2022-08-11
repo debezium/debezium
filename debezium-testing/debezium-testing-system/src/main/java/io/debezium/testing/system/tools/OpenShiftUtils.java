@@ -9,9 +9,11 @@ import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static org.awaitility.Awaitility.await;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -248,5 +250,23 @@ public class OpenShiftUtils {
         for (Pod p : pods) {
             client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
         }
+    }
+
+    public static boolean isRunningFromOcp() {
+        return ConfigProperties.OCP_URL.isEmpty();
+    }
+
+    /**
+     * Finds the first deployment with name matching given prefixes
+     *
+     * @param project project where to search
+     * @param prefixes acceptable prefixes
+     * @return first deployment with name matching any given prefix
+     */
+    public Optional<Deployment> deploymentsWithPrefix(String project, String... prefixes) {
+        var deployments = client.apps().deployments().inNamespace(project).list().getItems();
+        return deployments.stream()
+                .filter(d -> Arrays.stream(prefixes).anyMatch(prefix -> d.getMetadata().getName().startsWith(prefix)))
+                .findFirst();
     }
 }

@@ -34,10 +34,10 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
 
     // OpenShift configuration
-    public static final String OCP_URL = System.getProperty("test.ocp.url");
+    public static final Optional<String> OCP_URL = stringOptionalProperty("test.ocp.url");
     public static final int OCP_REQUEST_RETRY_BACKOFF_LIMIT = Integer.parseInt(System.getProperty("test.ocp.request.retry.backoff.limit", "5"));
-    public static final String OCP_USERNAME = System.getProperty("test.ocp.username");
-    public static final String OCP_PASSWORD = System.getProperty("test.ocp.password");
+    public static final Optional<String> OCP_USERNAME = stringOptionalProperty("test.ocp.username");
+    public static final Optional<String> OCP_PASSWORD = stringOptionalProperty("test.ocp.password");
     public static final String OCP_PROJECT_DBZ = System.getProperty("test.ocp.project.debezium");
     public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", "debezium-registry");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", "debezium-mysql");

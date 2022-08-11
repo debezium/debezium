@@ -54,9 +54,11 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
     private static Object[] getColumnValues(Table table, ColumnValue[] columnValues, Map<String, Object> chunkValues) {
         Object[] values = new Object[table.columns().size()];
-        for (ColumnValue columnValue : columnValues) {
-            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
-            values[index] = columnValue.getColumnData();
+        if (columnValues != null) {
+            for (ColumnValue columnValue : columnValues) {
+                int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
+                values[index] = columnValue.getColumnData();
+            }
         }
 
         // Overlay chunk values into non-chunk value array

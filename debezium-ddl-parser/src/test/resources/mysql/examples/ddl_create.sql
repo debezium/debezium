@@ -155,6 +155,7 @@ PRIMARY KEY(`id`)) ENGINE = InnoDB DEFAULT CHARACTER SET = UTF8MB4;
 RENAME TABLE old_table TO tmp_table, new_table TO old_table, tmp_table TO new_table;
 RENAME TABLE table_b TO table_a;
 RENAME TABLE current_db.tbl_name TO other_db.tbl_name;
+rename table debezium_all_types_old to debezium_all_types, test_json_object_old wait 10 to test_json_object;
 #end
 #begin
 -- Truncate table
@@ -162,6 +163,7 @@ truncate table t1;
 truncate parent_table;
 truncate `#`;
 truncate `#!^%$`;
+truncate table tbl_without_pk nowait;
 #end
 #begin
 -- Create database
@@ -195,6 +197,7 @@ do begin update test.t2 set 1c = 1c + 1; end; -- //
 create index index1 on t1(col1) comment 'test index' comment 'some test' using btree;
 create unique index index2 using btree on t2(1c desc, `_` asc);
 create index index3 using hash on antlr_tokens(token(30) asc);
+create index index4 on t1(col1) nowait comment 'test index' using btree;
 create index ix_add_test_col1 on add_test(col1) comment 'test index' using btree;
 #end
 #begin
@@ -284,7 +287,7 @@ create or replace definer = current_user sql security invoker view my_view4(c1, 
 #begin
 -- Create function
 -- delimiter //
-CREATE FUNCTION `func1`() RETURNS varchar(5) CHARSET utf8 COLLATE utf8_unicode_ci
+CREATE OR REPLACE FUNCTION `func1`() RETURNS varchar(5) CHARSET utf8 COLLATE utf8_unicode_ci
 BEGIN
 	RETURN '12345';
 END; -- //-- delimiter ;
@@ -304,7 +307,7 @@ RETURN
 #end
 #begin
 -- Use UTC_TIMESTAMP without parenthesis
-CREATE FUNCTION myfunc(a INT) RETURNS INT
+CREATE FUNCTION IF NOT EXISTS myfunc(IN a INT) RETURNS INT
 BEGIN
     DECLARE result INT;
     SET result = UTC_TIMESTAMP;
@@ -506,4 +509,9 @@ CREATE VIEW `invoice_payments_stats` AS
 SELECT
     `i`.`id` AS `id`
 FROM (`invoices` `i` JOIN lateral (SELECT MAX(`ip`.`date`) AS `latest_payment` FROM `invoice_payments` `ip`) `ps`);
+#end
+
+#begin
+lock tables t1 read nowait;
+lock table t1 read local wait 100;
 #end

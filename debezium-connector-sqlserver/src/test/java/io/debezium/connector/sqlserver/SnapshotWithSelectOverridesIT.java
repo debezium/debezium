@@ -91,37 +91,20 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1224")
-    public void takeSnapshotWithOverridesInSinglePartitionMode() throws Exception {
+    @FixFor({ "DBZ-1224", "DBZ-2975" })
+    public void takeSnapshotWithOverridesInMultiPartitionMode() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                         "dbo.table1,dbo.table3")
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                        "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc")
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE_1 + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                        "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE_1 + "].[dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverrides(config, "server1.dbo.");
-    }
-
-    @Test
-    @FixFor({ "DBZ-1224", "DBZ-2975" })
-    public void takeSnapshotWithOverridesInMultiPartitionMode() throws Exception {
-        final Configuration config = TestHelper.defaultMultiPartitionConfig()
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                        "dbo.table1,dbo.table3")
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
-                .build();
-        takeSnapshotWithOverrides(config, "server1.testDB.dbo.");
+        takeSnapshotWithOverrides(config, "server1.testDB1.dbo.");
     }
 
     private void takeSnapshotWithOverrides(Configuration config, String topicPrefix) throws Exception {
@@ -157,37 +140,20 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3429")
-    public void takeSnapshotWithOverridesWithAdditionalWhitespaceInSinglePartitionMode() throws Exception {
+    @FixFor({ "DBZ-3429", "DBZ-2975" })
+    public void takeSnapshotWithOverridesWithAdditionalWhitespaceInMultiPartitionMode() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                         "  dbo.table1 , dbo.table3  ")
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                        "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc")
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE_1 + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                        "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE_1 + "].[dbo].[table3] where soft_deleted = 0")
                 .build();
-        takeSnapshotWithOverridesWithAdditionalWhitespace(config, "server1.dbo.");
-    }
-
-    @Test
-    @FixFor({ "DBZ-3429", "DBZ-2975" })
-    public void takeSnapshotWithOverridesWithAdditionalWhitespaceInMultiPartitionMode() throws Exception {
-        final Configuration config = TestHelper.defaultMultiPartitionConfig()
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                        "  dbo.table1 , dbo.table3  ")
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
-                .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
-                .build();
-        takeSnapshotWithOverridesWithAdditionalWhitespace(config, "server1.testDB.dbo.");
+        takeSnapshotWithOverridesWithAdditionalWhitespace(config, "server1.testDB1.dbo.");
     }
 
     private void takeSnapshotWithOverridesWithAdditionalWhitespace(Configuration config, String topicPrefix) throws Exception {

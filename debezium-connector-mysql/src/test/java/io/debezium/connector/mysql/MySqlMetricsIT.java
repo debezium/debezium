@@ -11,6 +11,8 @@ import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
@@ -18,12 +20,14 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -128,6 +132,61 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void testPauseResumeSnapshotMetrics() throws Exception {
+        final int NUM_RECORDS = 1_000;
+        final String TABLE_NAME = DATABASE.qualifiedTableName("simple");
+        final String SIGNAL_TABLE_NAME = DATABASE.qualifiedTableName("debezium_signal");
+
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            for (int i = 1; i < NUM_RECORDS; i++) {
+                connection.createStatement().execute(String.format("INSERT INTO %s (val) VALUES (%d);", TABLE_NAME, i));
+            }
+        }
+
+        // Start connector.
+        start(MySqlConnector.class,
+                DATABASE.defaultConfig()
+                        .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                        .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                        .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, String.format("%s, %s", TABLE_NAME, SIGNAL_TABLE_NAME))
+                        .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
+                        .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                        .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_TABLE_NAME)
+                        .build());
+
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+        waitForStreamingToStart();
+
+        // Consume initial snapshot records.
+        List<SourceRecord> records = new ArrayList<>();
+        consumeRecords(NUM_RECORDS, record -> {
+            records.add(record);
+        });
+
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            // Start incremental snapshot.
+            connection.createStatement().execute(String.format(
+                    "INSERT INTO debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')", TABLE_NAME));
+            // Pause incremental snapshot.
+            connection.createStatement().execute(String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", SIGNAL_TABLE_NAME));
+            // Sleep more than 1 second, we get the pause in seconds.
+            Thread.sleep(1500);
+            // Resume incremental snapshot.
+            connection.createStatement().execute(String.format("INSERT INTO debezium_signal VALUES('test-resume', 'resume-snapshot', '')", SIGNAL_TABLE_NAME));
+        }
+
+        // Consume incremental snapshot records.
+        consumeRecords(NUM_RECORDS, record -> {
+            records.add(record);
+        });
+
+        Assert.assertTrue(records.size() >= 2 * NUM_RECORDS);
+        assertSnapshotPauseNotZero();
+    }
+
+    @Test
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
         try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
@@ -210,6 +269,17 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         }
     }
 
+    private void assertSnapshotPauseNotZero() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            final long snapshotPauseDuration = (Long) mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPausedDurationInSeconds");
+            Assert.assertTrue(snapshotPauseDuration > 0);
+        }
+        catch (InstanceNotFoundException e) {
+            Assert.fail("Snapshot Metrics should exist");
+        }
+    }
+
     private void assertSnapshotMetrics() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -230,6 +300,8 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(false);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(false);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPaused")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
     }
 
     private void assertStreamingMetrics(long events) throws Exception {

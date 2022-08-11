@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tools.databases;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,6 +29,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
+    public static final String EXTERNAL_SERVICE_TYPE_LB = "LoadBalancer";
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseDeployer.class);
     private final OpenShiftClient ocp;
     private final OpenShiftUtils ocpUtils;
@@ -88,7 +91,7 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
         protected String project;
         protected Deployment deployment;
-        protected List<Service> services;
+        protected List<Service> services = new ArrayList<>();
         protected OpenShiftClient ocpClient;
         protected Secret pullSecret;
 
@@ -107,21 +110,38 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
             return self();
         }
 
-        public B withServices(String... yamlPath) {
+        public B withLocalServices(String... yamlPath) {
             List<Service> services = Arrays.stream(yamlPath)
+                    .filter(p -> !isLbService(p))
+                    .map(p -> YAML.fromResource(p, Service.class))
+                    .collect(Collectors.toList());
+            return withServices(services);
+        }
+
+        public B withPublicServices(String... yamlPath) {
+            if (isRunningFromOcp()) {
+                return self();
+            }
+            List<Service> services = Arrays.stream(yamlPath)
+                    .filter(this::isLbService)
                     .map(p -> YAML.fromResource(p, Service.class))
                     .collect(Collectors.toList());
             return withServices(services);
         }
 
         public B withServices(Collection<Service> services) {
-            this.services = new ArrayList<>(services);
+            this.services.addAll(services);
             return self();
         }
 
         public B withPullSecrets(String yamlPath) {
             this.pullSecret = YAML.from(yamlPath, Secret.class);
             return self();
+        }
+
+        private boolean isLbService(String yamlPath) {
+            Service service = YAML.fromResource(yamlPath, Service.class);
+            return EXTERNAL_SERVICE_TYPE_LB.equals(service.getSpec().getType());
         }
     }
 }

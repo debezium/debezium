@@ -22,6 +22,10 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
+    void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException;
+
+    void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException;
+
     void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;
 
     void init(P partition, OffsetContext offsetContext);

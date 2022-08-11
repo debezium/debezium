@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
@@ -86,6 +87,7 @@ import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.history.MemoryDatabaseHistory;
 import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
@@ -453,7 +455,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(expectedRecordCount);
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
         assertThat(testTableRecords).hasSize(expectedRecordCount);
-        final String adapter = config.getString(OracleConnectorConfig.CONNECTOR_ADAPTER);
+        final ConnectorAdapter adapter = TestHelper.getAdapter(config);
 
         for (int i = 0; i < expectedRecordCount; i++) {
             SourceRecord record3 = testTableRecords.get(i);
@@ -464,7 +466,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
             assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
 
-            if (!"LogMiner".equalsIgnoreCase(adapter)) {
+            if (ConnectorAdapter.LOG_MINER != adapter) {
                 assertThat(record3.sourceOffset().containsKey(SourceInfo.LCR_POSITION_KEY)).isTrue();
                 assertThat(record3.sourceOffset().containsKey(SourceInfo.SCN_KEY)).isFalse();
             }
@@ -472,7 +474,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             source = (Struct) ((Struct) record3.value()).get("source");
             assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("false");
             assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
-            if (!"LogMiner".equalsIgnoreCase(adapter)) {
+            if (ConnectorAdapter.LOG_MINER != adapter) {
                 assertThat(source.get(SourceInfo.LCR_POSITION_KEY)).isNotNull();
             }
 
@@ -4261,6 +4263,63 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5441")
+    public void shouldGracefullySkipObjectBasedTables() throws Exception {
+        TestHelper.dropTable(connection, "dbz5441");
+        try {
+            // This grant isn't given by default, but it is needed to create types in this test case.
+            TestHelper.grantRole("CREATE ANY TYPE");
+
+            // Sets up all the log interceptors needed
+            final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
+
+            // Setup object type and object table
+            connection.execute("CREATE TYPE DEBEZIUM.DBZ5441_TYPE AS OBJECT (id number, lvl number)");
+            connection.execute("CREATE TABLE DEBEZIUM.DBZ5441 of DEBEZIUM.DBZ5441_TYPE (primary key(id))");
+            TestHelper.streamTable(connection, "DBZ5441");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5441")
+                    .build();
+
+            final LogInterceptor streamInterceptor;
+            switch (TestHelper.getAdapter(config)) {
+                case XSTREAM:
+                    streamInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+                    break;
+                default:
+                    streamInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            }
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            // Simply indicates we did not find the table to lock and capture
+            // In other words, the snapshot performs no action on this table
+            assertThat(logInterceptor.containsMessage("Locking captured tables []")).isTrue();
+
+            connection.execute("INSERT INTO DEBEZIUM.DBZ5441 (id,lvl) values (1,1)");
+
+            Awaitility.await()
+                    .atMost(120, TimeUnit.SECONDS)
+                    .until(() -> streamInterceptor.containsMessage("is not a relational table and will be skipped"));
+
+            assertNoRecordsToConsume();
+            stopConnector();
+        }
+        finally {
+            // Drop table and type
+            TestHelper.dropTable(connection, "dbz5441");
+            connection.execute("DROP TYPE DEBEZIUM.DBZ5441_TYPE");
+            // Revoke special role granted for this test case
+            TestHelper.revokeRole("CREATE ANY TYPE");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
@@ -4268,7 +4327,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
                     .until(() -> {
                         final String scnValue = getStreamingMetric("CurrentScn");
-                        if (scnValue == null) {
+                        if (scnValue == null || "null".equals(scnValue)) {
                             return false;
                         }
                         return Scn.valueOf(scnValue).compareTo(scn) > 0;

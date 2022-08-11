@@ -42,7 +42,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
-    public static final String SOURCE_TIMESTAMP_MODE_CONFIG_NAME = "source.timestamp.mode";
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
@@ -233,10 +232,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
 
-    public static final Field DATABASE_NAME = RelationalDatabaseConnectorConfig.DATABASE_NAME
-            .withNoValidation()
-            .withValidation(SqlServerConnectorConfig::validateDatabaseName);
-
     public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + "names")
             .withDisplayName("Databases")
             .withType(Type.LIST)
@@ -261,18 +256,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
-
-    public static final Field SOURCE_TIMESTAMP_MODE = Field.create(SOURCE_TIMESTAMP_MODE_CONFIG_NAME)
-            .withDisplayName("Source timestamp mode")
-            .withDefault(SourceTimestampMode.COMMIT.getValue())
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms). " +
-                    "Options include: " +
-                    "'" + SourceTimestampMode.COMMIT.getValue()
-                    + "', (default) the source timestamp is set to the instant where the record was committed in the database.");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
@@ -316,7 +299,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
-                    DATABASE_NAME,
                     DATABASE_NAMES,
                     HOSTNAME,
                     PORT,
@@ -326,7 +308,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
-                    SOURCE_TIMESTAMP_MODE,
                     MAX_TRANSACTIONS_PER_ITERATION,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
@@ -351,30 +332,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final String instanceName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-    private final SourceTimestampMode sourceTimestampMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
-    private final boolean multiPartitionMode;
     private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
-                ColumnFilterMode.SCHEMA, config.hasKey(DATABASE_NAMES));
+                ColumnFilterMode.SCHEMA, true);
 
-        final String databaseName = config.getString(DATABASE_NAME.name());
         final String databaseNames = config.getString(DATABASE_NAMES.name());
 
-        if (databaseName != null) {
-            multiPartitionMode = false;
-            this.databaseNames = Collections.singletonList(databaseName);
-        }
-        else if (databaseNames != null) {
-            multiPartitionMode = true;
+        if (databaseNames != null) {
             this.databaseNames = Arrays.asList(databaseNames.split(","));
-            LOGGER.info("Multi-partition mode is enabled");
         }
         else {
-            multiPartitionMode = false;
             this.databaseNames = Collections.emptyList();
         }
 
@@ -390,7 +361,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         }
 
-        this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
@@ -408,20 +378,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return instanceName;
     }
 
-    public boolean isMultiPartitionModeEnabled() {
-        return multiPartitionMode;
-    }
-
     public SnapshotIsolationMode getSnapshotIsolationMode() {
         return this.snapshotIsolationMode;
     }
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
-    }
-
-    public SourceTimestampMode getSourceTimestampMode() {
-        return sourceTimestampMode;
     }
 
     public boolean isReadOnlyDatabaseConnection() {
@@ -501,27 +463,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
 
-    private static int validateDatabaseName(Configuration config, Field field, Field.ValidationOutput problems) {
-        if (!config.hasKey(field) && !config.hasKey(DATABASE_NAMES)) {
-            problems.accept(field, null, "Either " + DATABASE_NAME + " or " + DATABASE_NAMES + " must be specified");
-            return 1;
-        }
-
-        return 0;
-    }
-
     private static int validateDatabaseNames(Configuration config, Field field, Field.ValidationOutput problems) {
         String databaseNames = config.getString(field);
         int count = 0;
-        if (databaseNames != null) {
-            if (config.hasKey(DATABASE_NAME)) {
-                problems.accept(field, null, "Cannot be specified alongside " + DATABASE_NAME);
-                ++count;
-            }
-            if (databaseNames.split(",").length == 0) {
-                problems.accept(field, databaseNames, "Cannot be empty");
-                ++count;
-            }
+        if (databaseNames == null || databaseNames.split(",").length == 0) {
+            problems.accept(field, databaseNames, "Cannot be empty");
+            ++count;
         }
 
         return count;

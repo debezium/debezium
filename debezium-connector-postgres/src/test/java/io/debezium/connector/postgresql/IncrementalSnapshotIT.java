@@ -11,11 +11,13 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -275,6 +277,29 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         for (int i = 0; i < expectedPartRecordCount; i++) {
             Assertions.assertThat(dbChangesPart1).includes(MapAssert.entry(i + 1, i));
             Assertions.assertThat(dbChangesPart2).includes(MapAssert.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4329")
+    public void obsoleteSourceInfoIsExcludedFromRecord() throws Exception {
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        final Map<Integer, Struct> dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                record -> ((Struct) record.value()).getStruct("source"),
+                x -> true,
+                null,
+                topicName());
+        Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
+        Assertions.assertThat(ROW_COUNT == entries.size());
+        for (Map.Entry<Integer, Struct> e : entries) {
+            Assert.assertTrue(e.getValue().getInt64("xmin") == null);
+            Assert.assertTrue(e.getValue().getInt64("lsn") == null);
+            Assert.assertTrue(e.getValue().getInt64("txId") == null);
         }
     }
 

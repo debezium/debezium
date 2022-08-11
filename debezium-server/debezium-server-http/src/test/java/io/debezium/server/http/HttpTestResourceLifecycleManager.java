@@ -6,15 +6,25 @@
 
 package io.debezium.server.http;
 
+import static java.net.HttpURLConnection.HTTP_OK;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 public class HttpTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpTestResourceLifecycleManager.class);
     public static final String WIREMOCK_IMAGE = "docker.io/wiremock/wiremock:latest";
     public static final int PORT = 8080; // Primary port used by wiremock
     private static final AtomicBoolean running = new AtomicBoolean(false);
@@ -56,5 +66,22 @@ public class HttpTestResourceLifecycleManager implements QuarkusTestResourceLife
 
     public static int getPort() {
         return container.getMappedPort(PORT);
+    }
+
+    public static void reset() {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            String resetURL = "http://" + container.getHost() + ":" + container.getMappedPort(PORT) + "/__admin/reset";
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(new URI(resetURL)).timeout(Duration.ofMillis(60_000));
+            HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString("")).build();
+            HttpResponse r = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (r.statusCode() != HTTP_OK) {
+                throw new IllegalStateException("Get wrong response while resetting WireMock: " + r.statusCode());
+            }
+            LOGGER.info("WireMock reset");
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to reset WireMock", e);
+        }
     }
 }

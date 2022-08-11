@@ -8,6 +8,10 @@ package io.debezium.connector.oracle;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
+/**
+ * @deprecated Use {@link io.debezium.schema.SchemaTopicNamingStrategy} instead.
+ */
+@Deprecated
 public class OracleTopicSelector {
 
     public static TopicSelector<TableId> defaultSelector(OracleConnectorConfig connectorConfig) {

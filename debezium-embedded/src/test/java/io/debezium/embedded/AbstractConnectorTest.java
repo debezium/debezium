@@ -1159,6 +1159,10 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
+        waitForSnapshotEvent(connector, server, "SnapshotCompleted");
+    }
+
+    private static void waitForSnapshotEvent(String connector, String server, String event) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         Awaitility.await()
@@ -1167,7 +1171,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted"));
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server), event));
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {

@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tools.databases;
 
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -97,6 +98,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public String getPublicDatabaseHostname() {
+        if (isRunningFromOcp()) {
+            LOGGER.info("Running from OCP, using internal database hostname");
+            return getDatabaseHostname();
+        }
         awaitIngress();
         return getLoadBalancedService().getStatus().getLoadBalancer()
                 .getIngress().get(0).getHostname();
@@ -104,6 +109,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public int getPublicDatabasePort() {
+        if (isRunningFromOcp()) {
+            LOGGER.info("Running from OCP, using internal database port");
+            return getDatabasePort();
+        }
         awaitIngress();
         return getLoadBalancedService().getSpec().getPorts().stream()
                 .filter(p -> p.getName().equals("db"))

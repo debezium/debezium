@@ -470,6 +470,45 @@ public class PostgresSchemaIT {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5398")
+    public void shouldLoadSchemaForUniqueIndexIncludingFunction() throws Exception {
+        String statements = "CREATE SCHEMA IF NOT EXISTS public;"
+                + "DROP TABLE IF EXISTS counter;"
+                + "CREATE TABLE counter(\n"
+                + "  campaign_id   text not null,\n"
+                + "  group_id      text,\n"
+                + "  sent_cnt      integer   default 0,\n"
+                + "  time_sent_cnt integer   default 0,\n"
+                + "  last_sent_dt  timestamp default LOCALTIMESTAMP,\n"
+                + "  emd_ins_dt    timestamp default LOCALTIMESTAMP not null,\n"
+                + "  emd_upd_dt    timestamp\n"
+                + ");\n"
+                + "create unique index uk_including_function on counter(campaign_id, COALESCE(group_id, ''::text));";
+
+        TestHelper.execute(statements);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        schema = TestHelper.getSchema(config);
+        TableId tableId = TableId.parse("public.counter", false);
+
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            schema.refresh(connection, false);
+            Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        }
+
+        statements = "drop index uk_including_function;"
+                + "create unique index uk_including_expression on counter((campaign_id),(sent_cnt/ 2));";
+        TestHelper.execute(statements);
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            schema.refresh(connection, false);
+            Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        }
+    }
+
     private void assertColumnDefault(String columnName, Object expectedDefault, List<Column> columns, PostgresDefaultValueConverter defaultValueConverter) {
         Column column = columns.stream().filter(c -> c.name().equals(columnName)).findFirst().get();
 

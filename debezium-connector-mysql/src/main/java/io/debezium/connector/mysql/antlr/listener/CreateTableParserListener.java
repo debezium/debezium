@@ -81,7 +81,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         TableId originalTableId = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         Table original = parser.databaseTables().forTable(originalTableId);
         if (original != null) {
-            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName());
+            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(), original.attributes());
             parser.signalCreateTable(tableId, ctx);
         }
         super.exitCopyCreateTable(ctx);
@@ -122,7 +122,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
         parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey()) {
+            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
         }, tableEditor);

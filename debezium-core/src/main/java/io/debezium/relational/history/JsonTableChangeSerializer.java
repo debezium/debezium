@@ -14,6 +14,7 @@ import io.debezium.document.Array;
 import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -50,6 +51,7 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         }
         document.setDocument("table", toDocument(tableChange.getTable()));
         document.setString("comment", tableChange.getTable().comment());
+
         return document;
     }
 
@@ -65,6 +67,13 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .collect(Collectors.toList());
 
         document.setArray("columns", Array.create(columns));
+
+        List<Document> attributes = table.attributes()
+                .stream()
+                .map(this::toDocument)
+                .collect(Collectors.toList());
+
+        document.setArray("attributes", Array.create(attributes));
 
         return document;
     }
@@ -102,6 +111,13 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                 .map(List::toArray)
                 .ifPresent(enums -> document.setArray("enumValues", enums));
 
+        return document;
+    }
+
+    private Document toDocument(Attribute attribute) {
+        final Document document = Document.create();
+        document.setString("name", attribute.name());
+        document.setString("value", attribute.value());
         return document;
     }
 
@@ -190,6 +206,12 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
                     return columnEditor.create();
                 })
                 .forEach(editor::addColumn);
+
+        document.getOrCreateArray("attributes")
+                .streamValues()
+                .map(Value::asDocument)
+                .map(v -> Attribute.editor().name(v.getString("name")).value(v.getString("value")).create())
+                .forEach(editor::addAttribute);
 
         editor.setPrimaryKeyNames(document.getArray("primaryKeyColumnNames")
                 .streamValues()

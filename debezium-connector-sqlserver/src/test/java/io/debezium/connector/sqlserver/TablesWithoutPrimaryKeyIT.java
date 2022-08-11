@@ -68,11 +68,11 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         final int expectedRecordsCount = 1 + 1 + 1;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t1").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t3").get(0).keySchema()).isNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t3").get(0).keySchema()).isNull();
     }
 
     @Test
@@ -120,10 +120,10 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         final int expectedRecordsCount = 1 + 1 + 1;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount, 24);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t1").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.t3").get(0).keySchema()).isNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t1").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.t3").get(0).keySchema()).isNull();
     }
 }

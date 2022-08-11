@@ -84,12 +84,12 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         Awaitility.await()
                 .alias("Found warning message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     return logInterceptor.containsWarnMessage("Error while processing event at offset {");
                 });
     }
@@ -120,8 +120,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNull();
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
     }
 
     @Test
@@ -151,7 +151,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         Awaitility.await()
                 .alias("Found error message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(() -> {
                     boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
                     return foundErrorMessageInLogs && !engine.isRunning();
                 });

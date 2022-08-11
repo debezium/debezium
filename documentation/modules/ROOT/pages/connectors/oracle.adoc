@@ -329,6 +329,11 @@ The message contains a logical representation of the table schema.
               "autoIncremented": false,
               "generated": false
             }
+          ],
+          "attributes": [ // <10>
+            {
+              "customAttribute": "attributeValue"
+            }
           ]
         }
       }
@@ -385,6 +390,10 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 |9
 |`columns`
 |Metadata for each column in the changed table.
+
+|10
+|`attributes`
+|Custom attribute metadata for each table change.
 
 |===
 
@@ -470,7 +479,7 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-Unless overridden via the xref:oracle-property-transaction-topic[`transaction.topic`] option,
+Unless overridden via the xref:oracle-property-topic-transaction[`topic.transaction`] option,
 the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
 
 // Type: concept
@@ -1709,14 +1718,20 @@ endif::product[]
 [id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
 === Compatibility with Oracle installation types
 
-ifdef::community[]
+
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
-endif::community[]
-ifdef::product[]
-The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
-endif::product[]
 
+ifdef::product[]
+[IMPORTANT]
+====
+Using the connector in a RAC environment is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
 [id="schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
@@ -1787,7 +1802,7 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
 
 // Type: concept
-// Title: Resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
+// Title: Resizing Oracle redo logs to accommodate the data dictionary
 // ModuleID: resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
 [id="oracle-redo-log-sizing"]
 === Redo log sizing
@@ -2289,7 +2304,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <12> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 In the previous example, the `database.hostname` and `database.port` properties are used to define the connection to the database host.
-However, in more complex Oracle deployments, or in deployments that use TNS names, you can use an alternative method in which you specify a JDBC URL.
+However, in more complex Oracle deployments, or in deployments that use Transparent Network Substrate (TNS) names, you can use an alternative method in which you specify a JDBC URL.
 
 The following JSON example shows the same configuration as in the preceding example, except that it uses a JDBC URL to connect to the database.
 
@@ -2314,71 +2329,6 @@ The following JSON example shows the same configuration as in the preceding exam
 ----
 endif::community[]
 
-// Type: concept
-// ModuleID: configuration-of-container-databases-and-non-container-databases
-// Title: Configuration of container databases and non-container-databases
-[[pluggable-vs-non-pluggable-databases]]
-=== Pluggable vs Non-Pluggable databases
-[[oracle-database-mode]]
-
-
-Oracle Database supports the following deployment types:
-
-Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
-Database clients connect to each PDB as if it were a standard, non-CDB database.
-
-Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
-
-
-ifdef::community[]
-
-
-.Example: {prodname} connector configuration for CDB deployments
-[source,json,indent=0]
-----
-{
-  "config": {
-    "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-    "tasks.max" : "1",
-    "database.server.name" : "server1",
-    "database.hostname" : "<oracle ip>",
-    "database.port" : "1521",
-    "database.user" : "c##dbzuser",
-    "database.password" : "dbz",
-    "database.dbname" : "ORCLCDB",
-    "database.pdb.name" : "ORCLPDB1",
-    "database.history.kafka.bootstrap.servers" : "kafka:9092",
-    "database.history.kafka.topic": "schema-changes.inventory"
-  }
-}
-----
-
-[IMPORTANT]
-====
-When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
-For non-CDB installation, do *not* specify the `database.pdb.name` property.
-====
-
-.Example: {prodname} Oracle connector configuration for non-CDB deployments
-[source,json,indent=0]
-----
-{
-    "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
-    }
-}
-----
-
-endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
 
@@ -2412,6 +2362,71 @@ endif::community[]
 After the connector starts, it xref:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
+// Type: concept
+// ModuleID: configuration-of-container-databases-and-non-container-databases
+// Title: Configuration of container databases and non-container-databases
+[[pluggable-vs-non-pluggable-databases]]
+=== Pluggable vs Non-Pluggable databases
+[[oracle-database-mode]]
+
+
+Oracle Database supports the following deployment types:
+
+Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
+Database clients connect to each PDB as if it were a standard, non-CDB database.
+
+Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
+
+
+ifdef::community[]
+
+
+.Example: {prodname} connector configuration for CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+[IMPORTANT]
+====
+When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
+For non-CDB installation, do *not* specify the `database.pdb.name` property.
+====
+
+.Example: {prodname} Oracle connector configuration for non-CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+endif::community[]
 ifdef::product[]
 // Type: procedure
 [id="verifying-that-the-debezium-oracle-connector-is-running"]
@@ -2503,11 +2518,10 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
-ifdef::community[]
 Valid values include raw TNS names and RAC connection strings.
-endif::community[]
 ifdef::product[]
-Valid values include raw TNS names connection strings.
+[NOTE]
+Using the connector in a RAC environment is a Technology Preview feature.
 endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
@@ -2519,8 +2533,8 @@ endif::product[]
 |Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
 Specify a logical name that is unique among all connectors in your {prodname} environment.
-The following characters are valid: alphanumeric characters, hyphens, dots, and underscores.
-+
+The following characters are valid: alphanumeric characters, hyphens, dots, and underscores. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2650,9 +2664,9 @@ If you use the LogMiner implementation, use only POSIX regular expressions with 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-Fully-qualified names for columns use the following format: `_+
+Fully-qualified names for columns use the following format: +
  +
-`<Schema_name>.<table_name>.<column_name>_` +
+`_<Schema_name>.<table_name>.<column_name>_` +
  +
 The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
@@ -2755,7 +2769,7 @@ If xref:oracle-property-max-queue-size[`max.queue.size`] is also set, writing to
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000` (1 second)
+|`500` (0.5 second)
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear.
 
 |[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `+tombstones.on.delete+`>>
@@ -2851,11 +2865,6 @@ The connector runs the query after it emits a xref:oracle-property-heartbeat-int
 Set this property and create a heartbeat table to receive the heartbeat messages to resolve situations in which xref:low-change-frequency-offset-management[{prodname} fails to synchronize offsets on low-traffic databases that are on the same host as a high-traffic database].
 After the connector inserts records into the configured table, it is able to receive changes from the low-traffic database and acknowledge SCN changes in the database, so that offsets can be synchronized with the broker.
 
-|[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Specifies the string that prefixes the name of the topic to which the connector sends heartbeat messages. +
-The topic is named according to the pattern `_<heartbeat.topics.prefix>.<serverName>_`.
-
 |[[oracle-property-snapshot-delay-ms]]<<oracle-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |Specifies an interval in milliseconds that the connector waits after it starts before it takes a snapshot. +
@@ -2881,10 +2890,6 @@ For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See xref:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
-
-|[[oracle-property-transaction-topic]]<<oracle-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`
@@ -3047,17 +3052,23 @@ By default, change events have large object columns, but the columns contain no 
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
 
+ifdef::product[]
 NOTE: Use of large object data types is a Technology Preview feature.
+endif::product[]
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
-ifdef::community[]
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
-This field is required to enable Oracle RAC support.
+This field is required to enable compatibility with an Oracle RAC deployment.
+ifdef::product[]
+[NOTE]
+Using the connector in a RAC environment is a Technology Preview feature.
+endif::product[]
+
 Specify the list of RAC nodes by using one of the following methods:
 
 * Specify a value for xref:oracle-property-database-port[`database.port`], and use the specified port value for each address in the `rac.nodes` list.
@@ -3080,7 +3091,7 @@ rac.nodes=192.168.1.100,192.168.1.101:1522
 ----
 
 If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
-endif::community[]
+
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
 |No default
@@ -3107,6 +3118,42 @@ Use the following format to specify the collection name: +
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
+
+|[[oracle-property-topic-naming-strategy]]<<oracle-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[oracle-property-topic-delimiter]]<<oracle-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `topic.prefix`>>
+|`${database.server.name}`
+|The name of the prefix to be used for all topics, defaults to xref:oracle-property-database-server-name[`${database.server.name}`].
+[NOTE]
+====
+Once specify the prefix value to this property, the xref:oracle-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
+====
+
+|[[oracle-property-topic-cache-size]]<<oracle-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[oracle-property-topic-heartbeat-prefix]]<<oracle-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[oracle-property-topic-transaction]]<<oracle-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

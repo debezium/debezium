@@ -28,7 +28,11 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.pipeline.signal.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.ExecuteSnapshot;
+import io.debezium.pipeline.signal.PauseIncrementalSnapshot;
+import io.debezium.pipeline.signal.ResumeIncrementalSnapshot;
+import io.debezium.pipeline.signal.StopSnapshot;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
@@ -147,11 +151,21 @@ public class KafkaSignalThread<T extends DataCollectionId> {
                 : DocumentReader.defaultReader().read(value);
         String type = jsonData.getString("type");
         Document data = jsonData.getDocument("data");
-        if (ExecuteSnapshot.NAME.equals(type)) {
-            executeSnapshot(data, record.offset());
-        }
-        else {
-            LOGGER.warn("Unknown signal type {}", type);
+        switch (type) {
+            case ExecuteSnapshot.NAME:
+                executeSnapshot(data, record.offset());
+                break;
+            case StopSnapshot.NAME:
+                executeStopSnapshot(data, record.offset());
+                break;
+            case PauseIncrementalSnapshot.NAME:
+                executePause(data);
+                break;
+            case ResumeIncrementalSnapshot.NAME:
+                executeResume(data);
+                break;
+            default:
+                LOGGER.warn("Unknown signal type {}", type);
         }
     }
 
@@ -163,6 +177,36 @@ public class KafkaSignalThread<T extends DataCollectionId> {
             if (snapshotType == ExecuteSnapshot.SnapshotType.INCREMENTAL) {
                 eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset);
             }
+        }
+    }
+
+    private void executeStopSnapshot(Document data, long signalOffset) {
+        final List<String> dataCollections = StopSnapshot.getDataCollections(data);
+        final AbstractSnapshotSignal.SnapshotType snapshotType = StopSnapshot.getSnapshotType(data);
+        if (dataCollections == null || dataCollections.isEmpty()) {
+            LOGGER.info("Requested stop of '{}' snapshot", snapshotType);
+        }
+        else {
+            LOGGER.info("Requested stop of '{}' snapshot of data collections '{}'", snapshotType, dataCollections);
+        }
+        if (snapshotType == AbstractSnapshotSignal.SnapshotType.INCREMENTAL) {
+            eventSource.stopSnapshot(dataCollections, signalOffset);
+        }
+    }
+
+    private void executePause(Document data) {
+        PauseIncrementalSnapshot.SnapshotType snapshotType = ExecuteSnapshot.getSnapshotType(data);
+        LOGGER.info("Requested snapshot pause");
+        if (snapshotType == PauseIncrementalSnapshot.SnapshotType.INCREMENTAL) {
+            eventSource.enqueuePauseSnapshot();
+        }
+    }
+
+    private void executeResume(Document data) {
+        ResumeIncrementalSnapshot.SnapshotType snapshotType = ExecuteSnapshot.getSnapshotType(data);
+        LOGGER.info("Requested snapshot resume");
+        if (snapshotType == ResumeIncrementalSnapshot.SnapshotType.INCREMENTAL) {
+            eventSource.enqueueResumeSnapshot();
         }
     }
 

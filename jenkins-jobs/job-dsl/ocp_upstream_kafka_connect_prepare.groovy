@@ -1,6 +1,6 @@
 pipelineJob('ocp-upstream-kafka-connect-prepare-job') {
-    displayName('Kafka Connect Image Preparation - Upstream')
-    description('Prepares Strimzi')
+    displayName('Strimzi Preparation - Upstream')
+    description('Prepares Upstream Strimzi')
 
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')

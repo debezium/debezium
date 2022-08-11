@@ -1,5 +1,5 @@
 pipelineJob('ocp-downstream-trigger-all-prepare') {
-    displayName('Trigger Downstream Preparations')
+    displayName('Trigger Preparations - Downstream')
     description('Triggers downstream preparation jobs')
 
     parameters {
@@ -26,7 +26,7 @@ pipelineJob('ocp-downstream-trigger-all-prepare') {
         textParam('STRZ_IMAGES', '', 'OCP Downstream strimzi - List of productised strimzi images')
 //      DEBEZIUM CONNECT IMAGE CONFIG
         booleanParam('STRZ_DBZ_CONNECT_BUILD', true, 'OCP Downstream strimzi - Also build debezium images')
-        textParam('STRZ_DBZ_CONNECTOR_ARCHIVE_URLS', '', 'OCP Downstream strimzi - List of URLs to productised Debezium connectors')
+        textParam('DBZ_CONNECTOR_ARCHIVE_URLS', '', 'OCP Downstream strimzi, Artifact Server - List of URLs to productised Debezium connectors')
         textParam('STRZ_DBZ_EXTRA_LIBS', '', 'Downstream Strimzi, RHEL - List of extra libraries added to connectors')
 
 //      APICURIO
@@ -37,7 +37,7 @@ pipelineJob('ocp-downstream-trigger-all-prepare') {
 
 
 //      RHEL
-        booleanParam('AUTO_TAG', true, 'RHEL - Use automatically generated tag')
+        booleanParam('AUTO_TAG', true, 'RHEL, Artifact Server - Use automatically generated tag')
         textParam('EXTRA_IMAGE_TAGS', 'latest', 'RHEL - List of extra texts tags for multiple images')
         stringParam('RHEL_IMAGE', 'registry.access.redhat.com/ubi8:latest', 'Base RHEL image')
         stringParam('KAFKA_URL', '', 'RHEL - AMQ streams kafka')
@@ -46,10 +46,6 @@ pipelineJob('ocp-downstream-trigger-all-prepare') {
 //      ARTIFACT SERVER
         textParam('AS_DBZ_EXTRA_LIBS', '', 'Artifact Server - List of extra libraries added to connectors')
         textParam('AS_EXTRA_IMAGE_TAGS', 'latest', 'Artifact Server - List of extra texts tags for multiple images')
-        booleanParam('AS_AUTO_TAG', true, 'Artifact Server - Use automatically generated tag')
-        textParam('AS_DBZ_CONNECTOR_ARCHIVE_URLS', '', 'Artifact Server - List of URLs to productised Debezium connectors')
-
-
     }
     definition {
         cps {
