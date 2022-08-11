@@ -56,14 +56,14 @@ ddlStatement
     | createLogfileGroup | createProcedure | createFunction
     | createServer | createTable | createTablespaceInnodb
     | createTablespaceNdb | createTrigger | createView
-    | createRole
+    | createRole | createSequence
     | alterDatabase | alterEvent | alterFunction
     | alterInstance | alterLogfileGroup | alterProcedure
-    | alterServer | alterTable | alterTablespace | alterView
+    | alterServer | alterTable | alterTablespace | alterView | alterSequence
     | dropDatabase | dropEvent | dropIndex
     | dropLogfileGroup | dropProcedure | dropFunction
     | dropServer | dropTable | dropTablespace
-    | dropTrigger | dropView | dropRole | setRole
+    | dropTrigger | dropView | dropRole | dropSequence | setRole
     | renameTable | truncateTable
     ;
 
@@ -267,6 +267,27 @@ createView
       (SQL SECURITY secContext=(DEFINER | INVOKER))?
       VIEW fullId ('(' uidList ')')? AS withClause? selectStatement
       (WITH checkOption=(CASCADED | LOCAL)? CHECK OPTION)?
+    ;
+
+createSequence
+    : CREATE (OR REPLACE)? TEMPORARY? SEQUENCE ifNotExists? fullId
+      (sequenceSpec | tableOption)*
+    ;
+
+sequenceSpec
+    : INCREMENT (BY | '=')? decimalLiteral
+    | MINVALUE '='? decimalLiteral
+    | NO MINVALUE
+    | NOMINVALUE
+    | MAXVALUE '='? decimalLiteral
+    | NO MAXVALUE
+    | NOMAXVALUE
+    | START (WITH | '=')? decimalLiteral
+    | CACHE '='? decimalLiteral
+    | NOCACHE
+    | CYCLE
+    | NOCYCLE
+    | RESTART (WITH | '=')? decimalLiteral // use for alter sequence statment
     ;
 
 // details
@@ -629,6 +650,10 @@ alterView
       (WITH checkOpt=(CASCADED | LOCAL)? CHECK OPTION)?
     ;
 
+alterSequence
+    : ALTER SEQUENCE ifExists? fullId sequenceSpec+
+    ;
+
 // details
 
 alterSpecification
@@ -762,6 +787,10 @@ dropView
 
 dropRole
     : DROP ROLE ifExists? roleName (',' roleName)*
+    ;
+
+dropSequence
+    : DROP TEMPORARY? SEQUENCE ifExists? COMMENT_INPUT? fullId (',' fullId)*
     ;
 
 setRole
@@ -2694,7 +2723,8 @@ keywordsCanBeId
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
-    | ENCRYPTED | ENCRYPTION_KEY_ID | CURRENT_ROLE | SKIP_ | LOCKED
+    | ENCRYPTED | ENCRYPTION_KEY_ID | CURRENT_ROLE | SKIP_ | LOCKED | CYCLE | INCREMENT | MINVALUE | MAXVALUE | NOCACHE
+    | NOCYCLE | NOMINVALUE | NOMAXVALUE | RESTART | SEQUENCE
     ;
 
 functionNameBase

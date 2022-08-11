@@ -516,3 +516,10 @@ FROM (`invoices` `i` JOIN lateral (SELECT MAX(`ip`.`date`) AS `latest_payment` F
 lock tables t1 read nowait;
 lock table t1 read local wait 100;
 #end
+
+-- Create sequence
+#begin
+CREATE SEQUENCE if NOT EXISTS workdb.s2 START=1 CYCLE MINVALUE=10000 MAXVALUE=999999999999;
+CREATE OR REPLACE SEQUENCE if NOT EXISTS s2 START=100 CACHE 1000;
+CREATE SEQUENCE `seq_8b4d1cdf-377e-4021-aef3-f7c9846903fc` INCREMENT BY 1 START WITH 1;
+#end
