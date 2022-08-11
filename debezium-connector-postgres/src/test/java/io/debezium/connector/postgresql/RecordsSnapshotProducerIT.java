@@ -12,11 +12,9 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +36,6 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
@@ -413,43 +410,42 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         config.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.first_table, public.partitioned_1_100, public.partitioned_101_200");
         buildNoStreamProducer(config);
 
-        Set<Integer> ids = new HashSet<>();
-
-        Map<String, Integer> expectedTopicCounts = Collect.hashMapOf(
-                "test_server.public.first_table", 1,
-                "test_server.public.partitioned_1_100", 10,
-                "test_server.public.partitioned_101_200", 20);
-        int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
-
-        TestConsumer consumer = testConsumer(expectedTotalCount);
+        TestConsumer consumer = testConsumer(1 + 30);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, Integer> actualTopicCounts = new HashMap<>();
-        AtomicInteger actualTotalCount = new AtomicInteger(0);
+        Set<Integer> ids = new HashSet<>();
+
+        Map<String, Integer> topicCounts = Collect.hashMapOf(
+                "test_server.public.first_table", 0,
+                "test_server.public.partitioned", 0,
+                "test_server.public.partitioned_1_100", 0,
+                "test_server.public.partitioned_101_200", 0);
 
         consumer.process(record -> {
-            assertSourceInfo(record);
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
                 Assertions.assertThat(ids).excludes(id);
                 ids.add(id);
             }
-
-            actualTopicCounts.put(record.topic(), actualTopicCounts.getOrDefault(record.topic(), 0) + 1);
-
-            SnapshotRecord expected = expectedSnapshotRecordFromPosition(
-                    actualTotalCount.incrementAndGet(), expectedTotalCount,
-                    actualTopicCounts.get(record.topic()), expectedTopicCounts.get(record.topic()));
-            assertRecordOffsetAndSnapshotSource(record, expected);
+            topicCounts.put(record.topic(), topicCounts.get(record.topic()) + 1);
         });
 
         // verify distinct records
-        assertEquals(expectedTotalCount, actualTotalCount.get());
-        assertEquals(expectedTotalCount, ids.size());
+        assertEquals(31, ids.size());
 
         // verify each topic contains exactly the number of input records
-        assertTrue("Expected counts per topic don't match", expectedTopicCounts.entrySet().containsAll(actualTopicCounts.entrySet()));
+        assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
+        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
+        assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
+        assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
+
+        // check the offset information for each record
+        while (!consumer.isEmpty()) {
+            SourceRecord record = consumer.remove();
+            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
+            assertSourceInfo(record);
+        }
     }
 
     @Test
