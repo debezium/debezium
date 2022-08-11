@@ -996,6 +996,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
+                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "none") // do not skip truncates
                     .build();
 
             // Perform a basic startup & initial snapshot of data
@@ -1056,7 +1057,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TRUNCATE_DDL")
-                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "t") // Filter out truncate operations.
                     .build();
 
             // Perform a basic startup & initial snapshot of data
@@ -3750,6 +3750,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4953")
                     .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "none") // do not skip truncates
                     .build();
 
             start(OracleConnector.class, config);

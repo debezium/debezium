@@ -842,13 +842,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
-    // With the deprecation of TruncateHandlingMode and an attempt to fold that into skipped operations,
-    // the PostgreSQL flavor of skipped operations will skip TRUNCATE by default to align with legacy
-    // behavior of TruncateHandlingMode. This way we can emit boot-up warnings in preparation of the
-    // overall behavior change in a future release.
-    public static final Field SKIPPED_OPERATIONS = CommonConnectorConfig.SKIPPED_OPERATIONS
-            .withDefault("t");
-
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
