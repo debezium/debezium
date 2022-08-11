@@ -3103,7 +3103,7 @@ You can configure the connector to skip the following types of operations:
 * `d` (delete)
 * `t` (truncate)
 
-By default, no operations are skipped.
+By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
