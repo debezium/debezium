@@ -73,3 +73,9 @@ drop function bar;
 DROP ROLE 'admin', 'developer';
 DROP ROLE 'webapp'@'localhost';
 #end
+
+-- Drop sequence
+#begin
+DROP SEQUENCE IF EXISTS /* test comment */ s1, s2;
+DROP SEQUENCE s3;
+#end
