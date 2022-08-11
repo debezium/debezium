@@ -1385,19 +1385,6 @@ The `connect.decimal.precision` schema parameter contains an integer that repres
 The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that  represents the precision of the given decimal value.
 
-|`SMALLMONEY`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal` +
- +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point iss shifted.
-The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
-
-|`MONEY`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal` +
- +
-The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
-The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 |===
 
 // Type: assembly
