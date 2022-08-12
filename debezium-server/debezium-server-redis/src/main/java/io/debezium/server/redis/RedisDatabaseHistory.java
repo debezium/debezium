@@ -90,9 +90,6 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(PROP_ADDRESS, PROP_USER, PROP_PASSWORD, PROP_KEY);
 
-    // used as fallback to consolidate configuration settings in the sink
-    private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
-
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
     private final AtomicBoolean running = new AtomicBoolean();
@@ -120,20 +117,11 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
         }
         config.validateAndRecord(ALL_FIELDS, LOGGER::error);
         this.config = config;
-        // fetch the properties. as a fallback, if we did not specify the redis address, we will take it and all the credentials from the sink
+        // fetch the properties
         this.address = this.config.getString(PROP_ADDRESS.name());
-        if (this.address == null) {
-            // try to take the connection details from the redis sink
-            this.address = this.config.getString(SINK_PROP_PREFIX + "address");
-            this.user = this.config.getString(SINK_PROP_PREFIX + "user");
-            this.password = this.config.getString(SINK_PROP_PREFIX + "password");
-            this.sslEnabled = Boolean.parseBoolean(this.config.getString(SINK_PROP_PREFIX + "ssl.enabled"));
-        }
-        else {
-            this.user = this.config.getString(PROP_USER.name());
-            this.password = this.config.getString(PROP_PASSWORD.name());
-            this.sslEnabled = Boolean.parseBoolean(this.config.getString(PROP_SSL_ENABLED.name()));
-        }
+        this.user = this.config.getString(PROP_USER.name());
+        this.password = this.config.getString(PROP_PASSWORD.name());
+        this.sslEnabled = Boolean.parseBoolean(this.config.getString(PROP_SSL_ENABLED.name()));
         this.redisKeyName = this.config.getString(PROP_KEY);
         LOGGER.info("rediskeyname:" + this.redisKeyName);
         // load retry settings

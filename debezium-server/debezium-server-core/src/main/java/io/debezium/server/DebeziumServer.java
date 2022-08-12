@@ -38,6 +38,7 @@ import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.Protobuf;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.ShutdownEvent;
@@ -122,16 +123,17 @@ public class DebeziumServer {
 
         final Class<Any> keyFormat = (Class<Any>) getFormat(config, PROP_KEY_FORMAT);
         final Class<Any> valueFormat = (Class<Any>) getFormat(config, PROP_VALUE_FORMAT);
-        configToProperties(config, props, PROP_SOURCE_PREFIX, "");
-        configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.");
-        configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.");
-        configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.");
-        configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.");
-        configToProperties(config, props, PROP_SINK_PREFIX, PROP_SINK_PREFIX);
+        configToProperties(config, props, PROP_SOURCE_PREFIX, "", true);
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.", true);
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.", true);
+        configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.", true);
+        configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
+        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
+        configToProperties(config, props, PROP_SINK_PREFIX, PROP_SINK_PREFIX, true);
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
-            configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.");
+            configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.", true);
         }
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
@@ -154,17 +156,23 @@ public class DebeziumServer {
         LOGGER.info("Engine executor started");
     }
 
-    private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
+    private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix, boolean overwrite) {
         for (String name : config.getPropertyNames()) {
             String updatedPropertyName = null;
             if (SHELL_PROPERTY_NAME_PATTERN.matcher(name).matches()) {
                 updatedPropertyName = name.replace("_", ".").toLowerCase();
             }
             if (updatedPropertyName != null && updatedPropertyName.startsWith(oldPrefix)) {
-                props.setProperty(newPrefix + updatedPropertyName.substring(oldPrefix.length()), config.getValue(name, String.class));
+                String finalPropertyName = newPrefix + updatedPropertyName.substring(oldPrefix.length());
+                if (overwrite || !props.containsKey(finalPropertyName)) {
+                    props.setProperty(finalPropertyName, config.getValue(name, String.class));
+                }
             }
             else if (name.startsWith(oldPrefix)) {
-                props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getConfigValue(name).getValue());
+                String finalPropertyName = newPrefix + name.substring(oldPrefix.length());
+                if (overwrite || !props.containsKey(finalPropertyName)) {
+                    props.setProperty(finalPropertyName, config.getConfigValue(name).getValue());
+                }
             }
         }
     }
