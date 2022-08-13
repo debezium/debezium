@@ -45,6 +45,8 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String AUTO_INCREMENTED_KEY = "autoIncremented";
     public static final String GENERATED_KEY = "generated";
     public static final String COMMENT_KEY = "comment";
+    public static final String DEFAULT_VALUE_EXPRESSION = "defaultValueExpression";
+    public static final String ENUM_VALUES = "enumValues";
 
     private final Schema columnSchema;
     private final Schema tableSchema;
@@ -66,6 +68,8 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
                 .field(AUTO_INCREMENTED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(DEFAULT_VALUE_EXPRESSION, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(ENUM_VALUES, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
                 .build();
 
         tableSchema = SchemaBuilder.struct()
@@ -144,6 +148,11 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         struct.put(AUTO_INCREMENTED_KEY, column.isAutoIncremented());
         struct.put(GENERATED_KEY, column.isGenerated());
         struct.put(COMMENT_KEY, column.comment());
+
+        column.defaultValueExpression().ifPresent(d -> struct.put(DEFAULT_VALUE_EXPRESSION, d));
+        if (column.enumValues() != null && !column.enumValues().isEmpty()) {
+            struct.put(ENUM_VALUES, column.enumValues());
+        }
 
         return struct;
     }
