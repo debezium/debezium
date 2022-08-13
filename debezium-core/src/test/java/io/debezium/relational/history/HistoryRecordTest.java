@@ -127,5 +127,8 @@ public class HistoryRecordTest {
         assertThat(tableStruct.get(ConnectTableChangeSerializer.COMMENT_KEY)).isEqualTo("table comment");
         List<Struct> columnStructs = (List<Struct>) tableStruct.get(ConnectTableChangeSerializer.COLUMNS_KEY);
         assertThat(columnStructs.get(0).get(ConnectTableChangeSerializer.COMMENT_KEY)).isEqualTo("first comment");
+        assertThat(columnStructs.get(0).get(ConnectTableChangeSerializer.ENUM_VALUES)).isNull();
+        assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.DEFAULT_VALUE_EXPRESSION)).isEqualTo("1");
+        assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.ENUM_VALUES)).isEqualTo(Collect.arrayListOf("1", "2"));
     }
 }
