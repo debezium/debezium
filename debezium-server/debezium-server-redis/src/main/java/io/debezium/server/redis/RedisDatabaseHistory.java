@@ -115,7 +115,6 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
-        config.validateAndRecord(ALL_FIELDS, LOGGER::error);
         this.config = config;
         // fetch the properties
         this.address = this.config.getString(PROP_ADDRESS.name());
