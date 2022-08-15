@@ -20,7 +20,6 @@ import io.debezium.testing.system.tools.YAML;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ServiceResource;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -79,13 +78,6 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
         LOGGER.info("Database deployed successfully");
 
         this.services = svcs;
-
-        String dbName = deployment.getMetadata().getLabels().get("app");
-        ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(dbName);
-        int servicePort = serviceResource.get().getSpec().getPorts().get(0).getPort();
-        serviceResource
-                .portForward(servicePort, servicePort);
-        LOGGER.info("FORWARDING PORT " + servicePort + " ON " + dbName + " SERVICE");
 
         return getController(deployment, services, ocp);
     }

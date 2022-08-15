@@ -92,7 +92,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("mongodb.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.mongodb.MongoDbConnector")
                 .put("task.max", 1)
                 .put("mongodb.hosts", "rs0/" + dbHost + ":" + dbPort)
