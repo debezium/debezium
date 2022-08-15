@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -70,6 +71,9 @@ public class SqlServerConnectorTest {
             assertThat(key.type).isEqualTo(expected.type());
             if (expected.equals(SqlServerConnectorConfig.DATABASE_HISTORY) || expected.equals(CommonConnectorConfig.TOPIC_NAMING_STRATEGY)) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
+            }
+            else if (expected.type() == ConfigDef.Type.LIST && key.defaultValue != null) {
+                assertThat(key.defaultValue).isEqualTo(Arrays.asList(expected.defaultValue()));
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();

@@ -7,6 +7,8 @@ package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Arrays;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.connect.connector.Connector;
@@ -37,6 +39,9 @@ public class MySqlConnectorTest {
             if (expected.equals(MySqlConnectorConfig.DATABASE_HISTORY) || expected.equals(MySqlConnectorConfig.JDBC_DRIVER)
                     || expected.equals(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY)) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
+            }
+            else if (expected.type() == ConfigDef.Type.LIST && key.defaultValue != null) {
+                assertThat(key.defaultValue).isEqualTo(Arrays.asList(expected.defaultValue()));
             }
             else if (!expected.equals(MySqlConnectorConfig.SERVER_ID)) {
                 assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
