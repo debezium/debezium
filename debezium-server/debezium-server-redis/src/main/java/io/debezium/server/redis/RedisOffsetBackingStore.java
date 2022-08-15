@@ -70,8 +70,6 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
             .withDescription("Socket timeout (in ms)")
             .withDefault(DEFAULT_SOCKET_TIMEOUT);
 
-    private static final String SINK_PROP_PREFIX = "debezium.sink.redis.";
-
     private String redisKeyName;
     private String address;
     private String user;
@@ -101,20 +99,10 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
         super.configure(config);
         this.config = config.originalsStrings();
 
-        // fetch the properties. as a fallback, if we did not specify the redis address, we will take it and all the credentials from the sink
         this.address = this.config.get(PROP_ADDRESS.name());
-        if (this.address == null) {
-            // try to take the connection details from the redis sink
-            this.address = this.config.get(SINK_PROP_PREFIX + "address");
-            this.user = this.config.get(SINK_PROP_PREFIX + "user");
-            this.password = this.config.get(SINK_PROP_PREFIX + "password");
-            this.sslEnabled = Boolean.parseBoolean(this.config.get(SINK_PROP_PREFIX + "ssl.enabled"));
-        }
-        else {
-            this.user = this.config.get(PROP_USER.name());
-            this.password = this.config.get(PROP_PASSWORD.name());
-            this.sslEnabled = Boolean.parseBoolean(this.config.get(PROP_SSL_ENABLED.name()));
-        }
+        this.user = this.config.get(PROP_USER.name());
+        this.password = this.config.get(PROP_PASSWORD.name());
+        this.sslEnabled = Boolean.parseBoolean(this.config.get(PROP_SSL_ENABLED.name()));
 
         this.redisKeyName = Optional.ofNullable(
                 this.config.get(PROP_KEY_NAME.name())).orElse(DEFAULT_REDIS_KEY_NAME);
