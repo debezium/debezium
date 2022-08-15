@@ -22,7 +22,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
-import io.debezium.testing.system.tests.ConnectorTest;
+import io.debezium.testing.system.tests.MongoConnectorTest;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseClient;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -33,7 +33,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public abstract class MongoTests extends ConnectorTest {
+public abstract class MongoTests extends MongoConnectorTest {
 
     public MongoTests(
                       KafkaController kafkaController,

@@ -10,6 +10,8 @@ import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -18,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.PortForward;
+import io.fabric8.kubernetes.client.dsl.ServiceResource;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -25,8 +29,10 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * @author Jakub Cechacek
  */
 public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, ?>>
-        implements DatabaseController<C> {
+        implements DatabaseController<C>, PortForwardableDatabaseController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseController.class);
+
+    private static final String FORWARDED_HOST = "localhost";
 
     protected final OpenShiftClient ocp;
     protected final String project;
@@ -34,6 +40,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     protected Deployment deployment;
     protected String name;
     protected List<Service> services;
+    protected List<PortForward> portForwards = new LinkedList<>();
 
     public AbstractOcpDatabaseController(
                                          Deployment deployment, List<Service> services, OpenShiftClient ocp) {
@@ -85,11 +92,42 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             LOGGER.info("Running from OCP, using internal database hostname");
             return getDatabaseHostname();
         }
-        return "localhost";
+        return FORWARDED_HOST;
     }
 
     @Override
     public int getPublicDatabasePort() {
         return getDatabasePort();
+    }
+
+    @Override
+    public void forwardDatabasePorts() {
+        String dbName = deployment.getMetadata().getLabels().get("app");
+        ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(dbName);
+
+        serviceResource.get().getSpec().getPorts().forEach(port -> {
+            int servicePort = port.getPort();
+            PortForward forward = serviceResource
+                    .portForward(servicePort, servicePort);
+
+            for (Throwable e : forward.getClientThrowables()) {
+                LOGGER.error("Client error when forwarding DB port " + servicePort, e);
+            }
+
+            for (Throwable e : forward.getServerThrowables()) {
+                LOGGER.error("Server error when forwarding DB port" + servicePort, e);
+            }
+            portForwards.add(forward);
+        });
+
+        LOGGER.info("Forwarding ports on service: " + dbName);
+    }
+
+    @Override
+    public void closeDatabasePortForwards() throws IOException {
+        LOGGER.info("Closing port forwards");
+        for (PortForward portForward : portForwards) {
+            portForward.close();
+        }
     }
 }
