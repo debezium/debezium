@@ -129,7 +129,7 @@ public class DebeziumServer {
         configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.", true);
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
-        configToProperties(config, props, PROP_SINK_PREFIX, PROP_SINK_PREFIX, true);
+        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", "offset.storage." + name + ".", false);
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
