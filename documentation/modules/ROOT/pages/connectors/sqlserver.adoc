@@ -178,6 +178,32 @@ After a restart, the connector resumes processing from the last offset (commit a
 The connector is able to detect whether CDC is enabled or disabled for included source tables and adjust its behavior.
 
 // Type: concept
+// ModuleID: no-maximum-lsn-recorded-in-the-database
+// Title: No maximum LSN recorded in the database
+=== No maximum LSN recorded in the database
+
+There may be situations when no maximum LSN is recorded in the database because:
+
+1. SQL Server Agent is not running
+2. No changes are recorded in the change table yet
+3. Database has low activity and the cdc clean up job periodically clears entries from the cdc tables
+
+Out of these possibilities, since a running SQL Server Agent is a prerequisite, No 1. is a real problem (while No 2. and 3. are normal). 
+
+In order to mitigate this issue and differentiate between No 1. and the others, a check for the status of the SQL Server Agent is done through the following query `"SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';"`. 
+If the SQL Server Agent is not running, an ERROR is written in the log: "SQL Server Agent is not running!".
+
+[IMPORTANT]
+====
+The SQL Server Agent running status query requires `VIEW SERVER STATE` server permission. 
+If you don't want to grant this permission to the configured user, you can choose to configure your own query through the `database.sqlserver.agent.status.query` property. 
+You can define a function which returns true or 1 if SQL Server Agent is running (false or 0 otherwise) and safely use High-Level permissions without granting them as explained 
+here link:https://dba.stackexchange.com/questions/62230/what-minimum-permissions-do-i-need-to-provide-to-a-user-so-that-it-can-check-the/103275#103275[What minimum permissions do I need to provide to a user so that it can check the status of SQL Server Agent Service?] 
+or here link:https://sqlquantumleap.com/2018/02/15/safely-and-easily-use-high-level-permissions-without-granting-them-to-anyone-server-level/[Safely and Easily Use High-Level Permissions Without Granting Them to Anyone: Server-level]. 
+The configuration of the query property would look like: `database.sqlserver.agent.status.query=SELECT [#db].func_is_sql_server_agent_running()` - you need to use `[#db]` as placeholder for the database name.
+====
+
+// Type: concept
 // ModuleID: limitations-sql-server-connector
 // Title: Limitations of {prodname} SQL Server connector
 === Limitations
