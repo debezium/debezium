@@ -1272,29 +1272,6 @@ Represents the number of nanoseconds past midnight, and does not include timezon
  +
 Represents the number of milliseconds since the epoch, and does not include timezone information.
 
-|`SMALLDATETIME`
-|`INT64`
-|`io.debezium.time.Timestamp` +
- +
-Represents the number of milliseconds since the epoch, and does not include timezone information.
-
-|`DATETIME2(0)`, `DATETIME2(1)`, `DATETIME2(2)`, `DATETIME2(3)`
-|`INT64`
-|`io.debezium.time.Timestamp` +
- +
-Represents the number of milliseconds since the epoch, and does not include timezone information.
-
-|`DATETIME2(4)`, `DATETIME2(5)`, `DATETIME2(6)`
-|`INT64`
-|`io.debezium.time.MicroTimestamp` +
- +
-Represents the number of microseconds since the epoch, and does not include timezone information.
-
-|`DATETIME2(7)`
-|`INT64`
-|`io.debezium.time.NanoTimestamp` +
- +
-Represents the number of nanoseconds past the epoch, and does not include timezone information.
 |===
 
 [[db2-time-precision-mode-connect]]
@@ -1324,24 +1301,14 @@ Represents the number of milliseconds since midnight, and does not include timez
  +
 Represents the number of milliseconds since the epoch, and does not include timezone information.
 
-|`SMALLDATETIME`
-|`INT64`
-|`org.apache.kafka.connect.data.Timestamp` +
- +
-Represents the number of milliseconds since the epoch, and does not include timezone information.
-
-|`DATETIME2`
-|`INT64`
-|`org.apache.kafka.connect.data.Timestamp` +
- +
-Represents the number of milliseconds since the epoch, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 |===
 
 [[db2-timestamp-types]]
 === Timestamp types
 
-The `DATETIME`, `SMALLDATETIME` and `DATETIME2` types represent a timestamp without time zone information.
-Such columns are converted into an equivalent Kafka Connect value based on UTC. For example, the `DATETIME2` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.MicroTimestamp` with the value "1529507596945104".
+The `DATETIME` type represents a timestamp without time zone information.
+Such columns are converted into an equivalent Kafka Connect value based on UTC.
+For example, the `DATETIME` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596945104".
 
 The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
