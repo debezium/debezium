@@ -2703,18 +2703,26 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         recordsForTopic = records.recordsForTopic("server1.testDB1.dbo.account");
         recordsForNewTableTopic = records.recordsForTopic("server1.testDB1.dbo.account_new");
 
+        final Schema expectedSchemaAfter = SchemaBuilder.struct()
+                .optional()
+                .name("server1.testDB1.dbo.account_new.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+
         // Assert state
-        assertThat(recordsForTopic).hasSize(1);
-        assertThat(recordsForNewTableTopic).isNull();
+        assertThat(recordsForTopic).isNull();
+        assertThat(recordsForNewTableTopic).hasSize(1);
         assertNoRecordsToConsume();
 
-        SourceRecordAssert.assertThat(recordsForTopic.get(0))
+        SourceRecordAssert.assertThat(recordsForNewTableTopic.get(0))
                 .valueAfterFieldIsEqualTo(
-                        new Struct(expectedSchema)
+                        new Struct(expectedSchemaAfter)
                                 .put("id", 12)
                                 .put("name", "some_value2")
                                 .put("amount", 241))
-                .valueAfterFieldSchemaIsEqualTo(expectedSchema);
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaAfter);
 
         stopConnector();
     }
