@@ -164,9 +164,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     }
                     catch (SQLException e) {
                         if (!supressAgentCheckException) {
-                            LOGGER.warn("No maximum LSN recorded in the database; this may happen if there are no changes recorded in the change table yet or " + 
-                                    "low activity database where the cdc clean up job periodically clears entries from the cdc tables. " + 
-                                    "Otherwise, this may be an indication that the SQL Server Agent is not running. " + 
+                            LOGGER.warn("No maximum LSN recorded in the database; this may happen if there are no changes recorded in the change table yet or " +
+                                    "low activity database where the cdc clean up job periodically clears entries from the cdc tables. " +
+                                    "Otherwise, this may be an indication that the SQL Server Agent is not running. " +
                                     "You should follow the documentation on how to configure SQL Server Agent running status query.");
                             LOGGER.error("Cannot query the status of the SQL Server Agent", e);
                             supressAgentCheckException = true;
