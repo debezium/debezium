@@ -8,7 +8,7 @@ The following table lists the schema history metrics that are available.
 
 |[[connectors-shist-metric-status_{context}]]<<connectors-shist-metric-status_{context}, `Status`>>
 |`string`
-|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing the state of the database history.
+|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing the state of the database schema history.
 
 |[[connectors-shist-metric-recoverystarttime_{context}]]<<connectors-shist-metric-recoverystarttime_{context}, `RecoveryStartTime`>>
 |`long`

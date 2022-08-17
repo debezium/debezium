@@ -133,7 +133,7 @@ This means that you can control all of the log messages for a specific class or 
 . Configure a logger for the connector.
 +
 --
-This example configures loggers for the MySQL connector and the database history implementation used by the connector,
+This example configures loggers for the MySQL connector and the database schema history implementation used by the connector,
 and sets them to log `DEBUG` level messages:
 
 .log4j.properties

@@ -1075,7 +1075,7 @@ By default, no operations are skipped.
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[cassandra-property-topic-cache-size]]<<cassandra-property-topic-cache-size, `topic.cache.size`>>

@@ -164,7 +164,7 @@ The {prodname} connector for SQL Server does not support schema changes while an
 === Reading the change data tables
 
 When the connector first starts, it takes a structural snapshot of the structure of the captured tables
-and persists this information to its internal database history topic.
+and persists this information to its internal database schema history topic.
 The connector then identifies a change table for each source table, and completes the following steps.
 
 1. For each change table, the connector read all of the changes that were created between the last stored maximum LSN and the current maximum LSN.
@@ -235,7 +235,7 @@ the connector would stream change event records to the following Kafka topics:
 * `fulfillment.testDB.dbo.customers`
 * `fulfillment.testDB.dbo.orders`
 
-The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-sqlserver-connector-schema-change-topic[schema change topics], and xref:sqlserver-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:about-the-debezium-sqlserver-connector-schema-change-topic[schema change topics], and xref:sqlserver-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -262,8 +262,8 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
@@ -1947,10 +1947,10 @@ spec:
 |A list of all tables whose changes {prodname} should capture.
 
 |10
-|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 
 |11
-|The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
 |12
 |The path to the SSL truststore that stores the server's signer certificates.
@@ -2018,8 +2018,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <7> The name of the database to capture changes from.
 <8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 <9> A list of all tables whose changes {prodname} should capture.
-<10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
-<11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+<10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
+<11> The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 <12> The path to the SSL truststore that stores the server's signer certificates.
 This property is required unless database encryption is disabled (`database.encrypt=false`).
 <13> The SSL truststore password.
@@ -2071,8 +2071,8 @@ Information about the properties is organized as follows:
 
 * xref:sqlserver-required-connector-configuration-properties[Required connector configuration properties]
 * xref:sqlserver-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:debezium-sqlserver-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:sqlserver-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-sqlserver-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:sqlserver-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-sqlserver-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="sqlserver-required-connector-configuration-properties"]
@@ -2134,7 +2134,7 @@ Only alphanumeric characters, hyphens, dots and underscores must be used in the 
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 
@@ -2212,7 +2212,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history. The default is `true`.
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database schema history. The default is `true`.
 
 |[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
@@ -2559,7 +2559,7 @@ For more information, see xref:sqlserver-transaction-metadata[Transaction Metada
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]
-==== {prodname} SQL Server connector database history configuration properties
+==== {prodname} SQL Server connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 

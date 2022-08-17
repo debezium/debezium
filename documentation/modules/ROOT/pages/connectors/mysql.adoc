@@ -115,12 +115,12 @@ Also, a connector cannot just use the current schema because the connector might
 To ensure correct processing of changes that occur after a schema change, MySQL includes in the binlog not only the row-level changes to the data, but also the DDL statements that are applied to the database.
 As the connector reads the binlog and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
 The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
-In a separate database history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
+In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
 
 When the connector restarts after having crashed or been stopped gracefully, the connector starts reading the binlog from a specific position, that is, from a specific point in time.
-The connector rebuilds the table structures that existed at this point in time by reading the database history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
+The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
-This database history topic is for connector use only.
+This database schema history topic is for connector use only.
 The connector can optionally xref:mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
@@ -151,20 +151,20 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
 [IMPORTANT]
 ====
-Never partition the database history topic.
-For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
 
 To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
 
-* If you create the database history topic manually, specify a partition count of `1`.
-* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
 [WARNING]
@@ -641,7 +641,7 @@ _schemaName_:: The name of the schema in which the operation occurred.
 
 _tableName_:: The name of the table in which the operation occurred.
 
-The connector applies similar naming conventions to label its internal database history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -2270,11 +2270,11 @@ This name is used as the prefix for all Kafka topics that receive change event r
 |Changes in only the `inventory` database are captured.
 
 |8
-|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 Upon restart, the connector recovers the schemas of the database that existed at the point in time in the binlog when the connector should begin reading.
 
 |9
-|The name of the database history topic. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
 |===
 
 . Create your connector instance with Kafka Connect.
@@ -2327,8 +2327,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <7> Unique ID of the connector.
 <8> Logical name of the MySQL server or cluster.
 <9> List of databases hosted by the specified server.
-<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
-<11> Name of the database history topic. This topic is for internal use only and should not be used by consumers.
+<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database schema history topic.
+<11> Name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
 <12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
 
 endif::community[]
@@ -2385,8 +2385,8 @@ Information about the properties is organized as follows:
 
 * xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
 * xref:mysql-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="mysql-required-connector-configuration-properties"]
@@ -2434,7 +2434,7 @@ Only alphanumeric characters, hyphens, dots and underscores must be used in the 
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `+database.server.id+`>>
@@ -2567,7 +2567,7 @@ endif::community[]
 
 |[[mysql-property-include-schema-changes]]<<mysql-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history.
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database schema history.
 
 |[[mysql-property-include-schema-comments]]<<mysql-property-include-schema-comments, `+include.schema.comments+`>>
 |`false`
@@ -2782,7 +2782,7 @@ endif::community[]
  +
 `schema_only` - the connector runs a snapshot of the schemas and not the data. This setting is useful when you do not need the topics to contain a consistent snapshot of the data but need them to have only the changes since the connector was started. +
  +
-`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database history topic. You might set it periodically to "clean up" a database history topic that has been growing unexpectedly. Database history topics require infinite retention.
+`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic. You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly. Database schema history topics require infinite retention.
 
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |`minimal`
@@ -2962,7 +2962,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
-==== {prodname} connector database history configuration properties
+==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
@@ -3000,7 +3000,7 @@ The {prodname} connector provides for pass-through configuration of the signals 
 Pass-through signals properties begin with the prefix `signals.consumer.*`.
 For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
 
-As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
+As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database schema history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties

@@ -116,9 +116,9 @@ After the snapshot completes, the connector begins to stream event records for s
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 6).
 
 |`schema_only_recovery`
-|Set this option to restore a database history topic that is lost or corrupted.
+|Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
-You can also set the property to periodically prune a database history topic that experiences unexpected growth. +
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
  +
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 |===
@@ -169,7 +169,7 @@ fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
 
-The connector applies similar naming conventions to label its internal database history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -198,20 +198,20 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
 [IMPORTANT]
 ====
-Never partition the database history topic.
-For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
 
 To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
 
-* If you create the database history topic manually, specify a partition count of `1`.
-* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
 ifdef::community[]
@@ -2242,10 +2242,10 @@ spec:
 |Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 
 |10
-|The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
+|The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
 
 |11
-|The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 |===
 
@@ -2300,8 +2300,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <8> Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 <9> The maximum number of tasks to create for this connector.
 <10> The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
-<11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
-<12> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+<11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
+<12> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 In the previous example, the `database.hostname` and `database.port` properties are used to define the connection to the database host.
 However, in more complex Oracle deployments, or in deployments that use Transparent Network Substrate (TNS) names, you can use an alternative method in which you specify a JDBC URL.
@@ -2447,8 +2447,8 @@ Many properties have default values.
 Information about the properties is organized as follows:
 
 * xref:required-debezium-oracle-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
-* xref:debezium-oracle-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-oracle-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="required-debezium-{context}-connector-configuration-properties"]
@@ -2539,7 +2539,7 @@ The following characters are valid: alphanumeric characters, hyphens, dots, and 
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
@@ -2565,9 +2565,9 @@ The connector performs an initial snapshot and then stops, without processing an
 Specify this value if you want the connector to capture data only for changes that occur after the snapshot.
 
 `schema_only_recovery`:: This is a recovery setting for a connector that has already been capturing changes.
-When you restart the connector, this setting enables recovery of a corrupted or lost database history topic.
-You might set it periodically to "clean up" a database history topic that has been growing unexpectedly.
-Database history topics require infinite retention.
+When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic.
+You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly.
+Database schema history topics require infinite retention.
 Note this mode is only safe to be used when it is guaranteed that no schema changes happened since the point in time the connector was shut down before and the point in time the snapshot is taken.
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs except when `snapshot.mode` is configured as `initial_only`.
@@ -3158,7 +3158,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
 |===
 
 [id="debezium-oracle-connector-database-history-configuration-properties"]
-==== {prodname} Oracle connector database history configuration properties
+==== {prodname} Oracle connector database schema history configuration properties
 include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]

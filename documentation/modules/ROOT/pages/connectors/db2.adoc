@@ -127,7 +127,7 @@ By default, when a Db2 connector performs a snapshot, it does the following:
 . Obtains a lock on each of the tables in capture mode. This ensures that no schema changes can occur in those tables during the snapshot.
 The level of the lock is determined by the `snapshot.isolation.mode` connector  configuration property.
 . Reads the highest (most recent) LSN position in the server's transaction log.
-. Captures the schema of all tables that are in capture mode. The connector persists this information in its internal database history topic.
+. Captures the schema of all tables that are in capture mode. The connector persists this information in its internal database schema history topic.
 . Optional, releases the locks obtained in step 2. Typically, these locks are held for only a short time.
 . At the LSN position read in step 3, the connector scans the capture mode tables as well as their schemas. During the scan, the connector:
 .. Confirms that the table was created before the start of the snapshot. If it was not, the snapshot skips that table. After the snapshot is complete, and the connector starts emitting change events, the connector produces change events for any tables that were created during the snapshot.
@@ -196,7 +196,7 @@ For example, consider a Db2 installation with the `mydatabase` database,  which 
 * `mydatabase.MYSCHEMA.CUSTOMERS`
 * `mydatabase.MYSCHEMA.ORDERS`
 
-The connector applies similar naming conventions to label its internal database history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:about-the-debezium-db2-connector-schema-change-topic[schema change topics], and xref:db2-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -227,20 +227,20 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
 [IMPORTANT]
 ====
-Never partition the database history topic.
-For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
 
 To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
 
-* If you create the database history topic manually, specify a partition count of `1`.
-* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
 [WARNING]
@@ -1923,8 +1923,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <7> The name of the database to capture changes from.
 <8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}[Avro Connector] is used.
 <9> A list of all tables whose changes {prodname} should capture.
-<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
-<11> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
+<11> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 endif::community[]
 
@@ -1981,8 +1981,8 @@ Information about the properties is organized as follows:
 
 * xref:db2-required-configuration-properties[Required configuration properties]
 * xref:db2-advanced-configuration-properties[Advanced configuration properties]
-* xref:debezium-db2-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database history properties]
+* xref:debezium-db2-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database schema history properties]
 * xref:debezium-db2-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 
@@ -2037,7 +2037,7 @@ The logical name should be unique across all other connectors, since it is used 
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[db2-property-table-include-list]]<<db2-property-table-include-list, `+table.include.list+`>>
@@ -2095,7 +2095,7 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[db2-property-include-schema-changes]]<<db2-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history.
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database schema history.
 
 |[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
@@ -2388,7 +2388,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]
-==== {prodname} connector database history configuration properties
+==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
