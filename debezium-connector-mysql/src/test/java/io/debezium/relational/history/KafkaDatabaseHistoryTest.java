@@ -375,14 +375,14 @@ public class KafkaDatabaseHistoryTest {
 
         final Map<String, ConfigValue> issues = config.validate(KafkaDatabaseHistory.ALL_FIELDS);
         Assertions.assertThat(issues.keySet()).isEqualTo(Collect.unmodifiableSet(
-                "database.history.name",
-                "database.history.connector.class",
-                "database.history.kafka.topic",
-                "database.history.kafka.bootstrap.servers",
-                "database.history.kafka.recovery.poll.interval.ms",
-                "database.history.connector.id",
-                "database.history.kafka.recovery.attempts",
-                "database.history.kafka.query.timeout.ms"));
+                "schema.history.name",
+                "schema.history.connector.class",
+                "schema.history.kafka.topic",
+                "schema.history.kafka.bootstrap.servers",
+                "schema.history.kafka.recovery.poll.interval.ms",
+                "schema.history.connector.id",
+                "schema.history.kafka.recovery.attempts",
+                "schema.history.kafka.query.timeout.ms"));
     }
 
     @Test

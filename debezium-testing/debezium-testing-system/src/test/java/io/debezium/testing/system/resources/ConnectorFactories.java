@@ -40,8 +40,8 @@ public class ConnectorFactories {
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_MYSQL_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_MYSQL_DBZ_PASSWORD)
-                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .put("schema.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.kafka.topic", "schema-changes.inventory")
                 .addOperationRouterForTable("u", "customers");
 
     }
@@ -81,8 +81,8 @@ public class ConnectorFactories {
                 .put("database.password", ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD)
                 .put("database.names", ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAMES)
                 .put("database.encrypt", false)
-                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .put("schema.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.kafka.topic", "schema-changes.inventory")
                 .addOperationRouterForTable("u", "customers");
     }
 
@@ -116,8 +116,8 @@ public class ConnectorFactories {
                 .put("database.password", ConfigProperties.DATABASE_DB2_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_DB2_DBZ_DBNAME)
                 .put("database.cdcschema", ConfigProperties.DATABASE_DB2_CDC_SCHEMA)
-                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.inventory")
+                .put("schema.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.kafka.topic", "schema-changes.inventory")
                 .addOperationRouterForTable("u", "CUSTOMERS");
     }
 
@@ -139,8 +139,8 @@ public class ConnectorFactories {
                 .put("schema.include.list", "DEBEZIUM")
                 .put("table.include.list", "DEBEZIUM.CUSTOMERS")
                 .put("database.pdb.name", ConfigProperties.DATABASE_ORACLE_PDBNAME)
-                .put("database.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
-                .put("database.history.kafka.topic", "schema-changes.oracle")
+                .put("schema.history.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.kafka.topic", "schema-changes.oracle")
                 .put("log.mining.strategy", "online_catalog")
                 .addOperationRouterForTable("u", "CUSTOMERS");
     }

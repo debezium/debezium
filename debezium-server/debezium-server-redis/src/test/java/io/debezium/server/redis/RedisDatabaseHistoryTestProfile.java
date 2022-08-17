@@ -28,7 +28,7 @@ public class RedisDatabaseHistoryTestProfile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = new HashMap<String, String>();
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
-        config.put("debezium.source.database.history", "io.debezium.server.redis.RedisDatabaseHistory");
+        config.put("debezium.source.schema.history", "io.debezium.server.redis.RedisDatabaseHistory");
         config.put("debezium.source.database.server.id", "12345");
         return config;
     }
