@@ -494,7 +494,6 @@ public class MySqlConnection extends JdbcConnection {
             this.config = config;
             final boolean useSSL = sslModeEnabled();
             final Configuration dbConfig = config
-                    .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
                     .edit()
                     .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
                     .build()
