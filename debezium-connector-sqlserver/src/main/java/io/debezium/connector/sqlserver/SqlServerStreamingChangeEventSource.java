@@ -88,7 +88,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final ElapsedTimeStrategy pauseBetweenCommits;
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
 
-    private boolean supressAgentCheckException;
+    private boolean checkAgent;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
@@ -109,6 +109,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         : intervalBetweenCommitsBasedOnPoll.toMillis());
         this.pauseBetweenCommits.hasElapsed();
         this.streamingExecutionContexts = new HashMap<>();
+        this.checkAgent = true;
     }
 
     @Override
@@ -157,25 +158,25 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
-                    try {
-                        if (!dataConnection.isAgentRunning(databaseName)) {
-                            LOGGER.error("SQL Server Agent is not running!");
+                    if (checkAgent) {
+                        try {
+                            if (!dataConnection.isAgentRunning(databaseName)) {
+                                LOGGER.error("No maximum LSN recorded in the database; SQL Server Agent is not running");
+                            }
                         }
-                    }
-                    catch (SQLException e) {
-                        if (!supressAgentCheckException) {
+                        catch (SQLException e) {
                             LOGGER.warn("No maximum LSN recorded in the database; this may happen if there are no changes recorded in the change table yet or " +
                                     "low activity database where the cdc clean up job periodically clears entries from the cdc tables. " +
                                     "Otherwise, this may be an indication that the SQL Server Agent is not running. " +
                                     "You should follow the documentation on how to configure SQL Server Agent running status query.");
-                            LOGGER.error("Cannot query the status of the SQL Server Agent", e);
-                            supressAgentCheckException = true;
+                            LOGGER.warn("Cannot query the status of the SQL Server Agent", e);
                         }
+                        checkAgent = false;
                     }
                     return false;
                 }
-                else if (supressAgentCheckException) {
-                    supressAgentCheckException = false;
+                else if (!checkAgent) {
+                    checkAgent = true;
                 }
                 // There is no change in the database
                 if (toLsn.compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && streamingExecutionContext.getShouldIncreaseFromLsn()) {
