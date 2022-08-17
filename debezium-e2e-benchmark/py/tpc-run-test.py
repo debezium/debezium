@@ -130,7 +130,7 @@ def main(argv):
     config['name'] = 'tpc-connector'
     print(config['name'])
 
-    config['config']['database.history.kafka.topic'] = 'tpc-test'
+    config['config']['schema.history.kafka.topic'] = 'tpc-test'
 
     databasetype = config['config']['connector.class']
     connectiontype = config['config']['connector.class'].split('.')[3]
@@ -176,7 +176,7 @@ def main(argv):
 
     databaseservername = config['config']['database.server.name']
     topicname = databaseservername + '.' + table
-    historybootstrapserver = config['config'].get('database.history.kafka.bootstrap.servers')
+    historybootstrapserver = config['config'].get('schema.history.kafka.bootstrap.servers')
     if historybootstrapserver != None:
         bootstrapserver = historybootstrapserver.split(",")
 
@@ -196,13 +196,13 @@ def main(argv):
         if historybootstrapserver != None:
             try:
                 kafkaadmin.delete_topics(
-                    [config['config']['database.history.kafka.topic']], 30)
+                    [config['config']['schema.history.kafka.topic']], 30)
             except:
-                print(config['config']['database.history.kafka.topic'] +
+                print(config['config']['schema.history.kafka.topic'] +
                       ' TOPIC not exists')
             else:
                 print(config['config']
-                      ['database.history.kafka.topic'] + ' TOPIC deleted')
+                      ['schema.history.kafka.topic'] + ' TOPIC deleted')
 
         # start tpc connector
         print('start tpc connector')

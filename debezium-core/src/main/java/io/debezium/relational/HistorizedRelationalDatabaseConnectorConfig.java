@@ -41,7 +41,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
-    public static final Field DATABASE_HISTORY = Field.create("database.history")
+    public static final Field DATABASE_HISTORY = Field.create("schema.history")
             .withDisplayName("Database history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)

@@ -149,7 +149,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
-         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.kafka.topic does not exist (deleted).
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
@@ -739,7 +739,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
-    public static final Field DATABASE_HISTORY = Field.create("database.history")
+    public static final Field DATABASE_HISTORY = Field.create("schema.history")
             .withDisplayName("Database history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)
