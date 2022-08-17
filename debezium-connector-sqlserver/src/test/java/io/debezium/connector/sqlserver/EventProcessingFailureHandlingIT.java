@@ -69,7 +69,13 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -83,7 +89,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNull();
 
@@ -105,7 +111,13 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -119,7 +131,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNull();
     }
@@ -135,7 +147,13 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES (1, 'seed')");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNull();
 
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
