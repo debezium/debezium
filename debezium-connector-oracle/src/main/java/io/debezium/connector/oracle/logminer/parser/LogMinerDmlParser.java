@@ -406,10 +406,10 @@ public class LogMinerDmlParser implements DmlParser {
                 index += 1;
                 start = index + 1;
             }
-            else if (nested == 0 & c == ' ' && lookAhead == '|') {
+            else if (nested == 0 && c == ' ' && lookAhead == '|') {
                 // Possible concatenation, nothing to do yet
             }
-            else if (nested == 0 & c == '|' && lookAhead == '|') {
+            else if (nested == 0 && c == '|' && lookAhead == '|' && !inSingleQuote) {
                 // Concatenation
                 for (int i = index + 2; i < sql.length(); ++i) {
                     if (sql.charAt(i) != ' ') {
@@ -616,10 +616,10 @@ public class LogMinerDmlParser implements DmlParser {
                 else if (c == ')' && nested > 0) {
                     nested--;
                 }
-                else if (nested == 0 & c == ' ' && lookAhead == '|') {
+                else if (nested == 0 && c == ' ' && lookAhead == '|') {
                     // Possible concatenation, nothing to do yet
                 }
-                else if (nested == 0 & c == '|' && lookAhead == '|') {
+                else if (nested == 0 && c == '|' && lookAhead == '|') {
                     // Concatenation
                     for (int i = index + 2; i < sql.length(); ++i) {
                         if (sql.charAt(i) != ' ') {
