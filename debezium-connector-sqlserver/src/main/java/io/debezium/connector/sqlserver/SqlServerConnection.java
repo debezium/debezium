@@ -125,7 +125,7 @@ public class SqlServerConnection extends JdbcConnection {
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
 
-        if (!skippedOperations.isEmpty()) {
+        if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();
             StringBuilder getAllChangesForTableStatement = new StringBuilder(
                     "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') WHERE __$operation NOT IN (");
@@ -158,6 +158,20 @@ public class SqlServerConnection extends JdbcConnection {
                 Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
 
         this.optionRecompile = false;
+    }
+
+    private boolean hasSkippedOperations(Set<Envelope.Operation> skippedOperations) {
+        if (!skippedOperations.isEmpty()) {
+            for (Envelope.Operation operation : skippedOperations) {
+                switch (operation) {
+                    case CREATE:
+                    case UPDATE:
+                    case DELETE:
+                        return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
