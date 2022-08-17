@@ -2232,8 +2232,8 @@ and captures changes to the `inventory` database.
       database.server.id: 184054  // <5>
       database.server.name: dbserver1 // <6>
       database.include.list: inventory  // <7>
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
-      database.history.kafka.topic: schema-changes.inventory  // <9>
+      schema.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
+      schema.history.kafka.topic: schema-changes.inventory  // <9>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2312,8 +2312,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.server.id": "184054", <7>
         "database.server.name": "fullfillment", // <8>
         "database.include.list": "inventory", // <9>
-        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-        "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
+        "schema.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "schema.history.kafka.topic": "dbhistory.fullfillment", // <11>
         "include.schema.changes": "true" // <12>
     }
 }

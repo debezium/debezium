@@ -1908,8 +1908,8 @@ spec:
     database.names: testDB1,testDB2 // <7>
     database.server.name: fullfullment // <8>
     database.include.list: dbo.customers // <9>
-    database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
-    database.history.kafka.topic: dbhistory.fullfillment // <11>
+    schema.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
+    schema.history.kafka.topic: dbhistory.fullfillment // <11>
     database.ssl.truststore: path/to/trust-store // <12>
     database.ssl.truststore.password: password-for-trust-store <13>
 ----
@@ -2002,8 +2002,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.names": "testDB1,testDB2", // <7>
         "database.server.name": "fullfillment", // <8>
         "table.include.list": "dbo.customers", // <9>
-        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-        "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
+        "schema.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "schema.history.kafka.topic": "dbhistory.fullfillment" // <11>
         "database.ssl.truststore": "path/to/trust-store" // <12>
         "database.ssl.truststore.password": "password-for-trust-store" // <13>
     }

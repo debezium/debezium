@@ -354,8 +354,8 @@ spec:
     database.server.id: 184054
     database.server.name: mysql
     database.include.list: inventory
-    database.history.kafka.bootstrap.servers: debezium-cluster-kafka-bootstrap:9092
-    database.history.kafka.topic: schema-changes.inventory
+    schema.history.kafka.bootstrap.servers: debezium-cluster-kafka-bootstrap:9092
+    schema.history.kafka.topic: schema-changes.inventory
 EOF
 ----
 

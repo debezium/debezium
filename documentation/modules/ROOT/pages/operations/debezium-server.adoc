@@ -224,7 +224,7 @@ To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingS
 |(Optional)  If using Redis to store offsets, whether or not to use SSL to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.ssl.enabled`. Default is 'false'
 
 
-|[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
+|[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history`>>
 |`io.debezium.storage.kafka.history.KafkaDatabaseHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
 This is by default based on Kafka.
@@ -234,43 +234,43 @@ There are also other options available
 * `io.debezium.relational.history.MemoryDatabaseHistory` volatile store for test environments
 * `io.debezium.server.redis.RedisDatabaseHistory` volatile store for test environments
 
-|[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.database.history.file.filename`>>
+|[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.file.filename`>>
 |
 |The name and location of the file to which `FileDatabaseHistory` persists its data.
 
-|[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.database.history.redis.address`>>
+|[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.schema.history.redis.address`>>
 |
 |The Redis host:port to connect to if using `RedisDatabaseHistory`.
 
-|[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.database.history.redis.user`>>
+|[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.schema.history.redis.user`>>
 |
 |The Redis user to use if using `RedisDatabaseHistory`.
 
-|[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.database.history.redis.password`>>
+|[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.schema.history.redis.password`>>
 |
 |The Redis password to use if using `RedisDatabaseHistory`.
 
-|[[debezium-source-database-history-redis-ssl-enabled]]<<debezium-source-database-history-redis-ssl-enabled, `debezium.source.database.history.redis.ssl.enabled`>>
+|[[debezium-source-database-history-redis-ssl-enabled]]<<debezium-source-database-history-redis-ssl-enabled, `debezium.source.schema.history.redis.ssl.enabled`>>
 |
 |Use SSL connection if using `RedisDatabaseHistory`.
 
-|[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.database.history.redis.key`>>
+|[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.schema.history.redis.key`>>
 |
 |The Redis key to use for storage if using `RedisDatabaseHistory`. Default: metadata:debezium:db_history
 
-|[[debezium-source-database-history-redis-retry-initial-delay-ms]]<<debezium-source-database-history-redis-retry-initial-delay-ms, `debezium.source.database.history.redis.retry.initial.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-initial-delay-ms]]<<debezium-source-database-history-redis-retry-initial-delay-ms, `debezium.source.schema.history.redis.retry.initial.delay.ms`>>
 |
 |The initial delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 300 (ms)
 
-|[[debezium-source-database-history-redis-retry-max-delay-ms]]<<debezium-source-database-history-redis-retry-max-delay-ms, `debezium.source.database.history.redis.retry.max.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-max-delay-ms]]<<debezium-source-database-history-redis-retry-max-delay-ms, `debezium.source.schema.history.redis.retry.max.delay.ms`>>
 |
 |The maximum delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 10000 (ms)
 
-|[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.database.history.redis.connection.timeout.ms`>>
+|[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.schema.history.redis.connection.timeout.ms`>>
 |
 |Connection timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
 
-|[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.database.history.redis.socket.timeout.ms`>>
+|[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.schema.history.redis.socket.timeout.ms`>>
 |
 |Socket timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
 
