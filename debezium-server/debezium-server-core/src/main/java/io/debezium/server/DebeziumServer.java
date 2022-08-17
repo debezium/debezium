@@ -68,6 +68,7 @@ public class DebeziumServer {
     private static final String PROP_TRANSFORMS_PREFIX = PROP_PREFIX + "transforms.";
     private static final String PROP_KEY_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "key.";
     private static final String PROP_VALUE_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "value.";
+    private static final String PROP_OFFSET_STORAGE_PREFIX = "offset.storage.";
 
     private static final String PROP_TRANSFORMS = PROP_PREFIX + "transforms";
     private static final String PROP_SINK_TYPE = PROP_SINK_PREFIX + "type";
@@ -129,7 +130,7 @@ public class DebeziumServer {
         configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.", true);
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
-        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", "offset.storage." + name + ".", false);
+        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", PROP_OFFSET_STORAGE_PREFIX + name + ".", false);
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
