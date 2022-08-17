@@ -523,10 +523,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
 
-        this.jdbcConfig = JdbcConfiguration.adapt(
-                config.filter(x -> !x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING)
-                        || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name()))
-                        .subset(DATABASE_CONFIG_PREFIX, true));
+        this.jdbcConfig = JdbcConfiguration.adapt(config.subset(DATABASE_CONFIG_PREFIX, true));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
