@@ -2,7 +2,7 @@
 
 The following table describes the `schema.history` properties for configuring the {prodname} connector.
 
-.Connector database history configuration properties
+.Connector database schema history configuration properties
 [cols="33%a,17%a,50%a",options="header",subs="+attributes"]
 |===
 |Property |Default |Description
@@ -46,12 +46,12 @@ The safe default is `false`.
 |===
 
 [id="{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-.Pass-through database history properties for configuring producer and consumer clients
+.Pass-through database schema history properties for configuring producer and consumer clients
 {empty} +
-{prodname} relies on a Kafka producer to write schema changes to database history topics.
-Similarly, it relies on a Kafka consumer to read from database history topics when a connector starts.
+{prodname} relies on a Kafka producer to write schema changes to database schema history topics.
+Similarly, it relies on a Kafka consumer to read from database schema history topics when a connector starts.
 You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `schema.history.producer.\*` and `schema.history.consumer.*` prefixes.
-The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+The pass-through producer and consumer database schema history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
 
 [source,indent=0]
 ----

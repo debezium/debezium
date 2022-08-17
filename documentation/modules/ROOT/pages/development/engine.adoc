@@ -442,18 +442,18 @@ The default is a periodic commity policy based upon time intervals.
 |===
 
 [[database-history-properties]]
-=== Database history properties
+=== Database schema history properties
 
-Some of the connectors also requires additional set of properties that configures database history:
+Some of the connectors also requires additional set of properties that configures database schema history:
 
 * MySQL
 * SQL Server
 * Oracle
 * Db2
 
-Without proper configuration of the database history the connectors will refuse to start.
+Without proper configuration of the database schema history the connectors will refuse to start.
 The default configuration expects a Kafka cluster to be available.
-For other deployments, a file-based database history storage implementation is available.
+For other deployments, a file-based database schema history storage implementation is available.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -463,23 +463,23 @@ For other deployments, a file-based database history storage implementation is a
 
 |`schema.history`
 |`<...>.KafkaDatabaseHistory`
-|The name of the Java class that is responsible for persistence of the database history. +
+|The name of the Java class that is responsible for persistence of the database schema history. +
 It must implement `<...>.DatabaseHistory` interface.
 
 |`schema.history.file.filename`
 |`""`
-|Path to a file where the database history is stored. +
+|Path to a file where the database schema history is stored. +
 Required when `schema.history` is set to the `<...>.FileDatabaseHistory`.
 
 |`schema.history.kafka.topic`
 |`""`
-|The Kafka topic where the database history is stored. +
+|The Kafka topic where the database schema history is stored. +
 Required when `schema.history` is set to the `<...>.KafkaDatabaseHistory`.
 
 |`schema.history.kafka.bootstrap.servers`
 |`""`
 |The initial list of Kafka cluster servers to connect to.
-The cluster provides the topic to store the database history. +
+The cluster provides the topic to store the database schema history. +
 Required when `schema.history` is set to the `<...>.KafkaDatabaseHistory`.
 
 |=======================
