@@ -735,6 +735,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
+    @Ignore // the test is very flaky in CI environment
     public void verifyOffsets() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
