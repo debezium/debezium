@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -1550,6 +1551,44 @@ public interface Configuration {
         int minLength = prefixWithSeparator.length();
         Function<String, String> prefixRemover = removePrefix ? key -> key.substring(minLength) : key -> key;
         return filter(key -> key != null && key.startsWith(prefixWithSeparator)).map(prefixRemover);
+    }
+
+    /**
+     * Return a new {@link Configuration} that merges several {@link Configuration}s into one.
+     * <p>
+     * This method returns this Configuration instance if the supplied {@code configs} is null or empty.
+     *
+     * @param configs Configurations to be merged
+     * @return the subset of this Configuration; never null
+     */
+    default Configuration merge(Configuration... configs) {
+        if (configs == null || configs.length == 0) {
+            return this;
+        }
+
+        Set<String> keys = new HashSet<>();
+        for (Configuration config : configs) {
+            keys.addAll(config.keys());
+        }
+
+        return new Configuration() {
+            @Override
+            public Set<String> keys() {
+                return Collect.unmodifiableSet(Configuration.this.keys().stream()
+                        .filter(k -> k != null)
+                        .collect(Collectors.toSet()));
+            }
+
+            @Override
+            public String getString(String key) {
+                return Configuration.this.getString(key);
+            }
+
+            @Override
+            public String toString() {
+                return withMaskedPasswords().asProperties().toString();
+            }
+        };
     }
 
     /**

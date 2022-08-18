@@ -309,6 +309,7 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = "database.";
+    public static final String DRIVER_CONFIG_PREFIX = "driver.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;

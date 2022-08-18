@@ -6,6 +6,9 @@
 
 package io.debezium.connector.mysql;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -33,7 +36,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Strings;
 
 /**
@@ -497,7 +499,7 @@ public class MySqlConnection extends JdbcConnection {
                     .edit()
                     .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
                     .build()
-                    .subset("database.", true);
+                    .subset(DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true));
 
             final Builder jdbcConfigBuilder = dbConfig
                     .edit()
