@@ -1377,6 +1377,16 @@ It is mandatory to provide the current primary address.
 This limitation will be removed in the next {prodname} release.
 ====
 
+|[[mongodb-property-mongodb-connection-string]]<<mongodb-property-mongodb-connection-string, `+mongodb.connection.string+`>>
+|
+|Mongodb connection string used for initial replica set discovery. This option requires `mongodb.members.auto.discover` to be set to `true` and it mustn't be used together with `mognodb.hosts` +
+ +
+[NOTE]
+====
+At the moment the connection string is used only for the initial replica set discovery. Other
+configuration properties are still used when connecting directly to primary rs members -- with the exception of credential which (when present) is extracted from given connection string.
+====
+
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
 |
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
