@@ -7,7 +7,9 @@ package io.debezium.pipeline;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
-public class DataChangeEvent {
+import io.debezium.util.ApproximateStructSizeCalculator;
+
+public class DataChangeEvent implements Sizeable {
 
     private final SourceRecord record;
 
@@ -22,5 +24,10 @@ public class DataChangeEvent {
     @Override
     public String toString() {
         return "DataChangeEvent [record=" + record + "]";
+    }
+
+    @Override
+    public long objectSize() {
+        return ApproximateStructSizeCalculator.getApproximateRecordSize(record);
     }
 }
