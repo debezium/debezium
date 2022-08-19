@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 
 public class SqlServerConnectorConfigTest {
@@ -37,7 +38,7 @@ public class SqlServerConnectorConfigTest {
 
     private Configuration.Builder defaultConfig() {
         return Configuration.create()
-                .with(SqlServerConnectorConfig.SERVER_NAME, "server")
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "server")
                 .with(SqlServerConnectorConfig.HOSTNAME, "localhost")
                 .with(SqlServerConnectorConfig.USER, "debezium")
                 .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")

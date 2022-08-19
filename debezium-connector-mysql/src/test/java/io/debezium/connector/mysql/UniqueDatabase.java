@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileDatabaseHistory;
 
 /**
@@ -128,6 +129,10 @@ public class UniqueDatabase {
         return serverName;
     }
 
+    public String getTopicPrefix() {
+        return serverName;
+    }
+
     /**
      * Creates the database and populates it with initialization SQL script. To use multiline
      * statements for stored procedures definition use delimiter $$ to delimit statements in the procedure.
@@ -229,10 +234,10 @@ public class UniqueDatabase {
     public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
         return defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, getServerName());
     }
 
     /**

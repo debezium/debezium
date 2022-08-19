@@ -26,7 +26,7 @@ public class KafkaTestConfigSource extends TestConfigSource {
         kafkaConfig.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
 
         kafkaConfig.put("debezium.source.offset.flush.interval.ms", "0");
-        kafkaConfig.put("debezium.source.database.server.name", "testc");
+        kafkaConfig.put("debezium.source.topic.prefix", "testc");
         kafkaConfig.put("debezium.source.schema.include.list", "inventory");
         kafkaConfig.put("debezium.source.table.include.list", "inventory.customers");
         // DBZ-5105

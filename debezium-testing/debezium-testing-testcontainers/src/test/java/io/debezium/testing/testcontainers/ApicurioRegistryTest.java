@@ -158,7 +158,7 @@ public class ApicurioRegistryTest {
 
             // host, database, user etc. are obtained from the container
             final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                    .with("database.server.name", "dbserver" + id)
+                    .with("topic.prefix", "dbserver" + id)
                     .with("slot.name", "debezium_" + id)
                     .with("key.converter", "org.apache.kafka.connect.json.JsonConverter")
                     .with("value.converter", "io.debezium.converters.CloudEventsConverter")
@@ -231,7 +231,7 @@ public class ApicurioRegistryTest {
 
         // host, database, user etc. are obtained from the container
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver" + id)
+                .with("topic.prefix", "dbserver" + id)
                 .with("slot.name", "debezium_" + id)
                 .with("key.converter", converter)
                 .with("key.converter.apicurio.registry.url", apicurioUrl)

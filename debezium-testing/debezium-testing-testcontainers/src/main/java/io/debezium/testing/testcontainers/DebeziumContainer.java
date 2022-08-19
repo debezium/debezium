@@ -375,7 +375,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public static ConnectorConfiguration getPostgresConnectorConfiguration(PostgreSQLContainer<?> postgresContainer, int id, String... options) {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver" + id)
+                .with("topic.prefix", "dbserver" + id)
                 .with("slot.name", "debezium_" + id);
 
         if (options != null && options.length > 0) {

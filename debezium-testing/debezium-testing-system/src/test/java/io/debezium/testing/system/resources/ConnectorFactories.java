@@ -32,7 +32,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("database.server.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("database.server.id", 5400 + random.nextInt(1000))
                 .put("connector.class", "io.debezium.connector.mysql.MySqlConnector")
                 .put("task.max", 1)
@@ -52,7 +52,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("database.server.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -72,7 +72,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("database.server.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -107,7 +107,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("database.server.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.db2.Db2Connector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
@@ -127,7 +127,7 @@ public class ConnectorFactories {
         int dbPort = controller.getDatabasePort();
 
         return cb
-                .put("database.server.name", cb.getDbServerName())
+                .put("topic.prefix", cb.getDbServerName())
                 .put("connector.class", "io.debezium.connector.oracle.OracleConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)

@@ -158,7 +158,7 @@ public class DebeziumContainerTest {
     private ConnectorConfiguration getConfiguration(int id) {
         // host, database, user etc. are obtained from the container
         return ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver" + id)
+                .with("topic.prefix", "dbserver" + id)
                 .with("slot.name", "debezium_" + id);
     }
 

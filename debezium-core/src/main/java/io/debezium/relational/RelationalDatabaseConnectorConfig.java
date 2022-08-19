@@ -37,6 +37,7 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
@@ -188,19 +189,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.HIGH)
             .required()
             .withDescription("The name of the database from which the connector should capture changes");
-
-    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
-            .withDisplayName("Namespace")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .required()
-            .withValidation(RelationalDatabaseConnectorConfig::validateServerName)
-            .withDescription("Unique name that identifies the database server and all "
-                    + "recorded offsets, and that is used as a prefix for all schemas and topics. "
-                    + "Each distinct installation should have a separate namespace and be monitored by "
-                    + "at most one Debezium connector.");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
@@ -479,7 +467,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
-                    SERVER_NAME)
+                    AbstractTopicNamingStrategy.TOPIC_PREFIX)
             .connector(
                     DECIMAL_HANDLING_MODE,
                     TIME_PRECISION_MODE,
@@ -740,17 +728,5 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
         }
         return problemCount;
-    }
-
-    private static int validateServerName(Configuration config, Field field, Field.ValidationOutput problems) {
-        String serverName = config.getString(SERVER_NAME);
-
-        if (serverName != null) {
-            if (!SERVER_NAME_PATTERN.asPredicate().test(serverName)) {
-                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
-                return 1;
-            }
-        }
-        return 0;
     }
 }

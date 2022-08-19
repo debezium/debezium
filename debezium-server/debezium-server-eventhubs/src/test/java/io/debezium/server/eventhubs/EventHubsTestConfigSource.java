@@ -33,7 +33,7 @@ public class EventHubsTestConfigSource extends TestConfigSource {
         eventHubsTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         eventHubsTest.put("debezium.source.offset.flush.interval.ms", "0");
-        eventHubsTest.put("debezium.source.database.server.name", "testc");
+        eventHubsTest.put("debezium.source.topic.prefix", "testc");
         eventHubsTest.put("debezium.source.schema.include.list", "inventory");
         eventHubsTest.put("debezium.source.table.include.list", "inventory.customers");
 

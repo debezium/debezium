@@ -45,7 +45,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Strings;
 
 /**
@@ -132,9 +131,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
                     + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                     + "snapshot is taken.");
-
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
@@ -470,14 +466,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    SERVER_NAME)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
                     HOSTNAME,
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_NAME,
                     DATABASE_NAME,
                     PDB_NAME,
                     XSTREAM_SERVER_NAME,

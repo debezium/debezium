@@ -49,7 +49,7 @@ public class RedisSSLTestResourceLifecycleManager implements QuarkusTestResource
         params.put("debezium.sink.redis.ssl.enabled", "true");
         params.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         params.put("debezium.source.offset.flush.interval.ms", "0");
-        params.put("debezium.source.database.server.name", "testc");
+        params.put("debezium.source.topic.prefix", "testc");
         params.put("debezium.source.schema.include.list", "inventory");
         params.put("debezium.source.table.include.list", "inventory.customers,inventory.redis_test,inventory.redis_test2");
 

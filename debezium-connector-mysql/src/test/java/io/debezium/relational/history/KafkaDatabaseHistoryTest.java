@@ -39,9 +39,9 @@ import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
@@ -88,7 +88,7 @@ public class KafkaDatabaseHistoryTest {
         MySqlPartition source = new MySqlPartition("my-server", "my-db");
         Configuration config = Configuration.empty()
                 .edit()
-                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "dbserver1").build();
 
         position = new MySqlOffsetContext(false, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
                 new SourceInfo(new MySqlConnectorConfig(config)));

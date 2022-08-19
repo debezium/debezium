@@ -22,7 +22,7 @@ public class PubSubLiteTestConfigSource extends TestConfigSource {
         pubsubLiteTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         pubsubLiteTest.put("debezium.source.offset.flush.interval.ms", "0");
-        pubsubLiteTest.put("debezium.source.database.server.name", "testc");
+        pubsubLiteTest.put("debezium.source.topic.prefix", "testc");
         pubsubLiteTest.put("debezium.source.schema.include.list", "inventory");
         pubsubLiteTest.put("debezium.source.table.include.list", "inventory.customers");
 

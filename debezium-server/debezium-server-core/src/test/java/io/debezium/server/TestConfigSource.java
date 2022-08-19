@@ -36,7 +36,7 @@ public class TestConfigSource implements ConfigSource {
         integrationTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         integrationTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         integrationTest.put("debezium.source.offset.flush.interval.ms", "0");
-        integrationTest.put("debezium.source.database.server.name", "testc");
+        integrationTest.put("debezium.source.topic.prefix", "testc");
         integrationTest.put("debezium.source.schema.include.list", "inventory");
         integrationTest.put("debezium.source.table.include.list", "inventory.customers");
 

@@ -23,7 +23,7 @@ public class NatsStreamingTestConfigSource extends TestConfigSource {
         natsStreamingTest.put("debezium.sink.nats-streaming.cluster.id", "debezium");
         natsStreamingTest.put("debezium.sink.nats-streaming.client.id", "debezium-sink");
         natsStreamingTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
-        natsStreamingTest.put("debezium.source.database.server.name", "testc");
+        natsStreamingTest.put("debezium.source.topic.prefix", "testc");
         natsStreamingTest.put("debezium.source.schema.include.list", "inventory");
         natsStreamingTest.put("debezium.source.table.include.list", "inventory.customers");
         natsStreamingTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
