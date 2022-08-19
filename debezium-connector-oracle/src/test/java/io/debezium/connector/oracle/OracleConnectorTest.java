@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class OracleConnectorTest {
     OracleConnector connector;
@@ -32,7 +33,7 @@ public class OracleConnectorTest {
     @Test
     public void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
-        config.put(OracleConnectorConfig.SERVER_NAME.name(), "dbserver1");
+        config.put(AbstractTopicNamingStrategy.TOPIC_PREFIX.name(), "dbserver1");
         config.put(OracleConnectorConfig.HOSTNAME.name(), "narnia");
         config.put(OracleConnectorConfig.PORT.name(), "4321");
         config.put(OracleConnectorConfig.DATABASE_NAME.name(), "oracle");

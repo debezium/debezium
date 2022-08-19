@@ -8,7 +8,7 @@ package io.debezium.config;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.SERVER_NAME;
+import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_PREFIX;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.List;
@@ -307,18 +307,18 @@ public class ConfigurationTest {
     @FixFor("DBZ-3427")
     public void testServerNameValidation() {
         List<String> errorList;
-        config = Configuration.create().with(SERVER_NAME, "server_11").build();
-        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+        config = Configuration.create().with(TOPIC_PREFIX, "server_11").build();
+        assertThat(config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages()).isEmpty();
 
-        config = Configuration.create().with(SERVER_NAME, "server-12").build();
-        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+        config = Configuration.create().with(TOPIC_PREFIX, "server-12").build();
+        assertThat(config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages()).isEmpty();
 
-        config = Configuration.create().with(SERVER_NAME, "server.12").build();
-        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+        config = Configuration.create().with(TOPIC_PREFIX, "server.12").build();
+        assertThat(config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages()).isEmpty();
 
-        config = Configuration.create().with(SERVER_NAME, "server@X").build();
-        errorList = config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages();
+        config = Configuration.create().with(TOPIC_PREFIX, "server@X").build();
+        errorList = config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages();
         assertThat(errorList.get(0))
-                .isEqualTo(Field.validationOutput(SERVER_NAME, "server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)"));
+                .isEqualTo(Field.validationOutput(TOPIC_PREFIX, "server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)"));
     }
 }

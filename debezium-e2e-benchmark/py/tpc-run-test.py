@@ -174,7 +174,7 @@ def main(argv):
         print('tpc-connector deleted')
         pass
 
-    databaseservername = config['config']['database.server.name']
+    databaseservername = config['config']['topic.prefix']
     topicname = databaseservername + '.' + table
     historybootstrapserver = config['config'].get('schema.history.kafka.bootstrap.servers')
     if historybootstrapserver != None:

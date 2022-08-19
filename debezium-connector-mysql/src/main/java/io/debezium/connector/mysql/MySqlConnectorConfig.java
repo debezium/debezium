@@ -37,7 +37,6 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
-import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 import io.debezium.util.Collect;
 
 /**
@@ -539,9 +538,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                             + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, "
                             + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(KafkaStorageConfiguration::validateServerNameIsDifferentFromHistoryTopicName);
-
     public static final Field SERVER_ID = Field.create("database.server.id")
             .withDisplayName("Cluster ID")
             .withType(Type.LONG)
@@ -885,7 +881,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    RelationalDatabaseConnectorConfig.SERVER_NAME,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
@@ -893,7 +888,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_NAME,
                     ON_CONNECT_STATEMENTS,
                     SERVER_ID,
                     SERVER_ID_OFFSET,

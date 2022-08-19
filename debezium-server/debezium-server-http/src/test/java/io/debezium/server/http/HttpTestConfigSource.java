@@ -23,7 +23,7 @@ public class HttpTestConfigSource extends TestConfigSource {
         httpTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         httpTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         httpTest.put("debezium.source.offset.flush.interval.ms", "0");
-        httpTest.put("debezium.source.database.server.name", "testc");
+        httpTest.put("debezium.source.topic.prefix", "testc");
         httpTest.put("debezium.source.schema.include.list", "inventory");
         httpTest.put("debezium.source.table.include.list", "inventory.customers");
 

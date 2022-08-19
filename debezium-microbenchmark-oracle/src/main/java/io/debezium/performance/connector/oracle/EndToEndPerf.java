@@ -52,6 +52,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.IoUtil;
 
@@ -235,7 +236,7 @@ public class EndToEndPerf {
             Configuration.Builder builder = Configuration.create();
             jdbcConfiguration.forEach((f, v) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
 
-            return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
+            return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                     .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                     .with(OracleConnectorConfig.CONNECTOR_ADAPTER, ConnectorAdapter.LOG_MINER)

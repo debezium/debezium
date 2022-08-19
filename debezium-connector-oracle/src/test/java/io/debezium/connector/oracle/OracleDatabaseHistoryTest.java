@@ -18,13 +18,13 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.AbstractDatabaseHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.TableChanges;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 import oracle.jdbc.OracleTypes;
 
@@ -73,7 +73,7 @@ public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
         final OraclePartition source = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.getDatabaseName());
         final Configuration config = Configuration.empty()
                 .edit()
-                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, TestHelper.SERVER_NAME)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, TestHelper.SERVER_NAME)
                 .build();
         final OracleOffsetContext position = new OracleOffsetContext(new OracleConnectorConfig(config), Scn.valueOf(999),
                 CommitScn.valueOf(999L), null, Scn.valueOf(999), Collections.emptyMap(), false, true, new TransactionContext(),

@@ -18,6 +18,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.relational.TableId;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class SourceInfoTest {
 
@@ -27,7 +28,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
-                        .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
+                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
                         .build());
         source = new SourceInfo(connectorConfig);
         source.setChangeLsn(Lsn.valueOf(new byte[]{ 0x01 }));

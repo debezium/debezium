@@ -17,6 +17,7 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.Conversions;
 
 /**
@@ -31,7 +32,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                        .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
+                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
                         .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
                         .build()));
         source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));

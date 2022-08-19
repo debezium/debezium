@@ -25,6 +25,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileDatabaseHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -160,7 +161,7 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
         }
 
-        return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
+        return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
@@ -230,7 +231,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
+        builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 
@@ -244,7 +245,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
+        builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 

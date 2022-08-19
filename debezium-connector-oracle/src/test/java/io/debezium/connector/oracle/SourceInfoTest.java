@@ -18,6 +18,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class SourceInfoTest {
 
@@ -27,7 +28,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(OracleConnectorConfig.SERVER_NAME, "serverX")
+                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .build());
         source = new SourceInfo(connectorConfig);
