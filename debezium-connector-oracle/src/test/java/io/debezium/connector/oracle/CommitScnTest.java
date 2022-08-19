@@ -50,7 +50,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1:");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:");
     }
 
     @Test
@@ -65,7 +65,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1:");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:");
 
         // Test parsing with new multi-part SCN, single value
         commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1");
@@ -76,10 +76,10 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:");
 
         // Test parsing with new multi-part SCN with transaction ids, single value
-        commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1:123456789-234567890");
+        commitScn = CommitScn.valueOf("12345:1:123456789-234567890");
         assertThat(commitScn).isNotNull();
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForAllRedoThreads()).hasSize(1);
@@ -88,7 +88,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getRedoThreadCommitScn(1).getTxIds()).containsOnly("123456789", "234567890");
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:123456789-234567890");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:123456789-234567890");
 
         // Test parsing with new multi-part SCN, multi value
         commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1,678901:1253ef.123457ee0.abcd:0:2");
@@ -101,10 +101,10 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(2)).isEqualTo(Scn.valueOf(678901L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(678901L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:,678901:1253ef.123457ee0.abcd:0:2:");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:,678901:2:");
 
         // Test parsing with new multi-part SCN with transaction ids, multi value
-        commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1:23456-78901,678901:1253ef.123457ee0.abcd:0:2:12345-67890");
+        commitScn = CommitScn.valueOf("12345:1:23456-78901,678901:2:12345-67890");
         assertThat(commitScn).isNotNull();
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(678901L));
         assertThat(commitScn.getCommitScnForAllRedoThreads()).hasSize(2);
@@ -116,7 +116,7 @@ public class CommitScnTest {
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(678901L));
         assertThat(commitScn.getRedoThreadCommitScn(1).getTxIds()).containsOnly("23456", "78901");
         assertThat(commitScn.getRedoThreadCommitScn(2).getTxIds()).containsOnly("12345", "67890");
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:23456-78901,678901:1253ef.123457ee0.abcd:0:2:12345-67890");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:1:23456-78901,678901:2:12345-67890");
     }
 
     @Test
@@ -143,7 +143,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(23456L));
 
         // Test with a single redo record, with transaction ids
-        commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1:12345-67890");
+        commitScn = CommitScn.valueOf("12345:1:12345-67890");
         commitScn.setCommitScnOnAllThreads(Scn.valueOf(23456L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(23456L));
         assertThat(commitScn.getCommitScnForAllRedoThreads()).hasSize(1);
@@ -159,7 +159,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForRedoThread(2)).isEqualTo(Scn.valueOf(23456L));
 
         // Test with a multi redo record, with transaction ids
-        commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1:12345-67890,678901:1253ef.123457ee0.abcd:0:2:23456-78901");
+        commitScn = CommitScn.valueOf("12345:1:12345-67890,678901:2:23456-78901");
         commitScn.setCommitScnOnAllThreads(Scn.valueOf(23456L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(23456L));
         assertThat(commitScn.getCommitScnForAllRedoThreads()).hasSize(2);

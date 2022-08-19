@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -96,7 +95,7 @@ public class CommitScn implements Comparable<Scn> {
     public boolean hasCommitAlreadyBeenHandled(LogMinerEventRow row) {
         final RedoThreadCommitScn commitScn = redoThreadCommitScns.get(row.getThread());
         if (commitScn != null) {
-            Set<String> txIds = commitScn.getTxIds();
+            final Set<String> txIds = commitScn.getTxIds();
             return commitScn.getCommitScn().compareTo(row.getScn()) > 0 ||
                     (commitScn.getCommitScn().compareTo(row.getScn()) == 0 && txIds.contains(row.getTransactionId()));
         }
@@ -116,18 +115,13 @@ public class CommitScn implements Comparable<Scn> {
     public void recordCommit(LogMinerEventRow row) {
         final RedoThreadCommitScn redoCommitScn = redoThreadCommitScns.get(row.getThread());
         if (redoCommitScn != null) {
-            Scn prevCommitScn = redoCommitScn.getCommitScn();
-            if (!Objects.equals(prevCommitScn, row.getScn())) {
-                redoCommitScn.resetTxIds();
+            if (redoCommitScn.getCommitScn().compareTo(row.getScn()) == 0) {
+                redoCommitScn.getTxIds().add(row.getTransactionId());
+                return;
             }
-            redoCommitScn.getTxIds().add(row.getTransactionId());
-            redoCommitScn.setCommitScn(row.getScn());
-            redoCommitScn.setRsId(row.getRsId());
-            redoCommitScn.setSsn(row.getSsn());
         }
-        else {
-            redoThreadCommitScns.put(row.getThread(), new RedoThreadCommitScn(row));
-        }
+
+        redoThreadCommitScns.put(row.getThread(), new RedoThreadCommitScn(row));
     }
 
     /**
@@ -182,12 +176,6 @@ public class CommitScn implements Comparable<Scn> {
                 if (redoThreadCommitScn.getCommitScn() != null && !redoThreadCommitScn.getCommitScn().isNull()) {
                     sourceInfoStruct.put(SourceInfo.COMMIT_SCN_KEY, redoThreadCommitScn.getCommitScn().toString());
                 }
-
-                if (redoThreadCommitScn.getRsId() != null) {
-                    sourceInfoStruct.put(ROLLBACK_SEGMENT_ID_KEY, redoThreadCommitScn.getRsId());
-                }
-
-                sourceInfoStruct.put(SQL_SEQUENCE_NUMBER_KEY, redoThreadCommitScn.getSsn());
                 sourceInfoStruct.put(REDO_THREAD_KEY, redoThreadCommitScn.getThread());
             }
         }
@@ -226,7 +214,7 @@ public class CommitScn implements Comparable<Scn> {
     public static CommitScn valueOf(Long value) {
         final Set<RedoThreadCommitScn> scns = new HashSet<>();
         if (value != null) {
-            scns.add(new RedoThreadCommitScn(1, Scn.valueOf(value), null, 0, new HashSet<>()));
+            scns.add(new RedoThreadCommitScn(1, Scn.valueOf(value), new HashSet<>()));
         }
         return new CommitScn(scns);
     }
@@ -242,6 +230,10 @@ public class CommitScn implements Comparable<Scn> {
         if (value instanceof String) {
             return CommitScn.valueOf((String) value);
         }
+        // todo:
+        // Much like the parsing handler in the RedOThreadCommitScn class, the same question applies here.
+        // When we do consider removing this behavior? The migration of Long to String occurred in the
+        // 1.5.0.Final release, can we drop this in 2.0?
         else if (value != null) {
             // This might be a legacy offset being read when the values were Long data types.
             // In this case, we can assume that the redo thread is 1 and explicitly create a
@@ -253,9 +245,7 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     public static SchemaBuilder schemaBuilder(SchemaBuilder schemaBuilder) {
-        return schemaBuilder.field(ROLLBACK_SEGMENT_ID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SQL_SEQUENCE_NUMBER_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(REDO_THREAD_KEY, Schema.OPTIONAL_INT32_SCHEMA);
+        return schemaBuilder.field(REDO_THREAD_KEY, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
     /**
@@ -277,23 +267,19 @@ public class CommitScn implements Comparable<Scn> {
 
         private final int thread;
         private Scn commitScn;
-        private String rsId;
-        private int ssn;
         private Set<String> txIds;
 
         public RedoThreadCommitScn(int thread) {
-            this(thread, Scn.NULL, null, 0, Collections.emptySet());
+            this(thread, Scn.NULL, Collections.emptySet());
         }
 
         public RedoThreadCommitScn(LogMinerEventRow row) {
-            this(row.getThread(), row.getScn(), row.getRsId(), row.getSsn(), Collections.singleton(row.getTransactionId()));
+            this(row.getThread(), row.getScn(), Collections.singleton(row.getTransactionId()));
         }
 
-        public RedoThreadCommitScn(int thread, Scn commitScn, String rsId, int ssn, Set<String> txIds) {
+        public RedoThreadCommitScn(int thread, Scn commitScn, Set<String> txIds) {
             this.thread = thread;
             this.commitScn = commitScn;
-            this.rsId = rsId;
-            this.ssn = ssn;
             // Use TreeSet to guarantee a deterministic output order in offsets.
             this.txIds = new TreeSet<>(txIds);
         }
@@ -310,22 +296,6 @@ public class CommitScn implements Comparable<Scn> {
             this.commitScn = commitScn;
         }
 
-        public String getRsId() {
-            return rsId;
-        }
-
-        public void setRsId(String rsId) {
-            this.rsId = rsId;
-        }
-
-        public int getSsn() {
-            return ssn;
-        }
-
-        public void setSsn(int ssn) {
-            this.ssn = ssn;
-        }
-
         public Set<String> getTxIds() {
             return txIds;
         }
@@ -335,7 +305,7 @@ public class CommitScn implements Comparable<Scn> {
         }
 
         public String getFormattedString() {
-            return commitScn.toString() + ":" + (rsId != null ? rsId : "") + ":" + ssn + ":" + thread + ":" + Strings.join("-", txIds);
+            return commitScn.toString() + ":" + thread + ":" + Strings.join("-", txIds);
         }
 
         public static RedoThreadCommitScn valueOf(String value) {
@@ -344,27 +314,31 @@ public class CommitScn implements Comparable<Scn> {
                 // Reading a legacy commit_scn entry that has only the SCN bit
                 // Create the redo thread entry with thread 1.
                 // There is only ever a single redo thread commit entry in this use case.
-                return new RedoThreadCommitScn(1, Scn.valueOf(parts[0]), null, 0, new HashSet<>());
+                return new RedoThreadCommitScn(1, Scn.valueOf(parts[0]), new HashSet<>());
+            }
+            // todo:
+            // The 4-part logic was back ported to Debezium 1.9.5 and the 3-part will be to 1.9.6.
+            // We need to decide at what point do we want to eliminate this backward compatibility logic
+            // and document what version a user must upgrade to as an "intermediate". For this use case,
+            // we could treat 2.0.0.Final as the intermediate and remove the legacy parsing support in
+            // 2.1.0.Final, meaning users upgrading from prior to 1.9.6 will be required to jump first
+            // to 2.0 and then to 2.1?
+            else if (parts.length == 3) {
+                // The V2 redo-thread based commit scn entry, consisting of 3 parts
+                final Scn scn = Scn.valueOf(parts[0]);
+                final int thread = Integer.parseInt(parts[1]);
+                Set<String> txIds = new HashSet<>();
+                if (!parts[2].isEmpty()) {
+                    Collections.addAll(txIds, parts[2].split("-"));
+                }
+                return new RedoThreadCommitScn(thread, scn, txIds);
             }
             else if (parts.length == 4) {
-                // The new redo-thread based commit scn entry
+                // The V1 redo-thread based commit scn entry, consisting of 4 parts.
+                // Parts at index 1 and 2 are no longer used.
                 final Scn scn = Scn.valueOf(parts[0]);
-                final String rsId = parts[1];
-                final int ssn = Integer.parseInt(parts[2]);
                 final int thread = Integer.parseInt(parts[3]);
-                return new RedoThreadCommitScn(thread, scn, rsId, ssn, new HashSet<>());
-            }
-            else if (parts.length == 5) {
-                // The new redo-thread based commit scn entry
-                final Scn scn = Scn.valueOf(parts[0]);
-                final String rsId = parts[1];
-                final int ssn = Integer.parseInt(parts[2]);
-                final int thread = Integer.parseInt(parts[3]);
-                Set<String> txIds = new HashSet<>();
-                if (!parts[4].isEmpty()) {
-                    Collections.addAll(txIds, parts[4].split("-"));
-                }
-                return new RedoThreadCommitScn(thread, scn, rsId, ssn, txIds);
+                return new RedoThreadCommitScn(thread, scn, new HashSet<>());
             }
             throw new DebeziumException("An unexpected redo thread commit scn entry: '" + value + "'");
         }
@@ -374,8 +348,6 @@ public class CommitScn implements Comparable<Scn> {
             return "RedoThreadCommitScn{" +
                     "thread=" + thread +
                     ", commitScn=" + commitScn +
-                    ", rsId='" + rsId + '\'' +
-                    ", ssn=" + ssn +
                     ", txIds=" + txIds +
                     '}';
         }

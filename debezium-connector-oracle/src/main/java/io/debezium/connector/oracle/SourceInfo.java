@@ -33,6 +33,8 @@ public class SourceInfo extends BaseSourceInfo {
     private Instant sourceTime;
     private Set<TableId> tableIds;
     private Integer redoThread;
+    private String rsId;
+    private int ssn;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -76,6 +78,22 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
+    }
+
+    public String getRsId() {
+        return rsId;
+    }
+
+    public void setRsId(String rsId) {
+        this.rsId = rsId;
+    }
+
+    public int getSsn() {
+        return ssn;
+    }
+
+    public void setSsn(int ssn) {
+        this.ssn = ssn;
     }
 
     public Instant getSourceTime() {
