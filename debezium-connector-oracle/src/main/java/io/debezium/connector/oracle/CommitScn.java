@@ -14,13 +14,13 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.util.Strings;
 
 /**
  * Represents either a single or a collection of commit {@link Scn} positions that collectively
