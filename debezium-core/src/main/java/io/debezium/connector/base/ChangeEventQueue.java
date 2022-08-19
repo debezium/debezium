@@ -24,9 +24,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
-import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.Sizeable;
 import io.debezium.time.Temporals;
-import io.debezium.util.ApproximateStructSizeCalculator;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -59,7 +58,7 @@ import io.debezium.util.Threads.Timer;
  *            may be used.
  */
 @ThreadSafe
-public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQueueMetrics {
+public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
@@ -107,7 +106,7 @@ public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQ
         this.buffering = buffering;
     }
 
-    public static class Builder<T extends DataChangeEvent> {
+    public static class Builder<T extends Sizeable> {
 
         private Duration pollInterval;
         private int maxQueueSize;
@@ -223,7 +222,7 @@ public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQ
             queue.add(record);
             // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
-                long messageSize = ApproximateStructSizeCalculator.getApproximateRecordSize(record.getRecord());
+                long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);
                 currentQueueSizeInBytes += messageSize;
             }
@@ -290,7 +289,7 @@ public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQ
             return records.size();
         }
         int recordsToDrain = Math.min(queueSize, maxElements);
-        T[] drainedRecords = (T[]) new DataChangeEvent[recordsToDrain];
+        T[] drainedRecords = (T[]) new Sizeable[recordsToDrain];
         for (int i = 0; i < recordsToDrain; i++) {
             T record = queue.poll();
             drainedRecords[i] = record;

@@ -141,7 +141,7 @@ public class ErrorHandlerTest {
     }
 
     private ChangeEventQueue<DataChangeEvent> queue() {
-        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<>()
+        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(1))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
