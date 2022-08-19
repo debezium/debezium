@@ -50,7 +50,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1:");
     }
 
     @Test
@@ -65,7 +65,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345::0:1:");
 
         // Test parsing with new multi-part SCN, single value
         commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1");
@@ -76,7 +76,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForAllRedoThreads().get(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(12345L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:");
 
         // Test parsing with new multi-part SCN, multi value
         commitScn = CommitScn.valueOf("12345:00241f.00093ff0.0010:0:1,678901:1253ef.123457ee0.abcd:0:2");
@@ -89,7 +89,7 @@ public class CommitScnTest {
         assertThat(commitScn.getCommitScnForRedoThread(1)).isEqualTo(Scn.valueOf(12345L));
         assertThat(commitScn.getCommitScnForRedoThread(2)).isEqualTo(Scn.valueOf(678901L));
         assertThat(commitScn.getMaxCommittedScn()).isEqualTo(Scn.valueOf(678901L));
-        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1,678901:1253ef.123457ee0.abcd:0:2");
+        assertThat(encodedCommitScn(commitScn)).isEqualTo("12345:00241f.00093ff0.0010:0:1:,678901:1253ef.123457ee0.abcd:0:2:");
     }
 
     @Test
