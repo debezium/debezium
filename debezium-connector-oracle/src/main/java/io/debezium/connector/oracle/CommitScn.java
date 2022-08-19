@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.util.Strings;
 
@@ -101,6 +103,11 @@ public class CommitScn implements Comparable<Scn> {
         return false;
     }
 
+    @VisibleForTesting
+    public RedoThreadCommitScn getRedoThreadCommitScn(int thread) {
+        return redoThreadCommitScns.get(thread);
+    }
+
     /**
      * Records the specified commit in the commit scn
      *
@@ -110,15 +117,10 @@ public class CommitScn implements Comparable<Scn> {
         final RedoThreadCommitScn redoCommitScn = redoThreadCommitScns.get(row.getThread());
         if (redoCommitScn != null) {
             Scn prevCommitScn = redoCommitScn.getCommitScn();
-            if (Objects.equals(prevCommitScn, row.getScn())) {
-                Set<String> txIds = redoCommitScn.getTxIds();
-                txIds.add(row.getTransactionId());
+            if (!Objects.equals(prevCommitScn, row.getScn())) {
+                redoCommitScn.resetTxIds();
             }
-            else {
-                Set<String> txIds = new HashSet<>();
-                txIds.add(row.getTransactionId());
-                redoCommitScn.setTxIds(txIds);
-            }
+            redoCommitScn.getTxIds().add(row.getTransactionId());
             redoCommitScn.setCommitScn(row.getScn());
             redoCommitScn.setRsId(row.getRsId());
             redoCommitScn.setSsn(row.getSsn());
@@ -294,11 +296,11 @@ public class CommitScn implements Comparable<Scn> {
         private Set<String> txIds;
 
         public RedoThreadCommitScn(int thread) {
-            this(thread, Scn.NULL, null, 0, new HashSet<>());
+            this(thread, Scn.NULL, null, 0, Collections.emptySet());
         }
 
         public RedoThreadCommitScn(LogMinerEventRow row) {
-            this(row.getThread(), row.getScn(), row.getRsId(), row.getSsn(), new HashSet<>());
+            this(row.getThread(), row.getScn(), row.getRsId(), row.getSsn(), Collections.singleton(row.getTransactionId()));
         }
 
         public RedoThreadCommitScn(int thread, Scn commitScn, String rsId, int ssn, Set<String> txIds) {
@@ -306,7 +308,8 @@ public class CommitScn implements Comparable<Scn> {
             this.commitScn = commitScn;
             this.rsId = rsId;
             this.ssn = ssn;
-            this.txIds = txIds;
+            // Use TreeSet to guarantee a deterministic output order in offsets.
+            this.txIds = new TreeSet<>(txIds);
         }
 
         public int getThread() {
@@ -341,8 +344,8 @@ public class CommitScn implements Comparable<Scn> {
             return txIds;
         }
 
-        public void setTxIds(Set<String> txIds) {
-            this.txIds = txIds;
+        public void resetTxIds() {
+            this.txIds = new TreeSet<>();
         }
 
         public String getFormattedString() {
