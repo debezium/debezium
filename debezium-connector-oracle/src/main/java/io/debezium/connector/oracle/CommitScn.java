@@ -342,7 +342,16 @@ public class CommitScn implements Comparable<Scn> {
                 // Create the redo thread entry with thread 1.
                 // There is only ever a single redo thread commit entry in this use case.
                 return new RedoThreadCommitScn(1, Scn.valueOf(parts[0]), null, 0, new HashSet<>());
-            } else if (parts.length == 5) {
+            }
+            else if (parts.length == 4) {
+                // The new redo-thread based commit scn entry
+                final Scn scn = Scn.valueOf(parts[0]);
+                final String rsId = parts[1];
+                final int ssn = Integer.parseInt(parts[2]);
+                final int thread = Integer.parseInt(parts[3]);
+                return new RedoThreadCommitScn(thread, scn, rsId, ssn, new HashSet<>());
+            }
+            else if (parts.length == 5) {
                 // The new redo-thread based commit scn entry
                 final Scn scn = Scn.valueOf(parts[0]);
                 final String rsId = parts[1];
