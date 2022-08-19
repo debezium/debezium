@@ -31,6 +31,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
 
 /**
@@ -337,7 +338,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
+        super(SqlServerConnector.class, config, config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(), true,
                 ColumnFilterMode.SCHEMA, true);
 
         final String databaseNames = config.getString(DATABASE_NAMES.name());

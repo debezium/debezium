@@ -34,6 +34,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
 import io.debezium.storage.kafka.history.KafkaStorageConfiguration;
@@ -968,7 +969,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         super(
                 MySqlConnector.class,
                 config,
-                config.getString(SERVER_NAME),
+                config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
