@@ -887,7 +887,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithAdditionalCondition() throws Exception {
         // Testing.Print.enable();
 
-        int expectedCount = 10, expectedValue = Integer.MAX_VALUE;
+        int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         final Configuration config = config().build();
@@ -928,7 +928,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithAdditionalConditionWithRestart() throws Exception {
         // Testing.Print.enable();
 
-        int expectedCount = 1000, expectedValue = Integer.MAX_VALUE;
+        int expectedCount = 1000, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         final Configuration config = config().build();
