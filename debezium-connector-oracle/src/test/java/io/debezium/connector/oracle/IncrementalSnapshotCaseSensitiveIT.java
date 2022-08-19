@@ -38,6 +38,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "a");
+        TestHelper.dropTable(connection, "b");
         connection.execute("CREATE TABLE a (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
 
