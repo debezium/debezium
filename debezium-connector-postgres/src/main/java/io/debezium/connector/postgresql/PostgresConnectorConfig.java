@@ -42,6 +42,7 @@ import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -851,7 +852,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public PostgresConnectorConfig(Configuration config) {
         super(
                 config,
-                config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
+                config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX),
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
