@@ -24,7 +24,9 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.EVENT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA))
+                .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(CommitScn.ROLLBACK_SEGMENT_ID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(CommitScn.SQL_SEQUENCE_NUMBER_KEY, Schema.OPTIONAL_INT32_SCHEMA))
                 .field(SourceInfo.USERNAME_KEY, Schema.OPTIONAL_STRING_SCHEMA).build();
     }
 
@@ -49,6 +51,11 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         if (sourceInfo.getUserName() != null) {
             ret.put(SourceInfo.USERNAME_KEY, sourceInfo.getUserName());
         }
+        if (sourceInfo.getRsId() != null) {
+            ret.put(CommitScn.ROLLBACK_SEGMENT_ID_KEY, sourceInfo.getRsId());
+        }
+
+        ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, sourceInfo.getSsn());
 
         final CommitScn commitScn = sourceInfo.getCommitScn();
         if (commitScn != null) {

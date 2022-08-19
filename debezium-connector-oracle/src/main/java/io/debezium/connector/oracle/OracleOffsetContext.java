@@ -269,6 +269,14 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setRedoThread(redoThread);
     }
 
+    public void setRsId(String rsId) {
+        sourceInfo.setRsId(rsId);
+    }
+
+    public void setSsn(int ssn) {
+        sourceInfo.setSsn(ssn);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
