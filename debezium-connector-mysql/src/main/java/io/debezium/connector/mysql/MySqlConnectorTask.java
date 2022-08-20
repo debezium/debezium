@@ -30,7 +30,6 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -61,10 +60,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     @Override
     public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(
-                config.edit()
-                        .with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true)
-                        .build());
+        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
         final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);

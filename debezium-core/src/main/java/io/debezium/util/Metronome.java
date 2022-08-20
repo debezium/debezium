@@ -70,8 +70,8 @@ public interface Metronome {
      * Create a new metronome that starts ticking immediately and that uses {@link LockSupport#parkNanos(long)} to wait.
      * <p>
      * {@link LockSupport#parkNanos(long)} uses the underlying platform-specific timed wait mechanism, which may be more
-     * accurate for smaller periods than {@link #sleeper(long, TimeUnit, Clock)}. However, like
-     * {@link #sleeper(long, TimeUnit, Clock)}, the resulting Metronome may result in thread context switches.
+     * accurate for smaller periods than {@link #sleeper(Duration, Clock)}. However, like
+     * {@link #sleeper(Duration, Clock)}, the resulting Metronome may result in thread context switches.
      * <p>
      * Although the method seemingly supports taking {@link TimeUnit#MICROSECONDS} and {@link TimeUnit#NANOSECONDS}, it is
      * likely that the JVM and operating system do not support such fine-grained precision. And as mentioned above, care should
