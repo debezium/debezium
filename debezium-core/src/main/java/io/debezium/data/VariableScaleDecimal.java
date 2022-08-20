@@ -79,7 +79,7 @@ public class VariableScaleDecimal {
      * the scale of the number and a binary representation of the number.
      *
      * @param schema of the encoded value
-     * @param value the value or the decimal
+     * @param decimalValue the value or the decimal
      *
      * @return the encoded value
      */
