@@ -36,6 +36,7 @@ import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -707,8 +708,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             () -> getClass().getClassLoader(), config.asProperties());
                 }
 
+                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
+                        keyConverter, valueConverter);
+
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                ConnectorContext context = new ConnectorContext() {
+                ConnectorContext context = new SourceConnectorContext() {
 
                     @Override
                     public void requestTaskReconfiguration() {
@@ -720,12 +724,15 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         fail(e.getMessage(), e);
                     }
 
+                    @Override
+                    public OffsetStorageReader offsetStorageReader() {
+                        return offsetReader;
+                    }
                 };
                 connector.initialize(context);
                 OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
                         keyConverter, valueConverter);
-                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                        keyConverter, valueConverter);
+
                 Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
 
                 try {
