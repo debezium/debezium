@@ -851,7 +851,8 @@ public abstract class CommonConnectorConfig {
         return count;
     }
 
-    protected static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
+    // TODO: revert back the access modifier from public to protected after updating jdk version to 17
+    public static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
         String operations = config.getString(field);
 
         if (operations == null || "none".equals(operations)) {
