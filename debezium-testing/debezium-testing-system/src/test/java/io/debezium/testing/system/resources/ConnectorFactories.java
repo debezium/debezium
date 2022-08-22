@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.resources;
 
+import java.util.Random;
+
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.databases.mongodb.MongoDatabaseController;
@@ -26,10 +28,12 @@ public class ConnectorFactories {
     public ConnectorConfigBuilder mysql(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = controller.getDatabaseHostname();
+        Random random = new Random();
         int dbPort = controller.getDatabasePort();
 
         return cb
                 .put("database.server.name", cb.getDbServerName())
+                .put("database.server.id", 5400 + random.nextInt(1000))
                 .put("connector.class", "io.debezium.connector.mysql.MySqlConnector")
                 .put("task.max", 1)
                 .put("database.hostname", dbHost)
