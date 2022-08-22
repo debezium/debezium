@@ -34,7 +34,8 @@ jobs:
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
       debezium-ui-changed: ${{ steps.changed-files-debezium-ui.outputs.any_changed }}
-      ddl-parser-changed: ${{ steps.changed-files-ddl-parser.outputs.any_changed }}
+      mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
+      oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
     steps:
       - name: Checkout Action
@@ -72,35 +73,35 @@ jobs:
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-connector-mysql/**                   
+            debezium-connector-mysql/**
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-connector-postgres/**             
+            debezium-connector-postgres/**
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-connector-oracle/**  
+            debezium-connector-oracle/**
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-connector-sqlserver/**  
+            debezium-connector-sqlserver/**
 
       - name: Get modified files (Debezium Server)
         id: changed-files-debezium-server
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-server/**              
+            debezium-server/**
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
@@ -152,12 +153,23 @@ jobs:
             pom.xml
             .github/workflows/debezium-workflow.yml
 
-      - name: Get modified files (DDL parser)
-        id: changed-files-ddl-parser
+      - name: Get modified files (MySQL DDL parser)
+        id: changed-files-mysql-ddl-parser
         uses: tj-actions/changed-files@v14.3
         with:
           files: |
-            debezium-ddl-parser/**
+            debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mysql/**
+            debezium-ddl-parser/src/main/java/io/debezium/antlr/**
+            debezium-ddl-parser/src/test/resources/mysql/examples/**
+
+      - name: Get modified files (Oracle DDL parser)
+        id: changed-files-oracle-ddl-parser
+        uses: tj-actions/changed-files@v14.3
+        with:
+          files: |
+            debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
+            debezium-ddl-parser/src/main/java/io/debezium/ddl/parser/oracle/**
+            debezium-ddl-parser/src/test/resources/oracle/examples/**
 
       - name: Get modified files (Documentation)
         id: changed-files-documentation
@@ -206,9 +218,9 @@ jobs:
       - name: Download dependencies
         if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
-          ./mvnw -B -ntp clean install 
-          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }} 
-          -Dformat.skip=true 
+          ./mvnw -B -ntp clean install
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -Dformat.skip=true
           -Dcheckstyle.skip=true
           -Dorg.slf4j.simpleLogger.showDateTime=true
           -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"
@@ -245,9 +257,9 @@ jobs:
       # should always work successfully.
       - name: Checkstyle, Formatting, and Import Order Checks
         run: >
-          ./mvnw -B -ntp process-sources checkstyle:checkstyle 
+          ./mvnw -B -ntp process-sources checkstyle:checkstyle
           -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
-          -Dformat.formatter.goal=validate 
+          -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
           -Dorg.slf4j.simpleLogger.showDateTime=true
           -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-DD HH:mm:ss,SSS"
@@ -285,13 +297,13 @@ jobs:
           -Dformat.skip=true
           -Drevapi.skip
           -Dversion.mongo.server=${{ matrix.version-mongo-server }}
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn        
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
             
   build_mysql:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "MySQL"
     runs-on: ubuntu-latest
     steps:
@@ -317,7 +329,7 @@ jobs:
           ./mvnw clean install -B -pl debezium-connector-mysql -am -Passembly
           -Dcheckstyle.skip=true
           -Dformat.skip=true
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn    
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
@@ -353,13 +365,13 @@ jobs:
           -Ddebezium.test.records.waittime=5
           -Dcheckstyle.skip=true
           -Dformat.skip=true
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_oracle:
     needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     name: "Oracle"
     runs-on: ubuntu-latest
     steps:
@@ -385,13 +397,13 @@ jobs:
       - name: Build Debezium Connector Oracle (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: >
-          ./mvnw clean install -B -pl debezium-connector-oracle -am 
-          -DskipITs=true 
+          ./mvnw clean install -B -pl debezium-connector-oracle -am
+          -DskipITs=true
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-          -Dmaven.wagon.http.pool=false 
-          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120          
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_sqlserver:
     needs: [check_style, file_changes]
@@ -462,9 +474,9 @@ jobs:
 
       - name: Test Debezium Server
         run: >
-          ./mvnw install -B -pl debezium-server -Pserver-ci -amd 
+          ./mvnw install -B -pl debezium-server -Pserver-ci -amd
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_outbox:
@@ -492,12 +504,12 @@ jobs:
 
       - name: Build Quarkus Outbox
         run: >
-          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly 
-          -Dcheckstyle.skip=true 
-          -Dformat.skip=true 
-          -Drevapi.skip 
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
-          -Dmaven.wagon.http.pool=false 
+          ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_rest_extension:
@@ -525,11 +537,11 @@ jobs:
 
       - name: Build Connect REST Extension
         run: >
-          ./mvnw clean install -B -pl debezium-connect-rest-extension -am 
+          ./mvnw clean install -B -pl debezium-connect-rest-extension -am
           -Dcheckstyle.skip=true
           -Dformat.skip=true
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn  
-          -Dmaven.wagon.http.pool=false 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_schema_generator:
@@ -557,11 +569,11 @@ jobs:
 
       - name: Build Schema Generator
         run: >
-          ./mvnw clean install -B -pl debezium-schema-generator -am 
+          ./mvnw clean install -B -pl debezium-schema-generator -am
           -Dcheckstyle.skip=true
           -Dformat.skip=true
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn       
-          -Dmaven.wagon.http.pool=false 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_debezium_testing:
@@ -589,12 +601,12 @@ jobs:
 
       - name: Build Debezium Testing
         run: >
-          ./mvnw clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly 
-          -Dcheckstyle.skip=true 
-          -Dformat.skip=true 
-          -Drevapi.skip 
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn     
-          -Dmaven.wagon.http.pool=false 
+          ./mvnw clean install -B -pl debezium-testing,debezium-testing/debezium-testing-testcontainers -am -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_cassandra:
@@ -633,7 +645,7 @@ jobs:
 
       - name: Build Debezium (Core)
         run: >
-          ./core/mvnw clean install -f core/pom.xml 
+          ./core/mvnw clean install -f core/pom.xml
           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
           -am
           -DskipTests=true
@@ -641,17 +653,17 @@ jobs:
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
-          -Dmaven.wagon.http.pool=false 
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
       - name: Build Debezium Connector Cassandra
         run: >
           ./core/mvnw clean install -f cassandra/pom.xml -Passembly
           -Dcheckstyle.skip=true
-          -Dformat.skip=true          
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn   
-          -Dmaven.wagon.http.pool=false 
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           
   build_db2:
@@ -706,9 +718,9 @@ jobs:
         run: >
           ./core/mvnw clean install -f db2/pom.xml -Passembly
           -Dcheckstyle.skip=true
-          -Dformat.skip=true          
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
-          -Dmaven.wagon.http.pool=false 
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           
   build_vitess:
@@ -763,10 +775,10 @@ jobs:
         run: >
           ./core/mvnw clean install -f vitess/pom.xml -Passembly
           -Dcheckstyle.skip=true
-          -Dformat.skip=true          
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn         
-          -Dmaven.wagon.http.pool=false 
-          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120          
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
   build_ui:
     needs: [check_style, file_changes]
