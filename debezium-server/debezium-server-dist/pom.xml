@@ -64,14 +64,18 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-connector-sqlserver</artifactId>
                 </dependency>
-		<dependency>
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-connector-oracle</artifactId>
+                </dependency>
+                <dependency>
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-scripting</artifactId>
                 </dependency>
-		<dependency>
+                <dependency>
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-scripting-languages</artifactId>
-		    <type>pom</type>
+                    <type>pom</type>
                 </dependency>
                 <dependency>
                     <groupId>io.debezium</groupId>
