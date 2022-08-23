@@ -1387,8 +1387,8 @@ Do not set this property and the `mongodb.hosts` property at the same time. +
 ====
 The connector uses this connection string only during the initial replica set discovery process.
 During this discovery process, the connector ignores connection values that are specified in other properties (`mongodb.user`, `mongodb.password`, `mongodb.authsource`, SSL configuration properties, and so forth).
-After the discovery process completes, when the connector attempts to establish a direct connection to a primary replica set member, the connector then returns to using the standard connection properties.
-
+After the discovery process completes, when the connector attempts to establish a direct connection to a primary replica set member, the connector then returns to using the standard connection properties. +
+ +
 When establishing a connection, the connector generally ignores this connection string.
 However, it's possible that information that is required to establish a connection is not specified in the standard connection properties.
 For example, the `mongodb.user` property might not be set, leaving the MongoDB username undefined.
