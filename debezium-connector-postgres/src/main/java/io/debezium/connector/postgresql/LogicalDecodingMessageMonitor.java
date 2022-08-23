@@ -64,7 +64,7 @@ public class LogicalDecodingMessageMonitor {
     private final Schema blockSchema;
     private final Schema valueSchema;
 
-    private static final PostgresSchemaFactory postgresSchemaFactoryObject = new PostgresSchemaFactory();
+    private static final PostgresSchemaFactory postgresSchemaFactoryObject = PostgresSchemaFactory.get();
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
         this.schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
