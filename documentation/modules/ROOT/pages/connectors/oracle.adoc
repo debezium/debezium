@@ -1327,7 +1327,7 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`CLOB`
 |`STRING`
@@ -2708,7 +2708,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-binary-handling-mode]]<<oracle-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
-|Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
+|Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `base64-url-safe` represents binary data as base64-url-safe-encoded String, `hex` represents binary data as hex-encoded (base16) String
 
 
 |[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
