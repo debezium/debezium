@@ -187,6 +187,11 @@ public abstract class CommonConnectorConfig {
         BASE64("base64", SchemaBuilder::string),
 
         /**
+         * Represent binary values as base64-url-safe-encoded string
+         */
+        BASE64_URL_SAFE("base64-url-safe", SchemaBuilder::string),
+
+        /**
          * Represents binary values as hex-encoded (base16) string
          */
         HEX("hex", SchemaBuilder::string);

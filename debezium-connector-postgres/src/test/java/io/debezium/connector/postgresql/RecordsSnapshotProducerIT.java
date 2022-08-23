@@ -974,6 +974,24 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-5544")
+    public void shouldGenerateSnapshotForByteaAsBase64UrlSafeString() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64_URL_SAFE));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaBase64UrlSafe());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForByteaAsHexString() throws Exception {
         TestHelper.dropAllSchemas();
@@ -1024,6 +1042,25 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBase64());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-5544")
+    public void shouldGenerateSnapshotForUnknownColumnAsBase64UrlSafe() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_CIRCLE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBase64UrlSafe());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

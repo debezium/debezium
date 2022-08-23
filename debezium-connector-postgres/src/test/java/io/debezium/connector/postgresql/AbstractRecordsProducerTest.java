@@ -420,12 +420,20 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForByteaBase64UrlSafe() {
+        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+    }
+
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
         return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("<(10.0,20.0),10.0>".getBytes(StandardCharsets.UTF_8))));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64() {
         return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA+"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64UrlSafe() {
+        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA-"));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHex() {

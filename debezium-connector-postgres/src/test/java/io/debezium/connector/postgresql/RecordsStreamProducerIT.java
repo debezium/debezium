@@ -1243,6 +1243,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-5544")
+    public void shouldReceiveByteaBase64UrlSafeString() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64_URL_SAFE));
+
+        assertInsert(INSERT_BYTEA_BINMODE_STMT, 1, schemaAndValueForByteaBase64UrlSafe());
+    }
+
+    @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveByteaHexString() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -1271,6 +1281,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
 
         assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBase64());
+    }
+
+    @Test
+    @FixFor("DBZ-5544")
+    public void shouldReceiveUnknownTypeAsBase64UrlSafe() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
+
+        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafe());
     }
 
     @Test

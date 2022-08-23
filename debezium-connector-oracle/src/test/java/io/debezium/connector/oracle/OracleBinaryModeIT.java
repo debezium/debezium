@@ -79,6 +79,14 @@ public class OracleBinaryModeIT extends AbstractConnectorTest {
         assertEquals(expectedValue, data.get("BLOB_COL"));
     }
 
+    @Test
+    public void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
+        Struct data = consume(BinaryHandlingMode.BASE64_URL_SAFE);
+
+        String expectedValue = "AQID";
+        assertEquals(expectedValue, data.get("BLOB_COL"));
+    }
+
     private Struct consume(BinaryHandlingMode binaryMode) throws InterruptedException {
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)

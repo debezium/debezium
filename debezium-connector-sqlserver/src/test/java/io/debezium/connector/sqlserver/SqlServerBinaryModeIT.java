@@ -78,6 +78,15 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         assertEquals(expectedValue, data.get("varbinary_col"));
     }
 
+    @Test
+    public void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
+        Struct data = consume(BinaryHandlingMode.BASE64_URL_SAFE);
+
+        String expectedValue = "AQID";
+        assertEquals(expectedValue, data.get("binary_col"));
+        assertEquals(expectedValue, data.get("varbinary_col"));
+    }
+
     private Struct consume(BinaryHandlingMode binaryMode) throws InterruptedException {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
