@@ -1360,15 +1360,15 @@ The following configuration properties are _required_ unless a default value is 
 |Property |Default |Description
 
 |[[mongodb-property-name]]<<mongodb-property-name, `+name+`>>
-|
+|No default
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
 |[[mongodb-property-connector-class]]<<mongodb-property-connector-class, `+connector.class+`>>
-|
+|No default
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.mongodb.MongoDbConnector` for the MongoDB connector.
 
 |[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
-|
+|No default
 |The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`). +
  +
 [NOTE]
@@ -1378,17 +1378,22 @@ This limitation will be removed in the next {prodname} release.
 ====
 
 |[[mongodb-property-mongodb-connection-string]]<<mongodb-property-mongodb-connection-string, `+mongodb.connection.string+`>>
-|
-|Mongodb connection string used for initial replica set discovery. This option requires `mongodb.members.auto.discover` to be set to `true` and it mustn't be used together with `mognodb.hosts` +
+|No default
+|Specifies a connection string that the connector uses during the initial discovery of a MongoDB replica set.
+To use this option, you must set the value of `mongodb.members.auto.discover` to `true`.
+You cannot use this property together with the `mongodb.hosts` property. +
  +
 [NOTE]
 ====
-At the moment the connection string is used only for the initial replica set discovery. Other
-configuration properties are still used when connecting directly to primary rs members -- with the exception of credential which (when present) is extracted from given connection string.
+The connector uses this connection string during the initial replica set discovery process only.
+During the discovery process, the connector ignores the values of other connection properties (`mongodb.hosts`, `mongodb.user`,`mongodb.password`, `mongodb.authsource`, SSL configuration properties, and so forth).
+After the discovery process, when the connector attempts to establish a direct connection to a primary replica set member, it returns to using the standard connection properties,
+unless `mongodb.connection.string` specifies credential information that is otherwise undefined in the previously mentioned connection properties (for example, `mongodb.user`).
+
 ====
 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
-|
+|No default
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
 Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
 Use only alphanumeric characters, hyphens, dots and underscores to form the name.
@@ -1401,11 +1406,11 @@ If you change the name value, after a restart, instead of continuing to emit eve
 ====
 
 |[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `+mongodb.user+`>>
-|
+|No default
 |Name of the database user to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
 |[[mongodb-property-mongodb-password]]<<mongodb-property-mongodb-password, `+mongodb.password+`>>
-|
+|No default
 |Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
 |[[mongodb-property-mongodb-authsource]]<<mongodb-property-mongodb-authsource, `+mongodb.authsource+`>>
@@ -1480,7 +1485,7 @@ The *oplog* mode specifies that the MongoDB oplog will be accessed directly; thi
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
-|
+|No default
 |An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
@@ -1581,13 +1586,13 @@ See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
-|
+|No default
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
-|
+|No default
 | Controls which collection items are included in snapshot. This property affects snapshots only. Specify a comma-separated list of collection names in the form _databaseName.collectionName_.
 
 For each collection that you specify, also specify another configuration property: `snapshot.collection.filter.overrides._databaseName_._collectionName_`. For example, the name of the other configuration property might be: `snapshot.collection.filter.overrides.customers.orders`. Set this property to a valid filter expression that retrieves only the items that you want in the snapshot. When the connector performs a snapshot, it retrieves only the items that matches the filter expression.
