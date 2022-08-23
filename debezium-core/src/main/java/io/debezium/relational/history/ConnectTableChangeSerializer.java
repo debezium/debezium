@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.relational.Column;
@@ -49,47 +48,13 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String DEFAULT_VALUE_EXPRESSION = "defaultValueExpression";
     public static final String ENUM_VALUES = "enumValues";
 
-    private Schema columnSchema;
-    private Schema tableSchema;
-    private Schema changeSchema;
+    private final Schema columnSchema;
+    private final Schema tableSchema;
+    private final Schema changeSchema;
 
     private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
 
     public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster) {
-        columnSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Column"))
-                .field(NAME_KEY, Schema.STRING_SCHEMA)
-                .field(JDBC_TYPE_KEY, Schema.INT32_SCHEMA)
-                .field(NATIVE_TYPE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(TYPE_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(TYPE_EXPRESSION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(LENGTH_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(SCALE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(POSITION_KEY, Schema.INT32_SCHEMA)
-                .field(OPTIONAL_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(AUTO_INCREMENTED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(DEFAULT_VALUE_EXPRESSION, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(ENUM_VALUES, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-                .build();
-
-        tableSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Table"))
-                .field(DEFAULT_CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-                .field(COLUMNS_KEY, SchemaBuilder.array(columnSchema).build())
-                .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
-
-        changeSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Change"))
-                .field(TYPE_KEY, Schema.STRING_SCHEMA)
-                .field(ID_KEY, Schema.STRING_SCHEMA)
-                .field(TABLE_KEY, tableSchema)
-                .build();
-
         columnSchema = schemaFactoryObject.schemaHistoryColumnSchema(schemaNameAdjuster);
 
         tableSchema = schemaFactoryObject.schemaHistoryTableSchema(schemaNameAdjuster);

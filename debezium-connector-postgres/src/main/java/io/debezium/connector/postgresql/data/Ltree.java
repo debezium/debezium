@@ -20,7 +20,7 @@ public class Ltree {
     public static final String LOGICAL_NAME = "io.debezium.data.Ltree";
     public static int SCHEMA_VERSION = 1;
 
-    private static final PostgresSchemaFactory postgresSchemaFactoryObject = new PostgresSchemaFactory();
+    private static final PostgresSchemaFactory postgresSchemaFactoryObject = PostgresSchemaFactory.get();
 
     /**
      * Returns a {@link SchemaBuilder} for a Ltree field. You can use the resulting SchemaBuilder
