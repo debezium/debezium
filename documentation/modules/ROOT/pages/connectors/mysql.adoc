@@ -1471,17 +1471,17 @@ a|_n/a_
 |`BINARY(M)]`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`VARBINARY(M)]`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYTEXT`
 |`STRING`
@@ -1490,7 +1490,7 @@ a|_n/a_
 |`BLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`TEXT`
@@ -1501,7 +1501,7 @@ Only values with a size of up to 2GB are supported. It is recommended to externa
 |`MEDIUMBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`MEDIUMTEXT`
 |`STRING`
@@ -1510,7 +1510,7 @@ a|_n/a_
 |`LONGBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`LONGTEXT`
@@ -2686,6 +2686,8 @@ However, it's best to use the minimum number that are required to specify a uniq
 `bytes` represents binary data as a byte array. +
  +
 `base64` represents binary data as a base64-encoded String. +
+ +
+`base64-url-safe` represents binary data as a base64-url-safe-encoded String. +
  +
 `hex` represents binary data as a hex-encoded (base16) String.
 

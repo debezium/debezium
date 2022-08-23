@@ -488,6 +488,7 @@ public abstract class CommonConnectorConfig {
             .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including: "
                     + "'bytes' represents binary data as byte array (default); "
                     + "'base64' represents binary data as base64-encoded string; "
+                    + "'base64-url-safe' represents binary data as base64-url-safe-encoded string; "
                     + "'hex' represents binary data as hex-encoded (base16) string");
 
     public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")

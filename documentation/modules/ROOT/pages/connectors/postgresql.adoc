@@ -1442,7 +1442,7 @@ The string representation of the interval value that follows the pattern `P<year
 |`BYTES` or `STRING`
 |n/a +
  +
-Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
+Either the raw bytes (the default), a base64-encoded string, or a base64-url-safe-encoded String, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
  +
 Debezium only supports Postgres `bytea_output` configuration of value `hex`. See this link:https://www.postgresql.org/docs/current/datatype-binary.html[documentation on Postgres binary data types].
 
@@ -2865,6 +2865,8 @@ However, it's best to use the minimum number that are required to specify a uniq
 `bytes` represents binary data as  byte array. +
  +
 `base64` represents binary data as base64-encoded strings. +
+ +
+`base64-url-safe` represents binary data as base64-url-safe-encoded strings. +
  +
 `hex` represents binary data as hex-encoded (base16) strings.
 
