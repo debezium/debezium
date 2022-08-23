@@ -248,12 +248,12 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 case WARN:
                     LOGGER.warn(
                             "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset());
+                            changeRecordEmitter.getOffset().getOffset(), e);
                     break;
                 case SKIP:
                     LOGGER.debug(
                             "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset());
+                            changeRecordEmitter.getOffset().getOffset(), e);
                     break;
             }
             return false;
