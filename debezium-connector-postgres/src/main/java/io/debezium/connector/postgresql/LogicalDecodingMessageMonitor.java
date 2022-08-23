@@ -50,6 +50,7 @@ public class LogicalDecodingMessageMonitor {
     private final String topicName;
     private final BinaryHandlingMode binaryMode;
     private final Encoder base64Encoder;
+    private final Encoder base64UrlSafeEncoder;
 
     /**
      * The key schema; a struct like this:
@@ -70,6 +71,7 @@ public class LogicalDecodingMessageMonitor {
         this.topicName = connectorConfig.getLogicalName() + LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX;
         this.binaryMode = connectorConfig.binaryHandlingMode();
         this.base64Encoder = Base64.getEncoder();
+        this.base64UrlSafeEncoder = Base64.getUrlEncoder();
 
         this.keySchema = SchemaBuilder.struct()
                 .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageKey"))
@@ -123,6 +125,8 @@ public class LogicalDecodingMessageMonitor {
         switch (binaryMode) {
             case BASE64:
                 return new String(base64Encoder.encode(content), StandardCharsets.UTF_8);
+            case BASE64_URL_SAFE:
+                return new String(base64UrlSafeEncoder.encode(content), StandardCharsets.UTF_8);
             case HEX:
                 return HexConverter.convertToHexString(content);
             case BYTES:

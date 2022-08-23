@@ -1101,6 +1101,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertBinaryToBase64UrlSafe(Column column, Field fieldDefn, Object data) {
+        return super.convertBinaryToBase64UrlSafe(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+    }
+
+    @Override
     protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
         return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }

@@ -198,6 +198,54 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         records.forEach(this::validate);
     }
 
+    @Test
+    @FixFor("DBZ-5544")
+    public void base64UrlSafeMode() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 1;
+        int numInserts = 4;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
+        stopConnector();
+        assertThat(records).isNotNull();
+        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_254_binary_column_test"));
+        assertThat(dmls).hasSize(4);
+
+        // source value has a trailing "00" which is not distinguishable from a value that needs padding
+        SourceRecord insert = dmls.get(0);
+        Struct after = (Struct) ((Struct) insert.value()).get("after");
+        assertThat(after.get("file_uuid")).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
+
+        insert = dmls.get(1);
+        after = (Struct) ((Struct) insert.value()).get("after");
+        assertThat(after.get("file_uuid")).isEqualTo("ZRrtCDkPSJOy8TaSPnt0qw==");
+
+        // the value which isn't using the full length of the BINARY column is right-padded with 0x00 (zero bytes) - converted to AA in Base64
+        insert = dmls.get(2);
+        after = (Struct) ((Struct) insert.value()).get("after");
+        assertThat(after.get("file_uuid")).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
+
+        // the value which isn't using the full length of the BINARY column is right-padded with 0x00 (zero bytes)
+        insert = dmls.get(3);
+        after = (Struct) ((Struct) insert.value()).get("after");
+        assertThat(after.get("file_uuid")).isEqualTo("AAAAAAAAAAAAAAAAAAAAAA==");
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+    }
+
     private String encodeToBase64String(ByteBuffer bytes) {
         return Base64.getEncoder().encodeToString(bytes.array());
     }
