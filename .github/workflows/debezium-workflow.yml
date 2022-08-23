@@ -168,6 +168,7 @@ jobs:
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
+            debezium-ddl-parser/src/main/java/io/debezium/antlr/**
             debezium-ddl-parser/src/main/java/io/debezium/ddl/parser/oracle/**
             debezium-ddl-parser/src/test/resources/oracle/examples/**
 
