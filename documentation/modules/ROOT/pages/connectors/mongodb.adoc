@@ -1385,14 +1385,14 @@ Do not set this property and the `mongodb.hosts` property at the same time. +
  +
 [NOTE]
 ====
-Under most circumstances, the connector uses this connection string during the initial replica set discovery process only.
-During this discovery process, the connector ignores the values specified in the standard connection properties (`mongodb.hosts`, `mongodb.user`, `mongodb.password`, `mongodb.authsource`, SSL configuration properties, and so forth). +
-After the discovery process completes, and the connector attempts to establish a direct connection to a primary replica set member, it does the opposite.
-That is, the connector returns to using the standard connection properties, and generally ignores this connection string.
+The connector uses this connection string only during the initial replica set discovery process.
+During this discovery process, the connector ignores connection values that are specified in other properties (`mongodb.user`, `mongodb.password`, `mongodb.authsource`, SSL configuration properties, and so forth).
+After the discovery process completes, when the connector attempts to establish a direct connection to a primary replica set member, the connector then returns to using the standard connection properties.
 
-However, in some situations, some of the information that is required to establish a connection might not be specified in the standard connection properties.
+When establishing a connection, the connector generally ignores this connection string.
+However, it's possible that information that is required to establish a connection is not specified in the standard connection properties.
 For example, the `mongodb.user` property might not be set, leaving the MongoDB username undefined.
-If the missing information is available in the connection string, the connector uses the information in the string to establish the connection.
+When connection information is undefined in other connector properties, but is available in the connection string, the connector uses the information in the string to establish the connection.
 ====
 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
