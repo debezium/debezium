@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.mysql;
 
-import java.io.EOFException;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Set;
 
-import com.github.shyiko.mysql.binlog.network.ServerException;
-
-import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.util.Collect;
 
 /**
  * Error handler for MySQL.
@@ -21,29 +20,12 @@ import io.debezium.pipeline.ErrorHandler;
  */
 public class MySqlErrorHandler extends ErrorHandler {
 
-    private static final String SQL_CODE_TOO_MANY_CONNECTIONS = "08004";
-
     public MySqlErrorHandler(MySqlConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
         super(MySqlConnector.class, connectorConfig, queue);
     }
 
     @Override
-    protected boolean isRetriable(Throwable throwable) {
-        if (throwable instanceof SQLException) {
-            final SQLException sql = (SQLException) throwable;
-            return SQL_CODE_TOO_MANY_CONNECTIONS.equals(sql.getSQLState());
-        }
-        else if (throwable instanceof ServerException) {
-            final ServerException sql = (ServerException) throwable;
-            return SQL_CODE_TOO_MANY_CONNECTIONS.equals(sql.getSqlState());
-        }
-        else if (throwable instanceof EOFException) {
-            // Retry with reading binlog error
-            return throwable.getMessage().contains("Failed to read next byte from position");
-        }
-        else if (throwable instanceof DebeziumException && throwable.getCause() != null) {
-            return isRetriable(throwable.getCause());
-        }
-        return false;
+    protected Set<Class<? extends Exception>> communicationExceptions() {
+        return Collect.unmodifiableSet(IOException.class, SQLException.class);
     }
 }

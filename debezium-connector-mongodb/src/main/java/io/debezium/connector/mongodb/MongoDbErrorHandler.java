@@ -5,8 +5,14 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.io.IOException;
+import java.util.Set;
+
+import com.mongodb.MongoException;
+
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.util.Collect;
 
 /**
  * Error handler for MongoDB.
@@ -20,22 +26,7 @@ public class MongoDbErrorHandler extends ErrorHandler {
     }
 
     @Override
-    protected boolean isRetriable(Throwable throwable) {
-        if (throwable instanceof org.apache.kafka.connect.errors.ConnectException) {
-            Throwable cause = throwable.getCause();
-            while ((cause != null) && (cause != throwable)) {
-                if (cause instanceof com.mongodb.MongoSocketException ||
-                        cause instanceof com.mongodb.MongoTimeoutException ||
-                        cause instanceof com.mongodb.MongoExecutionTimeoutException ||
-                        cause instanceof com.mongodb.MongoNodeIsRecoveringException) {
-                    return true;
-                }
-                else {
-                    cause = cause.getCause();
-                }
-            }
-        }
-
-        return false;
+    protected Set<Class<? extends Exception>> communicationExceptions() {
+        return Collect.unmodifiableSet(IOException.class, MongoException.class);
     }
 }

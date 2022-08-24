@@ -5,6 +5,9 @@
  */
 package io.debezium.pipeline;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -56,12 +59,25 @@ public class ErrorHandler {
         return producerThrowable.get();
     }
 
+    protected Set<Class<? extends Exception>> communicationExceptions() {
+        return Collections.singleton(IOException.class);
+    }
+
     /**
      * Whether the given throwable is retriable (e.g. an exception indicating a
      * connection loss) or not.
+     * By default only I/O exceptions are retriable
      */
     protected boolean isRetriable(Throwable throwable) {
-        return false;
+        if (throwable == null) {
+            return false;
+        }
+        for (Class<? extends Exception> e : communicationExceptions()) {
+            if (e.isAssignableFrom(throwable.getClass())) {
+                return true;
+            }
+        }
+        return isRetriable(throwable.getCause());
     }
 
     /**

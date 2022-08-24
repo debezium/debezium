@@ -31,8 +31,8 @@ public class PostgresErrorHandlerTest {
     }
 
     @Test
-    public void psqlExceptionWithNullErrorMesdsageNotRetryable() {
-        PSQLException testException = new PSQLException(null, PSQLState.CONNECTION_FAILURE);
+    public void nonCommunicationExceptionNotRetryable() {
+        Exception testException = new NullPointerException();
         Assertions.assertThat(errorHandler.isRetriable(testException)).isFalse();
     }
 
@@ -42,10 +42,10 @@ public class PostgresErrorHandlerTest {
     }
 
     @Test
-    public void unclassifiedPSQLExceptionIsNotRetryable() {
-        PSQLException testException = new PSQLException(
-                "definitely not a postgres error", PSQLState.CONNECTION_FAILURE);
-        Assertions.assertThat(errorHandler.isRetriable(testException)).isFalse();
+    public void encapsulatedPSQLExceptionIsRetriable() {
+        Exception testException = new IllegalArgumentException(
+                new PSQLException("definitely not a postgres error", PSQLState.CONNECTION_FAILURE));
+        Assertions.assertThat(errorHandler.isRetriable(testException)).isTrue();
     }
 
     @Test
