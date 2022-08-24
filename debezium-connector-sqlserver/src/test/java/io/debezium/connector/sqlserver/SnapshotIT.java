@@ -14,12 +14,14 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.fest.assertions.MapAssert;
 import org.junit.After;
@@ -29,6 +31,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -165,7 +168,8 @@ public class SnapshotIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1280")
     public void testDeadlockDetection() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        final LogInterceptor logInterceptorErrorHandler = new LogInterceptor(ErrorHandler.class);
+        final LogInterceptor logInterceptorTask = new LogInterceptor(BaseSourceTask.class);
         final Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 1_000)
                 .build();
@@ -176,8 +180,10 @@ public class SnapshotIT extends AbstractConnectorTest {
         connection.setAutoCommit(false).executeWithoutCommitting(
                 "SELECT TOP(0) * FROM dbo.table1 WITH (TABLOCKX)");
         consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
-        assertConnectorNotRunning();
-        assertThat(logInterceptor.containsStacktraceElement("Lock request time out period exceeded.")).as("Log contains error related to lock timeout").isTrue();
+        Awaitility.await().atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS).until(
+                () -> logInterceptorTask.containsWarnMessage("Going to restart connector after "));
+        assertThat(logInterceptorErrorHandler.containsStacktraceElement("Lock request time out period exceeded.")).as("Log contains error related to lock timeout")
+                .isTrue();
         connection.rollback();
     }
 

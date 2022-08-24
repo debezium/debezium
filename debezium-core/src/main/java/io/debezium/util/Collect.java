@@ -77,7 +77,7 @@ public class Collect {
         return Collections.unmodifiableSet(newSet);
     }
 
-    @SuppressWarnings("unchecked")
+    @SafeVarargs
     public static <T> Set<T> unmodifiableSet(T... values) {
         return unmodifiableSet(arrayListOf(values));
     }
