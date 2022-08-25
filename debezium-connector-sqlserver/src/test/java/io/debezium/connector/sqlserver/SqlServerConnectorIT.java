@@ -43,6 +43,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -76,6 +78,8 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorIT extends AbstractConnectorTest {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorIT.class);
 
     private SqlServerConnection connection;
 
@@ -1365,6 +1369,17 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig()
                 .build();
+
+        connection.query("SELECT object_id, column_name" +
+                " FROM [testDB1].cdc.captured_columns" +
+                " ORDER BY object_id, column_id",
+                rs -> {
+                    while (rs.next()) {
+                        for (int i = 1; i < 3; i++) {
+                            LOGGER.info("{} = {}", i, rs.getObject(i));
+                        }
+                    }
+                });
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();

@@ -466,6 +466,7 @@ public class SqlServerConnection extends JdbcConnection {
                 },
                 rs -> {
                     final List<SqlServerChangeTable> changeTables = new ArrayList<>();
+                    LOGGER.info("New change tables {}", changeTables);
                     while (rs.next()) {
                         changeTables.add(new SqlServerChangeTable(
                                 rs.getString(4),

@@ -438,6 +438,7 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -Ddebezium.test.records.waittime=10
+          -Dxit.test=SqlServerConnectorIT#whenMultipleCaptureInstancesExcludesColumnsExpectLatestCDCTableUtilized
 
   build_debezium_server:
     needs: [check_style, file_changes]
