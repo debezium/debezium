@@ -2296,7 +2296,7 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} MySQL connector configuration properties
+// Title: Descriptions of {prodname} MySQL connector configuration properties
 // ModuleID: descriptions-of-debezium-mysql-connector-configuration-properties
 [[mysql-connector-properties]]
 === Connector properties
@@ -2848,9 +2848,11 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+ifdef::community[]
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
 |`false`
 |Switch to alternative incremental snapshot watermarks implementation to avoid writes to signal data collection
+endif::community[]
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`

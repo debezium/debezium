@@ -1951,7 +1951,7 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} Db2 connector configuration properties
+// Title: Descriptions of {prodname} Db2 connector configuration properties
 // ModuleID: descriptions-of-debezium-db2-connector-configuration-properties
 [[db2-connector-properties]]
 === Connector properties

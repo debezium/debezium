@@ -2560,7 +2560,7 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} PostgreSQL connector configuration properties
+// Title: Descriptions of {prodname} PostgreSQL connector configuration properties
 // ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 [[postgresql-connector-properties]]
 === Connector configuration properties
