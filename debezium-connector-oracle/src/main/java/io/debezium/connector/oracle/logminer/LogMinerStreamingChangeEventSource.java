@@ -874,7 +874,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void commitOffset(Map<String, ?> offset) {
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         // nothing to do
     }
 }

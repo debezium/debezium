@@ -128,7 +128,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
-    public void commitOffset(Map<String, ?> offset) {
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         if (xsOut != null) {
             LOGGER.debug("Sending message to request recording of offsets to Oracle");
             final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));

@@ -187,9 +187,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(partition, offsetContext));
     }
 
-    public void commitOffset(Map<String, ?> offset) {
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
-            streamingSource.commitOffset(offset);
+            streamingSource.commitOffset(partition, offset);
         }
     }
 
