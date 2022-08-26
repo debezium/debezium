@@ -180,7 +180,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 }
                 // There is no change in the database
                 if (toLsn.compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && streamingExecutionContext.getShouldIncreaseFromLsn()) {
-                    LOGGER.debug("No change in the database");
+                    LOGGER.info("No change in the database");
                     return false;
                 }
 
@@ -276,8 +276,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
-                            LOGGER.trace("Processing change {}", tableWithSmallestLsn);
-                            LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
+                            LOGGER.info("Processing change {}", tableWithSmallestLsn);
+                            LOGGER.info("Schema change checkpoints {}", schemaChangeCheckpoints);
                             if (!schemaChangeCheckpoints.isEmpty()) {
                                 if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
                                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
