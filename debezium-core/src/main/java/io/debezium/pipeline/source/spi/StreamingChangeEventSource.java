@@ -67,6 +67,6 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
      * like Postgres and Oracle to indicate how far the source TX log can be
      * discarded.
      */
-    default void commitOffset(Map<String, ?> offset) {
+    default void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
     }
 }
