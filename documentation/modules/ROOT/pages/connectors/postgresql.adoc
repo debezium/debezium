@@ -3048,7 +3048,7 @@ The connector may establish JDBC connections at its own discretion. Consequently
  +
 The connector does not execute these statements when it creates a connection for reading the transaction log. +
 
-|[[postgresql-property-status-update-interval-ms]]<<postgresql-property-status-update-interval-ms, `+status.update.interval.ms`>>
+|[[postgresql-property-status-update-interval-ms]]<<postgresql-property-status-update-interval-ms, `+status.update.interval.ms+`>>
 |`10000`
 |Frequency for sending replication connection status updates to the server, given in milliseconds.
  +
