@@ -7,12 +7,16 @@ package io.debezium.connector.postgresql.connection;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.Duration;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
+import io.debezium.util.Clock;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * Abstract implementation of {@link MessageDecoder} that all decoders should inherit from.
@@ -22,6 +26,10 @@ import io.debezium.connector.postgresql.connection.ReplicationStream.Replication
 public abstract class AbstractMessageDecoder implements MessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMessageDecoder.class);
+    private static final Duration LOG_INTERVAL_DURATION = Duration.ofSeconds(10);
+
+    // timer needs to be initialized when the first logging attempt happens
+    private Timer timer = null;
 
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
@@ -42,7 +50,9 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
         if (walPosition.skipMessage(lastReceivedLsn)) {
-            LOGGER.info("Streaming requested from LSN {}, received LSN {} identified as already processed", startLsn, lastReceivedLsn);
+            if (timerPermitsLogging()) {
+                LOGGER.info("Streaming requested from LSN {}, received LSN {} identified as already processed", startLsn, lastReceivedLsn);
+            }
             return true;
         }
         return false;
@@ -50,5 +60,14 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
 
     @Override
     public void close() {
+    }
+
+    private boolean timerPermitsLogging() {
+        // the first message should always be logged
+        if (timer == null || timer.expired()) {
+            timer = Threads.timer(Clock.SYSTEM, LOG_INTERVAL_DURATION);
+            return true;
+        }
+        return false;
     }
 }
