@@ -1440,7 +1440,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(String key, Class<T> type) {
-        return getInstance(key, type, () -> getClass().getClassLoader());
+        return getInstance(key, type, () -> Thread.currentThread().getContextClassLoader());
     }
 
     /**
@@ -1468,7 +1468,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
-        return Instantiator.getInstance(getString(key), () -> getClass().getClassLoader(), configuration);
+        return Instantiator.getInstance(getString(key), () -> Thread.currentThread().getContextClassLoader(), configuration);
     }
 
     /**
@@ -1480,7 +1480,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz) {
-        return getInstance(field, clazz, () -> getClass().getClassLoader());
+        return getInstance(field, clazz, () -> Thread.currentThread().getContextClassLoader());
     }
 
     /**
@@ -1508,7 +1508,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
-        return Instantiator.getInstance(getString(field), () -> getClass().getClassLoader(), configuration);
+        return Instantiator.getInstance(getString(field), () -> Thread.currentThread().getContextClassLoader(), configuration);
     }
 
     /**
@@ -1522,7 +1522,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz, Properties props) {
-        return Instantiator.getInstanceWithProperties(getString(field), () -> getClass().getClassLoader(), props);
+        return Instantiator.getInstanceWithProperties(getString(field), () -> Thread.currentThread().getContextClassLoader(), props);
     }
 
     /**
