@@ -51,25 +51,29 @@ public class CompactionCommand implements Runnable {
     @Override
     public void run() {
 
-        LOGGER.info("compaction command executed {} {} {} {}", connectorName, compactedHistoryTopic, bootstrapServers, historyTopic);
+        LOGGER.info(
+                "Database history compaction will be started for {} database history and after compaction will history will be stored inside {} new database history topic",
+                historyTopic, compactedHistoryTopic);
         KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction(bootstrapServers, historyTopic, compactedHistoryTopic);
 
         Configuration dbHistoryConfig = Configuration.create().build();
 
         Configuration.create().build();
 
+        LOGGER.info("Configuring the Consumer and Producer for read and write the compaction history topic respectively.");
         // configure
         databaseHistoryCompaction.configure(dbHistoryConfig, null, DatabaseHistoryListener.NOOP, false);
 
+        LOGGER.info("Starting database history compaction...");
         // start
         databaseHistoryCompaction.start();
 
-        MySqlPartition source = new MySqlPartition("dbserver1", "my-db-history");
+        MySqlPartition source = new MySqlPartition("dbserver1", "inventory");
         Configuration config = Configuration.empty()
                 .edit()
                 .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
 
-        MySqlOffsetContext position = new MySqlOffsetContext(false, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
+        MySqlOffsetContext position = new MySqlOffsetContext(true, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
                 new SourceInfo(new MySqlConnectorConfig(config)));
         Offsets<MySqlPartition, MySqlOffsetContext> offsets = Offsets.of(source, position);
 
@@ -77,5 +81,6 @@ public class CompactionCommand implements Runnable {
         databaseHistoryCompaction.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), new Tables(),
                 new MySqlAntlrDdlParser());
 
+        LOGGER.info("Database history compaction has been completed check by reading the {} history topic.", compactedHistoryTopic);
     }
 }

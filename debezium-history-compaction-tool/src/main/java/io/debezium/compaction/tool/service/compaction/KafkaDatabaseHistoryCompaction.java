@@ -164,10 +164,14 @@ public class KafkaDatabaseHistoryCompaction {
             throws DatabaseHistoryException {
         LOGGER.debug("KafkaDatabaseHistoryCompaction record {} - {} - {} - {}", source, position, schema, parser);
         Tables compactedSchema = recover(source, position, schema, parser);
+
         compactedSchema.tableIds().forEach(tableId -> {
             LOGGER.debug("KafkaDatabaseHistoryCompaction table ids: {}", tableId);
             final Table table = compactedSchema.forTable(tableId);
+            LOGGER.info("Table {}", table);
+
             TableChanges tableChanges = new TableChanges();
+
             tableChanges.create(new Table() {
                 @Override
                 public TableId id() {
@@ -222,7 +226,9 @@ public class KafkaDatabaseHistoryCompaction {
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null, null, null);
         AtomicInteger counter = new AtomicInteger();
         recoverRecords(recovered -> {
+            // LOGGER.debug("recovered record: {}", recovered);
             listener.onChangeFromHistory(recovered);
+            LOGGER.info("position1: {} and position2: {}", recovered.position(), stopPoint.position());
             if (comparator.isAtOrBefore(recovered, stopPoint)) {
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
@@ -379,6 +385,8 @@ public class KafkaDatabaseHistoryCompaction {
         catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);
         }
+
+        this.stop(); // stop the producer since we have compacted the history and stored it inside the given topic
     }
 
     public void stop() {

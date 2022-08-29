@@ -6,12 +6,14 @@
 package io.debezium.compaction.tool.service.compaction;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.spi.Offsets;
@@ -19,7 +21,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
-class KafkaDatabaseHistoryCompactionTest {
+public class KafkaDatabaseHistoryCompactionTest {
 
     private static KafkaCluster kafka;
     private Offsets<Partition, MySqlOffsetContext> offsets;
@@ -43,20 +45,35 @@ class KafkaDatabaseHistoryCompactionTest {
                 .startup();
     }
 
+    private void mysqlConnection() {
+        MySqlConnector mySqlConnector = new MySqlConnector();
+        Map<String, String> props = new HashMap<>();
+        mySqlConnector.start(props);
+
+    }
+
     @AfterClass
     public static void stopKafka() {
         if (kafka != null) {
             kafka.shutdown();
+            kafka = null;
         }
     }
 
     @Test
-    void testConfiguration() {
-        KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction("", "", "");
+    public void testConfiguration() throws InterruptedException {
+        if (kafka != null) {
+            System.out.println("is kafka running: " + kafka.isRunning());
+        }
+        else {
+            System.out.println("Kafka is not running it's null");
+        }
 
-        Configuration dbHistoryConfig = Configuration.create().build();
-
-        databaseHistoryCompaction.configure(dbHistoryConfig, null, DatabaseHistoryListener.NOOP, false);
+        // KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction("", "", "");
+        //
+        // Configuration dbHistoryConfig = Configuration.create().build();
+        //
+        // databaseHistoryCompaction.configure(dbHistoryConfig, null, DatabaseHistoryListener.NOOP, false);
 
     }
 }
