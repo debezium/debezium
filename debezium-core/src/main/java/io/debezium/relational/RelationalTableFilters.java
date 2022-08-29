@@ -33,7 +33,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
      */
     private final TableFilter schemaSnapshotFilter;
 
-    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
+    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper, boolean useCatalogBeforeSchema) {
         // Define the filter that provides the list of tables that could be captured if configured
         final TableSelectionPredicateBuilder eligibleTables = Selectors.tableSelector()
                 .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST))
@@ -61,7 +61,15 @@ public class RelationalTableFilters implements DataCollectionFilters {
         Predicate<TableId> finalTablePredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? tablePredicate.and(systemTablesFilter::isIncluded)
                 : tablePredicate;
-
+        String signalDataCollection = config.getString(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION);
+        if (signalDataCollection != null) {
+            TableId signalDataCollectionTableId = TableId.parse(signalDataCollection, useCatalogBeforeSchema);
+            if (!finalTablePredicate.test(signalDataCollectionTableId)) {
+                final Predicate<TableId> signalDataCollectionPredicate = Selectors.tableSelector()
+                        .includeTables(tableIdMapper.toString(signalDataCollectionTableId), tableIdMapper).build();
+                finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
+            }
+        }
         this.tableFilter = finalTablePredicate::test;
 
         // Define the database filter using the include and exclude lists for database names ...

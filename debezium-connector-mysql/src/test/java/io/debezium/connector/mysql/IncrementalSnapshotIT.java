@@ -78,11 +78,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = DATABASE.qualifiedTableName("c") + "," + DATABASE.qualifiedTableName("debezium_signal");
+            tableIncludeList = DATABASE.qualifiedTableName("c");
         }
         else {
-            tableIncludeList = DATABASE.qualifiedTableName("a") + ", " + DATABASE.qualifiedTableName("c") + "," +
-                    DATABASE.qualifiedTableName("debezium_signal");
+            tableIncludeList = DATABASE.qualifiedTableName("a") + ", " + DATABASE.qualifiedTableName("c");
         }
         return DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)

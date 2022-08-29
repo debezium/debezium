@@ -149,7 +149,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, String.format("%s, %s", TABLE_NAME, SIGNAL_TABLE_NAME))
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, String.format("%s", TABLE_NAME))
                         .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
                         .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_TABLE_NAME)

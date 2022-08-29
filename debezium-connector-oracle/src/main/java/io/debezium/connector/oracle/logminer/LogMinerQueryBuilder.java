@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
+import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
 /**
@@ -199,14 +200,25 @@ public class LogMinerQueryBuilder {
         if (Strings.isNullOrEmpty(connectorConfig.tableIncludeList())) {
             if (!Strings.isNullOrEmpty(connectorConfig.tableExcludeList())) {
                 List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableExcludeList(), 0);
-                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", true)).append(")");
+                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", true))
+                        .append(buildSignalDataCollectionPredicate(connectorConfig)).append(")");
             }
         }
         else {
             List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableIncludeList(), 0);
-            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", false)).append(")");
+            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", false))
+                    .append(buildSignalDataCollectionPredicate(connectorConfig)).append(")");
         }
         return predicate.toString();
+    }
+
+    private static String buildSignalDataCollectionPredicate(OracleConnectorConfig connectorConfig) {
+        String signalDataCollection = connectorConfig.getSignalingDataCollectionId();
+        if (signalDataCollection == null) {
+            return "";
+        }
+        TableId signalDataCollectionTableId = TableId.parse(signalDataCollection, connectorConfig.useCatalogBeforeSchema());
+        return " OR SEG_OWNER || '.' || TABLE_NAME='" + connectorConfig.getTableIdMapper().toString(signalDataCollectionTableId) + "'";
     }
 
     /**

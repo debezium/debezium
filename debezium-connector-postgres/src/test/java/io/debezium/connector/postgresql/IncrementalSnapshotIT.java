@@ -75,10 +75,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "s1.b,s1.debezium_signal";
+            tableIncludeList = "s1.b";
         }
         else {
-            tableIncludeList = "s1.a,s1.b,s1.debezium_signal";
+            tableIncludeList = "s1.a,s1.b";
         }
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
@@ -239,7 +239,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         }
 
         // start connector
-        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part, s1.part1, s1.part2, s1.debezium_signal"));
+        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part, s1.part1, s1.part2"));
         waitForConnectorToStart();
 
         sendAdHocSnapshotSignal("s1.part");

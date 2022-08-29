@@ -855,7 +855,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
-                ColumnFilterMode.SCHEMA);
+                ColumnFilterMode.SCHEMA,
+                false);
 
         this.logicalDecodingMessageFilter = new LogicalDecodingMessageFilter(config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST),
                 config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST));

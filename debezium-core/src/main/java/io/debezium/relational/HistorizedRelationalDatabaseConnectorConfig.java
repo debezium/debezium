@@ -66,7 +66,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           int defaultSnapshotFetchSize,
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode);
+        super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;
@@ -77,7 +77,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
                                                           boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
+        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, useCatalogBeforeSchema);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;
