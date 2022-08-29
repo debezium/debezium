@@ -85,9 +85,9 @@
     <database.sqlserver.port>5432</database.sqlserver.port>
     <database.sqlserver.username>sa</database.sqlserver.username>
     <database.sqlserver.password>Debezium1$</database.sqlserver.password>
-    <database.sqlserver.dbz.username>sa</database.sqlserver.dbz.username>
-    <database.sqlserver.dbz.password>Debezium$1</database.sqlserver.dbz.password>
-    <database.sqlserver.dbname>TestDB</database.sqlserver.dbname>
+    <database.sqlserver.dbz.username>${database.db2.username}</database.sqlserver.dbz.username>
+    <database.sqlserver.dbz.password>${database.db2.password}</database.sqlserver.dbz.password>
+    <database.sqlserver.dbnames>TestDB</database.sqlserver.dbnames>
 
     <!--MongoDB configuration-->
     <database.mongo.port>27017</database.mongo.port>
@@ -498,6 +498,15 @@
                 <test.database.postgresql.dbz.username>${database.postgresql.dbz.username}</test.database.postgresql.dbz.username>
                 <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
                 <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
+
+                <!--SqlServer configuration-->
+                <test.database.sqlserver.host>${database.sqlserver.host}</test.database.sqlserver.host>
+                <test.database.sqlserver.port>${database.sqlserver.port}</test.database.sqlserver.port>
+                <test.database.sqlserver.username>${database.sqlserver.username}</test.database.sqlserver.username>
+                <test.database.sqlserver.password>${database.sqlserver.password}</test.database.sqlserver.password>
+                <test.database.sqlserver.dbz.username>${database.sqlserver.dbz.username}</test.database.sqlserver.dbz.username>
+                <test.database.sqlserver.dbz.password>${database.sqlserver.dbz.password}</test.database.sqlserver.dbz.password>
+                <test.database.sqlserver.dbnames>${database.sqlserver.dbnames}</test.database.sqlserver.dbnames>
 
                 <!--Mongo configuration-->
                 <test.database.mongo.host>${database.mongo.host}</test.database.mongo.host>
