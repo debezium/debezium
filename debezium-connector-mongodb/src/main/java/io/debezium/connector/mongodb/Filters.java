@@ -57,7 +57,16 @@ public final class Filters {
             collectionFilter = (id) -> true;
         }
         Predicate<CollectionId> isNotBuiltIn = this::isNotBuiltIn;
-        this.collectionFilter = isNotBuiltIn.and(collectionFilter);
+        Predicate<CollectionId> finalCollectionFilter = isNotBuiltIn.and(collectionFilter);
+        String signalDataCollection = config.getString(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION);
+        if (signalDataCollection != null) {
+            CollectionId signalDataCollectionId = CollectionId.parse("UNUSED", signalDataCollection);
+            if (!finalCollectionFilter.test(signalDataCollectionId)) {
+                final Predicate<CollectionId> signalDataCollectionPredicate = Predicates.includes(signalDataCollectionId.namespace(), CollectionId::namespace);
+                finalCollectionFilter = finalCollectionFilter.or(signalDataCollectionPredicate);
+            }
+        }
+        this.collectionFilter = finalCollectionFilter;
 
         // Define the field selector that provides the field filter to exclude or rename fields in a document ...
         fieldSelector = FieldSelector.builder()

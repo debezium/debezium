@@ -516,7 +516,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
-                                                ColumnFilterMode columnFilterMode) {
+                                                ColumnFilterMode columnFilterMode, boolean useCatalogBeforeSchema) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
@@ -529,7 +529,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                         .subset(DATABASE_CONFIG_PREFIX, true));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
-            this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
+            this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
         }
         // handled by sub-classes for the time being
         else {

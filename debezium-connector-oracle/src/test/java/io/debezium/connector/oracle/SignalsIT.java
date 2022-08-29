@@ -96,7 +96,7 @@ public class SignalsIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)

@@ -86,7 +86,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2,dbA.signals")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER);

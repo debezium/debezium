@@ -27,7 +27,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
     protected RelationalDatabaseConnectorConfig config() {
         return new RelationalDatabaseConnectorConfig(
                 Configuration.create().with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal").build(),
-                "core", null, null, 0, ColumnFilterMode.CATALOG) {
+                "core", null, null, 0, ColumnFilterMode.CATALOG, true) {
             @Override
             protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
                 return null;

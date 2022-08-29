@@ -16,7 +16,7 @@ public class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorCon
 
     public TestRelationalDatabaseConfig(Configuration config, String logicalName, Tables.TableFilter systemTablesFilter,
                                         Selectors.TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, ColumnFilterMode.SCHEMA);
+        super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, ColumnFilterMode.SCHEMA, false);
     }
 
     @Override

@@ -138,7 +138,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B")
                 .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
@@ -146,10 +146,10 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
+            tableIncludeList = "DEBEZIUM\\.B";
         }
         else {
-            tableIncludeList = "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.DEBEZIUM_SIGNAL";
+            tableIncludeList = "DEBEZIUM\\.A,DEBEZIUM\\.B";
         }
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)

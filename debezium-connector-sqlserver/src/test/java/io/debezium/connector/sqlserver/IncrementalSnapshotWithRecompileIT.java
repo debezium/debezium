@@ -109,10 +109,10 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "dbo.b,dbo.debezium_signal";
+            tableIncludeList = "dbo.b";
         }
         else {
-            tableIncludeList = "dbo.a,dbo.b,dbo.debezium_signal";
+            tableIncludeList = "dbo.a,dbo.b";
         }
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
