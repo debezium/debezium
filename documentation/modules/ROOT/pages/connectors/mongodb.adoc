@@ -1670,7 +1670,7 @@ Once specify the prefix value to this property, the xref:mongodb-property-mongod
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[mongodb-property-topic-transaction]]<<mongodb-property-topic-transaction, `topic.transaction`>>
 |`transaction`
@@ -1678,7 +1678,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
  +
 _topic.prefix_._topic.transaction_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

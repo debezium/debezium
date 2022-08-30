@@ -150,11 +150,11 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 By default, the Oracle connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
 The connector uses the following convention to name change event topics:
 
-_serverName.schemaName.tableName_
+_topicPrefix.schemaName.tableName_
 
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the server as specified by the xref:oracle-property-database-server-name[`database.server.name`] connector configuration property.
+_topicPrefix_:: The topic prefix as specified by the xref:oracle-property-topic-prefix[`topic.prefix`] connector configuration property.
 
 _schemaName_:: The name of the schema in which the operation occurred.
 
@@ -182,7 +182,7 @@ For more information about using the logical topic routing SMT to customize topi
 === Schema change topic
 
 You can configure a {prodname} Oracle connector to produce schema change events that describe structural changes that are applied to captured tables in the database.
-The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:oracle-property-database-server-name[`database.server.name`] configuration property.
+The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_topicName_` is the namespace that is specified in the xref:oracle-property-topic-prefix[`topic.prefix`] configuration property.
 
 {prodname} emits a new message to this topic whenever it streams data from a new table.
 
@@ -480,7 +480,7 @@ The following example shows a typical transaction boundary message:
 ----
 
 Unless overridden via the xref:oracle-property-topic-transaction[`topic.transaction`] option,
-the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
+the connector emits transaction events to the xref:oracle-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
 
 // Type: concept
 // ModuleID: how-the-debezium-oracle-connector-enriches-change-event-messages-with-transaction-metadata
@@ -718,7 +718,7 @@ CREATE TABLE customers (
 );
 ----
 
-If the value of the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` configuration property is set to `server1`,
+If the value of the xref:oracle-property-topic-prefix[`_<topic.prefix>_`]`.transaction` configuration property is set to `server1`,
 the JSON representation for every change event that occurs in the `customers` table in the database features the following key structure:
 
 [source,json,indent=0,sub="attributes"]
@@ -2204,7 +2204,7 @@ spec:
     database.password: dbz // <6>
     database.dbname: ORCLCDB // <7>
     database.pdb.name : ORCLPDB1, <8>
-    database.server.name: server1 // <9>
+    topic.prefix: server1 // <9>
     schema.history.kafka.bootstrap.servers: kafka:9092 // <10>
     schema.history.kafka.topic: schema-changes.inventory // <11>
 ----
@@ -2239,7 +2239,7 @@ spec:
 |The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
 
 |9
-|Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+|Topic prefix identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 
 |10
 |The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
@@ -2282,7 +2282,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.user" : "c##dbzuser",  // <5>
         "database.password" : "dbz",   // <6>
         "database.dbname" : "ORCLCDB",  // <7>
-        "database.server.name" : "server1",  // <8>
+        "topic.prefix" : "server1",  // <8>
         "tasks.max" : "1",  // <9>
         "database.pdb.name" : "ORCLPDB1",  // <10>
         "schema.history.kafka.bootstrap.servers" : "kafka:9092", // <11>
@@ -2297,7 +2297,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
 <6> The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
 <7> The name of the database to capture changes from.
-<8> Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+<8> Topic prefix that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 <9> The maximum number of tasks to create for this connector.
 <10> The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
 <11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
@@ -2316,7 +2316,7 @@ The following JSON example shows the same configuration as in the preceding exam
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
@@ -2388,7 +2388,7 @@ ifdef::community[]
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
         "database.user" : "c##dbzuser",
@@ -2414,7 +2414,7 @@ For non-CDB installation, do *not* specify the `database.pdb.name` property.
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
         "database.user" : "c##dbzuser",
@@ -2528,11 +2528,11 @@ endif::product[]
 |No default
 |Name of the Oracle pluggable database to connect to. Use this property with container database (CDB) installations only.
 
-|[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `+database.server.name+`>>
+|[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+|Topic prefix that provides a namespace for the Oracle database server from which the connector captures changes.
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
-Specify a logical name that is unique among all connectors in your {prodname} environment.
+Specify a topic prefix that is unique among all connectors in your {prodname} environment.
 The following characters are valid: alphanumeric characters, hyphens, dots, and underscores. +
  +
 [WARNING]
@@ -3127,14 +3127,6 @@ Adjust the chunk size to a value that provides the best performance in your envi
 |`.`
 |Specify the delimiter for topic name, defaults to `.`.
 
-|[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `topic.prefix`>>
-|`${database.server.name}`
-|The name of the prefix to be used for all topics, defaults to xref:oracle-property-database-server-name[`${database.server.name}`].
-[NOTE]
-====
-Once specify the prefix value to this property, the xref:oracle-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
-====
-
 |[[oracle-property-topic-cache-size]]<<oracle-property-topic-cache-size, `topic.cache.size`>>
 |`10000`
 |The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
@@ -3145,7 +3137,7 @@ Once specify the prefix value to this property, the xref:oracle-property-databas
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[oracle-property-topic-transaction]]<<oracle-property-topic-transaction, `topic.transaction`>>
 |`transaction`
@@ -3153,7 +3145,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
  +
 _topic.prefix_._topic.transaction_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 
@@ -3787,7 +3779,7 @@ The following configuration example adds the properties `database.connection.ada
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
         "database.user" : "c##dbzuser",
