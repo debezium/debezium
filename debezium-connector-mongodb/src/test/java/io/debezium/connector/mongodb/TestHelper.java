@@ -28,6 +28,7 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * A common test configuration options
@@ -45,7 +46,7 @@ public class TestHelper {
         final Builder cfgBuilder = Configuration.fromSystemProperties("connector.").edit()
                 .withDefault(MongoDbConnectorConfig.HOSTS, "rs0/localhost:27017")
                 .withDefault(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, false)
-                .withDefault(MongoDbConnectorConfig.LOGICAL_NAME, "mongo1");
+                .withDefault(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo1");
         return cfgBuilder.build();
     }
 

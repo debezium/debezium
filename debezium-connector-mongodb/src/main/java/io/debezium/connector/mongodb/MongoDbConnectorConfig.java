@@ -196,18 +196,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
-    public static final Field LOGICAL_NAME = Field.create("mongodb.name")
-            .withDisplayName("Namespace")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .required()
-            .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and "
-                    + "that is used as a prefix for all schemas and topics. "
-                    + "Each distinct MongoDB installation should have a separate namespace and monitored by "
-                    + "at most one Debezium connector.");
-
     public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
             .withDisplayName("Connection String")
             .withType(Type.STRING)
@@ -509,7 +497,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     USER,
                     PASSWORD,
                     AUTH_SOURCE,
-                    LOGICAL_NAME,
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
                     CONNECT_TIMEOUT_MS,
