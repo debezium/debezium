@@ -203,7 +203,7 @@ As a data source, MySQL will be used in the following.
 Besides running a pod with MySQL, an appropriate service which will point to the pod with DB itself is needed.
 It can be created e.g. as follows:
 
-[source,bash]
+[source,subs="attributes",bash]
 ----
 $ cat << EOF | kubectl create -n debezium-example -f -
 apiVersion: v1
