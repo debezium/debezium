@@ -21,6 +21,7 @@ import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * Baseline for all integrations tests regarding MongoDB Update Operations
@@ -46,7 +47,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .build();
 
         beforeEach(config);
@@ -82,7 +83,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 

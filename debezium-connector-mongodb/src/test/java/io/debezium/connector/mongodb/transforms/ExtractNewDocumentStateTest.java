@@ -35,6 +35,7 @@ import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -65,7 +66,7 @@ public class ExtractNewDocumentStateTest {
         filters = new Configurator().createFilters();
         MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(
                 Configuration.create()
-                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                         .build());
         source = new SourceInfo(connectorConfig);
         topicNamingStrategy = DefaultTopicNamingStrategy.create(connectorConfig);

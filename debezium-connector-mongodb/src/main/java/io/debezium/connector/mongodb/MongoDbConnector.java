@@ -67,7 +67,7 @@ import io.debezium.util.Threads;
  * <h2>Use of Topics</h2>
  * The connector will write to a separate topic all of the source records that correspond to a single collection. The topic will
  * be named "{@code <logicalName>.<databaseName>.<collectionName>}", where {@code <logicalName>} is set via the
- * "{@link MongoDbConnectorConfig#LOGICAL_NAME mongodb.name}" configuration property.
+ * "{@link AbstractTopicNamingStrategy.TOPIC_PREFIX topic.prefix}" configuration property.
  *
  * <h2>Configuration</h2>
  * <p>

@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -63,7 +64,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
         config = Configuration.from(properties).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, ssl)
                 .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, true)

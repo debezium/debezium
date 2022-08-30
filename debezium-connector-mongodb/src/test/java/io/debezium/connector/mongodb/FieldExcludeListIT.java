@@ -25,6 +25,7 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Testing;
 
 public class FieldExcludeListIT extends AbstractMongoConnectorIT {
@@ -1564,7 +1565,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "*.c1.name,*.c1.active,*.c2.name,*.c2.active")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1,dbA.c2")
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .build();
         context = new MongoDbTaskContext(config);
 
@@ -1595,7 +1596,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         return TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, fieldExcludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .build();
     }
 
