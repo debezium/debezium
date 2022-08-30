@@ -2764,11 +2764,11 @@ If you change the name value, after a restart, instead of continuing to emit eve
  +
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
-|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
+|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `+column.truncate.to.20.chars`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`.
 
-|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
@@ -2828,7 +2828,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names.
 
