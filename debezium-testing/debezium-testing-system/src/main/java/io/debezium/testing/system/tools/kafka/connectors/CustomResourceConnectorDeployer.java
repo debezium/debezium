@@ -74,8 +74,10 @@ public class CustomResourceConnectorDeployer implements ConnectorDeployer {
      * @param name name of the connector
      */
     private void waitForKafkaConnector(String name) {
+        LOGGER.info("Waiting for connector '" + name + "' to become ready.");
         kafkaConnectorOperation()
                 .withName(name)
                 .waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
+        LOGGER.info("Connector '" + name + "' is ready.");
     }
 }
