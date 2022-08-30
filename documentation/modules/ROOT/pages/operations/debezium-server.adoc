@@ -84,7 +84,7 @@ debezium.source.database.port=5432
 debezium.source.database.user=postgres
 debezium.source.database.password=postgres
 debezium.source.database.dbname=postgres
-debezium.source.database.server.name=tutorial
+debezium.source.topic.prefix=tutorial
 debezium.source.schema.include.list=inventory
 ----
 
@@ -171,7 +171,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,838 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.hostname = localhost
 2020-05-15 11:33:12,838 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.password = ********
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    name = kinesis
-2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.server.name = tutorial
+2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    topic.prefix = tutorial
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.port = 5432
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    schema.include.list = inventory
 2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server 1.2.0-SNAPSHOT (powered by Quarkus 1.4.1.Final) started in 1.198s. Listening on: http://0.0.0.0:8080

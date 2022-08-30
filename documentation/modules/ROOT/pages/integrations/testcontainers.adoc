@@ -127,7 +127,7 @@ public void canRegisterPostgreSqlConnector() throws Exception {
 
         ConnectorConfiguration connector = ConnectorConfiguration
                 .forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver1");
+                .with("topic.prefix", "dbserver1");
 
         debeziumContainer.registerConnector("my-connector",
                 connector); // <2>

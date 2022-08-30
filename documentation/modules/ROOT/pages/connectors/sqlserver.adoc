@@ -219,11 +219,11 @@ As consequence, capturing changes from indexed views (aka. materialized views) i
 
 By default, the SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
 The connector uses the following convention to name change event topics:
-`_<serverName>_._<schemaName>_._<tableName>_`
+`_<topicPrefix>_._<schemaName>_._<tableName>_`
 
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the server, as specified by the xref:sqlserver-property-database-server-name[`database.server.name`] configuration property.
+_topicPrefix_:: The logical name of the server, as specified by the xref:sqlserver-property-topic-prefix[`topic.prefix`] configuration property.
 _schemaName_:: The name of the database schema in which the change event occurred.
 _tableName_:: The name of the database table in which the change event occurred.
 
@@ -249,7 +249,7 @@ For more information about using the logical topic routing SMT to customize topi
 === Schema change topic
 
 For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of the schema change events that are applied to captured tables in the database.
-The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:sqlserver-property-database-server-name[`database.server.name`] configuration property.
+The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the logical server name that is specified in the xref:sqlserver-property-topic-prefix[`topic.prefix`] configuration property.
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 The payload of a schema change event message includes the following elements:
@@ -1141,7 +1141,7 @@ The following example shows a typical transaction boundary message:
 ----
 
 Unless overridden via the xref:sqlserver-property-topic-transaction[`topic.transaction`] option,
-transaction events are written to the topic named xref:sqlserver-property-database-server-name[`_<database.server.name>_`]`.transaction`.
+transaction events are written to the topic named xref:sqlserver-property-topic-prefix[`_<topic.prefix>_`]`.transaction`.
 
 //Type: concept
 //ModuleID: change-data-event-enrichment
@@ -1906,7 +1906,7 @@ spec:
     database.user: debezium // <5>
     database.password: dbz // <6>
     database.names: testDB1,testDB2 // <7>
-    database.server.name: fullfullment // <8>
+    topic.prefix: fullfullment // <8>
     database.include.list: dbo.customers // <9>
     schema.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
     schema.history.kafka.topic: dbhistory.fullfillment // <11>
@@ -1941,7 +1941,7 @@ spec:
 |The name of the database to capture changes from.
 
 |8
-|The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
+|The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 
 |9
 |A list of all tables whose changes {prodname} should capture.
@@ -2000,7 +2000,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.user": "sa", // <5>
         "database.password": "Password!", // <6>
         "database.names": "testDB1,testDB2", // <7>
-        "database.server.name": "fullfillment", // <8>
+        "topic.prefix": "fullfillment", // <8>
         "table.include.list": "dbo.customers", // <9>
         "schema.history.kafka.bootstrap.servers": "kafka:9092", // <10>
         "schema.history.kafka.topic": "dbhistory.fullfillment" // <11>
@@ -2016,7 +2016,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the SQL Server user
 <6> The password for the SQL Server user
 <7> The name of the database to capture changes from.
-<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
+<8> The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 <11> The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
@@ -2124,10 +2124,10 @@ ifdef::community[]
 |No default
 |The comma-separated list of the SQL Server database names from which to stream the changes.
 endif::community[]
-|[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
+|[[sqlserver-property-topic-prefix]]<<sqlserver-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture.
-The logical name should be unique across all other connectors, since it is used as the prefix for all Kafka topic names that receive records from this connector.
+|Topic prefix that provides a namespace for the SQL Server database server that you want {prodname} to capture.
+The prefix should be unique across all other connectors, since it is used as the prefix for all Kafka topic names that receive records from this connector.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
  +
 [WARNING]
@@ -2136,7 +2136,6 @@ Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
 The connector is also unable to recover its database schema history topic.
 ====
-
 
 |[[sqlserver-property-schema-include-list]]<<sqlserver-property-schema-include-list, `+schema.include.list+`>>
 |No default
@@ -2526,14 +2525,6 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
 |`.`
 |Specify the delimiter for topic name, defaults to `.`.
 
-|[[sqlserver-property-topic-prefix]]<<sqlserver-property-topic-prefix, `topic.prefix`>>
-|`${database.server.name}`
-|The name of the prefix to be used for all topics, defaults to xref:sqlserver-property-database-server-name[`${database.server.name}`].
-[NOTE]
-====
-Once specify the prefix value to this property, the xref:sqlserver-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
-====
-
 |[[sqlserver-property-topic-cache-size]]<<sqlserver-property-topic-cache-size, `topic.cache.size`>>
 |`10000`
 |The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
@@ -2544,7 +2535,7 @@ Once specify the prefix value to this property, the xref:sqlserver-property-data
  +
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[sqlserver-property-topic-transaction]]<<sqlserver-property-topic-transaction, `topic.transaction`>>
 |`transaction`
@@ -2552,7 +2543,7 @@ For example, if the database server name or topic prefix is `fulfillment`, the d
  +
 _topic.prefix_._topic.transaction_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 For more information, see xref:sqlserver-transaction-metadata[Transaction Metadata].
 

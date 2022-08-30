@@ -67,9 +67,9 @@ When Kafka Connect gracefully shuts down, it stops the connectors, flushes all e
 [[vitess-topic-names]]
 === Topics names
 
-The Vitess connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _serverName_._keyspaceName_._tableName_ where:
+The Vitess connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _topicPrefix_._keyspaceName_._tableName_ where:
 
-* _serverName_ is the logical name of the connector as specified with the `database.server.name` connector configuration property.
+* _topicPrefix_ is the topic prefix as specified by the `topic.prefix` connector configuration property.
 * _keyspaceName_ is the name of the keyspace (a.k.a. database) where the operation occurred.
 * _tableName_ is the name of the database table in which the operation occurred.
 
@@ -129,7 +129,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 ----
 
 Unless overridden via the xref:vitess-property-topic-transaction[`topic.transaction`] option,
-the connector emits transaction events to the xref:vitess-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
+the connector emits transaction events to the xref:vitess-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
 
 .Change data event enrichment
 
@@ -261,7 +261,7 @@ CREATE TABLE customers (
 ----
 
 .Example change event key
-If the `database.server.name` connector configuration property has the value `Vitess_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
+If the `topic.prefix` connector configuration property has the value `Vitess_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
 
 [source,json,indent=0]
 ----
@@ -964,7 +964,7 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
     "vitess.vtctld.port": "15999", // <10>
     "vitess.vtctld.user": "vitess", // <11>
     "vitess.vtctld.password": "vitess_password", // <12>
-    "database.server.name": "fullfillment", // <13>
+    "topic.prefix": "fullfillment", // <13>
     "tasks.max": 1 // <14>
   }
 }
@@ -981,7 +981,7 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 <10> The port of the VTCtld server.
 <11> The username of the VTCtld server (VTCtld gRPC).
 <12> The password of the VTCtld database server (VTCtld gRPC).
-<13> The logical name of the Vitess cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+<13> The topic prefix for the Vitess cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <14> Only one task should operate at any one time.
 
 See the xref:vitess-connector-properties[complete list of Vitess connector properties] that can be specified in these configurations.
@@ -1217,11 +1217,11 @@ If set to `true`, you should also consider setting `vitess.gtid` in the configur
  +
 `RDONLY`  represents streaming from the read-only slave MySQL instance.
 
-|[[vitess-property-database-server-name]]<<vitess-property-database-server-name, `+database.server.name+`>>
+|[[vitess-property-topic-prefix]]<<vitess-property-topic-prefix, `+topic.prefix+`>>
 |
-|Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
+|Topic prefix that provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+The prefix should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 +
 [WARNING]
 ====
@@ -1429,14 +1429,6 @@ See xref:vitess-data-types[how Vitess connectors map data types] for the list of
 |`.`
 |Specify the delimiter for topic name, defaults to `.`.
 
-|[[vitess-property-topic-prefix]]<<vitess-property-topic-prefix, `topic.prefix`>>
-|`${database.server.name}`
-|The name of the prefix to be used for all topics, defaults to xref:vitess-property-database-server-name[`${database.server.name}`].
-[NOTE]
-====
-Once specify the prefix value to this property, the xref:vitess-property-database-server-name[`${database.server.name}`] will not play the prefix role of all topics.
-====
-
 |[[vitess-property-topic-cache-size]]<<vitess-property-topic-cache-size, `topic.cache.size`>>
 |`10000`
 |The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
@@ -1447,7 +1439,7 @@ Once specify the prefix value to this property, the xref:vitess-property-databas
  +
 _topic.prefix_._topic.transaction_ +
  +
-For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 

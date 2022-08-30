@@ -84,7 +84,7 @@ Configuration config = Configuration.create()
         .with("database.user", "mysqluser")
         .with("database.password", "mysqlpw")
         .with("database.server.id", 85744)
-        .with("database.server.name", "my-app-connector")
+        .with("topic.prefix", "my-app-connector")
         .with("schema.history",
               "io.debezium.storage.file.history.FileDatabaseHistory")
         .with("schema.history.file.filename",
@@ -136,7 +136,7 @@ The next few lines define the fields that are specific to the connector, which i
         .with("database.user", "mysqluser")
         .with("database.password", "mysqlpw")
         .with("database.server.id", 85744)
-        .with("database.server.name", "products")
+        .with("topic.prefix", "products")
         .with("schema.history",
               "io.debezium.storage.file.history.FileDatabaseHistory")
         .with("schema.history.file.filename",
