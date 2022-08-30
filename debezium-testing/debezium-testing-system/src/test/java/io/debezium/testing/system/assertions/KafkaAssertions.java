@@ -11,6 +11,7 @@ import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -18,8 +19,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.awaitility.core.ThrowingRunnable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface KafkaAssertions<K, V> {
+
+    static final Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
 
     static void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
         await()
@@ -33,6 +38,7 @@ public interface KafkaAssertions<K, V> {
     }
 
     default void assertTopicsExist(String... names) {
+        LOGGER.info("Awaiting topics " + Arrays.toString(names));
         try (Consumer<K, V> consumer = getConsumer()) {
             await().atMost(scaled(2), TimeUnit.MINUTES).untilAsserted(() -> {
                 Set<String> topics = consumer.listTopics().keySet();
