@@ -2224,11 +2224,11 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
  +
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
-|[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
+|[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|[[sqlserver-property-column-mask-with-length-chars]]<<sqlserver-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+|[[sqlserver-property-column-mask-with-length-chars]]<<sqlserver-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
@@ -2257,7 +2257,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names.
 

@@ -2097,11 +2097,11 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 |`true`
 |Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history.
 
-|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
+|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`.
 
-|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
@@ -2143,7 +2143,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names. +
 Each fully-qualified table name is a regular expression in the following format: +

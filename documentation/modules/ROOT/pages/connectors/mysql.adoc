@@ -2469,11 +2469,11 @@ Do not also specify the `table.include.list` connector configuration property.
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
-|[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
+|[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event record values if the field values are longer than the specified number of characters. You can configure multiple properties with different lengths in a single configuration. The length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
-|[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+|[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
@@ -2659,7 +2659,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names.
 
