@@ -3272,6 +3272,11 @@ As of release 12, PostgreSQL allows logical replication slots _only on primary s
 Also, replication slots themselves are not propagated to replicas.
 If the primary server goes down, a new primary must be promoted.
 
+[NOTE]
+====
+Some managed PostgresSQL services (AWS RDS and GCP CloudSQL for example) implement replication to a standby via disk replication. This means that the replication slot does get replicated and will remain available after a failover.
+====
+
 ifdef::community[]
 The new primary must have the xref:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
 endif::community[]
