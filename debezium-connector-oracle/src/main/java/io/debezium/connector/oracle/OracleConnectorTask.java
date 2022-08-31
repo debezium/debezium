@@ -82,6 +82,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
+                .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
