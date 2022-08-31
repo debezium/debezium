@@ -112,16 +112,8 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("""
-                        SELECT * FROM \"s1\".\"table1\"
-                        WHERE ((\"pk1\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?))
-                        AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?))
-                        ORDER BY \"pk1\", \"pk2\", \"pk3\"
-                        LIMIT 1024
-                """.replace("\n", "").replace("        ", " ").trim());
+        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
     @Test
@@ -147,17 +139,8 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo("""
-                        SELECT * FROM \"s1\".\"table1\"
-                        WHERE ((\"pk1\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?))
-                        AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?)
-                        OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?))
-                        AND \"val1\"=foo
-                        ORDER BY \"pk1\", \"pk2\", \"pk3\"
-                        LIMIT 1024
-                """.replace("\n", "").replace("        ", " ").trim());
+        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo(
+                "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
     @Test

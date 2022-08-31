@@ -56,7 +56,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <maven.compiler.release>11</maven.compiler.release>
-        <maven.compiler.testRelease>17</maven.compiler.testRelease>
+        <maven.compiler.testRelease>11</maven.compiler.testRelease>
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
         <jdk.min.version>11</jdk.min.version>
