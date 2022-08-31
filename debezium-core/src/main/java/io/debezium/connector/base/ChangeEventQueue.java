@@ -40,7 +40,7 @@ import io.debezium.util.Threads.Timer;
  * time to sleep (block) between two subsequent poll calls. See the
  * {@link Builder} for the different options. The queue applies back-pressure
  * semantics, i.e. if it holds the maximum number of elements, subsequent calls
- * to {@link #enqueue(Object)} will block until elements have been removed from
+ * to {@link #enqueue(T)} will block until elements have been removed from
  * the queue.
  * <p>
  * If an exception occurs on the producer side, the producer should make that
@@ -52,7 +52,7 @@ import io.debezium.util.Threads.Timer;
  * @author Gunnar Morling
  *
  * @param <T>
- *            the type of events in this queue. Usually {@link DataChangeEvent} is
+ *            the type of events in this queue. Usually {@link Sizeable} is
  *            used, but in cases where additional metadata must be passed from
  *            producers to the consumer, a custom type extending source records
  *            may be used.
