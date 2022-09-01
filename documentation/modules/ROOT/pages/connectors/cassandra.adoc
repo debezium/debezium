@@ -120,7 +120,8 @@ The third snapshot mode ('never') ensures the connector never performs snapshots
 [[reading-the-commitlog]]
 === Reading the Commit Log
 
-The Cassandra connector will typically spend the vast majority of its time reading local commit logs on the Cassandra node.
+The Cassandra connector will typically spend the vast majority of its time reading local commit logs on the Cassandra node. In Cassandra 4.0 on every segment fsync, an index file will be updated to reflect latest offset. This eliminates the processing delay in the CDC feature in Cassandra 3.X. and can be enabled in Cassandra 4 Debezium connector by setting the configuration: `commit.log.real.time.processing.enabled` to `true`. The frequency at which index file is polled is determined by `commit.log.marked.complete.poll.interval.ms`.
+
 
 Commit logs' binary data are deserialized with Cassandra's CommitLogReader and CommitLogReadHandler. Each deserialized object is called a `mutation` in Cassandra. A `mutation` contains one or more change events.
 
@@ -139,11 +140,6 @@ Cassandra's commit logs come with a set of limitations, which are critical for i
 * Due to the nature of CQL, _insert_ DMLs can result in a row insertion or update; _update_ DMLs can result in a row insertion, update, or deletion; _delete_ DMLs can result in a row update or deletion. Since queries are not recorded in commit logs, CDC event type is classified based on the effect on the row in a relational database sense.
 
 **TODO**: is there a way to determine event type which corresponds to the actual Cassandra DML statement? and if so, is that preferred over the semantic of these events?
-
-[NOTE]
-====
-In Cassandra 4.0 on every segment fsync, an index file will be updated to reflect latest offset. This will eliminate the processing delay in the CDC feature in Cassandra 3.X. This connector feature is to be added in the future with the Cassandra 4.0 release.
-====
 
 [[managing-commitlog-lifecycle]]
 === Managing Commit Log Lifecycle
@@ -941,6 +937,14 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |[[cassandra-property-cassandra-ssl-config-path]]<<cassandra-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
 |
 |The SSL config file path required for storage node. An example of config file can be found at the bottom of the page.
+
+|[[cassandra-property-commit-log-real-time-processing-enabled]]<<cassandra-property-commit-log-real-time-processing-enabled, `commit.log.real.time.processing.enabled`>>
+|`false`
+|Only applicable in Cassandra 4 and if set to true, Cassandra connector agent will read commit logs incrementally by watching for updates in commit log index files and stream data in real-time, at frequency determined by xref:cassandra-property-commit-log-marked-complete-poll-interval-ms[`commit.log.marked.complete.poll.interval.ms`]. If set to false, then Cassandra 4 connector waits for Commit Logs file to be marked Completed before processing them.
+
+|[[cassandra-property-commit-log-marked-complete-poll-interval-ms]]<<cassandra-property-commit-log-marked-complete-poll-interval-ms, `commit.log.marked.complete.poll.interval.ms`>>
+|10000
+|Only applicable in Cassandra 4 and when real-time streaming is enabled by xref:cassandra-property-commit-log-real-time-processing-enabled[`commit.log.real.time.processing.enabled`]. This config determines the frequency at which commit log index file is polled for updates in offset value.
 
 |[[cassandra-property-commit-log-relocation-dir]]<<cassandra-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
 |
