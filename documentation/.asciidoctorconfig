@@ -1,0 +1,10 @@
+// This file provides hints for an IDE how to render the preview, for example, in IntelliJ.
+// This is mostly intended to define attributes.
+// Read more at: https://intellij-asciidoc-plugin.ahus1.de/docs/users-guide/features/advanced/asciidoctorconfig-file.html
+
+// Duplicate values for the preview that are defined in another repository in the Antora playbook
+:prodname: Debezium
+:jira-url: 'https://issues.redhat.com'
+
+// Define attributes that are used downstream so that an editor known that they exist and doesn't show them in warnings.
+:product!:
