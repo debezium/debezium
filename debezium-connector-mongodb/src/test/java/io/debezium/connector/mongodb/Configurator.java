@@ -74,6 +74,10 @@ public class Configurator {
         return with(MongoDbConnectorConfig.FIELD_RENAMES, renames);
     }
 
+    public Configurator signalingCollection(String signalingCollection) {
+        return with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, signalingCollection);
+    }
+
     public Filters createFilters() {
         return new Filters(configBuilder.build());
     }

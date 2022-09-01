@@ -3,22 +3,20 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.relational;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
-import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * @author Randall Hauch
+ * @author ggaborg
  */
-public class FiltersTest {
+public class RelationalTableFiltersTest {
 
     private Configurator build;
-    private Filters filters;
+    private RelationalTableFilters filters;
 
     @Before
     public void beforeEach() {
@@ -187,70 +185,16 @@ public class FiltersTest {
         assertCollectionIncluded("db1.signal");
     }
 
-    @Test
-    public void excludeFilterShouldRemoveMatchingField() {
-        filters = build.excludeFields("db1.collectionA.key1").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
-        assertEquals(
-                Document.parse(" { \"key2\" : \"value2\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
-    }
-
-    @Test
-    public void excludeFilterShouldRemoveMatchingFieldWithLeadingWhiteSpaces() {
-        filters = build.excludeFields(" *.collectionA.key1").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
-        assertEquals(
-                Document.parse(" { \"key2\" : \"value2\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
-    }
-
-    @Test
-    public void excludeFilterShouldRemoveMatchingFieldWithTrailingWhiteSpaces() {
-        filters = build.excludeFields("db.collectionA.key1 ,db.collectionA.key2 ").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", "db.collectionA");
-        assertEquals(
-                Document.parse(" { \"key3\" : \"value3\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\", \"key3\" : \"value3\" }")));
-    }
-
-    @Test
-    public void renameFilterShouldRenameMatchingField() {
-        filters = build.renameFields("db1.collectionA.key1:key2").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
-        assertEquals(
-                Document.parse(" { \"key2\" : \"value1\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\" }")));
-    }
-
-    @Test
-    public void renameFilterShouldRenameMatchingFieldWithLeadingWhiteSpaces() {
-        filters = build.renameFields(" *.collectionA.key2:key3").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
-        assertEquals(
-                Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key2\" : \"valueB\" }")));
-    }
-
-    @Test
-    public void renameFilterShouldRenameMatchingFieldWithTrailingWhiteSpaces() {
-        filters = build.renameFields("db2.collectionA.key1:key2 ,db2.collectionA.key3:key4 ").createFilters();
-        CollectionId id = CollectionId.parse("rs1.", "db2.collectionA");
-        assertEquals(
-                Document.parse(" { \"key2\" : \"valueA\", \"key4\" : \"valueB\" }"),
-                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }")));
-    }
-
     protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
+        TableId id = TableId.parse(fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
-        assertThat(filters.collectionFilter().test(id)).isTrue();
+        assertThat(filters.dataCollectionFilter().isIncluded(id)).isTrue();
     }
 
     protected void assertCollectionExcluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
+        TableId id = TableId.parse(fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
-        assertThat(filters.collectionFilter().test(id)).isFalse();
+        assertThat(filters.dataCollectionFilter().isIncluded(id)).isFalse();
     }
 
 }
