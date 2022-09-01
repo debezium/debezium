@@ -71,7 +71,7 @@ and then explicitly create the topics, either manually, or through a custom depl
 Automatic topic creation in Kafka Connect is controlled by the `topic.creation.enable` property.
 The default value for the property is `true`, enabling automatic topic creation, as shown in the following example:
 
-[source,options="nowrap",shell]
+[source,shell,options="nowrap"]
 ----
 topic.creation.enable = true
 ----
@@ -208,7 +208,7 @@ endif::product[]
 ifdef::community[]
 * To define properties for the `topic.creation.default` group, add them to the connector configuration JSON, as shown in the following example:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -301,7 +301,7 @@ list the properties for the custom group after the group name.
 +
 The following example shows sample configurations for the `inventory` and `applicationlogs` custom topic creation groups:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -411,7 +411,7 @@ ifdef::community[]
 +
 The following example registers the custom topic creation groups `inventory` and `applicationlogs`:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -452,7 +452,7 @@ along with the configurations for an `inventory` and an `applicationlogs` custom
 .Example: Configuration for a default topic creation group and two custom groups
 ifdef::community[]
 
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
