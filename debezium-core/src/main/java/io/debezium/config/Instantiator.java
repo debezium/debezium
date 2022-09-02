@@ -11,6 +11,8 @@ import java.util.function.Supplier;
 
 /**
  * Instantiates given classes reflectively.
+ * If present the the thread context classloader is used.
+ * If not either passed classloader or default classloader is used instead.
  *
  * @author Jiri Pechanec
  */
@@ -44,8 +46,12 @@ public class Instantiator {
     public static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
                                                                   C constructorValue) {
         if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
+            ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+            if (classloader == null) {
+                classloader = classloaderSupplier != null ? classloaderSupplier.get()
                     : Configuration.class.getClassLoader();
+            }
+
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()
