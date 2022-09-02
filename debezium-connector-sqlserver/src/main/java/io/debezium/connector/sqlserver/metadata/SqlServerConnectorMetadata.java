@@ -16,7 +16,8 @@ public class SqlServerConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("sqlserver", "Debezium SQLServer Connector", SqlServerConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor("sqlserver", "Debezium SQLServer Connector", SqlServerConnector.class.getName(),
+                Module.version(), "Captures change events from a SQLServer database.");
     }
 
     @Override

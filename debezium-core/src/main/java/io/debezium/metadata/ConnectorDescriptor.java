@@ -10,12 +10,14 @@ public class ConnectorDescriptor {
     private final String name;
     private final String className;
     private final String version;
+    private final String description;
 
-    public ConnectorDescriptor(String id, String name, String className, String version) {
+    public ConnectorDescriptor(String id, String name, String className, String version, String description) {
         this.id = id;
         this.name = name;
         this.className = className;
         this.version = version;
+        this.description = description;
     }
 
     public String getId() {
@@ -32,5 +34,9 @@ public class ConnectorDescriptor {
 
     public String getVersion() {
         return version;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

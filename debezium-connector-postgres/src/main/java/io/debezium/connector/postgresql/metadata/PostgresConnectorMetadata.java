@@ -16,7 +16,8 @@ public class PostgresConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("postgres", "Debezium PostgreSQL Connector", PostgresConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor("postgres", "Debezium PostgreSQL Connector", PostgresConnector.class.getName(),
+                Module.version(), "Captures change events from a PostgreSQL database.");
     }
 
     @Override

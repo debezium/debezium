@@ -16,7 +16,8 @@ public class MongoDbConnectorMetadata implements ConnectorMetadata {
 
     @Override
     public ConnectorDescriptor getConnectorDescriptor() {
-        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", MongoDbConnector.class.getName(), Module.version());
+        return new ConnectorDescriptor("mongodb", "Debezium MongoDB Connector", MongoDbConnector.class.getName(),
+                Module.version(), "Capatures change events from a MongoDB database.");
     }
 
     @Override

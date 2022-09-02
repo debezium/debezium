@@ -112,6 +112,7 @@ public class JsonSchemaCreatorService {
         Schema schema = new SchemaImpl(connectorName);
         String connectorVersion = connectorMetadata.getConnectorDescriptor().getVersion();
         schema.setTitle(connectorMetadata.getConnectorDescriptor().getName());
+        schema.setDescription(connectorMetadata.getConnectorDescriptor().getDescription());
         schema.setType(Schema.SchemaType.OBJECT);
         schema.addExtension("connector-id", connectorBaseName);
         schema.addExtension("version", connectorVersion);
