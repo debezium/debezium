@@ -52,14 +52,12 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     private final Schema tableSchema;
     private final Schema changeSchema;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster) {
-        columnSchema = schemaFactoryObject.schemaHistoryColumnSchema(schemaNameAdjuster);
+        columnSchema = SchemaFactory.get().schemaHistoryColumnSchema(schemaNameAdjuster);
 
-        tableSchema = schemaFactoryObject.schemaHistoryTableSchema(schemaNameAdjuster);
+        tableSchema = SchemaFactory.get().schemaHistoryTableSchema(schemaNameAdjuster);
 
-        changeSchema = schemaFactoryObject.schemaHistoryChangeSchema(schemaNameAdjuster);
+        changeSchema = SchemaFactory.get().schemaHistoryChangeSchema(schemaNameAdjuster);
     }
 
     public Schema getChangeSchema() {

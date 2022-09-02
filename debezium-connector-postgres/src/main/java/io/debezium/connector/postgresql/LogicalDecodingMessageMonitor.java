@@ -64,8 +64,6 @@ public class LogicalDecodingMessageMonitor {
     private final Schema blockSchema;
     private final Schema valueSchema;
 
-    private static final PostgresSchemaFactory postgresSchemaFactoryObject = PostgresSchemaFactory.get();
-
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
         this.schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
         this.sender = sender;
@@ -74,15 +72,15 @@ public class LogicalDecodingMessageMonitor {
         this.base64Encoder = Base64.getEncoder();
         this.base64UrlSafeEncoder = Base64.getUrlEncoder();
 
-        this.keySchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorKeySchema(schemaNameAdjuster);
+        this.keySchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorKeySchema(schemaNameAdjuster);
 
         // pg_logical_emit_message accepts null for prefix and content, but these
         // messages are not received actually via logical decoding still marking these
         // schemas as optional, just in case we will receive null values for either
         // field at some point
-        this.blockSchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorBlockSchema(schemaNameAdjuster, binaryMode);
+        this.blockSchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorBlockSchema(schemaNameAdjuster, binaryMode);
 
-        this.valueSchema = postgresSchemaFactoryObject.logicalDecodingMessageMonitorValueSchema(schemaNameAdjuster, connectorConfig, binaryMode);
+        this.valueSchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorValueSchema(schemaNameAdjuster, connectorConfig, binaryMode);
     }
 
     public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,

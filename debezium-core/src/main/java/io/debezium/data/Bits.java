@@ -23,8 +23,6 @@ public class Bits {
     public static final String LENGTH_FIELD = "length";
     public static final int SCHEMA_VERSION = 1;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     /**
      * Returns a {@link SchemaBuilder} for a Bits. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -33,7 +31,7 @@ public class Bits {
      * @return the schema builder
      */
     public static SchemaBuilder builder(int length) {
-        return schemaFactoryObject.datatypeBitsSchema(length);
+        return SchemaFactory.get().datatypeBitsSchema(length);
     }
 
     /**

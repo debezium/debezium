@@ -23,9 +23,6 @@ import io.debezium.schema.SchemaFactory;
  *
  */
 public class VariableScaleDecimal {
-
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
     public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
@@ -39,7 +36,7 @@ public class VariableScaleDecimal {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return schemaFactoryObject.datatypeVariableScaleDecimalSchema();
+        return SchemaFactory.get().datatypeVariableScaleDecimalSchema();
     }
 
     /**

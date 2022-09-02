@@ -24,8 +24,6 @@ public class EnumSet {
     public static final String VALUES_FIELD = "allowed";
     public static final int SCHEMA_VERSION = 1;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     /**
      * Returns a {@link SchemaBuilder} for a set of enumerated values. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -34,7 +32,7 @@ public class EnumSet {
      * @return the schema builder
      */
     public static SchemaBuilder builder(String allowedValues) {
-        return schemaFactoryObject.datatypeEnumSetSchema(allowedValues);
+        return SchemaFactory.get().datatypeEnumSetSchema(allowedValues);
     }
 
     /**
