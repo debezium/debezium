@@ -83,8 +83,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final Signal<P> signal;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     /**
      * Change event receiver for events dispatched from a streaming change event source.
      */
@@ -128,9 +126,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.signal = new Signal<>(connectorConfig, this);
         this.heartbeat = heartbeat;
 
-        schemaChangeKeySchema = schemaFactoryObject.schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
+        schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
-        schemaChangeValueSchema = schemaFactoryObject.schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+        schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,

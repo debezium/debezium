@@ -36,11 +36,9 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     public static final String SCHEMA_NAME_UPDATED_DESCRIPTION = "io.debezium.connector.mongodb.changestream.updatedescription";
     public static final String SCHEMA_NAME_TRUNCATED_ARRAY = "io.debezium.connector.mongodb.changestream.truncatedarray";
 
-    private static final MongoDbSchemaFactory mongoDbSchemaFactoryObject = MongoDbSchemaFactory.get();
+    public static final Schema TRUNCATED_ARRAY_SCHEMA = MongoDbSchemaFactory.get().truncatedArraySchema();
 
-    public static final Schema TRUNCATED_ARRAY_SCHEMA = mongoDbSchemaFactoryObject.truncatedArraySchema();
-
-    public static final Schema UPDATED_DESCRIPTION_SCHEMA = mongoDbSchemaFactoryObject.updatedDescriptionSchema();
+    public static final Schema UPDATED_DESCRIPTION_SCHEMA = MongoDbSchemaFactory.get().updatedDescriptionSchema();
 
     private final Filters filters;
     private final TopicNamingStrategy<CollectionId> topicNamingStrategy;

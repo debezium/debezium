@@ -61,11 +61,9 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
     public static final String DEBEZIUM_TRANSACTION_TS_MS = "ts_ms";
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
+    public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaFactory.get().transactionBlockSchema();
 
-    public static final Schema TRANSACTION_BLOCK_SCHEMA = schemaFactoryObject.transactionBlockSchema();
-
-    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = schemaFactoryObject.transactionEventCountPerDataCollectionSchema();
+    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaFactory.get().transactionEventCountPerDataCollectionSchema();
 
     private final Schema transactionKeySchema;
     private final Schema transactionValueSchema;
@@ -79,9 +77,9 @@ public class TransactionMonitor {
                               String topicName) {
         Objects.requireNonNull(eventMetadataProvider);
 
-        transactionKeySchema = schemaFactoryObject.transactionKeySchema(schemaNameAdjuster);
+        transactionKeySchema = SchemaFactory.get().transactionKeySchema(schemaNameAdjuster);
 
-        transactionValueSchema = schemaFactoryObject.transactionValueSchema(schemaNameAdjuster);
+        transactionValueSchema = SchemaFactory.get().transactionValueSchema(schemaNameAdjuster);
 
         this.topicName = topicName;
         this.eventMetadataProvider = eventMetadataProvider;

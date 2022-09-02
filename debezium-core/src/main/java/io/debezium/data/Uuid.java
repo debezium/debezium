@@ -21,8 +21,6 @@ public class Uuid {
     public static final String LOGICAL_NAME = "io.debezium.data.Uuid";
     public static final int SCHEMA_VERSION = 1;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -30,7 +28,7 @@ public class Uuid {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return schemaFactoryObject.datatypeUuidSchema();
+        return SchemaFactory.get().datatypeUuidSchema();
     }
 
     /**

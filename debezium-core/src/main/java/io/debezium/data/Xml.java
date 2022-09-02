@@ -21,8 +21,6 @@ public class Xml {
     public static final String LOGICAL_NAME = "io.debezium.data.Xml";
     public static final int SCHEMA_VERSION = 1;
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     /**
      * Returns a {@link SchemaBuilder} for an XML field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -30,7 +28,7 @@ public class Xml {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return schemaFactoryObject.datatypeXmlSchema();
+        return SchemaFactory.get().datatypeXmlSchema();
     }
 
     /**

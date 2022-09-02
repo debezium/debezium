@@ -20,8 +20,6 @@ public class Ltree {
     public static final String LOGICAL_NAME = "io.debezium.data.Ltree";
     public static int SCHEMA_VERSION = 1;
 
-    private static final PostgresSchemaFactory postgresSchemaFactoryObject = PostgresSchemaFactory.get();
-
     /**
      * Returns a {@link SchemaBuilder} for a Ltree field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
@@ -29,7 +27,7 @@ public class Ltree {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return postgresSchemaFactoryObject.datatypeLtreeSchema();
+        return PostgresSchemaFactory.get().datatypeLtreeSchema();
     }
 
     /**

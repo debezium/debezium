@@ -196,10 +196,8 @@ public final class Envelope {
         Envelope build();
     }
 
-    private static final SchemaFactory schemaFactoryObject = SchemaFactory.get();
-
     public static Builder defineSchema() {
-        return schemaFactoryObject.datatypeEnvelopeSchema();
+        return SchemaFactory.get().datatypeEnvelopeSchema();
     }
 
     public static Envelope fromSchema(Schema schema) {
