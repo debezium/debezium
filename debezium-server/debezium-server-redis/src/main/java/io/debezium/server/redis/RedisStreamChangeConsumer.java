@@ -8,7 +8,10 @@ package io.debezium.server.redis;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -56,6 +59,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_PASSWORD = PROP_PREFIX + "password";
     private static final String PROP_CONNECTION_TIMEOUT = PROP_PREFIX + "connection.timeout.ms";
     private static final String PROP_SOCKET_TIMEOUT = PROP_PREFIX + "socket.timeout.ms";
+    private static final String PROP_MESSAGE_FORMAT = PROP_PREFIX + "message.format";
+
+    private static final String MESSAGE_FORMAT_COMPACT = "compact";
+    private static final String MESSAGE_FORMAT_EXTENDED = "extended";
+    private static final String EXTENDED_MESSAGE_KEY_KEY = "key";
+    private static final String EXTENDED_MESSAGE_VALUE_KEY = "value";
 
     private String address;
     private String user;
@@ -83,6 +92,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     private Jedis client = null;
 
+    private BiFunction<String, String, Map<String, String>> recordMapFunction;
+
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
@@ -91,6 +102,23 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         password = config.getOptionalValue(PROP_PASSWORD, String.class).orElse(null);
         connectionTimeout = config.getOptionalValue(PROP_CONNECTION_TIMEOUT, Integer.class).orElse(2000);
         socketTimeout = config.getOptionalValue(PROP_SOCKET_TIMEOUT, Integer.class).orElse(2000);
+
+        String messageFormat = config.getOptionalValue(PROP_MESSAGE_FORMAT, String.class).orElse(MESSAGE_FORMAT_EXTENDED);
+        LOGGER.info(PROP_MESSAGE_FORMAT + "=" + messageFormat);
+        if (MESSAGE_FORMAT_EXTENDED.equals(messageFormat)) {
+            recordMapFunction = (key, value) -> {
+                Map<String, String> recordMap = new LinkedHashMap<>(2);
+                recordMap.put(EXTENDED_MESSAGE_KEY_KEY, key);
+                recordMap.put(EXTENDED_MESSAGE_VALUE_KEY, value);
+                return recordMap;
+            };
+        }
+        else if (MESSAGE_FORMAT_COMPACT.equals(messageFormat)) {
+            recordMapFunction = Collections::singletonMap;
+        }
+        else {
+            throw new DebeziumException(PROP_MESSAGE_FORMAT + " property value should be one of '" + MESSAGE_FORMAT_EXTENDED + "' or '" + MESSAGE_FORMAT_COMPACT + "'");
+        }
 
         RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_REDIS_SINK_CLIENT_NAME);
@@ -168,9 +196,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             String destination = streamNameMapper.map(record.destination());
                             String key = (record.key() != null) ? getString(record.key()) : nullKey;
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
-
+                            Map<String, String> recordMap = recordMapFunction.apply(key, value);
                             // Add the record to the destination stream
-                            pipeline.xadd(destination, StreamEntryID.NEW_ENTRY, Collections.singletonMap(key, value));
+                            pipeline.xadd(destination, StreamEntryID.NEW_ENTRY, recordMap);
                         }
 
                         // Sync the pipeline in Redis and parse the responses (response per command with the same order)

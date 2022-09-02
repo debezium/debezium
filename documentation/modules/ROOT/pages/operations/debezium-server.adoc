@@ -811,6 +811,25 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |`2000`
 |Socket timeout for Redis client.
 
+|[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
+|`extended`
+|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now old format). The `extended` format looks in Redis like this:
+[source]
+----
+1) 1) "1639304527499-0"
+   2) 1) "key"
+      2) "{\"schema\": ..."
+      3) "value"
+      4) "{\"schema\": ..."
+----
+
+while the `compact` format looks like this:
+[source]
+----
+1) 1) "1639304527499-0"
+   2) 1) "{\"schema\": ..."
+      2) "{\"schema\": ..."
+----
 |===
 
 
