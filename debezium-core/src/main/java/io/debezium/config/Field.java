@@ -653,9 +653,7 @@ public final class Field {
         ConfigValue value = results.computeIfAbsent(this.name(), ConfigValue::new);
 
         // Apply the validator ...
-        validate(config, (f, v, problem) -> {
-            value.addErrorMessage(problem);
-        });
+        validate(config, (f, v, problem) -> value.addErrorMessage("The '" + f.name() + "' value is invalid: " + problem));
 
         // Apply the recommender ..
         if (recommender != null) {
@@ -1359,5 +1357,9 @@ public final class Field {
             return 1;
         }
         return 0;
+    }
+
+    public static String validationOutput(Field field, String problem) {
+        return String.format("The '%s' value is invalid: %s", field.name(), problem);
     }
 }

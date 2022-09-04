@@ -107,18 +107,18 @@ public class MySqlTopicNamingStrategyTest {
         String errorMessageSuffix = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
         Configuration config = Configuration.create().with(TOPIC_DELIMITER, "&").build();
         List<String> errorList = config.validate(Field.setOf(TOPIC_DELIMITER)).get(TOPIC_DELIMITER.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("&" + errorMessageSuffix);
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_DELIMITER, "&" + errorMessageSuffix));
 
         config = Configuration.create().with(TOPIC_PREFIX, "server@X").build();
         errorList = config.validate(Field.setOf(TOPIC_PREFIX)).get(TOPIC_PREFIX.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("server@X" + errorMessageSuffix);
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_PREFIX, "server@X" + errorMessageSuffix));
 
         config = Configuration.create().with(TOPIC_HEARTBEAT_PREFIX, "#heartbeat#").build();
         errorList = config.validate(Field.setOf(TOPIC_HEARTBEAT_PREFIX)).get(TOPIC_HEARTBEAT_PREFIX.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("#heartbeat#" + errorMessageSuffix);
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_HEARTBEAT_PREFIX, "#heartbeat#" + errorMessageSuffix));
 
         config = Configuration.create().with(TOPIC_TRANSACTION, "*transaction*").build();
         errorList = config.validate(Field.setOf(TOPIC_TRANSACTION)).get(TOPIC_TRANSACTION.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("*transaction*" + errorMessageSuffix);
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_TRANSACTION, "*transaction*" + errorMessageSuffix));
     }
 }
