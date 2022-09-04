@@ -90,7 +90,8 @@ public class ConfigurationTest {
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0))
+                .isEqualTo(Field.validationOutput(COLUMN_EXCLUDE_LIST, RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG));
     }
 
     @Test
@@ -103,7 +104,8 @@ public class ConfigurationTest {
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0))
+                .isEqualTo(Field.validationOutput(COLUMN_EXCLUDE_LIST, RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG));
     }
 
     @Test
@@ -256,7 +258,7 @@ public class ConfigurationTest {
         // empty field: error
         config = Configuration.create().with(MSG_KEY_COLUMNS, "").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("Must not be empty");
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(MSG_KEY_COLUMNS, "Must not be empty"));
         // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
@@ -275,7 +277,7 @@ public class ConfigurationTest {
         // field: invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1,t2").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("t1,t2 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(MSG_KEY_COLUMNS, "t1,t2 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')"));
     }
 
     @Test
@@ -288,17 +290,17 @@ public class ConfigurationTest {
         // field : invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3.C1;").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("t3.C1 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(MSG_KEY_COLUMNS, "t3.C1 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')"));
 
         // field : invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3;").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("t3 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(MSG_KEY_COLUMNS, "t3 has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')"));
 
         // field : invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;foobar").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("foobar has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+        assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(MSG_KEY_COLUMNS, "foobar has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')"));
     }
 
     @Test
@@ -316,6 +318,7 @@ public class ConfigurationTest {
 
         config = Configuration.create().with(SERVER_NAME, "server@X").build();
         errorList = config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages();
-        assertThat(errorList.get(0)).isEqualTo("server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
+        assertThat(errorList.get(0))
+                .isEqualTo(Field.validationOutput(SERVER_NAME, "server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)"));
     }
 }
