@@ -104,7 +104,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         socketTimeout = config.getOptionalValue(PROP_SOCKET_TIMEOUT, Integer.class).orElse(2000);
 
         String messageFormat = config.getOptionalValue(PROP_MESSAGE_FORMAT, String.class).orElse(MESSAGE_FORMAT_EXTENDED);
-        LOGGER.info(PROP_MESSAGE_FORMAT + "=" + messageFormat);
+        LOGGER.info("Property {}={}", PROP_MESSAGE_FORMAT, messageFormat);
         if (MESSAGE_FORMAT_EXTENDED.equals(messageFormat)) {
             recordMapFunction = (key, value) -> {
                 Map<String, String> recordMap = new LinkedHashMap<>(2);
@@ -117,7 +117,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             recordMapFunction = Collections::singletonMap;
         }
         else {
-            throw new DebeziumException(PROP_MESSAGE_FORMAT + " property value should be one of '" + MESSAGE_FORMAT_EXTENDED + "' or '" + MESSAGE_FORMAT_COMPACT + "'");
+            throw new DebeziumException(
+                    String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
         }
 
         RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
