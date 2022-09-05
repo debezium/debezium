@@ -45,6 +45,7 @@ import redis.clients.jedis.resps.StreamEntry;
 public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     private static final String STREAM_NAME = "metadata:debezium:schema_history";
+    private static final int INIT_HISTORY_SIZE = 16; // Initial number of entries in the schema history stream.
 
     protected static Jedis jedis;
 
@@ -67,11 +68,11 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     @FixFor("DBZ-4771")
-    public void testSchemaHistoryIsSaved() throws Exception {
+    public void testSchemaHistoryIsSaved() {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength == 16; // wait until all the DB schema history of the sample mysql DB has loaded
+            return streamLength >= INIT_HISTORY_SIZE; // wait until all the DB schema history of the sample mysql DB has loaded
         });
 
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
@@ -102,9 +103,6 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
             return streamLength > 0;
         });
 
-        // clear the key
-        jedis.del(STREAM_NAME);
-
         // pause container
         Testing.print("Pausing container");
         RedisTestResourceLifecycleManager.pause();
@@ -123,12 +121,12 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
         // wait until the db schema history is written for the first time
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength > 0;
+            return streamLength >= INIT_HISTORY_SIZE;
         });
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
         Testing.print(entries);
-        Assertions.assertThat(entries.size() == 1).isTrue();
-        Assertions.assertThat(entries.get(0).getFields().get("schema")).contains("redis_test");
+        Assertions.assertThat(entries.size() == INIT_HISTORY_SIZE + 1).isTrue();
+        Assertions.assertThat(entries.get(INIT_HISTORY_SIZE).getFields().get("schema")).contains("redis_test");
     }
 
     private MySqlConnection getMySqlConnection() {
