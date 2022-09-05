@@ -154,3 +154,5 @@ BetaCat,合龙 张
 tjwornjs,Seo Jae-kwon
 druud,Ruud H.G. van Tol
 thangdc94,Phạm Ngọc Thắng
+debjeetsarkar,Debjeet Sarkar
+nicholas-fwang,Inki Hwang
