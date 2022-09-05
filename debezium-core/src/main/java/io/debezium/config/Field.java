@@ -653,7 +653,7 @@ public final class Field {
         ConfigValue value = results.computeIfAbsent(this.name(), ConfigValue::new);
 
         // Apply the validator ...
-        validate(config, (f, v, problem) -> value.addErrorMessage("The '" + f.name() + "' value is invalid: " + problem));
+        validate(config, (f, v, problem) -> value.addErrorMessage(validationOutput(f, problem)));
 
         // Apply the recommender ..
         if (recommender != null) {
