@@ -15,7 +15,7 @@ import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
-public class RedisStreamCompactMessageTestProfile implements QuarkusTestProfile {
+public class RedisStreamMessageTestProfile implements QuarkusTestProfile {
 
     public static final String OFFSETS_FILE = "file-connector-offsets.txt";
     public static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath(OFFSETS_FILE).toAbsolutePath();
@@ -29,7 +29,7 @@ public class RedisStreamCompactMessageTestProfile implements QuarkusTestProfile 
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = new HashMap<String, String>();
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
-        config.put("debezium.sink.redis.message.format", "compact");
+        config.put("debezium.sink.redis.message.format", "extended");
         return config;
     }
 
