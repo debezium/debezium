@@ -103,7 +103,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         connectionTimeout = config.getOptionalValue(PROP_CONNECTION_TIMEOUT, Integer.class).orElse(2000);
         socketTimeout = config.getOptionalValue(PROP_SOCKET_TIMEOUT, Integer.class).orElse(2000);
 
-        String messageFormat = config.getOptionalValue(PROP_MESSAGE_FORMAT, String.class).orElse(MESSAGE_FORMAT_EXTENDED);
+        String messageFormat = config.getOptionalValue(PROP_MESSAGE_FORMAT, String.class).orElse(MESSAGE_FORMAT_COMPACT);
         LOGGER.info("Property {}={}", PROP_MESSAGE_FORMAT, messageFormat);
         if (MESSAGE_FORMAT_EXTENDED.equals(messageFormat)) {
             recordMapFunction = (key, value) -> {
