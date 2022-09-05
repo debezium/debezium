@@ -80,9 +80,10 @@ public class RedisStreamIT {
         assertTrue("Expected stream length of " + MESSAGE_COUNT, streamLength == MESSAGE_COUNT);
         for (StreamEntry entry : entries) {
             Map<String, String> map = entry.getFields();
-            assertTrue("Expected map of size 2", map.size() == 2);
-            assertTrue("Expected key's value starting with {\"schema\":...", map.get("key") != null && map.get("key").startsWith("{\"schema\":"));
-            assertTrue("Expected values's value starting with {\"schema\":...", map.get("value") != null && map.get("value").startsWith("{\"schema\":"));
+            assertTrue("Expected map of size 1", map.size() == 1);
+            Map.Entry<String, String> mapEntry = map.entrySet().iterator().next();
+            assertTrue("Expected json like key starting with {\"schema\":...", mapEntry.getKey().startsWith("{\"schema\":"));
+            assertTrue("Expected json like value starting with {\"schema\":...", mapEntry.getValue().startsWith("{\"schema\":"));
         }
 
         jedis.close();
