@@ -99,6 +99,7 @@ David Jerome
 David Leibovic
 David Seapy
 David Szabo
+Debjeet Sarkar
 Deepak Barr
 Denis Andrejew
 Denis Mikhaylov
@@ -171,6 +172,7 @@ Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
 Indra Shukla
+Inki Hwang
 ismail Simsek
 Ivan Klass
 Ivan Kovbas
@@ -245,6 +247,7 @@ Maciej Bryński
 Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
+Marek Winkler
 Mario Mueller
 Mariusz Strzelecki
 Mark Drilling
@@ -286,6 +289,7 @@ Niels Pardon
 Nikhil Benesch
 Nishant Singh
 Nitin Agarwal
+Nitin Chhabra
 Olavi Mustanoja
 Oliver Weiler
 Olivier Jacquemart
