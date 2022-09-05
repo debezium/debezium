@@ -42,7 +42,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Strings;
@@ -126,8 +126,8 @@ public class TestHelper {
                 (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "server1")
-                .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

@@ -10,13 +10,13 @@ import java.nio.file.Path;
 import org.junit.Before;
 
 import io.debezium.config.Configuration;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
 /**
  * @author Randall Hauch
  */
-public class FileDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
+public class FileSchemaHistoryTest extends AbstractSchemaHistoryTest {
 
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("dbHistory.log");
 
@@ -28,11 +28,11 @@ public class FileDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
     }
 
     @Override
-    protected DatabaseHistory createHistory() {
-        DatabaseHistory history = new FileDatabaseHistory();
+    protected SchemaHistory createHistory() {
+        SchemaHistory history = new FileSchemaHistory();
         history.configure(Configuration.create()
-                .with(FileDatabaseHistory.FILE_PATH, TEST_FILE_PATH.toAbsolutePath().toString())
-                .build(), null, DatabaseHistoryMetrics.NOOP, true);
+                .with(FileSchemaHistory.FILE_PATH, TEST_FILE_PATH.toAbsolutePath().toString())
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
         history.start();
         return history;
     }

@@ -18,7 +18,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnapshotTest<SqlServerConnector> {
@@ -119,6 +119,6 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
                 .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE, true)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 }

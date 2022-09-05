@@ -6,19 +6,19 @@
 package io.debezium.relational.history;
 
 /**
- * Metrics describing {@link DatabaseHistory} use.
+ * Metrics describing {@link SchemaHistory} use.
  * @author Jiri Pechanec
  *
  */
-public interface DatabaseHistoryMXBean {
+public interface SchemaHistoryMXBean {
 
     /**
-     * The database history starts in {@code STOPPED} state.
+     * The schema history starts in {@code STOPPED} state.
      * Upon start it transitions to {@code RECOVERING} state.
      * When all changes from stored history were applied then it switches to {@code RUNNING} state.
-     * <p>Maps to {@link DatabaseHistoryMetrics.DatabaseHistoryStatus} enum.
+     * <p>Maps to {@link SchemaHistoryMetrics.SchemaHistoryStatus} enum.
      *
-     * @return database history component state
+     * @return schema history component state
      */
     String getStatus();
 

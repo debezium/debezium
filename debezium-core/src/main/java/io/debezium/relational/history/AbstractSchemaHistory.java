@@ -36,7 +36,7 @@ import io.debezium.util.Clock;
  * @author Randall Hauch
  *
  */
-public abstract class AbstractDatabaseHistory implements DatabaseHistory {
+public abstract class AbstractSchemaHistory implements SchemaHistory {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -69,7 +69,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
             .withInvisibleRecommender()
             .withNoValidation();
 
-    public static Field.Set ALL_FIELDS = Field.setOf(DatabaseHistory.NAME, INTERNAL_CONNECTOR_CLASS,
+    public static Field.Set ALL_FIELDS = Field.setOf(SchemaHistory.NAME, INTERNAL_CONNECTOR_CLASS,
             INTERNAL_CONNECTOR_ID);
 
     protected Configuration config;
@@ -77,22 +77,22 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     private boolean skipUnparseableDDL;
     private boolean storeOnlyCapturedTablesDdl;
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
-    private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
+    private SchemaHistoryListener listener = SchemaHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
     private boolean preferDdl = false;
     private TableChanges.TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
-    protected AbstractDatabaseHistory() {
+    protected AbstractSchemaHistory() {
     }
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
-        this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyCapturedTablesDdl = Boolean.valueOf(config.getString(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL));
+        this.skipUnparseableDDL = config.getBoolean(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
+        this.storeOnlyCapturedTablesDdl = Boolean.valueOf(config.getString(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL));
 
-        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
+        final String ddlFilter = config.getString(SchemaHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
         this.listener = listener;
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -106,7 +106,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
-            throws DatabaseHistoryException {
+            throws SchemaHistoryException {
 
         record(source, position, databaseName, null, ddl, null, Clock.SYSTEM.currentTimeAsInstant());
     }
@@ -114,7 +114,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
                              String ddl, TableChanges changes, Instant timestamp)
-            throws DatabaseHistoryException {
+            throws SchemaHistoryException {
         final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes, timestamp);
         storeRecord(record);
         listener.onChangeApplied(record);
@@ -192,7 +192,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         listener.recoveryStopped();
     }
 
-    protected abstract void storeRecord(HistoryRecord record) throws DatabaseHistoryException;
+    protected abstract void storeRecord(HistoryRecord record) throws SchemaHistoryException;
 
     protected abstract void recoverRecords(Consumer<HistoryRecord> records);
 

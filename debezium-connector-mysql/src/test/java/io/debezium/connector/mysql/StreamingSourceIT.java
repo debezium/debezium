@@ -54,7 +54,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
@@ -541,7 +541,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
         final LogInterceptor logInterceptor = new LogInterceptor(MySqlStreamingChangeEventSource.class);
         Configuration.Builder builder = simpleConfig()
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders"));
 
         if (mode == null) {

@@ -13,7 +13,7 @@ import io.debezium.config.Configuration;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Selectors.TableSelectionPredicateBuilder;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DataCollectionFilters;
 
 public class RelationalTableFilters implements DataCollectionFilters {
@@ -82,7 +82,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 ? systemTablesFilter::isIncluded
                 : x -> true;
 
-        this.schemaSnapshotFilter = config.getBoolean(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
+        this.schemaSnapshotFilter = config.getBoolean(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
                 ? eligibleSchemaPredicate.and(tableFilter::isIncluded)::test
                 : eligibleSchemaPredicate::test;
 

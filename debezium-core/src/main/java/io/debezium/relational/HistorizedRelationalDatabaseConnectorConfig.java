@@ -16,10 +16,10 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryMetrics;
+import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryMetrics;
 
 /**
  * Configuration options shared across the relational CDC connectors which use a persistent database schema history.
@@ -30,7 +30,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
 
-    private static final String DEFAULT_DATABASE_HISTORY = "io.debezium.storage.kafka.history.KafkaDatabaseHistory";
+    private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
     private boolean useCatalogBeforeSchema;
     private final String logicalName;
@@ -41,22 +41,22 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
-    public static final Field DATABASE_HISTORY = Field.create("schema.history")
+    public static final Field SCHEMA_HISTORY = Field.create("schema.history")
             .withDisplayName("Database history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
-            .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
+            .withDescription("The name of the SchemaHistory class that should be used to store and recover database schema changes. "
                     + "The configuration properties for the history are prefixed with the '"
-                    + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(DEFAULT_DATABASE_HISTORY);
+                    + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
+            .withDefault(DEFAULT_SCHEMA_HISTORY);
 
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
-                    DATABASE_HISTORY,
-                    DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
-                    DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
+                    SCHEMA_HISTORY,
+                    SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
+                    SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -87,28 +87,28 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     /**
      * Returns a configured (but not yet started) instance of the database history.
      */
-    public DatabaseHistory getDatabaseHistory() {
+    public SchemaHistory getSchemaHistory() {
         Configuration config = getConfig();
 
-        DatabaseHistory databaseHistory = config.getInstance(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY, DatabaseHistory.class);
-        if (databaseHistory == null) {
+        SchemaHistory schemaHistory = config.getInstance(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY, SchemaHistory.class);
+        if (schemaHistory == null) {
             throw new ConnectException("Unable to instantiate the database history class " +
-                    config.getString(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY));
+                    config.getString(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY));
         }
 
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+        Configuration dbHistoryConfig = config.subset(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
-                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
-                .withDefault(AbstractDatabaseHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
-                .withDefault(AbstractDatabaseHistory.INTERNAL_CONNECTOR_ID, logicalName)
+                .withDefault(SchemaHistory.NAME, getLogicalName() + "-dbhistory")
+                .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
+                .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        databaseHistory.configure(dbHistoryConfig, historyComparator,
-                new DatabaseHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
+        schemaHistory.configure(dbHistoryConfig, historyComparator,
+                new SchemaHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
 
-        return databaseHistory;
+        return schemaHistory;
     }
 
     public boolean useCatalogBeforeSchema() {

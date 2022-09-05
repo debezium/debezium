@@ -49,8 +49,8 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.MemoryDatabaseHistory;
+import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -139,7 +139,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(MySqlConnectorConfig.USER, "cloud")
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
                     .with(MySqlConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
             builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
@@ -627,7 +627,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         Configuration.Builder builder = simpleConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("customers"))
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
         config = builder.build();
         // Start the connector ...
         start(MySqlConnector.class, config);

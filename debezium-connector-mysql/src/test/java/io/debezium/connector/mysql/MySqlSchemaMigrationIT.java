@@ -18,7 +18,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.listener.RenameTableParserListener;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -150,7 +150,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("monitored"))
                 .build();
 

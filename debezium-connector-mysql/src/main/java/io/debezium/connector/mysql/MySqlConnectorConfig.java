@@ -32,11 +32,11 @@ import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.util.Collect;
 
 /**
@@ -736,16 +736,16 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
-    public static final Field DATABASE_HISTORY = Field.create("schema.history")
+    public static final Field SCHEMA_HISTORY = Field.create("schema.history")
             .withDisplayName("Database history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
-            .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
+            .withDescription("The name of the SchemaHistory class that should be used to store and recover database schema changes. "
                     + "The configuration properties for the history are prefixed with the '"
-                    + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaDatabaseHistory.class.getName());
+                    + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
+            .withDefault(KafkaSchemaHistory.class.getName());
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
@@ -991,7 +991,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         // Set up the DDL filter
-        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
+        final String ddlFilter = config.getString(SchemaHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
     }
 

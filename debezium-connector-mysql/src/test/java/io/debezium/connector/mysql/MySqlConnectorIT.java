@@ -53,11 +53,11 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseSchema;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.storage.file.history.FileDatabaseHistory;
-import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -105,9 +105,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
-                .with(KafkaDatabaseHistory.TOPIC, "myserver")
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(KafkaSchemaHistory.TOPIC, "myserver")
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // we expect the engine will log at least one error, so preface it ...
@@ -122,8 +122,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldFailToValidateInvalidConfiguration() {
         Configuration config = Configuration.create()
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
@@ -146,7 +146,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SCHEMA_HISTORY);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
@@ -165,8 +165,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myServer")
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.ON_CONNECT_STATEMENTS, "SET SESSION wait_timeout=2000")
                 .build();
@@ -194,7 +194,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_HISTORY);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SCHEMA_HISTORY);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
@@ -206,10 +206,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+        assertNoConfigurationErrors(result, KafkaSchemaHistory.BOOTSTRAP_SERVERS);
+        assertNoConfigurationErrors(result, KafkaSchemaHistory.TOPIC);
+        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_ATTEMPTS);
+        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS);
     }
 
     /**
@@ -227,8 +227,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Configuration config = DATABASE.defaultJdbcConfigBuilder()
                     .with(MySqlConnectorConfig.SERVER_ID, 18765)
                     .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myServer")
-                    .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                    .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
+                    .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
+                    .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
 
                     // Conflicting properties under test:
@@ -286,9 +286,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(dbIncludeListField, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -701,10 +701,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, DATABASE.getDatabaseName() + ".products")
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + DATABASE.getDatabaseName() + ".products",
                         String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -746,15 +746,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + DATABASE.getDatabaseName() + ".products",
                         String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + DATABASE.getDatabaseName() + ".products_on_hand",
                         String.format("SELECT * from %s.products_on_hand where product_id>=108 order by product_id", DATABASE.getDatabaseName()))
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -790,7 +790,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
 
         // Start the connector ...
@@ -826,7 +826,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "no_" + DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
 
         // Start the connector ...
@@ -939,7 +939,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {

@@ -179,7 +179,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // - all DDLs if configured
         // - or global SET variables
         // - or DDLs for monitored objects
-        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
+        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
@@ -212,7 +212,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             this.ddlParser.parse(ddlStatements, tables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
-            if (databaseHistory.skipUnparseableDdlStatements()) {
+            if (schemaHistory.skipUnparseableDdlStatements()) {
                 LOGGER.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
             }
             else {
@@ -221,7 +221,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
 
         // No need to send schema events or store DDL if no table has changed
-        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
+        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
 
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
@@ -343,12 +343,12 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Return true if the database history entity exists
      */
     public boolean historyExists() {
-        return databaseHistory.exists();
+        return schemaHistory.exists();
     }
 
     @Override
     public boolean storeOnlyCapturedTables() {
-        return databaseHistory.storeOnlyCapturedTables();
+        return schemaHistory.storeOnlyCapturedTables();
     }
 
     /**

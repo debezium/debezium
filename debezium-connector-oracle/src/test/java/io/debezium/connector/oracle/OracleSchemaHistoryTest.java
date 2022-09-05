@@ -21,7 +21,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ddl.DdlParser;
-import io.debezium.relational.history.AbstractDatabaseHistoryTest;
+import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.AbstractTopicNamingStrategy;
@@ -33,7 +33,7 @@ import oracle.jdbc.OracleTypes;
  * 
  * @author Chris Cranford
  */
-public class OracleDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
+public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
 
     @Override
     protected HistoryRecord getRenameCreateHistoryRecord() {

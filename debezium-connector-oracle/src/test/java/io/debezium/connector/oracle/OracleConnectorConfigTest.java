@@ -21,7 +21,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 public class OracleConnectorConfigTest {
 
@@ -37,8 +37,8 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
@@ -53,8 +53,8 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.HOSTNAME, "MyHostname")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
@@ -69,8 +69,8 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
@@ -85,8 +85,8 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.URL, "MyHostname")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
@@ -102,8 +102,8 @@ public class OracleConnectorConfigTest {
                                 "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.11)(PORT=1701))(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.12)(PORT=1701))(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.13)(PORT=1701))(LOAD_BALANCE = yes)(FAILOVER = on)(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = myserver.mydomain.com)(FAILOVER_MODE =(TYPE = SELECT)(METHOD = BASIC)(RETRIES = 3)(DELAY = 5))))")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
@@ -117,8 +117,8 @@ public class OracleConnectorConfigTest {
                         .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
-                        .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "localhost:9092")
-                        .with(KafkaDatabaseHistory.TOPIC, "history")
+                        .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                        .with(KafkaSchemaHistory.TOPIC, "history")
                         .build());
         assertFalse(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }

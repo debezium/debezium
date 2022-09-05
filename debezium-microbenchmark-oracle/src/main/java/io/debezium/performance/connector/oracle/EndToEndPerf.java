@@ -53,7 +53,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.IoUtil;
 
 /**
@@ -240,8 +240,8 @@ public class EndToEndPerf {
                     .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                     .with(OracleConnectorConfig.CONNECTOR_ADAPTER, ConnectorAdapter.LOG_MINER)
-                    .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                    .with(FileDatabaseHistory.FILE_PATH, getPath("history.txt"));
+                    .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                    .with(FileSchemaHistory.FILE_PATH, getPath("history.txt"));
         }
 
         private Configuration.Builder testConfig() {

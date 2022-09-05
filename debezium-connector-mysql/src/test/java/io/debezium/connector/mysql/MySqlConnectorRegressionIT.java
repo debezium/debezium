@@ -41,7 +41,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -851,7 +851,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             // Use the DB configuration to define the connector's configuration ...
             config = DATABASE.defaultConfig()
                     .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_85_fractest"))
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .build();
             // Start the connector ...
             start(MySqlConnector.class, config);
@@ -1012,7 +1012,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...

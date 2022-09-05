@@ -26,7 +26,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -162,8 +162,8 @@ public class TestHelper {
         }
 
         return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
-                .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

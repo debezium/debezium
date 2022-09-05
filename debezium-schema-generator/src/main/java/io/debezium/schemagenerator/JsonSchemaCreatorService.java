@@ -21,7 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.schemagenerator.schema.Schema.FieldFilter;
-import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
 
 public class JsonSchemaCreatorService {
@@ -173,9 +173,9 @@ public class JsonSchemaCreatorService {
                 groupProperties.put(groupEntry.getPositionInGroup(), propertySchema);
             }
 
-            if (propertyName.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())) {
+            if (propertyName.equals(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY.name())) {
                 // todo: how to eventually support varied storage modules
-                KafkaDatabaseHistory.ALL_FIELDS.forEach(historyField -> processField(schema, orderedPropertiesByCategory, historyField));
+                KafkaSchemaHistory.ALL_FIELDS.forEach(historyField -> processField(schema, orderedPropertiesByCategory, historyField));
             }
         }
     }

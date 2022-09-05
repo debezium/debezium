@@ -71,7 +71,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         OraclePartition partition = previousOffsets.getTheOnlyPartition();
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadDatabaseHistory(connectorConfig, partition, previousOffset, schema);
+        validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema);
 
         taskContext = new OracleTaskContext(connectorConfig, schema);
 
@@ -176,7 +176,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
     }
 
-    private void validateAndLoadDatabaseHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema) {
+    private void validateAndLoadSchemaHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema) {
         if (offset == null) {
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // We are in schema only recovery mode, use the existing redo log position

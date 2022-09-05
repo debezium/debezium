@@ -33,21 +33,21 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
 
     private static final String CONFIGURATION_FIELD_PREFIX_STRING = "offset.storage.redis.";
     public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final Field PROP_SSL_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.enabled")
             .withDescription("Use SSL for Redis connection")
             .withDefault("false");
 
     public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final String DEFAULT_REDIS_KEY_NAME = "metadata:debezium:offsets";
     public static final Field PROP_KEY_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
-            .withDescription("The redis key that will be used to store the database history")
+            .withDescription("The redis key that will be used to store the database schema history")
             .withDefault(DEFAULT_REDIS_KEY_NAME);
 
     public static final Integer DEFAULT_RETRY_INITIAL_DELAY = 300;

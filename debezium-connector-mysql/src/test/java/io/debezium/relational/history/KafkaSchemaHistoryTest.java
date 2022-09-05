@@ -42,7 +42,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaDatabaseHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -50,11 +50,11 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
-public class KafkaDatabaseHistoryTest {
+public class KafkaSchemaHistoryTest {
 
     private static KafkaCluster kafka;
 
-    private KafkaDatabaseHistory history;
+    private KafkaSchemaHistory history;
     private Offsets<Partition, MySqlOffsetContext> offsets;
     private MySqlOffsetContext position;
 
@@ -95,7 +95,7 @@ public class KafkaDatabaseHistoryTest {
         offsets = Offsets.of(source, position);
 
         setLogPosition(0);
-        history = new KafkaDatabaseHistory();
+        history = new KafkaSchemaHistory();
     }
 
     @After
@@ -122,24 +122,24 @@ public class KafkaDatabaseHistoryTest {
     private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
         // Start up the history ...
         Configuration config = Configuration.create()
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                .with(KafkaDatabaseHistory.TOPIC, topicName)
-                .with(DatabaseHistory.NAME, "my-db-history")
-                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSchemaHistory.TOPIC, topicName)
+                .with(SchemaHistory.NAME, "my-db-history")
+                .with(KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS, 500)
                 // new since 0.10.1.0 - we want a low value because we're running everything locally
                 // in this test. However, it can't be so low that the broker returns the same
                 // messages more than once.
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
                         100)
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
-                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
+                .with(KafkaSchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
                 .build();
-        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+        history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
         history.start();
 
         // Should be able to call start more than once ...
@@ -197,8 +197,8 @@ public class KafkaDatabaseHistoryTest {
 
         // Stop the history (which should stop the producer) ...
         history.stop();
-        history = new KafkaDatabaseHistory();
-        history.configure(config, null, DatabaseHistoryListener.NOOP, true);
+        history = new KafkaSchemaHistory();
+        history.configure(config, null, SchemaHistoryListener.NOOP, true);
         // no need to start
 
         // Recover from the very beginning to just past the first change ...
@@ -307,25 +307,25 @@ public class KafkaDatabaseHistoryTest {
 
         // Set history to use dummy topic
         Configuration config = Configuration.create()
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                .with(KafkaDatabaseHistory.TOPIC, "dummytopic")
-                .with(DatabaseHistory.NAME, "my-db-history")
-                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSchemaHistory.TOPIC, "dummytopic")
+                .with(SchemaHistory.NAME, "my-db-history")
+                .with(KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS, 500)
                 // new since 0.10.1.0 - we want a low value because we're running everything locally
                 // in this test. However, it can't be so low that the broker returns the same
                 // messages more than once.
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
                         100)
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
-                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
+                .with(KafkaSchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
                 .build();
 
-        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+        history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
         history.start();
 
         // dummytopic should not exist yet
@@ -338,19 +338,19 @@ public class KafkaDatabaseHistoryTest {
         String topicName = "differentiate-storage-exists-schema-changes";
 
         Configuration config = Configuration.create()
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                .with(KafkaDatabaseHistory.TOPIC, topicName)
-                .with(DatabaseHistory.NAME, "my-db-history")
-                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSchemaHistory.TOPIC, topicName)
+                .with(SchemaHistory.NAME, "my-db-history")
+                .with(KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
                         100)
-                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                .with(KafkaSchemaHistory.consumerConfigPropertyName(
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
                 .build();
 
-        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+        history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
 
         assertFalse(history.storageExists());
         history.initializeStorage();
@@ -373,7 +373,7 @@ public class KafkaDatabaseHistoryTest {
         Configuration config = Configuration.create()
                 .build();
 
-        final Map<String, ConfigValue> issues = config.validate(KafkaDatabaseHistory.ALL_FIELDS);
+        final Map<String, ConfigValue> issues = config.validate(KafkaSchemaHistory.ALL_FIELDS);
         Assertions.assertThat(issues.keySet()).isEqualTo(Collect.unmodifiableSet(
                 "schema.history.name",
                 "schema.history.connector.class",
@@ -389,13 +389,13 @@ public class KafkaDatabaseHistoryTest {
     @FixFor("DBZ-4518")
     public void shouldConnectionTimeoutIfValueIsTooLow() {
         Configuration config = Configuration.create()
-                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                .with(KafkaDatabaseHistory.TOPIC, "this-should-not-get-created")
-                .with(DatabaseHistory.NAME, "my-db-history")
-                .with(KafkaDatabaseHistory.KAFKA_QUERY_TIMEOUT_MS, 1)
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSchemaHistory.TOPIC, "this-should-not-get-created")
+                .with(SchemaHistory.NAME, "my-db-history")
+                .with(KafkaSchemaHistory.KAFKA_QUERY_TIMEOUT_MS, 1)
                 .build();
 
-        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+        history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
         history.start();
 
         try {

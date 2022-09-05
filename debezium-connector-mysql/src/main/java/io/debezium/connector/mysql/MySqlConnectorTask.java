@@ -99,7 +99,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         MySqlPartition partition = previousOffsets.getTheOnlyPartition();
         MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadDatabaseHistory(connectorConfig, partition, previousOffset, schema);
+        validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
 
@@ -314,7 +314,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         return found;
     }
 
-    private boolean validateAndLoadDatabaseHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
+    private boolean validateAndLoadSchemaHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
         if (offset == null) {
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // We are in schema only recovery mode, use the existing binlog position

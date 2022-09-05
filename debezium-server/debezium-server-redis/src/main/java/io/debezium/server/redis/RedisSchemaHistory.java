@@ -23,12 +23,12 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryException;
-import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryException;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.Collect;
 import io.debezium.util.DelayStrategy;
 
@@ -38,32 +38,32 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.resps.StreamEntry;
 
 /**
- * A {@link DatabaseHistory} implementation that stores the schema history in Redis.
+ * A {@link SchemaHistory} implementation that stores the schema history in Redis.
  *
  */
 @ThreadSafe
-public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
+public final class RedisSchemaHistory extends AbstractSchemaHistory {
 
-    private static final String CONFIGURATION_FIELD_PREFIX_STRING = DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "redis.";
+    private static final String CONFIGURATION_FIELD_PREFIX_STRING = SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "redis.";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RedisDatabaseHistory.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisSchemaHistory.class);
 
     public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final Field PROP_SSL_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.enabled")
             .withDescription("Use SSL for Redis connection")
             .withDefault("false");
 
     public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
-            .withDescription("The redis url that will be used to access the database history");
+            .withDescription("The redis url that will be used to access the database schema history");
 
     public static final Field PROP_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
-            .withDescription("The redis key that will be used to store the database history")
-            .withDefault("metadata:debezium:db_history");
+            .withDescription("The redis key that will be used to store the database schema history")
+            .withDefault("metadata:debezium:schema_history");
 
     public static final Integer DEFAULT_RETRY_INITIAL_DELAY = 300;
     public static final Field PROP_RETRY_INITIAL_DELAY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.initial.delay.ms")
@@ -106,11 +106,11 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
     void connect() {
         RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.connectionTimeout, this.socketTimeout, this.sslEnabled);
-        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_DB_HISTORY);
+        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_SCHEMA_HISTORY);
     }
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -136,12 +136,12 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public synchronized void start() {
         super.start();
-        LOGGER.info("Starting RedisDatabaseHistory");
+        LOGGER.info("Starting RedisSchemaHistory");
         this.connect();
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
+    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (record == null) {
             return;
         }
@@ -151,7 +151,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
         }
         catch (IOException e) {
             LOGGER.error("Failed to convert record to string: {}", record, e);
-            throw new DatabaseHistoryException("Unable to write database history record");
+            throw new SchemaHistoryException("Unable to write database schema history record");
         }
 
         DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
@@ -166,7 +166,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
 
                 // write the entry to Redis
                 client.xadd(this.redisKeyName, (StreamEntryID) null, Collections.singletonMap("schema", line));
-                LOGGER.trace("Record written to database history in redis: " + line);
+                LOGGER.trace("Record written to database schema history in redis: " + line);
                 completedSuccessfully = true;
             }
             catch (JedisConnectionException jce) {
@@ -174,7 +174,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
                 this.connect();
             }
             catch (Exception e) {
-                LOGGER.warn("Writing to database history stream failed", e);
+                LOGGER.warn("Writing to database schema history stream failed", e);
                 LOGGER.warn("Will retry");
             }
             if (!completedSuccessfully) {
@@ -217,7 +217,7 @@ public final class RedisDatabaseHistory extends AbstractDatabaseHistory {
                 this.connect();
             }
             catch (Exception e) {
-                LOGGER.warn("Reading from database history stream failed with " + e);
+                LOGGER.warn("Reading from database schema history stream failed with " + e);
                 LOGGER.warn("Will retry");
             }
             if (!completedSuccessfully) {

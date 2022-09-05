@@ -10,7 +10,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EX
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
-import static io.debezium.relational.history.DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL;
+import static io.debezium.relational.history.SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Iterator;

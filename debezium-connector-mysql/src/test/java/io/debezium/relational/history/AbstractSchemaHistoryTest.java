@@ -24,9 +24,9 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
-public abstract class AbstractDatabaseHistoryTest {
+public abstract class AbstractSchemaHistoryTest {
 
-    protected DatabaseHistory history;
+    protected SchemaHistory history;
     protected Map<String, Object> source1;
     protected Map<String, Object> source2;
     protected Tables tables;
@@ -60,7 +60,7 @@ public abstract class AbstractDatabaseHistoryTest {
         }
     }
 
-    protected abstract DatabaseHistory createHistory();
+    protected abstract SchemaHistory createHistory();
 
     protected Map<String, Object> server(String serverName) {
         return Collect.linkMapOf("server", serverName);

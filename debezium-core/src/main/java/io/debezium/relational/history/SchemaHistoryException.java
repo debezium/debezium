@@ -9,23 +9,23 @@ package io.debezium.relational.history;
  * @author Randall Hauch
  *
  */
-public class DatabaseHistoryException extends RuntimeException {
+public class SchemaHistoryException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    public DatabaseHistoryException(String message) {
+    public SchemaHistoryException(String message) {
         super(message);
     }
 
-    public DatabaseHistoryException(Throwable cause) {
+    public SchemaHistoryException(Throwable cause) {
         super(cause);
     }
 
-    public DatabaseHistoryException(String message, Throwable cause) {
+    public SchemaHistoryException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public DatabaseHistoryException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    public SchemaHistoryException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 

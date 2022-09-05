@@ -26,7 +26,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -83,10 +83,10 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -151,9 +151,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -212,10 +212,10 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 9)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...
@@ -283,9 +283,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
                 .build();
 
         // Start the connector ...

@@ -19,9 +19,9 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnection;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.history.AbstractDatabaseHistoryTest;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryMetrics;
+import io.debezium.relational.history.AbstractSchemaHistoryTest;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
 import io.debezium.util.Testing;
@@ -35,16 +35,16 @@ import redis.clients.jedis.StreamEntryID;
 import redis.clients.jedis.resps.StreamEntry;
 
 /**
- * Integration test that verifies reading and writing database history from Redis key value store
+ * Integration test that verifies reading and writing database schema history from Redis key value store
  *
  * @author Oren Elias
  */
 @QuarkusIntegrationTest
-@TestProfile(RedisDatabaseHistoryTestProfile.class)
+@TestProfile(RedisSchemaHistoryTestProfile.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
-public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
+public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
-    private static final String STREAM_NAME = "metadata:debezium:db_history";
+    private static final String STREAM_NAME = "metadata:debezium:schema_history";
 
     protected static Jedis jedis;
 
@@ -55,23 +55,23 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
     }
 
     @Override
-    protected DatabaseHistory createHistory() {
-        DatabaseHistory history = new RedisDatabaseHistory();
+    protected SchemaHistory createHistory() {
+        SchemaHistory history = new RedisSchemaHistory();
 
         history.configure(Configuration.create()
-                .with(RedisDatabaseHistory.PROP_ADDRESS, HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
-                .build(), null, DatabaseHistoryMetrics.NOOP, true);
+                .with(RedisSchemaHistory.PROP_ADDRESS, HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
         history.start();
         return history;
     }
 
     @Test
     @FixFor("DBZ-4771")
-    public void testDatabaseHistoryIsSaved() throws Exception {
+    public void testSchemaHistoryIsSaved() throws Exception {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength == 16; // wait until all the DB history of the sample mysql DB has loaded
+            return streamLength == 16; // wait until all the DB schema history of the sample mysql DB has loaded
         });
 
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
@@ -88,7 +88,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
     * Test retry mechanism when encountering Redis connectivity issues:
     * 1. Make Redis unavailable while the server is up
     * 2. Create a new table named redis_test in MySQL
-    * 3. Bring Redis up again and make sure the database history has been written successfully
+    * 3. Bring Redis up again and make sure the database schema  has been written successfully
     */
     @Test
     @FixFor("DBZ-4509")
@@ -96,7 +96,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
         Testing.Print.enable();
 
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-        // wait until the db history is written for the first time
+        // wait until the db schema history is written for the first time
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
             return streamLength > 0;
@@ -120,7 +120,7 @@ public class RedisDatabaseHistoryIT extends AbstractDatabaseHistoryTest {
         Testing.print("Unpausing container");
         RedisTestResourceLifecycleManager.unpause();
 
-        // wait until the db history is written for the first time
+        // wait until the db schema history is written for the first time
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             final long streamLength = jedis.xlen(STREAM_NAME);
             return streamLength > 0;

@@ -60,25 +60,25 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.Validator;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryException;
-import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryException;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
 
 /**
- * A {@link DatabaseHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
+ * A {@link SchemaHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
  * and that recovers the history by establishing a Kafka Consumer re-processing all messages on that topic.
  *
  * @author Randall Hauch
  */
 @NotThreadSafe
-public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
+public class KafkaSchemaHistory extends AbstractSchemaHistory {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaDatabaseHistory.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaSchemaHistory.class);
 
     private static final String CLEANUP_POLICY_NAME = "cleanup.policy";
     private static final String CLEANUP_POLICY_VALUE = "delete";
@@ -110,7 +110,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDescription("The name of the topic for the database schema history")
-            .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
+            .withValidation(KafkaSchemaHistory.forKafka(Field::isRequired));
 
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
             .withDisplayName("Kafka broker addresses")
@@ -122,7 +122,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     + "connection to the Kafka cluster for retrieving database schema history previously stored "
                     + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
                     + "process.")
-            .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
+            .withValidation(KafkaSchemaHistory.forKafka(Field::isRequired));
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "kafka.recovery.poll.interval.ms")
@@ -166,7 +166,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDefault(Duration.ofSeconds(30).toMillis())
             .withValidation(Field::isPositiveInteger);
 
-    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
+    public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, SchemaHistory.NAME,
             RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID,
             KAFKA_QUERY_TIMEOUT_MS);
 
@@ -202,7 +202,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -215,7 +215,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
-        String dbHistoryName = config.getString(DatabaseHistory.NAME, UUID.randomUUID().toString());
+        String dbHistoryName = config.getString(SchemaHistory.NAME, UUID.randomUUID().toString());
         this.consumerConfig = config.subset(CONSUMER_PREFIX, true).edit()
                 .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
@@ -242,8 +242,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                 .build();
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
-            LOGGER.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
+            LOGGER.info("KafkaSchemaHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
+            LOGGER.info("KafkaSchemaHistory Producer config: {}", producerConfig.withMaskedPasswords());
         }
 
         try {
@@ -267,7 +267,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
+    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
         }
@@ -286,10 +286,10 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         catch (InterruptedException e) {
             LOGGER.trace("Interrupted before record was written into database history: {}", record);
             Thread.currentThread().interrupt();
-            throw new DatabaseHistoryException(e);
+            throw new SchemaHistoryException(e);
         }
         catch (ExecutionException e) {
-            throw new DatabaseHistoryException(e);
+            throw new SchemaHistoryException(e);
         }
     }
 
@@ -611,8 +611,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
     private static Validator forKafka(final Validator validator) {
         return (config, field, problems) -> {
-            final String history = config.getString(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-            return KafkaDatabaseHistory.class.getName().equals(history) ? validator.validate(config, field, problems) : 0;
+            final String history = config.getString(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY);
+            return KafkaSchemaHistory.class.getName().equals(history) ? validator.validate(config, field, problems) : 0;
         };
     }
 }

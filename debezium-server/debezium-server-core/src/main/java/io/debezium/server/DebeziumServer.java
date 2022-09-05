@@ -38,7 +38,7 @@ import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.Protobuf;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.ShutdownEvent;
@@ -129,7 +129,7 @@ public class DebeziumServer {
         configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.", true);
         configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.", true);
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
-        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
+        configToProperties(config, props, PROP_SINK_PREFIX + name + ".", SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", PROP_OFFSET_STORAGE_PREFIX + name + ".", false);
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {

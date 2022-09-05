@@ -24,21 +24,21 @@ import io.debezium.util.ElapsedTimeStrategy;
  * @author Jiri Pechanec
  *
  */
-public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryListener, DatabaseHistoryMXBean {
+public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListener, SchemaHistoryMXBean {
 
     private static final String CONTEXT_NAME = "schema-history";
 
     private static final Duration PAUSE_BETWEEN_LOG_MESSAGES = Duration.ofSeconds(2);
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHistoryMetrics.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SchemaHistoryMetrics.class);
 
-    public static enum DatabaseHistoryStatus {
+    public static enum SchemaHistoryStatus {
         STOPPED,
         RECOVERING,
         RUNNING
     }
 
-    private DatabaseHistoryStatus status = DatabaseHistoryStatus.STOPPED;
+    private SchemaHistoryStatus status = SchemaHistoryStatus.STOPPED;
     private Instant recoveryStartTime = null;
     private AtomicLong changesRecovered = new AtomicLong();
     private AtomicLong totalChangesApplied = new AtomicLong();
@@ -50,7 +50,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     private final ElapsedTimeStrategy lastChangeAppliedLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
     private final ElapsedTimeStrategy lastChangeRecoveredLogDelay = ElapsedTimeStrategy.constant(clock, PAUSE_BETWEEN_LOG_MESSAGES);
 
-    public DatabaseHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode) {
+    public SchemaHistoryMetrics(CommonConnectorConfig connectorConfig, boolean multiPartitionMode) {
         super(connectorConfig, CONTEXT_NAME, multiPartitionMode);
         lastChangeAppliedLogDelay.hasElapsed();
         lastChangeRecoveredLogDelay.hasElapsed();
@@ -98,26 +98,26 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
 
     @Override
     public void started() {
-        status = DatabaseHistoryStatus.RUNNING;
+        status = SchemaHistoryStatus.RUNNING;
         register();
     }
 
     @Override
     public void stopped() {
-        status = DatabaseHistoryStatus.STOPPED;
+        status = SchemaHistoryStatus.STOPPED;
         unregister();
     }
 
     @Override
     public void recoveryStarted() {
-        status = DatabaseHistoryStatus.RECOVERING;
+        status = SchemaHistoryStatus.RECOVERING;
         recoveryStartTime = Instant.now();
         LOGGER.info("Started database history recovery");
     }
 
     @Override
     public void recoveryStopped() {
-        status = DatabaseHistoryStatus.RUNNING;
+        status = SchemaHistoryStatus.RUNNING;
         LOGGER.info("Finished database history recovery of {} change(s) in {} ms", changesRecovered.get(), Duration.between(recoveryStartTime, Instant.now()).toMillis());
     }
 
