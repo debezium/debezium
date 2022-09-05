@@ -8,10 +8,10 @@ package io.debezium.relational.history;
 /**
  * @author Randall Hauch
  */
-public class MemoryDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
+public class MemorySchemaHistoryTest extends AbstractSchemaHistoryTest {
 
     @Override
-    protected DatabaseHistory createHistory() {
-        return new MemoryDatabaseHistory();
+    protected SchemaHistory createHistory() {
+        return new MemorySchemaHistory();
     }
 }

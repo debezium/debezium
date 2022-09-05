@@ -13,12 +13,12 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.FunctionalReadWriteLock;
 
 /**
- * A {@link DatabaseHistory} implementation that stores the schema history in memory.
+ * A {@link SchemaHistory} implementation that stores the schema history in memory.
  *
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
+public final class MemorySchemaHistory extends AbstractSchemaHistory {
 
     private final List<HistoryRecord> records = new ArrayList<>();
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
@@ -26,7 +26,7 @@ public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
     /**
      * Create an instance that keeps the history in memory.
      */
-    public MemoryDatabaseHistory() {
+    public MemorySchemaHistory() {
     }
 
     @Override

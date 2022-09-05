@@ -26,24 +26,24 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryException;
-import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryException;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 
 /**
- * A {@link DatabaseHistory} implementation that stores the schema history in a local file.
+ * A {@link SchemaHistory} implementation that stores the schema history in a local file.
  *
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class FileDatabaseHistory extends AbstractDatabaseHistory {
+public final class FileSchemaHistory extends AbstractSchemaHistory {
 
-    public static final Field FILE_PATH = Field.create(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
+    public static final Field FILE_PATH = Field.create(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
             .withDescription("The path to the file that will be used to record the database history")
             .required();
 
@@ -57,7 +57,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     private Path path;
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -78,7 +78,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 // todo: move to initializeStorage()
                 Path path = this.path;
                 if (path == null) {
-                    throw new IllegalStateException("FileDatabaseHistory must be configured before it is started");
+                    throw new IllegalStateException("FileSchemaHistory must be configured before it is started");
                 }
                 try {
                     // Make sure the file exists ...
@@ -99,14 +99,14 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                     }
                 }
                 catch (IOException e) {
-                    throw new DatabaseHistoryException("Unable to create history file at " + path + ": " + e.getMessage(), e);
+                    throw new SchemaHistoryException("Unable to create history file at " + path + ": " + e.getMessage(), e);
                 }
             }
         });
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
+    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (record == null) {
             return;
         }
@@ -129,7 +129,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                     }
                 }
                 catch (IOException e) {
-                    throw new DatabaseHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
+                    throw new SchemaHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
                 }
             }
             catch (IOException e) {

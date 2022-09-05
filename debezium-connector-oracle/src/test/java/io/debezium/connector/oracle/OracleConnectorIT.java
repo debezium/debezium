@@ -88,8 +88,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
-import io.debezium.relational.history.MemoryDatabaseHistory;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -2807,7 +2807,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
         Configuration config = defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
-                .with(FileDatabaseHistory.FILE_PATH, path)
+                .with(FileSchemaHistory.FILE_PATH, path)
                 .build();
 
         // Start the connector ...
@@ -2824,7 +2824,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Configuration.Builder builder = defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
-                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);
@@ -2857,7 +2857,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Configuration.Builder builder = defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
-                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngine.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);
@@ -2878,7 +2878,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Configuration.Builder builder = defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
-                    .with(OracleConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName())
+                    .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class.getName());
             Configuration config = builder.build();
             consumeRecords(config);

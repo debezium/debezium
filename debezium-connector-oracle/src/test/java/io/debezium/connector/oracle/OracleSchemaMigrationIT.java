@@ -34,7 +34,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -1404,7 +1404,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .build();
 
@@ -1488,7 +1488,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, false)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, false)
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .build();
 

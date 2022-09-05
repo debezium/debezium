@@ -22,7 +22,7 @@ public class RedisConnection {
 
     protected static final String DEBEZIUM_REDIS_SINK_CLIENT_NAME = "debezium:redis:sink";
     protected static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
-    protected static final String DEBEZIUM_DB_HISTORY = "debezium:db_history";
+    protected static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
 
     private String address;
     private String user;

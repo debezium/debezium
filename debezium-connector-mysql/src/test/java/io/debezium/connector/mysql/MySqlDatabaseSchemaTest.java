@@ -28,8 +28,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.AbstractSchemaHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.ParsingException;
@@ -57,7 +57,7 @@ public class MySqlDatabaseSchemaTest {
     }
 
     private MySqlDatabaseSchema getSchema(Configuration config) {
-        config = config.edit().with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true).build();
+        config = config.edit().with(AbstractSchemaHistory.INTERNAL_PREFER_DDL, true).build();
         connectorConfig = new MySqlConnectorConfig(config);
         final MySqlValueConverters mySqlValueConverters = new MySqlValueConverters(
                 DecimalMode.PRECISE,
@@ -115,7 +115,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldIgnoreUnparseableDdlAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
@@ -163,7 +163,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
@@ -196,7 +196,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .with(MySqlConnectorConfig.TABLE_IGNORE_BUILTIN, false)
                 .build();
         mysql = getSchema(config);
@@ -230,7 +230,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldAllowDecimalPrecision() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
@@ -253,7 +253,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldStoreNonCapturedDatabase() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
                 .build();
         mysql = getSchema(config);
@@ -285,9 +285,9 @@ public class MySqlDatabaseSchemaTest {
     public void shouldNotStoreNonCapturedDatabase() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
         mysql = getSchema(config);
         mysql.initializeStorage();
@@ -318,7 +318,7 @@ public class MySqlDatabaseSchemaTest {
     public void shouldStoreNonCapturedTable() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, "captured.ct")
                 .build();
         mysql = getSchema(config);
@@ -350,8 +350,8 @@ public class MySqlDatabaseSchemaTest {
     public void shouldNotStoreNonCapturedTable() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, "captured.ct")
                 .build();
         mysql = getSchema(config);
@@ -381,9 +381,9 @@ public class MySqlDatabaseSchemaTest {
     @Test
     public void addCommentToSchemaTest() {
         final Configuration config = DATABASE.defaultConfig()
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
                 .build();
 

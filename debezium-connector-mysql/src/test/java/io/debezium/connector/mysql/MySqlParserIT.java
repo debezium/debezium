@@ -85,7 +85,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, "io.debezium.relational.history.MemoryDatabaseHistory")
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, "io.debezium.relational.history.MemorySchemaHistory")
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DB_NAME)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
     }

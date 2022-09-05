@@ -31,7 +31,7 @@ import io.debezium.relational.ddl.DdlParser;
  *
  * @author Randall Hauch
  */
-public interface DatabaseHistory {
+public interface SchemaHistory {
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.";
 
@@ -97,7 +97,7 @@ public interface DatabaseHistory {
                              the catalog and the second as the table name, or false if the first should be used as the schema and the
                              second as the table name
      */
-    void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema);
+    void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema);
 
     /**
      * Start the history.
@@ -113,12 +113,12 @@ public interface DatabaseHistory {
      *            null
      * @param databaseName the name of the database whose schema is being changed; may be null
      * @param ddl the DDL statements that describe the changes to the database schema; may not be null
-     * @throws DatabaseHistoryException if the record could not be written
+     * @throws SchemaHistoryException if the record could not be written
      */
-    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl) throws DatabaseHistoryException;
+    void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl) throws SchemaHistoryException;
 
     void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes, Instant timestamp)
-            throws DatabaseHistoryException;
+            throws SchemaHistoryException;
 
     /**
      * @deprecated Use {@link #recover(Offsets, Tables, DdlParser)} instead.
@@ -159,7 +159,7 @@ public interface DatabaseHistory {
     void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser);
 
     /**
-     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, DatabaseHistoryListener, boolean)}.
+     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, SchemaHistoryListener, boolean)}.
      */
     void stop();
 

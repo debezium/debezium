@@ -61,13 +61,13 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryException;
-import io.debezium.relational.history.DatabaseHistoryListener;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryException;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.storage.file.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -2031,7 +2031,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int ID_RESTART = 100;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.DATABASE_HISTORY, PurgableFileDatabaseHistory.class)
+                .with(SqlServerConnectorConfig.SCHEMA_HISTORY, PurgableFileSchemaHistory.class)
                 .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -2615,9 +2615,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 
-    public static class PurgableFileDatabaseHistory implements DatabaseHistory {
+    public static class PurgableFileSchemaHistory implements SchemaHistory {
 
-        final DatabaseHistory delegate = new FileDatabaseHistory();
+        final SchemaHistory delegate = new FileSchemaHistory();
 
         @Override
         public boolean exists() {
@@ -2625,13 +2625,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 return storageExists() && java.nio.file.Files.size(TestHelper.DB_HISTORY_PATH) > 0;
             }
             catch (IOException e) {
-                throw new DatabaseHistoryException("File should exist");
+                throw new SchemaHistoryException("File should exist");
             }
         }
 
         @Override
         public void configure(Configuration config, HistoryRecordComparator comparator,
-                              DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+                              SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
             delegate.configure(config, comparator, listener, useCatalogBeforeSchema);
         }
 
@@ -2642,14 +2642,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         @Override
         public void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
-                throws DatabaseHistoryException {
+                throws SchemaHistoryException {
             delegate.record(source, position, databaseName, ddl);
         }
 
         @Override
         public void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
                            String ddl, TableChanges changes, Instant timestamp)
-                throws DatabaseHistoryException {
+                throws SchemaHistoryException {
             delegate.record(source, position, databaseName, schemaName, ddl, changes, timestamp);
         }
 

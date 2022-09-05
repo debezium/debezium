@@ -6,12 +6,12 @@
 package io.debezium.relational.history;
 
 /**
- * Listener receiving lifecycle and data events from {@link DatabaseHistory}.
+ * Listener receiving lifecycle and data events from {@link SchemaHistory}.
  *
  * @author Jiri Pechanec
  *
  */
-public interface DatabaseHistoryListener {
+public interface SchemaHistoryListener {
     public void started();
 
     public void stopped();
@@ -34,7 +34,7 @@ public interface DatabaseHistoryListener {
      */
     public void onChangeApplied(HistoryRecord record);
 
-    static DatabaseHistoryListener NOOP = new DatabaseHistoryListener() {
+    static SchemaHistoryListener NOOP = new SchemaHistoryListener() {
         @Override
         public void stopped() {
         }

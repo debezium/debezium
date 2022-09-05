@@ -47,7 +47,7 @@ Here's an example of code that configures and runs an embedded MySQL connector:
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "my-app-connector")
-                                        .with("schema.history", "io.debezium.storage.file.history.FileDatabaseHistory")
+                                        .with("schema.history", "io.debezium.storage.file.history.FileSchemaHistory")
                                         .with("schema.history.file.filename", "/path/to/storage/dbhistory.dat")
                                         .build())
 
@@ -88,7 +88,7 @@ The next few lines define the fields that are specific to the connector, which i
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "products")
-                                        .with("schema.history", "io.debezium.storage.file.history.FileDatabaseHistory")
+                                        .with("schema.history", "io.debezium.storage.file.history.FileSchemaHistory")
                                         .with("schema.history.file.filename", "/path/to/storage/dbhistory.dat")
                                         .build())
 

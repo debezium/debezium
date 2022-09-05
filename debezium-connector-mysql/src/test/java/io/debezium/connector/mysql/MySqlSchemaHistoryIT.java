@@ -27,7 +27,7 @@ import io.debezium.util.Testing;
 *
 * @author Jiri Pechanec
 */
-public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
+public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
             .toAbsolutePath();

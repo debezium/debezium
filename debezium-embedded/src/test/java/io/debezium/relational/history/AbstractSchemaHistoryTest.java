@@ -28,19 +28,19 @@ import io.debezium.relational.ddl.DdlParser;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractDatabaseHistoryTest extends AbstractConnectorTest {
+public abstract class AbstractSchemaHistoryTest extends AbstractConnectorTest {
 
-    private MemoryDatabaseHistory databaseHistory;
+    private MemorySchemaHistory schemaHistory;
 
     @Before
     public void beforeEach() {
-        this.databaseHistory = new MemoryDatabaseHistory();
+        this.schemaHistory = new MemorySchemaHistory();
     }
 
     @After
     public void afterEach() {
-        if (this.databaseHistory != null) {
-            this.databaseHistory.stop();
+        if (this.schemaHistory != null) {
+            this.schemaHistory.stop();
         }
     }
 
@@ -68,23 +68,23 @@ public abstract class AbstractDatabaseHistoryTest extends AbstractConnectorTest 
 
     protected Configuration getHistoryConfiguration() {
         return Configuration.create()
-                .with(DatabaseHistory.NAME, "my-db-history")
+                .with(SchemaHistory.NAME, "my-db-history")
                 .build();
     }
 
     protected void record(HistoryRecord... records) throws Exception {
-        Arrays.stream(records).forEach(databaseHistory::storeRecord);
+        Arrays.stream(records).forEach(schemaHistory::storeRecord);
     }
 
     protected Tables recoverHistory() {
         // Initialize history
-        databaseHistory.configure(getHistoryConfiguration(), null, DatabaseHistoryMetrics.NOOP, true);
-        databaseHistory.start();
-        databaseHistory.initializeStorage();
+        schemaHistory.configure(getHistoryConfiguration(), null, SchemaHistoryMetrics.NOOP, true);
+        schemaHistory.start();
+        schemaHistory.initializeStorage();
 
         // Recover records
         final Tables tables = new Tables();
-        databaseHistory.recover(getOffsets(), tables, getDdlParser());
+        schemaHistory.recover(getOffsets(), tables, getDdlParser());
         return tables;
     }
 
