@@ -812,7 +812,7 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |Socket timeout for Redis client.
 
 |[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
-|`extended`
+|`compact`
 |The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format). 
 Read more about the message format xref:#p-redis-message-format[below].
 |===
