@@ -229,7 +229,7 @@ public class KafkaDatabaseHistoryCompaction {
             // LOGGER.debug("recovered record: {}", recovered);
             listener.onChangeFromHistory(recovered);
             LOGGER.info("position1: {} and position2: {}", recovered.position(), stopPoint.position());
-            if (comparator.isAtOrBefore(recovered, stopPoint)) {
+            if (comparator.isAtOrBefore(recovered, stopPoint)) {//use postitions to compact the history records rest of the records will be append to the new history topic
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
                 if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
