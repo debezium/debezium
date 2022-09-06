@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -259,6 +260,11 @@ public class JdbcConnection implements AutoCloseable {
             filtered.put(JdbcConfiguration.PASSWORD.name(), "***");
         }
         return filtered;
+    }
+
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
     }
 
     private static Field[] combineVariables(Field[] overriddenVariables,

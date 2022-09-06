@@ -8,12 +8,15 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,6 +251,21 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 jdbcConnection.getTableMetadataDdl(table.id()),
                 table,
                 true);
+    }
+
+    @Override
+    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext, TableId tableId) {
+        try {
+            Optional<OffsetDateTime> snapshotTs = jdbcConnection.getScnToTimestamp(snapshotContext.offset.getScn());
+            if (snapshotTs.isEmpty()) {
+                throw new ConnectException("Failed reading SCN timestamp from source database");
+            }
+
+            return snapshotTs.get().toInstant();
+        }
+        catch (SQLException e) {
+            throw new ConnectException("Failed reading SCN timestamp from source database", e);
+        }
     }
 
     /**

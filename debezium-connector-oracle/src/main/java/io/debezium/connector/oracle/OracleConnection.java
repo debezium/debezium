@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -282,6 +283,12 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         return super.readTableUniqueIndices(metadata, id.toDoubleQuoted());
+    }
+
+    @Override
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP FROM DUAL",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
     }
 
     @Override
