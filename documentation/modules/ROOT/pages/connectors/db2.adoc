@@ -1910,7 +1910,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
     "topic.prefix": "fullfillment", // <8>
     "table.include.list": "MYSCHEMA.CUSTOMERS", // <9>
     "schema.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-    "schema.history.kafka.topic": "dbhistory.fullfillment" // <11>
+    "schema.history.kafka.topic": "schemahistory.fullfillment" // <11>
   }
 }
 ----
