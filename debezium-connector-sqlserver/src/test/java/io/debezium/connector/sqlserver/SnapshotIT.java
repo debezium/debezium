@@ -76,7 +76,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "table1");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -253,7 +253,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         TestHelper.enableTableCdc(connection, "User");
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(TABLE_INCLUDE_LIST, "dbo.User")

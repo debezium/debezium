@@ -65,7 +65,7 @@ public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
         TestHelper.streamTable(connection, "debezium.table3");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

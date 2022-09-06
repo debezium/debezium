@@ -50,7 +50,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection();
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         TestHelper.dropTable(connection, "default_value_test");
         TestHelper.dropSequence(connection, "debezium_seq");
 

@@ -36,7 +36,7 @@ public class TestHelper {
     private static final String DATABASE_PREFIX = "database.";
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
-    public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
 
     public static final String CONNECTOR_USER = "c##dbzuser";
     public static final String CONNECTOR_NAME = "oracle";
@@ -163,7 +163,7 @@ public class TestHelper {
 
         return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

@@ -35,10 +35,10 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
     private static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-schema-parameter.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-schema-parameter.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("schemaparameterit", "source_type_as_schema_parameter_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -47,7 +47,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -56,7 +56,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

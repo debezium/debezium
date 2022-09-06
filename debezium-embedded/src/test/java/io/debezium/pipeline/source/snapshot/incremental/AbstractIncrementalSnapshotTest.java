@@ -51,7 +51,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected static final int ROW_COUNT = 1_000;
     private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
 
-    protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
+    protected static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
 
     protected abstract Class<T> connectorClass();

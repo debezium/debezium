@@ -57,7 +57,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tablenumd");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

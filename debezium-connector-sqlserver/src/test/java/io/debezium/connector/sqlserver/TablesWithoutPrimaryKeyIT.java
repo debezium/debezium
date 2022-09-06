@@ -40,7 +40,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         TestHelper.createTestDatabase();
         initializeConnectorTestFramework();
 
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

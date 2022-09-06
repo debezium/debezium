@@ -307,7 +307,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception {
         initializeConnectorTestFramework();
         Testing.Debug.enable();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)

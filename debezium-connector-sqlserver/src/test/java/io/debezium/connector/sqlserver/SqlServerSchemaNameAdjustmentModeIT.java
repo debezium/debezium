@@ -37,7 +37,7 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "name-adjustment");
 
         initializeConnectorTestFramework();
-        Files.delete(TestHelper.DB_HISTORY_PATH);
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

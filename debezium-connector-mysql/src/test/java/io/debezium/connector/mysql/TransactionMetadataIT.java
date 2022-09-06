@@ -38,10 +38,10 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     private static final String CUSTOMER_INSERT_STMT_2 = "INSERT INTO customers (first_name, last_name, email) VALUES ('Rajesh', 'Agarwal', 'test2@abc.com' ); ";
     private static final String ORDER_INSERT_STMT = "INSERT INTO orders (order_date, purchaser, quantity, product_id) VALUES ('2016-01-16', 1001, 1, 1); ";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-tm.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-tm.txt").toAbsolutePath();
 
     private static final String SERVER_NAME = "tm_test";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transaction_metadata_test").withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transaction_metadata_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -50,7 +50,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -59,7 +59,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
