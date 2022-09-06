@@ -97,15 +97,15 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         }
 
         // Do not remove the prefix from the subset of config properties ...
-        Configuration dbHistoryConfig = config.subset(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
+        Configuration schemaHistoryConfig = config.subset(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
-                .withDefault(SchemaHistory.NAME, getLogicalName() + "-dbhistory")
+                .withDefault(SchemaHistory.NAME, getLogicalName() + "-schemahistory")
                 .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
                 .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        schemaHistory.configure(dbHistoryConfig, historyComparator,
+        schemaHistory.configure(schemaHistoryConfig, historyComparator,
                 new SchemaHistoryMetrics(this, multiPartitionMode()), useCatalogBeforeSchema()); // validates
 
         return schemaHistory;
