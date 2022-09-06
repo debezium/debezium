@@ -9,6 +9,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -329,6 +331,25 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     /**
+     * For the given table gets source.ts_ms value from the database for snapshot data!
+     * For Postgresql its globally static for all tables since postgresql snapshot process setting auto commit off.
+     * For Mysql its static per table and might be ~second behind of the select statements start ts.
+     */
+    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
+        try {
+            Optional<Timestamp> snapshotTs = jdbcConnection.getCurrentTimestamp();
+            if (snapshotTs.isEmpty()) {
+                throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database");
+            }
+
+            return snapshotTs.get().toInstant();
+        }
+        catch (SQLException e) {
+            throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database", e);
+        }
+    }
+
+    /**
      * Dispatches the data change events for the records of a single table.
      */
     private void createDataEventsForTable(ChangeEventSourceContext sourceContext,
@@ -348,6 +369,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
         final OptionalLong rowCount = rowCountForTable(table.id());
+        Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(snapshotContext, table.id());
 
         try (Statement statement = readTableStatement(rowCount);
                 ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
@@ -385,7 +407,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     setSnapshotMarker(snapshotContext);
 
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
-                            getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
+                            getChangeRecordEmitter(snapshotContext, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
@@ -442,8 +464,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(SnapshotContext<P, O> snapshotContext, TableId tableId,
-                                                            Object[] row) {
-        snapshotContext.offset.event(tableId, getClock().currentTime());
+                                                            Object[] row, Instant timestamp) {
+        snapshotContext.offset.event(tableId, timestamp);
         return new SnapshotChangeRecordEmitter<>(snapshotContext.partition, snapshotContext.offset, row, getClock());
     }
 
