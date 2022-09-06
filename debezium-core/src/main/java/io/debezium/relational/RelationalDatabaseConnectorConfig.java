@@ -378,7 +378,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
                     + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision; "
                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                    + "which uses millisecond precision regardless of the database columns' precision .");
+                    + "which uses millisecond precision regardless of the database columns' precision.");
 
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
             .withDisplayName("Snapshot lock timeout (ms)")
