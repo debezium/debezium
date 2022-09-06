@@ -1956,6 +1956,21 @@ public class MySqlAntlrDdlParserTest {
         assertThat(t3.columnWithName("col1").position()).isEqualTo(1);
         assertThat(t3.columnWithName("col3").position()).isEqualTo(2);
         assertThat(t3.columnWithName("col2").position()).isEqualTo(3);
+
+        ddl = "ALTER TABLE t ADD COLUMN col4 INT(10) DEFAULT ' 29 ' COLLATE 'utf8_general_ci';";
+        parser.parse(ddl, tables);
+        Table t4 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t4).isNotNull();
+        assertThat(t4.retrieveColumnNames()).containsExactly("col1", "col3", "col2", "col4");
+        assertThat(t4.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t4, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t4, "col3", "FLOAT", Types.FLOAT, -1, -1, false, false, false);
+        assertColumn(t4, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
+        assertColumn(t4, "col4", "INT", Types.INTEGER, 10, -1, true, false, false);
+        assertThat(t4.columnWithName("col1").position()).isEqualTo(1);
+        assertThat(t4.columnWithName("col3").position()).isEqualTo(2);
+        assertThat(t4.columnWithName("col2").position()).isEqualTo(3);
+        assertThat(t4.columnWithName("col4").position()).isEqualTo(4);
     }
 
     @FixFor("DBZ-660")
