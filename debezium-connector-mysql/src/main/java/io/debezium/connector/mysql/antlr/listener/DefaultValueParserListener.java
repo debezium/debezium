@@ -42,7 +42,12 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
         if (ctx.constant() != null) {
             if (ctx.constant().stringLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
+                if (ctx.constant().stringLiteral().COLLATE() == null) {
+                    columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
+                } else {
+                    columnEditor.defaultValueExpression(
+                            sign + unquote(ctx.constant().stringLiteral().STRING_LITERAL(0).getText()));
+                }
             }
             else if (ctx.constant().decimalLiteral() != null) {
                 columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
