@@ -47,8 +47,8 @@ Here's an example of code that configures and runs an embedded MySQL connector:
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "my-app-connector")
-                                        .with("schema.history", "io.debezium.storage.file.history.FileSchemaHistory")
-                                        .with("schema.history.file.filename", "/path/to/storage/schemahistory.dat")
+                                        .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                                        .with("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
                                         .build())
 
     // Create the engine with this configuration ...
@@ -88,8 +88,8 @@ The next few lines define the fields that are specific to the connector, which i
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "products")
-                                        .with("schema.history", "io.debezium.storage.file.history.FileSchemaHistory")
-                                        .with("schema.history.file.filename", "/path/to/storage/schemahistory.dat")
+                                        .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                                        .with("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
                                         .build())
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database. Note that for MySQL the username and password should correspond to a MySQL database user that has been granted the [`REPLICATION SLAVE` privilege](http://dev.mysql.com/doc/refman/5.7/en/replication-howto-repuser.html), allowing the database to read the server's binlog that is normally used for MySQL replication.
