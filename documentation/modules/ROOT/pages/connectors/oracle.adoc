@@ -2205,8 +2205,8 @@ spec:
     database.dbname: ORCLCDB // <7>
     database.pdb.name : ORCLPDB1, <8>
     topic.prefix: server1 // <9>
-    schema.history.kafka.bootstrap.servers: kafka:9092 // <10>
-    schema.history.kafka.topic: schema-changes.inventory // <11>
+    schema.history.internal.kafka.bootstrap.servers: kafka:9092 // <10>
+    schema.history.internal.kafka.topic: schema-changes.inventory // <11>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2285,8 +2285,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "topic.prefix" : "server1",  // <8>
         "tasks.max" : "1",  // <9>
         "database.pdb.name" : "ORCLPDB1",  // <10>
-        "schema.history.kafka.bootstrap.servers" : "kafka:9092", // <11>
-        "schema.history.kafka.topic": "schema-changes.inventory"  // <12>
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092", // <11>
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"  // <12>
     }
 }
 ----
@@ -2322,8 +2322,8 @@ The following JSON example shows the same configuration as in the preceding exam
         "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "schema.history.kafka.bootstrap.servers" : "kafka:9092",
-        "schema.history.kafka.topic": "schema-changes.inventory"
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
 }
 ----
@@ -2395,8 +2395,8 @@ ifdef::community[]
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "schema.history.kafka.bootstrap.servers" : "kafka:9092",
-        "schema.history.kafka.topic": "schema-changes.inventory"
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
 }
 ----
@@ -2420,8 +2420,8 @@ For non-CDB installation, do *not* specify the `database.pdb.name` property.
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
-        "schema.history.kafka.bootstrap.servers" : "kafka:9092",
-        "schema.history.kafka.topic": "schema-changes.inventory"
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
 }
 ----
@@ -3515,7 +3515,7 @@ Instead, it contains the complete new schema structure.
 
 |===
 
-After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+schema.history.skip.unparseable.ddl+`>> option as `true`.
+After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+schema.history.internal.skip.unparseable.ddl+`>> option as `true`.
 After the connector's commit SCN advances beyond the DDL change, to prevent unparseable DDL statements from being skipped unexpectedly, return the connector configuration to its previous state.
 
 .Example of a logging record
@@ -3786,8 +3786,8 @@ The following configuration example adds the properties `database.connection.ada
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "schema.history.kafka.bootstrap.servers" : "kafka:9092",
-        "schema.history.kafka.topic": "schema-changes.inventory",
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory",
         "database.connection.adapter": "xstream",
         "database.out.server.name" : "dbzxout"
     }

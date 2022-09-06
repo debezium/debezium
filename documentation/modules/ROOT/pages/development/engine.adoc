@@ -97,9 +97,9 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.password", "mysqlpw");
     props.setProperty("database.server.id", "85744");
     props.setProperty("topic.prefix", "my-app-connector");
-    props.setProperty("schema.history",
+    props.setProperty("schema.history.internal",
           "io.debezium.storage.file.history.FileSchemaHistory");
-    props.setProperty("schema.history.file.filename",
+    props.setProperty("schema.history.internal.file.filename",
           "/path/to/storage/schemahistory.dat");
     
     // Create the engine with this configuration ...
@@ -152,9 +152,9 @@ The next few lines define the fields that are specific to the connector (documen
     props.setProperty("database.password", "mysqlpw")
     props.setProperty("database.server.id", "85744")
     props.setProperty("topic.prefix", "my-app-connector")
-    props.setProperty("schema.history",
+    props.setProperty("schema.history.internal",
           "io.debezium.storage.file.history.FileSchemaHistory")
-    props.setProperty("schema.history.file.filename",
+    props.setProperty("schema.history.internal.file.filename",
           "/path/to/storage/schemahistory.dat")
 ----
 
@@ -461,26 +461,26 @@ For other deployments, a file-based database schema history storage implementati
 |Default
 |Description
 
-|`schema.history`
+|`schema.history.internal`
 |`<...>.KafkaSchemaHistory`
 |The name of the Java class that is responsible for persistence of the database schema history. +
 It must implement `<...>.SchemaHistory` interface.
 
-|`schema.history.file.filename`
+|`schema.history.internal.file.filename`
 |`""`
 |Path to a file where the database schema history is stored. +
-Required when `schema.history` is set to the `<...>.FileSchemaHistory`.
+Required when `schema.history.internal` is set to the `<...>.FileSchemaHistory`.
 
-|`schema.history.kafka.topic`
+|`schema.history.internal.kafka.topic`
 |`""`
 |The Kafka topic where the database schema history is stored. +
-Required when `schema.history` is set to the `<...>.KafkaSchemaHistory`.
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
-|`schema.history.kafka.bootstrap.servers`
+|`schema.history.internal.kafka.bootstrap.servers`
 |`""`
 |The initial list of Kafka cluster servers to connect to.
 The cluster provides the topic to store the database schema history. +
-Required when `schema.history` is set to the `<...>.KafkaSchemaHistory`.
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
 |=======================
 
