@@ -40,9 +40,9 @@ import io.debezium.util.Testing;
  */
 public class MySqlMetricsIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-metrics.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-metrics.txt").toAbsolutePath();
     private static final String SERVER_NAME = "myserver";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "connector_metrics_test").withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "connector_metrics_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private static final String INSERT1 = "INSERT INTO simple (val) VALUES (25);";
     private static final String INSERT2 = "INSERT INTO simple (val) VALUES (50);";
@@ -53,7 +53,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -62,7 +62,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -73,7 +73,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                        .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
@@ -121,7 +121,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                         .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                        .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
@@ -148,7 +148,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                        .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, String.format("%s", TABLE_NAME))
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
@@ -199,7 +199,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                        .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
@@ -216,7 +216,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                 DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                         .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                        .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                        .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)

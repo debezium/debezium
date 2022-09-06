@@ -66,9 +66,9 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class StreamingSourceIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binlog.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private static final String SET_TLS_PROTOCOLS = "database.enabledTLSProtocols";
 
@@ -84,7 +84,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         this.store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
         this.schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
@@ -96,7 +96,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -327,7 +327,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     @FixFor("DBZ-183")
     public void shouldHandleTimestampTimezones() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         String tableName = "dbz_85_fractest";
@@ -364,7 +364,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     @FixFor("DBZ-342")
     public void shouldHandleMySQLTimeCorrectly() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         String tableName = "dbz_342_timetest";
@@ -458,7 +458,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()
@@ -478,7 +478,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
     public void shouldAcceptTls12() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()

@@ -91,7 +91,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         // Testing.Print.enable();
     }
 
@@ -2068,7 +2068,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         final LogInterceptor logInterceptor = new LogInterceptor(SqlServerConnectorIT.class);
         start(SqlServerConnector.class, config);
@@ -2622,7 +2622,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         @Override
         public boolean exists() {
             try {
-                return storageExists() && java.nio.file.Files.size(TestHelper.DB_HISTORY_PATH) > 0;
+                return storageExists() && java.nio.file.Files.size(TestHelper.SCHEMA_HISTORY_PATH) > 0;
             }
             catch (IOException e) {
                 throw new SchemaHistoryException("File should exist");

@@ -79,7 +79,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "table3");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
 */
 public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
 
     private static final int TABLE_COUNT = 2;
@@ -42,11 +42,11 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
     public void beforeEach() {
         stopConnector();
         DATABASE = new UniqueDatabase("history", "history-dbz")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -55,7 +55,7 @@ public class MySqlSchemaHistoryIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

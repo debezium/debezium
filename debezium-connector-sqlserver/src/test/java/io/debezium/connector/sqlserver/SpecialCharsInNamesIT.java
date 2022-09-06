@@ -47,7 +47,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -117,7 +117,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -255,7 +255,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection(databaseName);
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         final Configuration config = TestHelper.defaultConfig(databaseName)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)

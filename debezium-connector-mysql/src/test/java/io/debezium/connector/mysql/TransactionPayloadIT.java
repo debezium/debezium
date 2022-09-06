@@ -41,10 +41,10 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
     private static final String ORDER_UPDATE_STMT_1 = "UPDATE orders set order_date = '2017-01-16' where order_number = 10001; ";
     private static final String ORDER_DELETE_STMT_1 = "DELETE from orders where order_number = 10001; ";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-tp.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-tp.txt").toAbsolutePath();
 
     private static final String SERVER_NAME = "transactionpayload_it";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transactionpayload_test").withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transactionpayload_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     @Rule
     public SkipTestRule skipTest = new SkipTestRule();
     private Configuration config;
@@ -54,7 +54,7 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -63,7 +63,7 @@ public class TransactionPayloadIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

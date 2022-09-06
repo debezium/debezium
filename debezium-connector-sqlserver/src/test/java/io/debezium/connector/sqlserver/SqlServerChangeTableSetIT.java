@@ -54,7 +54,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         // Testing.Debug.enable();
     }
 
@@ -607,7 +607,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         // Validate history change types
         final DocumentReader reader = DocumentReader.defaultReader();
         final List<Document> changes = new ArrayList<>();
-        IoUtil.readLines(TestHelper.DB_HISTORY_PATH, line -> {
+        IoUtil.readLines(TestHelper.SCHEMA_HISTORY_PATH, line -> {
             try {
                 changes.add(reader.read(line));
             }

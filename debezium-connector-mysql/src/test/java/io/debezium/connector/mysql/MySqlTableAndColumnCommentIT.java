@@ -31,10 +31,10 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
 
     private static final String COLUMN_COMMENT_PARAMETER_KEY = "__debezium.source.column.comment";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-comment.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-comment.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("commentit", "table_column_comment_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -43,7 +43,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -52,7 +52,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

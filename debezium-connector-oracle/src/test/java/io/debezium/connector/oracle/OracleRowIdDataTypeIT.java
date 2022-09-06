@@ -69,7 +69,7 @@ public class OracleRowIdDataTypeIT extends AbstractConnectorTest {
         connection.execute("delete from debezium.type_rowid");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @Test

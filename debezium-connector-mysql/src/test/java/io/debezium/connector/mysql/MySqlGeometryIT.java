@@ -36,7 +36,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "Function ST_GeomFromText not added until MySQL 5.6")
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
     private UniqueDatabase DATABASE;
     private DatabaseGeoDifferences databaseDifferences;
@@ -49,11 +49,11 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         databaseDifferences = databaseGeoDifferences(MySqlTestConnection.isMySQL5());
 
         DATABASE = new UniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -62,7 +62,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

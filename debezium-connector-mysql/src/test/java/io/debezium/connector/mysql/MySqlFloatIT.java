@@ -33,10 +33,10 @@ import io.debezium.util.Testing;
  */
 public class MySqlFloatIT extends AbstractConnectorTest {
     private static final String TABLE_NAME = "DBZ3865";
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-float.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-float.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("floatit", "float_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -45,7 +45,7 @@ public class MySqlFloatIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -54,7 +54,7 @@ public class MySqlFloatIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 

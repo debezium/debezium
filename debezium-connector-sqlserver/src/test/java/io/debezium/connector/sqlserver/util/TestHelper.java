@@ -55,7 +55,7 @@ public class TestHelper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
-    public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE_1 = "testDB1";
     public static final String TEST_DATABASE_2 = "testDB2";
     public static final String TEST_SERVER_NAME = "server1";
@@ -127,7 +127,7 @@ public class TestHelper {
 
         return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "server1")
                 .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
-                .with(FileSchemaHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 

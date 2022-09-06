@@ -39,7 +39,7 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
         TestHelper.enableTableCdc(connection, "debezium_signal");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After

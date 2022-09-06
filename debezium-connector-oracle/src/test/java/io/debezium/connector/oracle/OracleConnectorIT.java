@@ -193,7 +193,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("delete from debezium.dt_table");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @Test
@@ -4209,7 +4209,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         try {
             // Always want to make sure the offsets are cleared for each invocation of this sub-test
             Testing.Files.delete(OFFSET_STORE_PATH);
-            Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+            Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
             connection.execute("CREATE TABLE " + quotedTableName + " (id numeric(9,0) primary key, data varchar2(50))");
             connection.execute("INSERT INTO " + quotedTableName + " (id,data) values (1, 'Record1')");
