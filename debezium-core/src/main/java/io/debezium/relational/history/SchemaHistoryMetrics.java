@@ -112,13 +112,14 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
     public void recoveryStarted() {
         status = SchemaHistoryStatus.RECOVERING;
         recoveryStartTime = Instant.now();
-        LOGGER.info("Started database history recovery");
+        LOGGER.info("Started database schema history recovery");
     }
 
     @Override
     public void recoveryStopped() {
         status = SchemaHistoryStatus.RUNNING;
-        LOGGER.info("Finished database history recovery of {} change(s) in {} ms", changesRecovered.get(), Duration.between(recoveryStartTime, Instant.now()).toMillis());
+        LOGGER.info("Finished database schema history recovery of {} change(s) in {} ms", changesRecovered.get(),
+                Duration.between(recoveryStartTime, Instant.now()).toMillis());
     }
 
     @Override
@@ -126,7 +127,7 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
         lastRecoveredChange = record;
         changesRecovered.incrementAndGet();
         if (lastChangeRecoveredLogDelay.hasElapsed()) {
-            LOGGER.info("Database history recovery in progress, recovered {} records", changesRecovered);
+            LOGGER.info("Database schema history recovery in progress, recovered {} records", changesRecovered);
         }
         lastChangeRecoveredTimestamp = Instant.now();
     }

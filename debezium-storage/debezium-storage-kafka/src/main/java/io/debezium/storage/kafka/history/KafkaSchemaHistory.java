@@ -104,7 +104,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     private static final short DEFAULT_TOPIC_REPLICATION_FACTOR = 1;
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
-            .withDisplayName("Database history topic name")
+            .withDisplayName("Database schema history topic name")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 32))
             .withWidth(Width.LONG)
@@ -126,7 +126,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "kafka.recovery.poll.interval.ms")
-            .withDisplayName("Poll interval during database history recovery (ms)")
+            .withDisplayName("Poll interval during database schema history recovery (ms)")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
             .withWidth(Width.SHORT)
@@ -136,7 +136,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             .withValidation(Field::isNonNegativeInteger);
 
     public static final Field RECOVERY_POLL_ATTEMPTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.recovery.attempts")
-            .withDisplayName("Max attempts to recovery database history")
+            .withDisplayName("Max attempts to recovery database schema history")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 0))
             .withWidth(Width.SHORT)
@@ -269,9 +269,9 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     @Override
     protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (this.producer == null) {
-            throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
+            throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database schema history records.");
         }
-        LOGGER.trace("Storing record into database history: {}", record);
+        LOGGER.trace("Storing record into database schema history: {}", record);
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);
@@ -284,7 +284,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             }
         }
         catch (InterruptedException e) {
-            LOGGER.trace("Interrupted before record was written into database history: {}", record);
+            LOGGER.trace("Interrupted before record was written into database schema history: {}", record);
             Thread.currentThread().interrupt();
             throw new SchemaHistoryException(e);
         }
@@ -297,7 +297,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     protected void recoverRecords(Consumer<HistoryRecord> records) {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
-            LOGGER.debug("Subscribing to database history topic '{}'", topicName);
+            LOGGER.debug("Subscribing to database schema history topic '{}'", topicName);
             historyConsumer.subscribe(Collect.arrayListOf(topicName));
 
             // Read all messages in the topic ...
@@ -308,11 +308,12 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             // read the topic until the end
             do {
                 if (recoveryAttempts > maxRecoveryAttempts) {
-                    throw new IllegalStateException("The database history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
+                    throw new IllegalStateException(
+                            "The database schema history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
                 }
 
                 endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
-                LOGGER.debug("End offset of database history topic is {}", endOffset);
+                LOGGER.debug("End offset of database schema history topic is {}", endOffset);
 
                 // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval.toMillis());
@@ -322,20 +323,20 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                     try {
                         if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
-                                LOGGER.warn("Skipping null database history record. " +
+                                LOGGER.warn("Skipping null database schema history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
                             }
                             else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
-                                LOGGER.trace("Recovering database history: {}", recordObj);
+                                LOGGER.trace("Recovering database schema history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
-                                    LOGGER.warn("Skipping invalid database history record '{}'. " +
+                                    LOGGER.warn("Skipping invalid database schema history record '{}'. " +
                                             "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
                                 }
                                 else {
                                     records.accept(recordObj);
-                                    LOGGER.trace("Recovered database history: {}", recordObj);
+                                    LOGGER.trace("Recovered database schema history: {}", recordObj);
                                 }
                             }
                             lastProcessedOffset = record.offset();
@@ -351,11 +352,11 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                     }
                 }
                 if (numRecordsProcessed == 0) {
-                    LOGGER.debug("No new records found in the database history; will retry");
+                    LOGGER.debug("No new records found in the database schema history; will retry");
                     recoveryAttempts++;
                 }
                 else {
-                    LOGGER.debug("Processed {} records from database history", numRecordsProcessed);
+                    LOGGER.debug("Processed {} records from database schema history", numRecordsProcessed);
                 }
             } while (lastProcessedOffset < endOffset - 1);
         }
@@ -368,7 +369,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         // The end offset should never change during recovery; doing this check here just as - a rather weak - attempt
         // to spot other connectors that share the same history topic accidentally
         if (previousEndOffset != null && !previousEndOffset.equals(endOffset)) {
-            throw new IllegalStateException("Detected changed end offset of database history topic (previous: "
+            throw new IllegalStateException("Detected changed end offset of database schema history topic (previous: "
                     + previousEndOffset + ", current: " + endOffset
                     + "). Make sure that the same history topic isn't shared by multiple connector instances.");
         }
@@ -432,20 +433,21 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
 
                 final String cleanupPolicy = topic.get(CLEANUP_POLICY_NAME).value();
                 if (!CLEANUP_POLICY_VALUE.equals(cleanupPolicy)) {
-                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' but is '{}'", topicName, CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE,
+                    LOGGER.warn("Database schema history topic '{}' option '{}' should be '{}' but is '{}'", topicName, CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE,
                             cleanupPolicy);
                     return;
                 }
 
                 final String retentionBytes = topic.get(RETENTION_BYTES_NAME).value();
                 if (retentionBytes != null && Long.parseLong(retentionBytes) != UNLIMITED_VALUE) {
-                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' but is '{}'", topicName, RETENTION_BYTES_NAME, UNLIMITED_VALUE, retentionBytes);
+                    LOGGER.warn("Database schema history topic '{}' option '{}' should be '{}' but is '{}'", topicName, RETENTION_BYTES_NAME, UNLIMITED_VALUE,
+                            retentionBytes);
                     return;
                 }
 
                 final String retentionMs = topic.get(RETENTION_MS_NAME).value();
                 if (retentionMs != null && (Long.parseLong(retentionMs) != UNLIMITED_VALUE && Long.parseLong(retentionMs) < RETENTION_MS_MIN)) {
-                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' or greater than '{}' (5 years) but is '{}'", topicName, RETENTION_MS_NAME,
+                    LOGGER.warn("Database schema history topic '{}' option '{}' should be '{}' or greater than '{}' (5 years) but is '{}'", topicName, RETENTION_MS_NAME,
                             UNLIMITED_VALUE, RETENTION_MS_MIN, retentionMs);
                     return;
                 }
@@ -463,14 +465,14 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
 
                 final int partitions = topicDesc.partitions().size();
                 if (partitions != PARTITION_COUNT) {
-                    LOGGER.warn("Database history topic '{}' should have one partiton but has '{}'", topicName, partitions);
+                    LOGGER.warn("Database schema history topic '{}' should have one partiton but has '{}'", topicName, partitions);
                     return;
                 }
 
-                LOGGER.info("Database history topic '{}' has correct settings", topicName);
+                LOGGER.info("Database schema history topic '{}' has correct settings", topicName);
             }
             catch (Throwable e) {
-                LOGGER.info("Attempted to validate database history topic but failed", e);
+                LOGGER.info("Attempted to validate database schema history topic but failed", e);
             }
             stopCheckTopicSettingsExecutor();
         });
@@ -549,11 +551,11 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             try {
                 CreateTopicsResult result = admin.createTopics(Collections.singleton(topic));
                 result.all().get(kafkaCreateTimeout.toMillis(), TimeUnit.MILLISECONDS);
-                LOGGER.info("Database history topic '{}' created", topic);
+                LOGGER.info("Database schema history topic '{}' created", topic);
             }
             catch (ExecutionException e) {
                 if (e.getCause() instanceof TopicExistsException) {
-                    LOGGER.info("Database history topic '{}' already exist", topic);
+                    LOGGER.info("Database schema history topic '{}' already exist", topic);
                 }
                 else {
                     throw e;
@@ -561,7 +563,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             }
         }
         catch (Exception e) {
-            throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
+            throw new ConnectException("Creation of database schema history topic failed, please create the topic manually", e);
         }
     }
 

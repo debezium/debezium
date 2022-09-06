@@ -183,12 +183,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
                 throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
             }
-            LOGGER.info("Connector started for the first time, database history recovery will not be executed");
+            LOGGER.info("Connector started for the first time, database schema history recovery will not be executed");
             schema.initializeStorage();
             return;
         }
         if (!schema.historyExists()) {
-            LOGGER.warn("Database history was not found but was expected");
+            LOGGER.warn("Database schema history was not found but was expected");
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
                         "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",

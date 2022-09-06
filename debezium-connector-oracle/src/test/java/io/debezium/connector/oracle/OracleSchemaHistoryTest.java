@@ -29,7 +29,7 @@ import io.debezium.schema.AbstractTopicNamingStrategy;
 import oracle.jdbc.OracleTypes;
 
 /**
- * Unit tests for Oracle's database history.
+ * Unit tests for Oracle's database schema history.
  * 
  * @author Chris Cranford
  */

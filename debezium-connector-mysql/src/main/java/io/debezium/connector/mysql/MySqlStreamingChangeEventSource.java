@@ -684,7 +684,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 LOGGER.error(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), eventHeader.getPosition(),
                         eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
@@ -693,7 +693,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
             else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 LOGGER.warn(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
@@ -701,7 +701,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
             else {
                 LOGGER.debug(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),

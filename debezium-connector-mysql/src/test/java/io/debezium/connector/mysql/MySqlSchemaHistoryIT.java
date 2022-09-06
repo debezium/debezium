@@ -23,7 +23,7 @@ import io.debezium.util.Testing;
 
 /**
 *
-* The test to verify whether DDL is stored correctly in database history.
+* The test to verify whether DDL is stored correctly in database schema history.
 *
 * @author Jiri Pechanec
 */

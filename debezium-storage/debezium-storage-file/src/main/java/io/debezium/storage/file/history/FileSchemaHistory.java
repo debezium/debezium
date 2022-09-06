@@ -44,7 +44,7 @@ import io.debezium.util.FunctionalReadWriteLock;
 public final class FileSchemaHistory extends AbstractSchemaHistory {
 
     public static final Field FILE_PATH = Field.create(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
-            .withDescription("The path to the file that will be used to record the database history")
+            .withDescription("The path to the file that will be used to record the database schema history")
             .required();
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(FILE_PATH);
@@ -64,7 +64,7 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
         }
         config.validateAndRecord(ALL_FIELDS, logger::error);
         if (running.get()) {
-            throw new IllegalStateException("Database history file already initialized to " + path);
+            throw new IllegalStateException("Database schema history file already initialized to " + path);
         }
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         path = Paths.get(config.getString(FILE_PATH));

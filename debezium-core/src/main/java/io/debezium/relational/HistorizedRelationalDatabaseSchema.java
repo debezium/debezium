@@ -55,7 +55,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         }
 
         if (!schemaHistory.exists()) {
-            String msg = "The db history topic or its content is fully or partially missing. Please check database history topic configuration and re-execute the snapshot.";
+            String msg = "The db history topic or its content is fully or partially missing. Please check database schema history topic configuration and re-execute the snapshot.";
             throw new DebeziumException(msg);
         }
 
