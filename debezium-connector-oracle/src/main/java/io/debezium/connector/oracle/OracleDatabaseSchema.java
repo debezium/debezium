@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.nio.ByteBuffer;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -106,6 +107,11 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
         }
+    }
+
+    @Override
+    public void applySchemaChange(SchemaChangeEvent schemaChange, SimpleEntry<String, String> changeTableSyncInfoPair) {
+        applySchemaChange(schemaChange);
     }
 
     @Override

@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.spi;
 
+import java.util.AbstractMap.SimpleEntry;
+
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaChangeEvent;
 
@@ -19,5 +21,8 @@ public interface SchemaChangeEventEmitter {
 
     public interface Receiver {
         void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException;
+
+        void schemaChangeEvent(SchemaChangeEvent event, SimpleEntry<String, String> changeTableSyncInfoPair) throws InterruptedException;
+
     }
 }

@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.util.AbstractMap.SimpleEntry;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -37,7 +40,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final KeyMapper customKeysMapper;
 
     private final SchemasByTableId schemasByTableId;
+    private final ChangeTableSyncInfoByTableId changeTableSyncInfoByTableId;
     private final Tables tables;
+    private final Map<Table, SimpleEntry<String, String>> tableToChangeTableSyncInfoMap;
 
     protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
@@ -51,7 +56,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         this.customKeysMapper = customKeysMapper;
 
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
+        this.changeTableSyncInfoByTableId = new ChangeTableSyncInfoByTableId(tableIdCaseInsensitive);
         this.tables = new Tables(tableIdCaseInsensitive);
+        this.tableToChangeTableSyncInfoMap = new HashMap<>();
     }
 
     @Override
@@ -89,6 +96,10 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         return schemasByTableId.get(id);
     }
 
+    public SimpleEntry<String, String> changeTableSyncInfoFor(TableId id) {
+        return changeTableSyncInfoByTableId.get(id);
+    }
+
     /**
      * Get the {@link Table} meta-data for the table with the given identifier, if that table exists and is
      * included by the filter configuration
@@ -110,6 +121,10 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         return tables;
     }
 
+    protected Map<Table, SimpleEntry<String, String>> getTableToChangeTableSyncInfoMap() {
+        return tableToChangeTableSyncInfoMap;
+    }
+
     protected void clearSchemas() {
         schemasByTableId.clear();
     }
@@ -121,6 +136,17 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
+        }
+    }
+
+    /**
+     * Stores the pair of change-table and sync-information of the schema being saved.
+     * A capture instance is said to be synced when the min_lsn of the corresponding change table is
+     * smaller than the max processed LSN, otherwise it is not synced.
+     */
+    protected void storeChangeTableSyncInfo(Table table, SimpleEntry<String, String> changeTableSyncInfoPair) {
+        if (tableFilter.isIncluded(table.id())) {
+            changeTableSyncInfoByTableId.put(table.id(), changeTableSyncInfoPair);
         }
     }
 
@@ -155,6 +181,40 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
         public TableSchema put(TableId tableId, TableSchema updated) {
             return values.put(toLowerCaseIfNeeded(tableId), updated);
+        }
+
+        private TableId toLowerCaseIfNeeded(TableId tableId) {
+            return tableIdCaseInsensitive ? tableId.toLowercase() : tableId;
+        }
+    }
+
+    /**
+     * A map of schema sync-info by table id. Table names are stored lower-case if required as per the config.
+     */
+    private static class ChangeTableSyncInfoByTableId {
+
+        private final boolean tableIdCaseInsensitive;
+        private final ConcurrentMap<TableId, SimpleEntry<String, String>> values;
+
+        public ChangeTableSyncInfoByTableId(boolean tableIdCaseInsensitive) {
+            this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+            this.values = new ConcurrentHashMap<>();
+        }
+
+        public void clear() {
+            values.clear();
+        }
+
+        public SimpleEntry<String, String> remove(TableId tableId) {
+            return values.remove(toLowerCaseIfNeeded(tableId));
+        }
+
+        public SimpleEntry<String, String> get(TableId tableId) {
+            return values.get(toLowerCaseIfNeeded(tableId));
+        }
+
+        public SimpleEntry<String, String> put(TableId tableId, SimpleEntry<String, String> changeTableSyncInfoPair) {
+            return values.put(toLowerCaseIfNeeded(tableId), changeTableSyncInfoPair);
         }
 
         private TableId toLowerCaseIfNeeded(TableId tableId) {
