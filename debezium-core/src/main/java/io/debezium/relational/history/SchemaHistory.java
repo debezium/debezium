@@ -33,7 +33,7 @@ import io.debezium.relational.ddl.DdlParser;
  */
 public interface SchemaHistory {
 
-    public static final String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.";
+    public static final String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.internal.";
 
     public static final Field NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "name")
             .withDisplayName("Logical name for the database schema history")

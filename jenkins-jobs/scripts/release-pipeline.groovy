@@ -439,8 +439,8 @@ node('Slave') {
                     "database.server.id": "184054",
                     "topic.prefix": "dbserver1",
                     "database.include.list": "inventory",
-                    "schema.history.kafka.bootstrap.servers": "kafka:9092",
-                    "schema.history.kafka.topic": "schema-changes.inventory"
+                    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+                    "schema.history.internal.kafka.topic": "schema-changes.inventory"
                 }
             }
             '

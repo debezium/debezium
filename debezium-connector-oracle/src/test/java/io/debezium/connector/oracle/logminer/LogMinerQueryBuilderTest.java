@@ -57,7 +57,7 @@ public class LogMinerQueryBuilderTest {
 
     /**
      * A template that defines the expected SQL output when the configuration specifies
-     * {@code schema.history.store.only.captured.tables.ddl} is {@code false}.
+     * {@code schema.history.internal.store.only.captured.tables.ddl} is {@code false}.
      */
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE1 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD# " +
@@ -78,7 +78,7 @@ public class LogMinerQueryBuilderTest {
 
     /**
      * A template that defines the expected SQL output when the configuration specifies
-     * {@code schema.history.store.only.captured.tables.ddl} is {@code true}.
+     * {@code schema.history.internal.store.only.captured.tables.ddl} is {@code true}.
      */
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE2 = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD# " +
