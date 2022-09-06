@@ -1909,8 +1909,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
     "database.dbname": "mydatabase", // <7>
     "topic.prefix": "fullfillment", // <8>
     "table.include.list": "MYSCHEMA.CUSTOMERS", // <9>
-    "schema.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-    "schema.history.kafka.topic": "schemahistory.fullfillment" // <11>
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "schema.history.internal.kafka.topic": "schemahistory.fullfillment" // <11>
   }
 }
 ----

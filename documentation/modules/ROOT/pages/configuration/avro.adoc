@@ -286,8 +286,8 @@ spec:
     database.server.id: 184054
     topic.prefix: dbserver1
     database.include.list: inventory
-    schema.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
-    schema.history.kafka.topic: schema-changes.inventory
+    schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
+    schema.history.internal.kafka.topic: schema-changes.inventory
     key.converter: io.apicurio.registry.utils.converter.AvroConverter
     key.converter.apicurio.registry.url: http://apicurio:8080/api
     key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
