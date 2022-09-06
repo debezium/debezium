@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +40,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.StopSnapshot;
-import io.debezium.util.Testing;
 
 /**
  * Test to verify incremental snapshotting for MongoDB.
@@ -61,9 +59,6 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     private static final String FULL_COLLECTION2_NAME = DATABASE_NAME + "." + COLLECTION2_NAME;
 
     private static final String DOCUMENT_ID = "_id";
-
-    protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
-            .toAbsolutePath();
 
     @Before
     public void before() {
