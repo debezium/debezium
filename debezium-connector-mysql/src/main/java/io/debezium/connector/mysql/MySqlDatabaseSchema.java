@@ -283,7 +283,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             }
         }
         else {
-            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
+            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
         }
         return schemaChangeEvents;
     }
@@ -340,7 +340,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
-     * Return true if the database history entity exists
+     * Return true if the database schema history entity exists
      */
     public boolean historyExists() {
         return schemaHistory.exists();

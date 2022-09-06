@@ -38,11 +38,11 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     private final boolean multiPartitionMode;
 
     /**
-     * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
+     * The database schema history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
     public static final Field SCHEMA_HISTORY = Field.create("schema.history")
-            .withDisplayName("Database history class")
+            .withDisplayName("Database schema history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
@@ -85,14 +85,14 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     }
 
     /**
-     * Returns a configured (but not yet started) instance of the database history.
+     * Returns a configured (but not yet started) instance of the database schema history.
      */
     public SchemaHistory getSchemaHistory() {
         Configuration config = getConfig();
 
         SchemaHistory schemaHistory = config.getInstance(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY, SchemaHistory.class);
         if (schemaHistory == null) {
-            throw new ConnectException("Unable to instantiate the database history class " +
+            throw new ConnectException("Unable to instantiate the database schema history class " +
                     config.getString(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY));
         }
 

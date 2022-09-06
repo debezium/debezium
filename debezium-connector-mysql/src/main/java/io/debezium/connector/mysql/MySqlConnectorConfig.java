@@ -211,7 +211,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
 
         /**
-         * Whether the schema can be recovered if database history is corrupted.
+         * Whether the schema can be recovered if database schema history is corrupted.
          */
         public boolean shouldSnapshotOnSchemaError() {
             return shouldSnapshotOnSchemaError;
@@ -733,11 +733,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withValidation(Field::isNonNegativeInteger);
 
     /**
-     * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
+     * The database schema history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
      */
     public static final Field SCHEMA_HISTORY = Field.create("schema.history")
-            .withDisplayName("Database history class")
+            .withDisplayName("Database schema history class")
             .withType(Type.CLASS)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)

@@ -177,7 +177,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                     }
                     catch (final ParsingException | MultipleParsingExceptions e) {
                         if (skipUnparseableDDL) {
-                            logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
+                            logger.warn("Ignoring unparseable statements '{}' stored in database schema history: {}", ddl, e);
                         }
                         else {
                             throw e;

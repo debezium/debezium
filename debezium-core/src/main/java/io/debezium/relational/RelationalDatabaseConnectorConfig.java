@@ -388,7 +388,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
                     + "the same name as the database server ID. Each schema change will be recorded using a key that "
                     + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s). "
-                    + "The default is 'true'. This is independent of how the connector internally records database history.")
+                    + "The default is 'true'. This is independent of how the connector internally records database schema history.")
             .withDefault(true);
 
     public static final Field INCLUDE_SCHEMA_COMMENTS = Field.create("include.schema.comments")

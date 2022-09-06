@@ -321,12 +321,12 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
                 throw new DebeziumException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
-            LOGGER.info("Connector started for the first time, database history recovery will not be executed");
+            LOGGER.info("Connector started for the first time, database schema history recovery will not be executed");
             schema.initializeStorage();
             return false;
         }
         if (!schema.historyExists()) {
-            LOGGER.warn("Database history was not found but was expected");
+            LOGGER.warn("Database schema history was not found but was expected");
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // But check to see if the server still has those binlog coordinates ...
                 if (!isBinlogAvailable(config, offset)) {

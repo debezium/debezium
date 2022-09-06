@@ -119,7 +119,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
-     * Return true if the database history entity exists
+     * Return true if the database schema history entity exists
      */
     public boolean historyExists() {
         return schemaHistory.exists();

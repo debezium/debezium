@@ -444,7 +444,7 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
     }
 
     /**
-     * Restarts the connector and verifies when the database history topic is loaded that we can parse
+     * Restarts the connector and verifies when the database schema history topic is loaded that we can parse
      * all the loaded history statements without failures.
      */
     private void TestDefaultValuesByRestartAndLoadingHistoryTopic() throws Exception {

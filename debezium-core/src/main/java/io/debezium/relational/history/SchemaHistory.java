@@ -36,11 +36,11 @@ public interface SchemaHistory {
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.";
 
     public static final Field NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "name")
-            .withDisplayName("Logical name for the database history")
+            .withDisplayName("Logical name for the database schema history")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The name used for the database history, perhaps differently by each implementation.")
+            .withDescription("The name used for the database schema history, perhaps differently by each implementation.")
             .withValidation(Field::isOptional);
 
     public static final Field SKIP_UNPARSEABLE_DDL_STATEMENTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "skip.unparseable.ddl")
@@ -58,7 +58,7 @@ public interface SchemaHistory {
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls what DDL will Debezium store in database history. "
+            .withDescription("Controls what DDL will Debezium store in database schema history. "
                     + "By default (false) Debezium will store all incoming DDL statements. If set to true, "
                     + "then only DDL that manipulates a captured table will be stored.")
             .withDefault(false);
@@ -164,7 +164,7 @@ public interface SchemaHistory {
     void stop();
 
     /**
-     * Determines if the database history entity exists; i.e. the storage must have
+     * Determines if the database schema history entity exists; i.e. the storage must have
      * been initialized and the history must have been populated.
      */
     boolean exists();

@@ -24,7 +24,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 
 /**
- * An abstract database history class, allowing each connector to extend to offer a common set of tests
+ * An abstract database schema history class, allowing each connector to extend to offer a common set of tests
  *
  * @author Chris Cranford
  */

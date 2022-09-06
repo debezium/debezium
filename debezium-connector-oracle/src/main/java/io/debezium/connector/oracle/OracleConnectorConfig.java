@@ -779,7 +779,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         /**
-         * Whether the schema can be recovered if database history is corrupted.
+         * Whether the schema can be recovered if database schema history is corrupted.
          */
         public boolean shouldSnapshotOnSchemaError() {
             return shouldSnapshotOnSchemaError;
