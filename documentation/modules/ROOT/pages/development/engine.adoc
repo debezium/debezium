@@ -98,9 +98,9 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.server.id", "85744");
     props.setProperty("topic.prefix", "my-app-connector");
     props.setProperty("schema.history",
-          "io.debezium.storage.file.history.FileDatabaseHistory");
+          "io.debezium.storage.file.history.FileSchemaHistory");
     props.setProperty("schema.history.file.filename",
-          "/path/to/storage/dbhistory.dat");
+          "/path/to/storage/schemahistory.dat");
     
     // Create the engine with this configuration ...
     try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
@@ -153,9 +153,9 @@ The next few lines define the fields that are specific to the connector (documen
     props.setProperty("database.server.id", "85744")
     props.setProperty("topic.prefix", "my-app-connector")
     props.setProperty("schema.history",
-          "io.debezium.storage.file.history.FileDatabaseHistory")
+          "io.debezium.storage.file.history.FileSchemaHistory")
     props.setProperty("schema.history.file.filename",
-          "/path/to/storage/dbhistory.dat")
+          "/path/to/storage/schemahistory.dat")
 ----
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database.
@@ -181,7 +181,7 @@ Our example uses a server name of "products", presumably because the database co
 When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server.
 Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events.
 The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset.
-How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileDatabaseHistory` class to store database schema history changes in the `/path/to/storage/dbhistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
+How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileSchemaHistory` class to store database schema history changes in the `/path/to/storage/schemahistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
 
 Finally the immutable configuration is built using the `build()` method.
 (Incidentally, rather than build it programmatically, we could have *read* the configuration from a properties file using one of the `Configuration.read(...)` methods.)
@@ -462,25 +462,25 @@ For other deployments, a file-based database schema history storage implementati
 |Description
 
 |`schema.history`
-|`<...>.KafkaDatabaseHistory`
+|`<...>.KafkaSchemaHistory`
 |The name of the Java class that is responsible for persistence of the database schema history. +
-It must implement `<...>.DatabaseHistory` interface.
+It must implement `<...>.SchemaHistory` interface.
 
 |`schema.history.file.filename`
 |`""`
 |Path to a file where the database schema history is stored. +
-Required when `schema.history` is set to the `<...>.FileDatabaseHistory`.
+Required when `schema.history` is set to the `<...>.FileSchemaHistory`.
 
 |`schema.history.kafka.topic`
 |`""`
 |The Kafka topic where the database schema history is stored. +
-Required when `schema.history` is set to the `<...>.KafkaDatabaseHistory`.
+Required when `schema.history` is set to the `<...>.KafkaSchemaHistory`.
 
 |`schema.history.kafka.bootstrap.servers`
 |`""`
 |The initial list of Kafka cluster servers to connect to.
 The cluster provides the topic to store the database schema history. +
-Required when `schema.history` is set to the `<...>.KafkaDatabaseHistory`.
+Required when `schema.history` is set to the `<...>.KafkaSchemaHistory`.
 
 |=======================
 

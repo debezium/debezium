@@ -95,7 +95,7 @@ See the {prodname} xref:connectors/index.adoc[Connectors] documentation for more
 The topics have to be either created by an administrator or by Kafka itself by enabling auto-creation for topics.
 There are certain limitations and recommendations which apply to topics:
 
-* Database history topic (for the {prodname} connectors for MySQL and SQL Server)
+* Database schema history topic (for the {prodname} connectors for MySQL and SQL Server)
 ** Infinite (or very long) retention (no compaction!)
 ** Replication factor at least 3 for production
 ** Single partition
