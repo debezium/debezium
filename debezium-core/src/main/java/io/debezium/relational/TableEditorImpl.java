@@ -224,9 +224,14 @@ class TableEditorImpl implements TableEditor {
             newPkNames.replaceAll(name -> existing.name().equals(name) ? newName : name);
         }
         // Add the new column, move it before the existing column, and remove the old column ...
-        addColumn(newColumn);
-        reorderColumn(newColumn.name(), existing.name());
-        removeColumn(existing.name());
+        if (!existingName.equalsIgnoreCase(newName)) {
+            addColumn(newColumn);
+            reorderColumn(newColumn.name(), existing.name());
+            removeColumn(existing.name());
+        }
+        else {
+            sortedColumns.replace(existingName.toLowerCase(), existing, newColumn);
+        }
         if (newPkNames != null) {
             setPrimaryKeyNames(newPkNames);
         }

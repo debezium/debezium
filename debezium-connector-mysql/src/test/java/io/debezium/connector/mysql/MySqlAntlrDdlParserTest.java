@@ -495,7 +495,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-2140")
     public void shouldUpdateSchemaForRemovedDefaultValue() {
-        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT);"
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, order_Id varchar(128) not null);"
                 + "ALTER TABLE mytable ADD COLUMN last_val INT DEFAULT 5;";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
@@ -506,7 +506,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columns()).hasSize(4);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("last_val")).isNotNull();
@@ -519,6 +519,15 @@ public class MySqlAntlrDdlParserTest {
         table = tables.forTable(null, null, "mytable");
         assertThat(table.columnWithName("last_val")).isNotNull();
         assertThat(table.columnWithName("last_val").hasDefaultValue()).isFalse();
+
+        parser.parse("ALTER TABLE mytable CHANGE COLUMN order_Id order_id varchar(255) NOT NULL;", tables);
+        table = tables.forTable(null, null, "mytable");
+        assertThat(table.columnWithName("order_id")).isNotNull();
+        assertThat(table.columnWithName("order_id").length()).isEqualTo(255);
+
+        parser.parse("ALTER TABLE mytable RENAME COLUMN order_id TO order_Id;", tables);
+        table = tables.forTable(null, null, "mytable");
+        assertThat(table.columnWithName("order_Id")).isNotNull();
     }
 
     @Test
