@@ -1259,7 +1259,7 @@ public final class Field {
         }
         catch (Throwable e) {
         }
-        problems.accept(field, value, "A positive integer is expected");
+        problems.accept(field, value, "A positive, non-zero integer value is expected");
         return 1;
     }
 
@@ -1306,7 +1306,7 @@ public final class Field {
         }
         catch (Throwable e) {
         }
-        problems.accept(field, value, "A positive long value is expected");
+        problems.accept(field, value, "A positive, non-zero long value is expected");
         return 1;
     }
 
