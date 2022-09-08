@@ -1815,6 +1815,62 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5581")
+    public void testBlobUnavailableValuePlaceholderUpdateOnlyOneBlobColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz5581");
+        try {
+            connection.execute("create table dbz5581 (id numeric(9,0) primary key, a1 varchar2(200), a2 blob, a3 blob, a4 varchar2(100))");
+            TestHelper.streamTable(connection, "dbz5581");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5581")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final Blob a2 = createBlob(part(BIN_DATA, 0, 4100));
+            final Blob a3 = createBlob(part(BIN_DATA, 0, 4100));
+            connection.prepareQuery("INSERT into dbz5581 (id,a1,a2,a3,a4) values (1, 'lwmzVQd6r7', ?, ?, 'cuTVQV0OpK')", st -> {
+                st.setBlob(1, a2);
+                st.setBlob(2, a3);
+            }, null);
+            connection.commit();
+
+            final Blob a2u = createBlob(part(BIN_DATA, 1, 4101));
+            connection.prepareQuery("UPDATE dbz5581 set A2=? WHERE ID=1", st -> st.setBlob(1, a2u), null);
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(2);
+            List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.DEBEZIUM.DBZ5581");
+            assertThat(recordsForTopic).hasSize(2);
+
+            SourceRecord record = recordsForTopic.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("A1")).isEqualTo("lwmzVQd6r7");
+            assertThat(after.get("A2")).isEqualTo(getByteBufferFromBlob(a2));
+            assertThat(after.get("A3")).isEqualTo(getByteBufferFromBlob(a3));
+            assertThat(after.get("A4")).isEqualTo("cuTVQV0OpK");
+
+            record = recordsForTopic.get(1);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("A1")).isEqualTo("lwmzVQd6r7");
+            assertThat(after.get("A2")).isEqualTo(getByteBufferFromBlob(a2u));
+            assertThat(after.get("A3")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(after.get("A4")).isEqualTo("cuTVQV0OpK");
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5581");
+        }
+    }
+
     private static byte[] part(byte[] buffer, int start, int length) {
         return Arrays.copyOfRange(buffer, start, length);
     }
