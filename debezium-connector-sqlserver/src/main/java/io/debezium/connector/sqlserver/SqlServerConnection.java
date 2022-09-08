@@ -207,11 +207,12 @@ public class SqlServerConnection extends JdbcConnection {
                     SQLServerDriver.class.getName(),
                     SqlServerConnection.class.getClassLoader());
         }
-        else
+        else {
             return JdbcConnection.patternBasedFactory(URL_PATTERN,
                     SQLServerDriver.class.getName(),
                     SqlServerConnection.class.getClassLoader(),
                     JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
+        }
     }
 
     /**
