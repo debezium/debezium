@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -24,7 +25,6 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.TableChanges;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 import oracle.jdbc.OracleTypes;
 
@@ -73,7 +73,7 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
         final OraclePartition source = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.getDatabaseName());
         final Configuration config = Configuration.empty()
                 .edit()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, TestHelper.SERVER_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, TestHelper.SERVER_NAME)
                 .build();
         final OracleOffsetContext position = new OracleOffsetContext(new OracleConnectorConfig(config), Scn.valueOf(999),
                 CommitScn.valueOf(999L), null, Scn.valueOf(999), Collections.emptyMap(), false, true, new TransactionContext(),

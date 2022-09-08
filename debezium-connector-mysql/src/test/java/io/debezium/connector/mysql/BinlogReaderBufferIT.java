@@ -20,12 +20,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
@@ -80,7 +80,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -148,7 +148,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -209,7 +209,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -280,7 +280,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)

@@ -22,12 +22,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class SourceInfoTest {
 
@@ -46,7 +46,7 @@ public class SourceInfoTest {
     @Before
     public void beforeEach() {
         offsetContext = MySqlOffsetContext.initial(new MySqlConnectorConfig(Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "server")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
                 .build()));
         source = offsetContext.getSource();
         inTxn = false;
@@ -446,7 +446,7 @@ public class SourceInfoTest {
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
         offsetContext = (MySqlOffsetContext) new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .build())).load(offset);
         source = offsetContext.getSource();
         source.databaseEvent("mysql");

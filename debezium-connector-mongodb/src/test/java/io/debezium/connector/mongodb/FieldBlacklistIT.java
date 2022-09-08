@@ -23,8 +23,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Testing;
 
 public class FieldBlacklistIT extends AbstractMongoConnectorIT {
@@ -1455,7 +1455,7 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         return TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, excludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .build();
     }
 

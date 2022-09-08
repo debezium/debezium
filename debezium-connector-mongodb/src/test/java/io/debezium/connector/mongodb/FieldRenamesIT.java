@@ -22,11 +22,11 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * @author Chris Cranford
@@ -1827,7 +1827,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static Configuration getConfiguration(String fieldRenames, String database, String collection) {
         Configuration.Builder builder = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME);
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
 
         if (fieldRenames != null && !"".equals(fieldRenames.trim())) {
             builder = builder.with(MongoDbConnectorConfig.FIELD_RENAMES, fieldRenames);

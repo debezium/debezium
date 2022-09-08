@@ -12,12 +12,12 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.time.Conversions;
 
 /**
@@ -32,7 +32,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
                         .build()));
         source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));

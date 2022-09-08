@@ -14,6 +14,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
 import io.debezium.connector.mongodb.MongoDbConnector;
@@ -21,7 +22,6 @@ import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * Baseline for all integrations tests regarding MongoDB Update Operations
@@ -47,7 +47,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .build();
 
         beforeEach(config);
@@ -83,7 +83,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 

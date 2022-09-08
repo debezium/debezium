@@ -58,7 +58,6 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
@@ -95,7 +94,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Config result = connector.validate(config.asMap());
 
         assertConfigurationErrors(result, MongoDbConnectorConfig.HOSTS, 1);
-        assertNoConfigurationErrors(result, AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
@@ -218,7 +217,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Config result = connector.validate(config.asMap());
 
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.HOSTS);
-        assertNoConfigurationErrors(result, AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
@@ -246,7 +245,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 // .with(MongoDbConnectorConfig.CAPTURE_MODE, CaptureMode.OPLOG)
                 .build();
 
@@ -435,7 +434,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SKIPPED_OPERATIONS, "u")
                 .build();
 
@@ -523,7 +522,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -555,7 +554,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.AUTH_SOURCE, authDbName)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -613,7 +612,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -680,7 +679,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -749,7 +748,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.dbz865.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -803,7 +802,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.dbz865.my_products")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections...
@@ -852,7 +851,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -944,7 +943,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -1043,7 +1042,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -1093,7 +1092,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION, "dbit.simpletons,dbit.restaurants1,dbit.restaurants4")
                 .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.simpletons", "{ \"_id\": { \"$gt\": 4 } }")
                 .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.restaurants1",
@@ -1141,7 +1140,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbit.restaurants1")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         // Set up the replication context for connections ...
@@ -1299,7 +1298,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, true)
                 .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
@@ -1322,7 +1321,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.mhb")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
                 .build();
 
@@ -1400,7 +1399,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1435,7 +1434,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordForInsertEvent() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1478,7 +1477,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordForUpdateEvent() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1537,7 +1536,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGeneratorRecordForDeleteEvent() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1595,7 +1594,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
@@ -1646,7 +1645,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1716,7 +1715,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldSupportDbRef2() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);
@@ -1768,7 +1767,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldReplicateContent() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .build();
 
@@ -1921,7 +1920,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // todo: this configuration causes NPE at MongoDbStreamingChangeEventSource.java:143
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.contacts")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
                 .build();
 
@@ -1974,7 +1973,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     public void shouldGenerateRecordForUpdateEventUsingLegacyV1SourceInfo() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .build();
 
         context = new MongoDbTaskContext(config);

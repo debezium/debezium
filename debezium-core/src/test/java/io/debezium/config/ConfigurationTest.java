@@ -5,10 +5,10 @@
  */
 package io.debezium.config;
 
+import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
-import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_PREFIX;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.List;

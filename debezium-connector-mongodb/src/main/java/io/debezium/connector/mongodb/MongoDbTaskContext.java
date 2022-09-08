@@ -7,10 +7,10 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -29,13 +29,13 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super(Module.contextName(), config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), Collections::emptySet);
+        super(Module.contextName(), config.getString(CommonConnectorConfig.TOPIC_PREFIX), Collections::emptySet);
 
         this.filters = new Filters(config);
         this.connectorConfig = new MongoDbConnectorConfig(config);
         this.source = new SourceInfo(connectorConfig);
         this.topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY);
-        this.serverName = config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        this.serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.connectionContext = new ConnectionContext(config);
     }
 

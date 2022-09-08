@@ -7,7 +7,6 @@ package io.debezium.schema;
 
 import java.util.List;
 import java.util.Properties;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -16,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -31,8 +31,6 @@ import io.debezium.util.Strings;
  */
 @Incubating
 public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> implements TopicNamingStrategy<I> {
-    protected static final String LOGIC_NAME_PLACEHOLDER = "${logical.name}";
-    protected static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String DEFAULT_HEARTBEAT_TOPIC_PREFIX = "__debezium-heartbeat";
     public static final String DEFAULT_TRANSACTION_TOPIC = "transaction";
 
@@ -42,18 +40,8 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(".")
-            .withValidation(AbstractTopicNamingStrategy::validateTopicName)
+            .withValidation(CommonConnectorConfig::validateTopicName)
             .withDescription("Specify the delimiter for topic name.");
-
-    public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
-            .withDisplayName("Topic prefix")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(LOGIC_NAME_PLACEHOLDER)
-            .withValidation(AbstractTopicNamingStrategy::validateTopicName)
-            .withDescription("The name of the prefix to be used for all topics, the placeholder " + LOGIC_NAME_PLACEHOLDER +
-                    " can be used for referring to the connector's logical name as default value.");
 
     public static final Field TOPIC_CACHE_SIZE = Field.create("topic.cache.size")
             .withDisplayName("Topic cache size")
@@ -70,9 +58,9 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DEFAULT_HEARTBEAT_TOPIC_PREFIX)
-            .withValidation(AbstractTopicNamingStrategy::validateTopicName)
+            .withValidation(CommonConnectorConfig::validateTopicName)
             .withDescription("Specify the heartbeat topic name. Defaults to " +
-                    DEFAULT_HEARTBEAT_TOPIC_PREFIX + "." + LOGIC_NAME_PLACEHOLDER);
+                    DEFAULT_HEARTBEAT_TOPIC_PREFIX + "." + CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER);
 
     public static final Field TOPIC_TRANSACTION = Field.create("topic.transaction")
             .withDisplayName("Transaction topic name")
@@ -80,9 +68,9 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DEFAULT_TRANSACTION_TOPIC)
-            .withValidation(AbstractTopicNamingStrategy::validateTopicName)
+            .withValidation(CommonConnectorConfig::validateTopicName)
             .withDescription("Specify the transaction topic name. Defaults to " +
-                    LOGIC_NAME_PLACEHOLDER + "." + DEFAULT_TRANSACTION_TOPIC);
+                    CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER + "." + DEFAULT_TRANSACTION_TOPIC);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractTopicNamingStrategy.class);
 
@@ -108,7 +96,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
     public void configure(Properties props) {
         Configuration config = Configuration.from(props);
         final Field.Set configFields = Field.setOf(
-                TOPIC_PREFIX,
+                CommonConnectorConfig.TOPIC_PREFIX,
                 TOPIC_DELIMITER,
                 TOPIC_CACHE_SIZE,
                 TOPIC_TRANSACTION,
@@ -123,11 +111,11 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
                 10,
                 BoundedConcurrentHashMap.Eviction.LRU);
         delimiter = config.getString(TOPIC_DELIMITER);
-        if (config.getString(TOPIC_PREFIX).equals(LOGIC_NAME_PLACEHOLDER)) {
+        if (config.getString(CommonConnectorConfig.TOPIC_PREFIX).equals(CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER)) {
             prefix = logicalName;
         }
         else {
-            prefix = config.getString(TOPIC_PREFIX);
+            prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         }
         heartbeatPrefix = config.getString(TOPIC_HEARTBEAT_PREFIX);
         transaction = config.getString(TOPIC_TRANSACTION);
@@ -153,21 +141,5 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
 
     protected String mkString(List<String> data, String delimiter) {
         return data.stream().filter(f -> !Strings.isNullOrBlank(f)).collect(Collectors.joining(delimiter));
-    }
-
-    protected static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
-        String name = config.getString(field);
-
-        if (name.equals(LOGIC_NAME_PLACEHOLDER)) {
-            return 0;
-        }
-
-        if (name != null) {
-            if (!TOPIC_NAME_PATTERN.asPredicate().test(name)) {
-                problems.accept(field, name, name + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
-                return 1;
-            }
-        }
-        return 0;
     }
 }

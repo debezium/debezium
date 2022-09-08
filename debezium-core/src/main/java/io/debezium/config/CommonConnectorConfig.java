@@ -55,6 +55,8 @@ import io.debezium.util.Strings;
 public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final String LOGICAL_NAME = "logical.name";
+    public static final String LOGIC_NAME_PLACEHOLDER = "${logical.name}";
+    public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
@@ -313,6 +315,16 @@ public abstract class CommonConnectorConfig {
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
+
+    public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
+            .withDisplayName("Topic prefix")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(LOGIC_NAME_PLACEHOLDER)
+            .withValidation(CommonConnectorConfig::validateTopicName)
+            .withDescription("The name of the prefix to be used for all topics, the placeholder " + LOGIC_NAME_PLACEHOLDER +
+                    " can be used for referring to the connector's logical name as default value.");
 
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
@@ -955,5 +967,21 @@ public abstract class CommonConnectorConfig {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+    }
+
+    public static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
+        String name = config.getString(field);
+
+        if (name.equals(LOGIC_NAME_PLACEHOLDER)) {
+            return 0;
+        }
+
+        if (name != null) {
+            if (!TOPIC_NAME_PATTERN.asPredicate().test(name)) {
+                problems.accept(field, name, name + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
+                return 1;
+            }
+        }
+        return 0;
     }
 }

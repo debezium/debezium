@@ -14,11 +14,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class SourceInfoTest {
 
@@ -28,7 +28,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .build());
         source = new SourceInfo(connectorConfig);

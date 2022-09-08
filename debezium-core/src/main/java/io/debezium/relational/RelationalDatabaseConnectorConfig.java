@@ -37,7 +37,6 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
@@ -467,7 +466,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
-                    AbstractTopicNamingStrategy.TOPIC_PREFIX)
+                    CommonConnectorConfig.TOPIC_PREFIX)
             .connector(
                     DECIMAL_HANDLING_MODE,
                     TIME_PRECISION_MODE,

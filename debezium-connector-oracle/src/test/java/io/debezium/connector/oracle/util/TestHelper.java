@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.infinispan.client.hotrod.impl.ConfigurationProperties;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
@@ -25,7 +26,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -161,7 +161,7 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
         }
 
-        return builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME)
+        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
@@ -231,7 +231,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME);
+        builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 
@@ -245,7 +245,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, SERVER_NAME);
+        builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 
