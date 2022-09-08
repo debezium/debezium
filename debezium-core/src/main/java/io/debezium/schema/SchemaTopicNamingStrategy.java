@@ -28,8 +28,8 @@ public class SchemaTopicNamingStrategy extends AbstractTopicNamingStrategy<DataC
                 : Boolean.parseBoolean(props.get(CommonConnectorConfig.MULTI_PARTITION_MODE).toString());
     }
 
-    public SchemaTopicNamingStrategy(Properties props, String logicalName, boolean multiPartitionMode) {
-        super(props, logicalName);
+    public SchemaTopicNamingStrategy(Properties props, boolean multiPartitionMode) {
+        super(props);
         this.multiPartitionMode = multiPartitionMode;
     }
 
@@ -38,7 +38,7 @@ public class SchemaTopicNamingStrategy extends AbstractTopicNamingStrategy<DataC
     }
 
     public static SchemaTopicNamingStrategy create(CommonConnectorConfig config, boolean multiPartitionMode) {
-        return new SchemaTopicNamingStrategy(config.getConfig().asProperties(), config.getLogicalName(), multiPartitionMode);
+        return new SchemaTopicNamingStrategy(config.getConfig().asProperties(), multiPartitionMode);
     }
 
     @Override

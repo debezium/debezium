@@ -16,7 +16,6 @@ import java.util.Properties;
 
 import org.junit.Test;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.TableId;
@@ -31,7 +30,7 @@ public class MySqlTopicNamingStrategyTest {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
         props.put("topic.delimiter", ".");
-        props.put(CommonConnectorConfig.LOGICAL_NAME, logicalName);
+        props.put("topic.prefix", logicalName);
         final DefaultTopicNamingStrategy defaultStrategy = new DefaultTopicNamingStrategy(props);
         String dataChangeTopic = defaultStrategy.dataChangeTopic(tableId);
         assertThat(dataChangeTopic).isEqualTo("mysql-server-1.test_db.dbz_4180");
@@ -53,7 +52,7 @@ public class MySqlTopicNamingStrategyTest {
     public void testSchemaChangeTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
-        props.put(CommonConnectorConfig.LOGICAL_NAME, logicalName);
+        props.put("topic.prefix", logicalName);
         final DefaultTopicNamingStrategy defaultStrategy = new DefaultTopicNamingStrategy(props);
         String schemaChangeTopic = defaultStrategy.schemaChangeTopic();
         assertThat(schemaChangeTopic).isEqualTo("mysql-server-1");
@@ -68,7 +67,7 @@ public class MySqlTopicNamingStrategyTest {
     public void testTransactionTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
-        props.put(CommonConnectorConfig.LOGICAL_NAME, logicalName);
+        props.put("topic.prefix", logicalName);
         final DefaultTopicNamingStrategy mySqlStrategy = new DefaultTopicNamingStrategy(props);
         String transactionTopic = mySqlStrategy.transactionTopic();
         String expectedTopic = "mysql-server-1." + DefaultTopicNamingStrategy.DEFAULT_TRANSACTION_TOPIC;
@@ -79,7 +78,7 @@ public class MySqlTopicNamingStrategyTest {
     public void testHeartbeatTopic() {
         final String logicalName = "mysql-server-1";
         final Properties props = new Properties();
-        props.put(CommonConnectorConfig.LOGICAL_NAME, logicalName);
+        props.put("topic.prefix", logicalName);
         final DefaultTopicNamingStrategy mySqlStrategy = new DefaultTopicNamingStrategy(props);
         String heartbeatTopic = mySqlStrategy.heartbeatTopic();
         String expectedTopic = DefaultTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".mysql-server-1";
@@ -95,7 +94,7 @@ public class MySqlTopicNamingStrategyTest {
         props.put("topic.regex.enable", "true");
         props.put("topic.regex", "(.*)(dbz_4180|test)(.*)");
         props.put("topic.replacement", "$1$2_all_shards");
-        props.put(CommonConnectorConfig.LOGICAL_NAME, logicalName);
+        props.put("topic.prefix", logicalName);
 
         final DefaultRegexTopicNamingStrategy byLogicalStrategy = new DefaultRegexTopicNamingStrategy(props);
         String dataChangeTopic = byLogicalStrategy.dataChangeTopic(tableId);

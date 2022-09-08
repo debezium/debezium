@@ -500,8 +500,10 @@ public class SqlServerConnectionIT {
     }
 
     private void assertColumnHasDefaultValue(Table table, String columnName, Object expectedValue, TableSchemaBuilder tableSchemaBuilder) {
-        TableSchema schema = tableSchemaBuilder.create(new SchemaTopicNamingStrategy(new Properties(), "test", tableSchemaBuilder.isMultiPartitionMode()), table, null,
-                null, null);
+        Properties properties = new Properties();
+        properties.put("topic.prefix", "test");
+        TableSchema schema = tableSchemaBuilder.create(new SchemaTopicNamingStrategy(properties, tableSchemaBuilder.isMultiPartitionMode()),
+                table, null, null, null);
         Schema columnSchema = schema.getEnvelopeSchema().schema().field("after").schema().field(columnName).schema();
 
         Column column = table.columnWithName(columnName);

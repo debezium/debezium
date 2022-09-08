@@ -54,8 +54,6 @@ import io.debezium.util.Strings;
  */
 public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
-    public static final String LOGICAL_NAME = "logical.name";
-    public static final String LOGIC_NAME_PLACEHOLDER = "${logical.name}";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
 
@@ -322,11 +320,12 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withDefault(LOGIC_NAME_PLACEHOLDER)
             .withValidation(CommonConnectorConfig::validateTopicName)
             .required()
-            .withDescription("The name of the prefix to be used for all topics, the placeholder " + LOGIC_NAME_PLACEHOLDER +
-                    " can be used for referring to the connector's logical name as default value.");
+            .withDescription("Topic prefix that identifies and provides a namespace for the particular database " +
+                    "server/cluster is capturing changes. The topic prefix should be unique across all other connectors, " +
+                    "since it is used as a prefix for all Kafka topic names that receive events emitted by this connector. " +
+                    "Only alphanumeric characters, hyphens, dots and underscores must be accepted.");
 
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
@@ -768,7 +767,6 @@ public abstract class CommonConnectorConfig {
     @SuppressWarnings("unchecked")
     public TopicNamingStrategy getTopicNamingStrategy(Field topicNamingStrategyField, boolean multiPartitionMode) {
         Properties props = config.asProperties();
-        props.put(LOGICAL_NAME, logicalName);
         props.put(MULTI_PARTITION_MODE, multiPartitionMode);
         String strategyName = config.getString(topicNamingStrategyField);
         TopicNamingStrategy topicNamingStrategy = config.getInstance(topicNamingStrategyField, TopicNamingStrategy.class, props);
@@ -973,10 +971,6 @@ public abstract class CommonConnectorConfig {
 
     public static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
         String name = config.getString(field);
-
-        if (name.equals(LOGIC_NAME_PLACEHOLDER)) {
-            return 0;
-        }
 
         if (name != null) {
             if (!TOPIC_NAME_PATTERN.asPredicate().test(name)) {

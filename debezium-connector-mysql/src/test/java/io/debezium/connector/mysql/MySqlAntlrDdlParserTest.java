@@ -67,6 +67,7 @@ public class MySqlAntlrDdlParserTest {
     private SimpleDdlParserListener listener;
     private MySqlValueConverters converters;
     private TableSchemaBuilder tableSchemaBuilder;
+    private Properties properties;
 
     @Before
     public void beforeEach() {
@@ -82,6 +83,8 @@ public class MySqlAntlrDdlParserTest {
                 converters,
                 new MySqlDefaultValueConverter(converters),
                 SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+        properties = new Properties();
+        properties.put("topic.prefix", "test");
     }
 
     @Test
@@ -3413,7 +3416,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private Schema getColumnSchema(Table table, String column) {
-        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test-1"), table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(properties), table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 }

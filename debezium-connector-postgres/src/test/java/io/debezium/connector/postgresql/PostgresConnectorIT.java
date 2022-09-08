@@ -214,7 +214,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.HOSTNAME, 1);
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.USER, 1);
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.DATABASE_NAME, 1);
-        assertNoConfigurationErrors(validatedConfig, CommonConnectorConfig.TOPIC_PREFIX);
+        assertConfigurationErrors(validatedConfig, CommonConnectorConfig.TOPIC_PREFIX, 1);
 
         // validate the non required fields
         validateConfigField(validatedConfig, PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.DECODERBUFS.getValue());

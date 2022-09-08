@@ -24,12 +24,8 @@ public class DefaultTopicNamingStrategy extends AbstractTopicNamingStrategy<Data
         super(props);
     }
 
-    public DefaultTopicNamingStrategy(Properties props, String logicalName) {
-        super(props, logicalName);
-    }
-
     public static DefaultTopicNamingStrategy create(CommonConnectorConfig config) {
-        return new DefaultTopicNamingStrategy(config.getConfig().asProperties(), config.getLogicalName());
+        return new DefaultTopicNamingStrategy(config.getConfig().asProperties());
     }
 
     @Override

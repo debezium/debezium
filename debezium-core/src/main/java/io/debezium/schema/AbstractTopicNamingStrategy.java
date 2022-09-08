@@ -18,7 +18,6 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -60,7 +59,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withDefault(DEFAULT_HEARTBEAT_TOPIC_PREFIX)
             .withValidation(CommonConnectorConfig::validateTopicName)
             .withDescription("Specify the heartbeat topic name. Defaults to " +
-                    DEFAULT_HEARTBEAT_TOPIC_PREFIX + "." + CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER);
+                    DEFAULT_HEARTBEAT_TOPIC_PREFIX + ".${topic.prefix}");
 
     public static final Field TOPIC_TRANSACTION = Field.create("topic.transaction")
             .withDisplayName("Transaction topic name")
@@ -70,25 +69,17 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
             .withDefault(DEFAULT_TRANSACTION_TOPIC)
             .withValidation(CommonConnectorConfig::validateTopicName)
             .withDescription("Specify the transaction topic name. Defaults to " +
-                    CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER + "." + DEFAULT_TRANSACTION_TOPIC);
+                    "${topic.prefix}." + DEFAULT_TRANSACTION_TOPIC);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractTopicNamingStrategy.class);
 
     protected BoundedConcurrentHashMap<I, String> topicNames;
-    protected String logicalName;
     protected String delimiter;
     protected String prefix;
     protected String transaction;
     protected String heartbeatPrefix;
 
     public AbstractTopicNamingStrategy(Properties props) {
-        this.logicalName = props.getProperty(RelationalDatabaseConnectorConfig.LOGICAL_NAME);
-        assert logicalName != null;
-        this.configure(props);
-    }
-
-    public AbstractTopicNamingStrategy(Properties props, String logicalName) {
-        this.logicalName = logicalName;
         this.configure(props);
     }
 
@@ -111,14 +102,10 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
                 10,
                 BoundedConcurrentHashMap.Eviction.LRU);
         delimiter = config.getString(TOPIC_DELIMITER);
-        if (config.getString(CommonConnectorConfig.TOPIC_PREFIX).equals(CommonConnectorConfig.LOGIC_NAME_PLACEHOLDER)) {
-            prefix = logicalName;
-        }
-        else {
-            prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
-        }
         heartbeatPrefix = config.getString(TOPIC_HEARTBEAT_PREFIX);
         transaction = config.getString(TOPIC_TRANSACTION);
+        prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
+        assert prefix != null;
     }
 
     @Override
