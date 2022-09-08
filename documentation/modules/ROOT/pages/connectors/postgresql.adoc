@@ -2122,7 +2122,7 @@ Setting up a PostgreSQL server to run a {prodname} connector requires a database
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
 Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:{link-postgresql-connector}#postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
-Instead, create a {prodname} user that has the the minimum required privileges.
+Instead, create a {prodname} user that has the minimum required privileges.
 
 .Prerequisites
 
