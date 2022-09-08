@@ -44,7 +44,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
             if (ctx.constant().stringLiteral() != null) {
                 if (ctx.constant().stringLiteral().COLLATE() == null) {
                     columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
-                } else {
+                }
+                else {
                     columnEditor.defaultValueExpression(
                             sign + unquote(ctx.constant().stringLiteral().STRING_LITERAL(0).getText()));
                 }

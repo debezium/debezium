@@ -1971,6 +1971,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(t4.columnWithName("col3").position()).isEqualTo(2);
         assertThat(t4.columnWithName("col2").position()).isEqualTo(3);
         assertThat(t4.columnWithName("col4").position()).isEqualTo(4);
+        assertThat(t4.columnWithName("col4").defaultValueExpression().get()).isEqualTo(" 29 ");
     }
 
     @FixFor("DBZ-660")
