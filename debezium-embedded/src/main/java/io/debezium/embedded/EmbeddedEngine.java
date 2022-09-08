@@ -62,6 +62,7 @@ import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.VariableLatch;
 
 /**
@@ -190,6 +191,34 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("Optional list of single message transformations applied on the messages. "
                     + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
 
+    private static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
+            .withDisplayName("The maximum number of retries")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(0)
+            .withValidation(Field::isInteger)
+            .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
+
+    private static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
+            .withDisplayName("Initial delay for retries")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(300)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Initial delay (in ms) for retries when encountering connection errors."
+                    + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
+
+    private static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
+            .withDisplayName("Max delay between retries")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(10000)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Max delay (in ms) between retries when encountering connection errors.");
+
     /**
      * The array of fields that are required by each connectors.
      */
@@ -199,7 +228,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * The array of all exposed fields.
      */
     protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
-            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS);
+            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
+            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
 
     /**
      * How long we wait before forcefully stopping the connector thread when
@@ -808,10 +838,32 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 break;
                             }
                             catch (RetriableException e) {
-                                LOGGER.info("Retrieable exception thrown, connector will be restarted", e);
-                                // Retriable exception should be ignored by the engine
-                                // and no change records delivered.
-                                // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
+                                int maxRetries = getErrorsMaxRetries();
+                                LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
+                                if (maxRetries != 0) {
+                                    DelayStrategy delayStrategy = delayStrategy(config);
+                                    int totalRetries = 0;
+                                    boolean startedSuccessfully = false;
+                                    while (!startedSuccessfully) {
+                                        try {
+                                            totalRetries++;
+                                            LOGGER.info("Starting connector, attempt {}", totalRetries);
+                                            task.stop();
+                                            task.start(taskConfigs.get(0));
+                                            startedSuccessfully = true;
+                                        }
+                                        catch (Exception ex) {
+                                            if (totalRetries == maxRetries) {
+                                                LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
+                                                throw ex;
+                                            }
+                                            else {
+                                                LOGGER.error("Can't start the connector, will retry later...", ex);
+                                            }
+                                        }
+                                        delayStrategy.sleepWhen(!startedSuccessfully);
+                                    }
+                                }
                             }
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
@@ -899,6 +951,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
             }
         }
+    }
+
+    private int getErrorsMaxRetries() {
+        int maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
+        return maxRetries;
     }
 
     /**
@@ -1100,6 +1157,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
     public void runWithTask(Consumer<SourceTask> consumer) {
         consumer.accept(task);
+    }
+
+    private DelayStrategy delayStrategy(Configuration config) {
+        return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
+                Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
     }
 
     protected static class EmbeddedConfig extends WorkerConfig {

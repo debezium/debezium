@@ -431,6 +431,18 @@ The default is a periodic commity policy based upon time intervals.
 |`offset.flush.timeout.ms`
 |`5000`
 |Maximum number of milliseconds to wait for records to flush and partition offset data to be committed to offset storage before cancelling the process and restoring the offset data to be committed in a future attempt. The default is 5 seconds.
+
+|`errors.max.retries`
+|`0`
+|The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
+|`errors.retry.delay.initial.ms`
+|`300`
+|Initial delay (in ms) for retries when encountering connection errors. This value will be doubled upon every retry but won't exceed `errors.retry.delay.max.ms`.
+
+|`errors.retry.delay.max.ms`
+|`10000`
+|Max delay (in ms) between retries when encountering connection errors.
 |===
 
 [[database-history-properties]]
