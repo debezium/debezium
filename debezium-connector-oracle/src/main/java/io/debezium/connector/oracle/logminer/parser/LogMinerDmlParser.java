@@ -6,10 +6,7 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 /**
@@ -141,7 +138,7 @@ public class LogMinerDmlParser implements DmlParser {
             // accordingly, leaving any field's after value alone if it isn't null or a sentinel.
             for (int i = 0; i < oldValues.length; ++i) {
                 // set unavailable value in the old values if applicable
-                oldValues[i] = getColumnUnavailableValue(oldValues[i], table.columns().get(i));
+                oldValues[i] = ParserUtils.getColumnUnavailableValue(oldValues[i], table.columns().get(i));
                 if (newValues[i] == NULL_SENTINEL) {
                     // field is explicitly set to NULL, clear the sentinel and continue
                     newValues[i] = null;
@@ -179,10 +176,7 @@ public class LogMinerDmlParser implements DmlParser {
             parseWhereClause(sql, index, oldValues, table);
 
             // Check and update unavailable column values
-            for (int i = 0; i < oldValues.length; ++i) {
-                // set unavailable value in the old values if applicable
-                oldValues[i] = getColumnUnavailableValue(oldValues[i], table.columns().get(i));
-            }
+            ParserUtils.setColumnUnavailableValues(oldValues, table);
 
             return LogMinerDmlEntryImpl.forDelete(oldValues);
         }
@@ -664,12 +658,5 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
-    }
-
-    private Object getColumnUnavailableValue(Object value, Column column) {
-        if (value == null && OracleDatabaseSchema.isLobColumn(column)) {
-            return OracleValueConverters.UNAVAILABLE_VALUE;
-        }
-        return value;
     }
 }
