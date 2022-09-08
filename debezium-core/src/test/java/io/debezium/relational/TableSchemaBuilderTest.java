@@ -42,7 +42,6 @@ public class TableSchemaBuilderTest {
     private static final String AVRO_UNSUPPORTED_NAME = "9-`~!@#$%^&*()+=[]{}\\|;:\"'<>,.?/";
     private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "_9_______________________________";
 
-    private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
     private final Object[] data = new Object[]{ "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114 }, null, "c7value",
             "c8value", "c9value", null };
@@ -63,13 +62,16 @@ public class TableSchemaBuilderTest {
     private TopicNamingStrategy topicNamingStrategy;
     private SchemaNameAdjuster adjuster;
     private final CustomConverterRegistry customConverterRegistry = new CustomConverterRegistry(null);
+    private Properties topicProperties;
 
     @Before
     public void beforeEach() {
         adjuster = SchemaNameAdjuster.create("_", (original, replacement, conflict) -> {
             fail("Should not have come across an invalid schema name");
         });
-        topicNamingStrategy = new SchemaTopicNamingStrategy(new Properties(), prefix, false);
+        topicProperties = new Properties();
+        topicProperties.put("topic.prefix", "test");
+        topicNamingStrategy = new SchemaTopicNamingStrategy(topicProperties, false);
         schema = null;
         table = Table.editor()
                 .tableId(id)
@@ -167,8 +169,8 @@ public class TableSchemaBuilderTest {
                 SchemaBuilder.struct().build(), false, false)
                         .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("schema.table.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.schema.table.Value");
 
         // only catalog
         table = table.edit()
@@ -177,11 +179,11 @@ public class TableSchemaBuilderTest {
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, false)
-                        .create(new DefaultTopicNamingStrategy(new Properties(), prefix), table, null, null, null);
+                        .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testDb.testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testDb.testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testDb.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testDb.testTable.Value");
 
         // only schema
         table = table.edit()
@@ -193,8 +195,8 @@ public class TableSchemaBuilderTest {
                         .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testSchema.testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testSchema.testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testSchema.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testSchema.testTable.Value");
 
         // neither catalog nor schema
         table = table.edit()
@@ -206,8 +208,8 @@ public class TableSchemaBuilderTest {
                         .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testTable.Value");
     }
 
     @Test
@@ -216,10 +218,10 @@ public class TableSchemaBuilderTest {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
                 SchemaBuilder.struct().build(), false, true)
-                        .create(new SchemaTopicNamingStrategy(new Properties(), prefix, true), table, null, null, null);
+                        .create(new SchemaTopicNamingStrategy(topicProperties, true), table, null, null, null);
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("catalog.schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("catalog.schema.table.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.catalog.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.catalog.schema.table.Value");
     }
 
     @Test

@@ -605,7 +605,7 @@ public class MySqlDefaultValueTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
 
-        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test"), table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(defaultTopicNamingStrategy(), table, null, null, null);
         assertThat(getColumnSchema(schema, "c0").defaultValue()).isEqualTo((short) 10);
         assertThat(getColumnSchema(schema, "c1").defaultValue()).isEqualTo(5);
         assertThat(getColumnSchema(schema, "c2").defaultValue()).isEqualTo(0L);
@@ -620,11 +620,17 @@ public class MySqlDefaultValueTest {
     }
 
     private Schema getColumnSchema(Table table, String column, TableSchemaBuilder tableSchemaBuilder) {
-        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(new Properties(), "test"), table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(defaultTopicNamingStrategy(), table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 
     private Schema getColumnSchema(TableSchema tableSchema, String column) {
         return tableSchema.valueSchema().field(column).schema();
+    }
+
+    private DefaultTopicNamingStrategy defaultTopicNamingStrategy() {
+        Properties properties = new Properties();
+        properties.put("topic.prefix", "test");
+        return new DefaultTopicNamingStrategy(properties);
     }
 }
