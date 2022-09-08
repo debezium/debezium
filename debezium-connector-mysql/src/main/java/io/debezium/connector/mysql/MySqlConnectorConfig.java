@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -34,7 +35,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.util.Collect;
@@ -963,7 +963,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         super(
                 MySqlConnector.class,
                 config,
-                config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX),
+                config.getString(CommonConnectorConfig.TOPIC_PREFIX),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
                 DEFAULT_SNAPSHOT_FETCH_SIZE,

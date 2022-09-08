@@ -54,7 +54,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.SchemaHistory;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
@@ -104,7 +103,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(KafkaSchemaHistory.TOPIC, "myserver")
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
@@ -131,7 +130,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
         assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
-        assertNoConfigurationErrors(result, AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
@@ -164,7 +163,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldValidateAcceptableConfiguration() {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myServer")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer")
                 .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
                 .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -178,7 +177,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS);
-        assertNoConfigurationErrors(result, AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
@@ -226,7 +225,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         for (final String acceptableValue : acceptableValues) {
             Configuration config = DATABASE.defaultJdbcConfigBuilder()
                     .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                    .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myServer")
+                    .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer")
                     .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
                     .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -283,7 +282,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.SERVER_ID, serverId)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(dbIncludeListField, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -601,9 +600,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Read the last committed offsets, and verify the binlog coordinates ...
-        final String serverName = config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX);
+        final String serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         final MySqlOffsetContext.Loader loader = new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, serverName)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, serverName)
                 .build()));
         final Map<String, String> partition = new MySqlPartition(serverName, DATABASE.getDatabaseName()).getSourcePartition();
         Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, partition);
@@ -694,7 +693,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.getDatabaseName() + ".products")
@@ -742,7 +741,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)

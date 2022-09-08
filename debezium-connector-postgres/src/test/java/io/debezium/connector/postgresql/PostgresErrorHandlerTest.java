@@ -11,17 +11,17 @@ import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class PostgresErrorHandlerTest {
     private static final String A_CLASSIFIED_EXCEPTION = "Database connection failed when writing to copy";
 
     private final PostgresErrorHandler errorHandler = new PostgresErrorHandler(
             new PostgresConnectorConfig(Configuration.create()
-                    .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "postgres")
+                    .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
             new ChangeEventQueue.Builder<DataChangeEvent>().build());
 

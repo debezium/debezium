@@ -32,6 +32,7 @@ import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -39,7 +40,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresVa
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Throwables;
@@ -257,7 +257,7 @@ public final class TestHelper {
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "dbserver1")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 5432)
@@ -270,7 +270,7 @@ public final class TestHelper {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
-        builder.with(AbstractTopicNamingStrategy.TOPIC_PREFIX, TEST_SERVER)
+        builder.with(CommonConnectorConfig.TOPIC_PREFIX, TEST_SERVER)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                 .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
                 .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPlugin())
@@ -310,7 +310,7 @@ public final class TestHelper {
     protected static SourceInfo sourceInfo() {
         return new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, TEST_SERVER)
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_SERVER)
                         .with(PostgresConnectorConfig.DATABASE_NAME, TEST_DATABASE)
                         .build()));
     }

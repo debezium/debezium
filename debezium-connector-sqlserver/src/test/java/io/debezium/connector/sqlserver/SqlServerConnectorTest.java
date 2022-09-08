@@ -21,7 +21,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 public class SqlServerConnectorTest {
     SqlServerConnector connector;
@@ -34,7 +33,7 @@ public class SqlServerConnectorTest {
     @Test
     public void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
-        config.put(AbstractTopicNamingStrategy.TOPIC_PREFIX.name(), "dbserver1");
+        config.put(CommonConnectorConfig.TOPIC_PREFIX.name(), "dbserver1");
         config.put(SqlServerConnectorConfig.HOSTNAME.name(), "narnia");
         config.put(SqlServerConnectorConfig.PORT.name(), "4321");
         config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), "sqlserver");

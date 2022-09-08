@@ -20,9 +20,9 @@ import org.bson.BsonTimestamp;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * @author Randall Hauch
@@ -37,7 +37,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .build()));
     }
 
@@ -86,7 +86,7 @@ public class SourceInfoTest {
         Map<String, String> partition = source.partition(REPLICA_SET_NAME);
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .build()));
         source.setOffsetFor(partition, offset);
 

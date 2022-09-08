@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -31,7 +32,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 
 /**
  * The list of configuration options for SQL Server connector
@@ -334,7 +334,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(SqlServerConnector.class, config, config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), new SystemTablesPredicate(),
+        super(SqlServerConnector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(), true,
                 ColumnFilterMode.SCHEMA, true);
 

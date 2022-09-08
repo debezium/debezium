@@ -17,10 +17,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 public class OracleConnectorConfigTest {
@@ -32,7 +32,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.HOSTNAME, "MyHostname")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
@@ -49,7 +49,7 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.HOSTNAME, "MyHostname")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
@@ -64,7 +64,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.URL, "jdbc:oci:thin:@myserver/mydatabase")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
@@ -81,7 +81,7 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.URL, "MyHostname")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
@@ -97,7 +97,7 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.URL,
                                 "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.11)(PORT=1701))(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.12)(PORT=1701))(ADDRESS=(PROTOCOL=TCP)(HOST=192.68.1.13)(PORT=1701))(LOAD_BALANCE = yes)(FAILOVER = on)(CONNECT_DATA =(SERVER = DEDICATED)(SERVICE_NAME = myserver.mydomain.com)(FAILOVER_MODE =(TYPE = SELECT)(METHOD = BASIC)(RETRIES = 3)(DELAY = 5))))")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
@@ -114,7 +114,7 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
@@ -128,7 +128,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
 
         assertEquals(connectorConfig.getLogMiningBatchSizeDefault(), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
@@ -141,7 +141,7 @@ public class OracleConnectorConfigTest {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
 
         assertEquals(connectorConfig.getLogMiningSleepTimeDefault(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
@@ -155,7 +155,7 @@ public class OracleConnectorConfigTest {
     public void validQueryFetchSizeDefaults() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
         assertEquals(connectorConfig.getQueryFetchSize(), 0);
     }
@@ -165,7 +165,7 @@ public class OracleConnectorConfigTest {
     public void validQueryFetchSizeAvailable() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                        .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 10_000)
                         .build());
         assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
@@ -175,7 +175,7 @@ public class OracleConnectorConfigTest {
     @FixFor("DBZ-2754")
     public void validTransactionRetentionDefaults() throws Exception {
         final Configuration config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ZERO);
@@ -187,7 +187,7 @@ public class OracleConnectorConfigTest {
         final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
 
         Configuration config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(transactionRetentionField, 3)
                 .build();
 
@@ -209,7 +209,7 @@ public class OracleConnectorConfigTest {
         final Field snapshotLockMode = OracleConnectorConfig.SNAPSHOT_LOCKING_MODE;
 
         Configuration config = Configuration.create().with(snapshotLockMode, "shared")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .build();
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
@@ -217,7 +217,7 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
 
         config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(snapshotLockMode, "none")
                 .build();
 
@@ -235,7 +235,7 @@ public class OracleConnectorConfigTest {
 
         // Test backward compatibility of rac.nodes using no port with database.port
         Configuration config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(port, "1521")
                 .with(racNodes, "1.2.3.4,1.2.3.5")
                 .build();
@@ -248,7 +248,7 @@ public class OracleConnectorConfigTest {
 
         // Test rac.nodes using combination of with/without port with database.port
         config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(port, "1521")
                 .with(racNodes, "1.2.3.4,1.2.3.5:1522")
                 .build();
@@ -260,7 +260,7 @@ public class OracleConnectorConfigTest {
 
         // Test rac.nodes using different ports with no database.port
         config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(racNodes, "1.2.3.4:1523,1.2.3.5:1522")
                 .build();
 
@@ -272,7 +272,7 @@ public class OracleConnectorConfigTest {
 
         // Test rac.nodes using different ports that differ from database.port
         config = Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myserver")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                 .with(port, "1521")
                 .with(racNodes, "1.2.3.4:1523,1.2.3.5:1522")
                 .build();

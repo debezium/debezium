@@ -64,7 +64,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(TABLE_NAME))
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true")
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "my_prefix")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "my_prefix")
                 .with(AbstractTopicNamingStrategy.TOPIC_DELIMITER, "_")
                 .build();
 

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -44,7 +45,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -573,7 +573,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(AbstractTopicNamingStrategy.TOPIC_PREFIX), new SystemTablesPredicate(config),
+        super(OracleConnector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(config),
                 x -> x.schema() + "." + x.table(), true, ColumnFilterMode.SCHEMA, false);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));

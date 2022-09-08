@@ -22,9 +22,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.file.history.FileSchemaHistory;
 
 /**
@@ -237,7 +237,7 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, getServerName());
+                .with(CommonConnectorConfig.TOPIC_PREFIX, getServerName());
     }
 
     /**

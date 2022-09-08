@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Testing;
 
 /**
@@ -35,7 +35,7 @@ public class Configurator {
     }
 
     public Configurator serverName(String serverName) {
-        return with(AbstractTopicNamingStrategy.TOPIC_PREFIX, serverName);
+        return with(CommonConnectorConfig.TOPIC_PREFIX, serverName);
     }
 
     public Configurator hosts(String hosts) {

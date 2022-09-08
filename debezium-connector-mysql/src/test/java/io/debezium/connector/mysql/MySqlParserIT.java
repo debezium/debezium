@@ -28,7 +28,6 @@ import io.debezium.connector.mysql.junit.SkipWhenSslModeIsNot;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
@@ -76,7 +75,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
     public Configuration.Builder defaultConfig() {
         return Configuration.create()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "myServer1")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer1")
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, mySQLContainer.getMappedPort(3306))
                 .with(MySqlConnectorConfig.USER, "debezium")

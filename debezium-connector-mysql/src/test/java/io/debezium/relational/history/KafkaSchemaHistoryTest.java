@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
@@ -41,7 +42,6 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
@@ -88,7 +88,7 @@ public class KafkaSchemaHistoryTest {
         MySqlPartition source = new MySqlPartition("my-server", "my-db");
         Configuration config = Configuration.empty()
                 .edit()
-                .with(AbstractTopicNamingStrategy.TOPIC_PREFIX, "dbserver1").build();
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1").build();
 
         position = new MySqlOffsetContext(false, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
                 new SourceInfo(new MySqlConnectorConfig(config)));
