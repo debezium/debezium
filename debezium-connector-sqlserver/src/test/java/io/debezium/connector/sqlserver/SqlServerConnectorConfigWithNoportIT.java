@@ -5,16 +5,17 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.SQLException;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.sql.SQLException;
 
 /**
  * Integration test for the Debezium SQL Server connector.
