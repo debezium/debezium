@@ -2106,6 +2106,10 @@ The following configuration properties are _required_ unless a default value is 
 |`1433`
 |Integer port number of the SQL Server database server.
 
+|[[sqlserver-property-database-noport]]<<sqlserver-property-database-noport, `+database.noport+`>>
+|`false`
+|An optional parameter (true|false) that will allow the port to be discovered by the SQL Server instance rather than defaulting to the default port (1433). If the SQL Server is created as a 'named instance', the port does not need to be provided and the SQL Server driver will discover the port whether configured with static or dynamic port. When this parameter is set to 'true', a SQL Server connector will be created that will not include the database.port configuration.
+
 |[[sqlserver-property-database-user]]<<sqlserver-property-database-user, `+database.user+`>>
 |No default
 |Username to use when connecting to the SQL Server database server.

@@ -50,6 +50,7 @@ import io.debezium.relational.TableId;
 public class SqlServerConnection extends JdbcConnection {
 
     public static final String INSTANCE_NAME = "instance";
+    public static final String NOPORT_NAME = "noport";
 
     private static final String GET_DATABASE_NAME = "SELECT name FROM sys.databases WHERE name = ?";
 
@@ -102,6 +103,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
+    private static final String URL_PATTERN_WITHOUT_PORT = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}";
 
     private final String getAllChangesForTable;
     private final int queryFetchSize;
@@ -125,7 +127,8 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
                                Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
-        super(config, createConnectionFactory(), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+        super(config, createConnectionFactory(config),
+                classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
@@ -196,11 +199,19 @@ public class SqlServerConnection extends JdbcConnection {
         this.optionRecompile = optionRecompile;
     }
 
-    private static ConnectionFactory createConnectionFactory() {
-        return JdbcConnection.patternBasedFactory(URL_PATTERN,
-                SQLServerDriver.class.getName(),
-                SqlServerConnection.class.getClassLoader(),
-                JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
+    private static ConnectionFactory createConnectionFactory(JdbcConfiguration config) {
+        ConnectionFactory connectionFactory = null;
+
+        if (config.hasKey(NOPORT_NAME)) {
+            return JdbcConnection.patternBasedFactory(URL_PATTERN_WITHOUT_PORT,
+                    SQLServerDriver.class.getName(),
+                    SqlServerConnection.class.getClassLoader());
+        }
+        else
+            return JdbcConnection.patternBasedFactory(URL_PATTERN,
+                    SQLServerDriver.class.getName(),
+                    SqlServerConnection.class.getClassLoader(),
+                    JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
     }
 
     /**

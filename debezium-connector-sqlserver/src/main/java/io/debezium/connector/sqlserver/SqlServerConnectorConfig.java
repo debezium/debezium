@@ -221,6 +221,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
+    public static final Field NOPORT = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.NOPORT_NAME)
+            .withDisplayName("No default port used")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 9))
+            .withValidation(Field::isOptional)
+            .withDescription("This property can be used to disable the use of the default port (1433) and rely on the named instance definition.");;
+
     public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
             .withType(Type.STRING)
