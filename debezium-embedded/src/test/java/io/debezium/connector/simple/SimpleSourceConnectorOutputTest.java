@@ -134,6 +134,16 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         runConnector("simple-test-e", "src/test/resources/simple/test/e");
     }
 
+    @Test
+    public void shouldRecoverFromRetriableExceptionMaxRetriesIs1() {
+        runConnector("simple-test-f", "src/test/resources/simple/test/f");
+    }
+
+    @Test
+    public void shouldRecoverFromRetriableExceptionMaxRetriesIsNegative1() {
+        runConnector("simple-test-g", "src/test/resources/simple/test/g");
+    }
+
     protected void writeConfigurationFileWithDefaultName(Path dir, Properties props) throws IOException {
         Path configFilePath = dir.resolve(DEFAULT_CONNECTOR_PROPERTIES_FILENAME);
         writeConfigurationFile(configFilePath, props);
