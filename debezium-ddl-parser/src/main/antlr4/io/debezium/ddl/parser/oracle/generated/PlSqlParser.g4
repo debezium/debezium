@@ -2126,6 +2126,7 @@ physical_attributes_clause
       | INITRANS inittrans=UNSIGNED_INTEGER
       | MAXTRANS maxtrans=UNSIGNED_INTEGER
       | storage_clause
+      | compute_clauses
       )+
     ;
 
