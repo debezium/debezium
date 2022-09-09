@@ -2021,7 +2021,7 @@ range_values_clause
     ;
 
 list_values_clause
-    : VALUES '(' (literal (',' literal)* | DEFAULT) ')'
+    : VALUES '(' (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
     ;
 
 table_partition_description
