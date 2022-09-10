@@ -30,8 +30,7 @@ import picocli.CommandLine;
  */
 @TopCommand
 @CommandLine.Command(name = "compaction", mixinStandardHelpOptions = true, description = "Starts the history compaction process", subcommands = {
-        CommandLine.HelpCommand.class,
-})
+        CommandLine.HelpCommand.class, })
 public class CompactionCommand implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(CompactionCommand.class);
 
@@ -48,17 +47,16 @@ public class CompactionCommand implements Runnable {
             "--compacted-history-topic" }, required = true, description = "The new history topic name for compaction history needs to be stored")
     String compactedHistoryTopic;
 
+    @CommandLine.Option(names = { "-p", "--offset-position" }, required = true, description = "The offset position from which history compaction need to be star")
+    Long offsetPosition;
+
     @Override
     public void run() {
 
-        LOGGER.info(
-                "Database history compaction will be started for {} database history and after compaction will history will be stored inside {} new database history topic",
-                historyTopic, compactedHistoryTopic);
+        LOGGER.info("Database history compaction will be started for '{}' database history and offset position: {}", historyTopic, offsetPosition);
         KafkaDatabaseHistoryCompaction databaseHistoryCompaction = new KafkaDatabaseHistoryCompaction(bootstrapServers, historyTopic, compactedHistoryTopic);
 
         Configuration dbHistoryConfig = Configuration.create().build();
-
-        Configuration.create().build();
 
         LOGGER.info("Configuring the Consumer and Producer for read and write the compaction history topic respectively.");
         // configure
@@ -69,18 +67,18 @@ public class CompactionCommand implements Runnable {
         databaseHistoryCompaction.start();
 
         MySqlPartition source = new MySqlPartition("dbserver1", "inventory");
-        Configuration config = Configuration.empty()
-                .edit()
-                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
+        Configuration config = dbHistoryConfig.edit().with(RelationalDatabaseConnectorConfig.SERVER_NAME, "dbserver1").build();
 
-        MySqlOffsetContext position = new MySqlOffsetContext(true, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(),
-                new SourceInfo(new MySqlConnectorConfig(config)));
+        SourceInfo sourceInfo = new SourceInfo(new MySqlConnectorConfig(config));
+        MySqlOffsetContext position = new MySqlOffsetContext(true, true, new TransactionContext(), new MySqlReadOnlyIncrementalSnapshotContext<>(), sourceInfo);
+        position.setBinlogStartPoint("mysql-bin.000003", offsetPosition);
+
         Offsets<MySqlPartition, MySqlOffsetContext> offsets = Offsets.of(source, position);
 
-        // record
+        LOGGER.info("History Compaction started.");
         databaseHistoryCompaction.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), new Tables(),
                 new MySqlAntlrDdlParser());
 
-        LOGGER.info("Database history compaction has been completed check by reading the {} history topic.", compactedHistoryTopic);
+        LOGGER.info("Database history compaction has been completed. You can view '{}' history topic. records", compactedHistoryTopic);
     }
 }

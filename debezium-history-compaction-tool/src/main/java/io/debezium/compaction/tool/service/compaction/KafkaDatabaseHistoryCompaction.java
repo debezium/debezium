@@ -162,13 +162,11 @@ public class KafkaDatabaseHistoryCompaction {
 
     public final void record(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser parser)
             throws DatabaseHistoryException {
-        LOGGER.debug("KafkaDatabaseHistoryCompaction record {} - {} - {} - {}", source, position, schema, parser);
-        Tables compactedSchema = recover(source, position, schema, parser);
 
+        Tables compactedSchema = recover(source, position, schema, parser);
+        LOGGER.info("No of compacted history records: {}", compactedSchema.tableIds().size());
         compactedSchema.tableIds().forEach(tableId -> {
-            LOGGER.debug("KafkaDatabaseHistoryCompaction table ids: {}", tableId);
             final Table table = compactedSchema.forTable(tableId);
-            LOGGER.info("Table {}", table);
 
             TableChanges tableChanges = new TableChanges();
 
@@ -218,62 +216,68 @@ public class KafkaDatabaseHistoryCompaction {
             storeRecord(compactedRecord);
             listener.onChangeApplied(compactedRecord);
         });
+        this.stop();
     }
 
     public final Tables recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
-        LOGGER.debug("Recovering DDL history for source partition {} and offset {}", source, position);
+        LOGGER.debug("Recovering DDL history for source partition {} and position {}", source, position);
         listener.recoveryStarted();
-        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null, null, null);
+        HistoryRecord stopPoint = new HistoryRecord(source, position, "inventory", null, null, null, null);
+
         AtomicInteger counter = new AtomicInteger();
-        recoverRecords(recovered -> {
-            // LOGGER.debug("recovered record: {}", recovered);
-            listener.onChangeFromHistory(recovered);
-            LOGGER.info("position1: {} and position2: {}", recovered.position(), stopPoint.position());
-            if (comparator.isAtOrBefore(recovered, stopPoint)) {//use postitions to compact the history records rest of the records will be append to the new history topic
-                Array tableChanges = recovered.tableChanges();
-                String ddl = recovered.ddl();
-                if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
-                    TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
-                    for (TableChanges.TableChange entry : changes) {
-                        if (entry.getType() == TableChanges.TableChangeType.CREATE || entry.getType() == TableChanges.TableChangeType.ALTER) {
-                            schema.overwriteTable(entry.getTable());
+        recoverRecords(new Consumer<HistoryRecord>() {
+            @Override
+            public void accept(HistoryRecord recovered) {
+                // LOGGER.debug("recovered record: {}", recovered);
+                listener.onChangeFromHistory(recovered);
+                LOGGER.debug("recovered record position: {} and stop point position: {}", recovered.position(), stopPoint.position());
+                if (comparator.isAtOrBefore(recovered, stopPoint)) {
+                    // use positions to compact the history records rest of the records will be appended to the new history topic
+                    Array tableChanges = recovered.tableChanges();
+                    String ddl = recovered.ddl();
+                    if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
+                        TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
+                        for (TableChanges.TableChange entry : changes) {
+                            if (entry.getType() == TableChanges.TableChangeType.CREATE || entry.getType() == TableChanges.TableChangeType.ALTER) {
+                                schema.overwriteTable(entry.getTable());
+                            }
+                            // DROP
+                            else {
+                                schema.removeTable(entry.getId());
+                            }
                         }
-                        // DROP
-                        else {
-                            schema.removeTable(entry.getId());
-                        }
-                    }
-                    listener.onChangeApplied(recovered);
-                }
-                else if (ddl != null && ddlParser != null) {
-                    if (recovered.databaseName() != null) {
-                        ddlParser.setCurrentDatabase(recovered.databaseName()); // may be null
-                    }
-                    if (recovered.schemaName() != null) {
-                        ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
-                    }
-                    Optional<Pattern> filteredBy = ddlFilter.apply(ddl);
-                    if (filteredBy.isPresent()) {
-                        LOGGER.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl, filteredBy.get());
-                        return;
-                    }
-                    try {
-                        LOGGER.debug("Applying: {}", ddl);
-                        ddlParser.parse(ddl, schema);
                         listener.onChangeApplied(recovered);
                     }
-                    catch (final ParsingException | MultipleParsingExceptions e) {
-                        if (skipUnparseableDDL) {
-                            LOGGER.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
+                    else if (ddl != null && ddlParser != null) {
+                        if (recovered.databaseName() != null) {
+                            ddlParser.setCurrentDatabase(recovered.databaseName()); // may be null
                         }
-                        else {
-                            throw e;
+                        if (recovered.schemaName() != null) {
+                            ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
+                        }
+                        Optional<Pattern> filteredBy = ddlFilter.apply(ddl);
+                        if (filteredBy.isPresent()) {
+                            LOGGER.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl, filteredBy.get());
+                            return;
+                        }
+                        try {
+                            LOGGER.debug("Applying: {}", ddl);
+                            ddlParser.parse(ddl, schema);
+                            listener.onChangeApplied(recovered);
+                        }
+                        catch (final ParsingException | MultipleParsingExceptions e) {
+                            if (skipUnparseableDDL) {
+                                LOGGER.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
+                            }
+                            else {
+                                throw e;
+                            }
                         }
                     }
                 }
-            }
-            else {
-                LOGGER.debug("Skipping: {}", recovered.ddl());
+                else {
+                    LOGGER.debug("Skipping: {}", recovered.ddl());
+                }
             }
         });
         listener.recoveryStopped();
@@ -385,8 +389,6 @@ public class KafkaDatabaseHistoryCompaction {
         catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);
         }
-
-        this.stop(); // stop the producer since we have compacted the history and stored it inside the given topic
     }
 
     public void stop() {
@@ -395,5 +397,6 @@ public class KafkaDatabaseHistoryCompaction {
         if (this.producer != null) {
             this.producer.close();
         }
+        LOGGER.debug("Stopping kafka producer");
     }
 }
