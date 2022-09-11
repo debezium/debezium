@@ -79,6 +79,9 @@ public class CompactionCommand implements Runnable {
         databaseHistoryCompaction.record(offsets.getTheOnlyPartition().getSourcePartition(), offsets.getTheOnlyOffset().getOffset(), new Tables(),
                 new MySqlAntlrDdlParser());
 
+        LOGGER.info("History compaction finished");
+        databaseHistoryCompaction.stop();
+
         LOGGER.info("Database history compaction has been completed. You can view '{}' history topic. records", compactedHistoryTopic);
     }
 }

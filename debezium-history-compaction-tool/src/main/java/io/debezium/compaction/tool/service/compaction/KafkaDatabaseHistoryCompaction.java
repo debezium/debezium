@@ -216,7 +216,6 @@ public class KafkaDatabaseHistoryCompaction {
             storeRecord(compactedRecord);
             listener.onChangeApplied(compactedRecord);
         });
-        this.stop();
     }
 
     public final Tables recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
