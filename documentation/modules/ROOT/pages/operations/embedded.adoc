@@ -306,14 +306,6 @@ The default is a periodic commity policy based upon time intervals.
 |`offset.flush.timeout.ms`
 |`5000`
 |Maximum number of milliseconds to wait for records to flush and partition offset data to be committed to offset storage before cancelling the process and restoring the offset data to be committed in a future attempt. The default is 5 seconds.
-
-|`internal.key.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize key data for offsets. The default is JSON converter.
-
-|`internal.value.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
 |=======================
 
 [[database-history-properties]]

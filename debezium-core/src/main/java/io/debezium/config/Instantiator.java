@@ -17,6 +17,15 @@ import java.util.function.Supplier;
 public class Instantiator {
 
     /**
+     * Instantiates the specified class either using the no-args constructor.
+     *
+     * @return The newly created instance or {@code null} if no class name was given
+     */
+    public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier) {
+        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, null, null);
+    }
+
+    /**
      * Instantiates the specified class either using the no-args constructor or the
      * constructor with a single parameter of type {@link Configuration}, if a
      * configuration object is passed.
