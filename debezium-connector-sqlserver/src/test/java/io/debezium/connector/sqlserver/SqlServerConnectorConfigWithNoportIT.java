@@ -20,7 +20,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 /**
  * Integration test for the Debezium SQL Server connector.
  *
- * @author Jiri Pechanec
+ * @author Kyley Jex
  */
 public class SqlServerConnectorConfigWithNoportIT extends AbstractConnectorTest {
 
