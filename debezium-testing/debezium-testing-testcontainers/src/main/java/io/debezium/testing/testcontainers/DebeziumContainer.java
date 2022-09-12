@@ -41,7 +41,9 @@ import okhttp3.ResponseBody;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
-    private static final String DEBEZIUM_VERSION = ContainerImageVersions.getStableVersion("debezium/connect");
+    private static final String DEBEZIUM_CONTAINER = "debezium/connect";
+    private static final String DEBEZIUM_STABLE_TAG = ContainerImageVersions.getStableVersion("debezium/connect");
+    private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -60,7 +62,11 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-        return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_STABLE_TAG));
+    }
+
+    public static DebeziumContainer nightly() {
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG));
     }
 
     private void defaultConfig() {
