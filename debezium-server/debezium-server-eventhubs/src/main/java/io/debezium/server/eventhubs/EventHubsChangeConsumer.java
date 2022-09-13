@@ -134,7 +134,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
             // this loop adds as many records to the batch as possible
             for (; recordIndex < records.size(); recordIndex++) {
                 ChangeEvent<Object, Object> record = records.get(recordIndex);
-                LOGGER.trace("Received record '{}'", record.value());
+                LOGGER.trace("Received record '{}'", record.key());
                 if (null == record.value()) {
                     continue;
                 }

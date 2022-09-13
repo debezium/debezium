@@ -347,7 +347,7 @@ public abstract class AbstractReader implements Reader {
         if (record != null && running.get()) {
             if (acceptAndContinue.accepts(record)) {
                 if (logger.isTraceEnabled()) {
-                    logger.trace("Enqueuing source record: {}", record);
+                    logger.trace("Enqueuing source record");
                 }
                 this.records.put(record);
             }

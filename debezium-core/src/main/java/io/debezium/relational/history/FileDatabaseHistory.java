@@ -127,7 +127,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 }
             }
             catch (IOException e) {
-                logger.error("Failed to convert record to string: {}", record, e);
+                logger.error("Failed to convert record to string", e);
             }
         });
     }

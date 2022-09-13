@@ -130,7 +130,7 @@ public class KafkaSignalThread<T extends DataCollectionId> {
                     return;
                 }
                 catch (final Exception e) {
-                    LOGGER.error("Skipped signal due to an error '{}'", record, e);
+                    LOGGER.error("Skipped signal due to an error", e);
                 }
             }
         }

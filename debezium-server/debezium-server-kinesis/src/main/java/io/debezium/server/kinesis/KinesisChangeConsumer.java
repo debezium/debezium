@@ -91,7 +91,7 @@ public class KinesisChangeConsumer extends BaseChangeConsumer implements Debeziu
             client.close();
         }
         catch (Exception e) {
-            LOGGER.warn("Exception while closing Kinesis client: {}", e);
+            LOGGER.warn("Exception while closing Kinesis client", e);
         }
     }
 
@@ -99,7 +99,7 @@ public class KinesisChangeConsumer extends BaseChangeConsumer implements Debeziu
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.trace("Received event '{}'", record);
+            LOGGER.trace("Received event");
             Object rv = record.value();
             if (rv == null) {
                 rv = "";

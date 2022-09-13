@@ -193,7 +193,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     protected void doEnqueue(T record) throws InterruptedException {
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Enqueuing source record '{}'", record);
+            LOGGER.debug("Enqueuing source record");
         }
 
         synchronized (this) {

@@ -79,7 +79,7 @@ public class KafkaChangeConsumer extends BaseChangeConsumer implements DebeziumE
         final CountDownLatch latch = new CountDownLatch(records.size());
         for (ChangeEvent<Object, Object> record : records) {
             try {
-                LOGGER.trace("Received event '{}'", record);
+                LOGGER.trace("Received event");
                 producer.send(new ProducerRecord<>(record.destination(), record.key(), record.value()), (metadata, exception) -> {
                     if (exception != null) {
                         LOGGER.error("Failed to send record to {}:", record.destination(), exception);

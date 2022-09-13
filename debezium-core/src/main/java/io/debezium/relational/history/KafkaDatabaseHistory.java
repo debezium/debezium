@@ -265,7 +265,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
         }
-        LOGGER.trace("Storing record into database history: {}", record);
+        LOGGER.trace("Storing record into database history");
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);

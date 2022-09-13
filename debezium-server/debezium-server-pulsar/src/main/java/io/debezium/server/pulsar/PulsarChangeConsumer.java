@@ -116,7 +116,7 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.trace("Received event '{}'", record);
+            LOGGER.trace("Received event");
             final String topicName = streamNameMapper.map(record.destination());
             final Producer<?> producer = producers.computeIfAbsent(topicName, (topic) -> createProducer(topic, record.value()));
 

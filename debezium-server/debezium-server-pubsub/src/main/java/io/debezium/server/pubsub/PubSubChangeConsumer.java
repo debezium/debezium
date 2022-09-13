@@ -184,7 +184,7 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
             throws InterruptedException {
         final List<ApiFuture<String>> deliveries = new ArrayList<>();
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.trace("Received event '{}'", record);
+            LOGGER.trace("Received event");
             final String topicName = streamNameMapper.map(record.destination());
             Publisher publisher = publishers.computeIfAbsent(topicName, (x) -> publisherBuilder.get(ProjectTopicName.of(projectId, x)));
 
