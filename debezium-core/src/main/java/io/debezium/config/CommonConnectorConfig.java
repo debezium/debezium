@@ -319,10 +319,12 @@ public abstract class CommonConnectorConfig {
     public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
             .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
+            .withImportance(Importance.HIGH)
             .withDefault(LOGIC_NAME_PLACEHOLDER)
             .withValidation(CommonConnectorConfig::validateTopicName)
+            .required()
             .withDescription("The name of the prefix to be used for all topics, the placeholder " + LOGIC_NAME_PLACEHOLDER +
                     " can be used for referring to the connector's logical name as default value.");
 
