@@ -3249,7 +3249,7 @@ column_definition
     : column_name (datatype | type_name)?
          SORT?
          (VISIBLE | INVISIBLE)?
-         (DEFAULT column_default_value | identity_clause)?
+         (DEFAULT (ON NULL_)? column_default_value | identity_clause)?
          (ENCRYPT (USING  CHAR_STRING)? (IDENTIFIED BY regular_id)? CHAR_STRING? (NO? SALT)? )?  (inline_constraint* | inline_ref_constraint)
     ;
 
