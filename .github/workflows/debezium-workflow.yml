@@ -704,7 +704,7 @@ jobs:
       - name: Build Debezium (Core)
         run: >
            ./core/mvnw clean install -f core/pom.xml 
-           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
            -DskipITs=true
