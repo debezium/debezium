@@ -26,6 +26,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -374,6 +375,21 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public String getInstanceName() {
         return instanceName;
+    }
+
+    public boolean useSingleDatabase() {
+        return this.databaseNames.size() == 1;
+    }
+
+    @Override
+    public JdbcConfiguration getJdbcConfig() {
+        JdbcConfiguration config = super.getJdbcConfig();
+        if (useSingleDatabase()) {
+            config = JdbcConfiguration.adapt(config.edit()
+                    .with(JdbcConfiguration.DATABASE, databaseNames.get(0))
+                    .build());
+        }
+        return config;
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {

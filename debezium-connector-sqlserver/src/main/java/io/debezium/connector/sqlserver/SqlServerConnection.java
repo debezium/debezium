@@ -102,6 +102,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
 
+    private final boolean useSingleDatabase;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
 
@@ -122,8 +123,9 @@ public class SqlServerConnection extends JdbcConnection {
      * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
     public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
-                               Set<Envelope.Operation> skippedOperations) {
-        super(config, createConnectionFactory(), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+                               Set<Envelope.Operation> skippedOperations,
+                               boolean useSingleDatabase) {
+        super(config, createConnectionFactory(useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
@@ -159,6 +161,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
                 Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
+        this.useSingleDatabase = useSingleDatabase;
 
         this.optionRecompile = false;
     }
@@ -172,8 +175,9 @@ public class SqlServerConnection extends JdbcConnection {
      * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
      */
     public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
-                               Set<Envelope.Operation> skippedOperations, boolean optionRecompile) {
-        this(config, valueConverters, skippedOperations);
+                               Set<Envelope.Operation> skippedOperations, boolean useSingleDatabase,
+                               boolean optionRecompile) {
+        this(config, valueConverters, skippedOperations, useSingleDatabase);
 
         this.optionRecompile = optionRecompile;
     }
@@ -192,11 +196,20 @@ public class SqlServerConnection extends JdbcConnection {
         return false;
     }
 
-    private static ConnectionFactory createConnectionFactory() {
-        return JdbcConnection.patternBasedFactory(URL_PATTERN,
+    private static ConnectionFactory createConnectionFactory(boolean useSingleDatabase) {
+        return JdbcConnection.patternBasedFactory(createUrlPattern(useSingleDatabase),
                 SQLServerDriver.class.getName(),
                 SqlServerConnection.class.getClassLoader(),
                 JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
+    }
+
+    private static String createUrlPattern(boolean useSingleDatabase) {
+        String pattern = URL_PATTERN;
+        if (useSingleDatabase) {
+            pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
+        }
+
+        return pattern;
     }
 
     /**
@@ -205,7 +218,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(URL_PATTERN);
+        return connectionString(createUrlPattern(useSingleDatabase));
     }
 
     @Override

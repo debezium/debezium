@@ -457,6 +457,24 @@ public class SqlServerConnectionIT {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5496")
+    public void shouldConnectToASingleDatabase() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            Assertions.assertThat(connection.connection().getCatalog()).isEqualTo(TestHelper.TEST_DATABASE_1);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5496")
+    public void shouldNotConnectToAnyOfMultipleDatabase() throws Exception {
+        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
+        try (SqlServerConnection connection = TestHelper.multiPartitionTestConnection()) {
+            Assertions.assertThat(connection.connection().getCatalog()).isEqualTo("master");
+        }
+    }
+
     private long toMillis(OffsetDateTime datetime) {
         return datetime.toInstant().toEpochMilli();
     }

@@ -237,7 +237,8 @@ public class TestHelper {
 
     public static SqlServerConnection adminConnection() {
         return new SqlServerConnection(TestHelper.defaultJdbcConfig(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), Collections.emptySet());
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnection() {
@@ -262,13 +263,14 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
         return new SqlServerConnection(config,
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), Collections.emptySet());
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
         JdbcConfiguration config = JdbcConfiguration.adapt(defaultJdbcConfig()
                 .edit()
-                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE_1 + "]")
+                .with(JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
 
         return new SqlServerConnection(config,
