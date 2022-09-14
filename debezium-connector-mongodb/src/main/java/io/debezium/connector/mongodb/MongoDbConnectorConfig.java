@@ -491,6 +491,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
+                    TOPIC_PREFIX,
                     CONNECTION_STRING,
                     HOSTS,
                     USER,
