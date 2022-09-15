@@ -223,6 +223,10 @@ To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingS
 |
 |(Optional)  If using Redis to store offsets, whether or not to use SSL to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.ssl.enabled`. Default is 'false'
 
+|[[debezium-source-offset-redis-key]]<<debezium-source-offset-redis-key, `debezium.source.offset.storage.redis.key`>>
+|
+|(Optional)  If using Redis to store offsets, define the hash key in redis. If the `redis.key` configuration is not supplied, and the default value is `metadata:debezium:offsets`
+
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
