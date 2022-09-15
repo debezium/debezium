@@ -56,7 +56,7 @@ public class JdbcSchemaHistoryTest {
     static Table table2;
     static TableChanges tableChanges2;
     static HistoryRecord historyRecord2;
-    static DdlParser ddlParser = new TestAntlrDdlParser();
+    static DdlParser ddlParser = new TestingAntlrDdlParser();
     static Instant currentInstant = Instant.now();
 
     @BeforeClass

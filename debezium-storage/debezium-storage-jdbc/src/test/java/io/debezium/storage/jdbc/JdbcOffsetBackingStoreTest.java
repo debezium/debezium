@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded.storage;
+package io.debezium.storage.jdbc;
 
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
@@ -24,13 +24,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.storage.jdbc.JdbcConfig;
-import io.debezium.storage.jdbc.JdbcOffsetBackingStore;
-
 /**
  * @author Ismail simsek
  */
-public class TestJdbcOffsetBackingStore {
+public class JdbcOffsetBackingStoreTest {
 
     private final Map<ByteBuffer, ByteBuffer> firstSet = new HashMap<>();
     private final Map<ByteBuffer, ByteBuffer> secondSet = new HashMap<>();

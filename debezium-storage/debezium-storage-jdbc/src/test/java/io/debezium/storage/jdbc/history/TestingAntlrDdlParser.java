@@ -12,8 +12,8 @@ import io.debezium.relational.ddl.AbstractDdlParser;
 /**
  * @author Ismail simsek
  */
-public class TestAntlrDdlParser extends AbstractDdlParser {
-    public TestAntlrDdlParser() {
+public class TestingAntlrDdlParser extends AbstractDdlParser {
+    public TestingAntlrDdlParser() {
         super(false, false);
     }
 
