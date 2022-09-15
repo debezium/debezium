@@ -1390,7 +1390,7 @@ During this discovery process, the connector ignores connection values that are 
 After the discovery process completes, when the connector attempts to establish a direct connection to a primary replica set member, the connector then returns to using the standard connection properties,
 and it ignores values in `mongodb.connection.string`.
 However, if credential information is not present elsewhere in the configuration, the connector can extract credential information from the value of the connection string.
-For example, if the `mongodb.user` property is not set, but the connection string includes the MongoDB username, the connector reads the information from the string. 
+For example, if the `mongodb.user` property is not set, but the connection string includes the MongoDB username, the connector reads the information from the string.
 ====
 
 |[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
