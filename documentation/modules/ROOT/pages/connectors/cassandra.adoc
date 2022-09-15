@@ -911,7 +911,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |The port used by the HTTP server for ping, health check, and build info
 
 |[[cassandra-property-cassandra-config]]<<cassandra-property-cassandra-config, `cassandra.config`>>
-|
+|No default
 |The absolute path of the YAML config file used by a Cassandra node.
 
 |[[cassandra-property-cassandra-hosts]]<<cassandra-property-cassandra-hosts, `cassandra.hosts`>>
@@ -923,11 +923,11 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |The port used to connect to Cassandra host(s).
 
 |[[cassandra-property-cassandra-username]]<<cassandra-property-cassandra-username, `cassandra.username`>>
-|
+|No default
 |The username used when connecting to Cassandra hosts.
 
 |[[cassandra-property-cassandra-password]]<<cassandra-property-cassandra-password, `cassandra.password`>>
-|
+|No default
 |The password used when connecting to Cassandra hosts.
 
 |[[cassandra-property-cassandra-ssl-enabled]]<<cassandra-property-cassandra-ssl-enabled, `cassandra.ssl.enabled`>>
@@ -935,7 +935,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.
 
 |[[cassandra-property-cassandra-ssl-config-path]]<<cassandra-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
-|
+|No default
 |The SSL config file path required for storage node. An example of config file can be found at the bottom of the page.
 
 |[[cassandra-property-commit-log-real-time-processing-enabled]]<<cassandra-property-commit-log-real-time-processing-enabled, `commit.log.real.time.processing.enabled`>>
@@ -947,7 +947,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |Only applicable in Cassandra 4 and when real-time streaming is enabled by xref:cassandra-property-commit-log-real-time-processing-enabled[`commit.log.real.time.processing.enabled`]. This config determines the frequency at which commit log index file is polled for updates in offset value.
 
 |[[cassandra-property-commit-log-relocation-dir]]<<cassandra-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
-|
+|No default
 |The local directory where commit logs get relocated to from cdc_raw dir once processed.
 
 |[[cassandra-property-commit-log-post-processing-enabled]]<<cassandra-property-commit-log-post-processing-enabled, `commit.log.post.processing.enabled`>>
@@ -991,7 +991,7 @@ For example, +
  isbn.schema.name: io.debezium.cassandra.type.Isbn
 
 |[[cassandra-property-offset-backing-store-dir]]<<cassandra-property-offset-backing-store-dir, `offset.backing.store.dir`>>
-|
+|No default
 |The directory to store offset tracking files.
 
 |[[cassandra-property-offset-flush-interval-ms]]<<cassandra-property-offset-flush-interval-ms, `offset.flush.interval.ms`>>
@@ -1041,7 +1041,7 @@ refreshing the cached Cassandra table schemas.
 |Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they have not been consumed by the consumer yet. In other words, do NOT set this to true if you have Kafka compaction turned on.
 
 |[[cassandra-property-field-exclude-list]]<<cassandra-property-field-exclude-list, `field.exclude.list`>>
-|
+|No default
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 
 |[[cassandra-property-num-of-change-event-queues]]<<cassandra-property-num-of-change-event-queues, `num.of.change.event.queues`>>
@@ -1054,7 +1054,7 @@ refreshing the cached Cassandra table schemas.
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[cassandra-property-skipped-operations]]<<cassandra-property-skipped-operations, `+skipped.operations+`>>
-|
+|No default
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.

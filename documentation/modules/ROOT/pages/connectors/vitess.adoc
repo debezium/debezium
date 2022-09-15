@@ -1158,11 +1158,11 @@ The following configuration properties are _required_ unless a default value is 
 |Description
 
 |[[vitess-property-name]]<<vitess-property-name, `+name+`>>
-|
+|No default
 |Unique name for the connector. Attempting to register again with the same name will fail. This property is required by all Kafka Connect connectors.
 
 |[[vitess-property-connector-class]]<<vitess-property-connector-class, `+connector.class+`>>
-|
+|No default
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.vitess.VitessConnector` for the Vitess connector.
 
 |[[vitess-property-tasks-max]]<<vitess-property-tasks-max, `+tasks.max+`>>
@@ -1170,7 +1170,7 @@ The following configuration properties are _required_ unless a default value is 
 |The maximum number of tasks that should be created for this connector. The Vitess connector can use more than 1 tasks if you enable offset.storage.per.task mode.
 
 |[[vitess-property-database-hostname]]<<vitess-property-database-hostname, `+database.hostname+`>>
-|
+|No default
 |IP address or hostname of the Vitess database server (VTGate).
 
 |[[vitess-property-database-port]]<<vitess-property-database-port, `+database.port+`>>
@@ -1218,7 +1218,7 @@ If set to `true`, you should also consider setting `vitess.gtid` in the configur
 `RDONLY`  represents streaming from the read-only slave MySQL instance.
 
 |[[vitess-property-topic-prefix]]<<vitess-property-topic-prefix, `+topic.prefix+`>>
-|
+|No default
 |Topic prefix that provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
 The prefix should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
@@ -1230,19 +1230,19 @@ If you change the name value, after a restart, instead of continuing to emit eve
 ====
 
 |[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `+table.include.list+`>>
-|
+|No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _keyspace_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
 |[[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `+table.exclude.list+`>>
-|
+|No default
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _keyspace_._tableName_. Do not also set the `table.include.list` property.
 
 |[[vitess-property-column-include-list]]<<vitess-property-column-include-list, `+column.include.list+`>>
-|
+|No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
 |[[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `+column.exclude.list+`>>
-|
+|No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
 |[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `+tombstones.on.delete+`>>
@@ -1370,7 +1370,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
-|
+|No default
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
@@ -1384,7 +1384,7 @@ By default, no operations are skipped.
 |Control the interval between periodic gPRC keepalive pings for VStream. Defaults to `Long.MAX_VALUE` (disabled).
 
 |[[vitess-property-grpc-headers]]<<vitess-property-grpc-headers, `+vitess.grpc.headers+`>>
-|
+|No default
 |Specify a comma-separated list of gRPC headers. Defaults to empty. The format is: +
  +
 _key1:value1,key2:value2_,... +
@@ -1394,7 +1394,7 @@ For example, +
 `x-envoy-upstream-rq-timeout-ms:0,x-envoy-max-retries:2`
 
 |[[vitess-property-grpc-max-inbound-message-size]]<<vitess-property-grpc-max-inbound-message-size, `+vitess.grpc.max_inbound_message_size+`>>
-|
+|No default
 |Specify the maximum message size in bytes allowed to be received on the channel. +
  +
 Default is 4MiB
