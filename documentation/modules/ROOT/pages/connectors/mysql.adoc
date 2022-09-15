@@ -2972,11 +2972,11 @@ The following table describes the `signal` properties.
 |===
 |Property |Default |Description
 |[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
-|
+|No default
 |The name of the Kafka topic that the connector monitors for ad hoc signals.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
-|
+|No default
 |A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>

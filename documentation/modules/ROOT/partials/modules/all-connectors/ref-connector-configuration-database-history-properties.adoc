@@ -7,11 +7,11 @@ The following table describes the `schema.history.internal` properties for confi
 |===
 |Property |Default |Description
 |[[{context}-property-database-history-kafka-topic]]<<{context}-property-database-history-kafka-topic, `+schema.history.internal.kafka.topic+`>>
-|
+|No default
 |The full name of the Kafka topic where the connector stores the database schema history.
 
 |[[{context}-property-database-history-kafka-bootstrap-servers]]<<{context}-property-database-history-kafka-bootstrap-servers, `+schema.history.internal.kafka.bootstrap.servers+`>>
-|
+|No default
 |A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. This connection is used for retrieving the database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[{context}-property-database-history-kafka-recovery-poll-interval-ms]]<<{context}-property-database-history-kafka-recovery-poll-interval-ms, `+schema.history.internal.kafka.recovery.poll.interval.ms+`>>
