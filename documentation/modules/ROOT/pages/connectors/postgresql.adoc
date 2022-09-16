@@ -3012,7 +3012,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
 |[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
-|`20240`
+|`8192`
 |Positive integer value that specifies the maximum number of records that the blocking queue can hold.
 When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
 The blocking queue can provide backpressure for reading change events from the database
