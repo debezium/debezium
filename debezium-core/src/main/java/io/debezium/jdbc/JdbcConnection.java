@@ -43,7 +43,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -114,12 +113,10 @@ public class JdbcConnection implements AutoCloseable {
 
     private class ConnectionFactoryDecorator implements ConnectionFactory {
         private final ConnectionFactory defaultConnectionFactory;
-        private final Supplier<ClassLoader> classLoaderSupplier;
         private ConnectionFactory customConnectionFactory;
 
-        private ConnectionFactoryDecorator(ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
+        private ConnectionFactoryDecorator(ConnectionFactory connectionFactory) {
             this.defaultConnectionFactory = connectionFactory;
-            this.classLoaderSupplier = classLoaderSupplier;
         }
 
         @Override
@@ -326,18 +323,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param connectionFactory the connection factory; may not be null
      */
     public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
-        this(config, connectionFactory, null, null, openingQuoteCharacter, closingQuoteCharacter);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory.
-     *
-     * @param config the configuration; may not be null
-     * @param connectionFactory the connection factory; may not be null
-     */
-    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
-                          String closingQuoteCharacter) {
-        this(config, connectionFactory, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
+        this(config, connectionFactory, null, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -347,14 +333,13 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      * @param initialOperations the initial operations that should be run on each new connection; may be null
-     * @param classLoaderSupplier class loader supplier
      * @param openingQuotingChar the opening quoting character
      * @param closingQuotingChar the closing quoting character
      */
     protected JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
+                             String openingQuotingChar, String closingQuotingChar) {
         this.config = config;
-        this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
+        this.factory = new ConnectionFactoryDecorator(connectionFactory);
         this.initialOps = initialOperations;
         this.openingQuoteCharacter = openingQuotingChar;
         this.closingQuoteCharacter = closingQuotingChar;

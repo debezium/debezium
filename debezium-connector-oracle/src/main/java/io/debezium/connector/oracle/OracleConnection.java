@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -72,12 +71,12 @@ public class OracleConnection extends JdbcConnection {
 
     private static final String QUOTED_CHARACTER = "\"";
 
-    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier) {
-        this(config, classLoaderSupplier, true);
+    public OracleConnection(JdbcConfiguration config) {
+        this(config, true);
     }
 
-    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier, boolean showVersion) {
-        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
+    public OracleConnection(JdbcConfiguration config, boolean showVersion) {
+        super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());

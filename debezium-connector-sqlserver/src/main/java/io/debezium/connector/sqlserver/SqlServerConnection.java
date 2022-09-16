@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -120,12 +119,11 @@ public class SqlServerConnection extends JdbcConnection {
      *
      * @param config              {@link Configuration} instance, may not be null.
      * @param valueConverters     {@link SqlServerValueConverters} instance
-     * @param classLoaderSupplier class loader supplier
      * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
     public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
-                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
-        super(config, createConnectionFactory(), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+                               Set<Envelope.Operation> skippedOperations) {
+        super(config, createConnectionFactory(), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
@@ -165,6 +163,21 @@ public class SqlServerConnection extends JdbcConnection {
         this.optionRecompile = false;
     }
 
+    /**
+     * Creates a new connection using the supplied configuration.
+     *
+     * @param config              {@link Configuration} instance, may not be null.
+     * @param valueConverters     {@link SqlServerValueConverters} instance
+     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
+     * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
+     */
+    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
+                               Set<Envelope.Operation> skippedOperations, boolean optionRecompile) {
+        this(config, valueConverters, skippedOperations);
+
+        this.optionRecompile = optionRecompile;
+    }
+
     private boolean hasSkippedOperations(Set<Envelope.Operation> skippedOperations) {
         if (!skippedOperations.isEmpty()) {
             for (Envelope.Operation operation : skippedOperations) {
@@ -177,23 +190,6 @@ public class SqlServerConnection extends JdbcConnection {
             }
         }
         return false;
-    }
-
-    /**
-     * Creates a new connection using the supplied configuration.
-     *
-     * @param config              {@link Configuration} instance, may not be null.
-     * @param valueConverters     {@link SqlServerValueConverters} instance
-     * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
-     * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
-     */
-    public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
-                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations,
-                               boolean optionRecompile) {
-        this(config, valueConverters, classLoaderSupplier, skippedOperations);
-
-        this.optionRecompile = optionRecompile;
     }
 
     private static ConnectionFactory createConnectionFactory() {
