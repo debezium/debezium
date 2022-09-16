@@ -237,8 +237,7 @@ public class TestHelper {
 
     public static SqlServerConnection adminConnection() {
         return new SqlServerConnection(TestHelper.defaultJdbcConfig(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
-                Collections.emptySet());
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), Collections.emptySet());
     }
 
     public static SqlServerConnection testConnection() {
@@ -263,8 +262,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
         return new SqlServerConnection(config,
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
-                Collections.emptySet());
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), Collections.emptySet());
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
@@ -274,7 +272,7 @@ public class TestHelper {
                 .build());
 
         return new SqlServerConnection(config,
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                 Collections.emptySet(), true);
     }
 

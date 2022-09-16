@@ -123,7 +123,7 @@ public class MySqlTestConnection extends JdbcConnection {
      * @param config the configuration; may not be null
      */
     public MySqlTestConnection(JdbcConfiguration config) {
-        super(addDefaultSettings(config), FACTORY, null, null, "`", "`");
+        super(addDefaultSettings(config), FACTORY, "`", "`");
     }
 
     public MySqlVersion getMySqlVersion() {
