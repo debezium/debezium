@@ -108,6 +108,54 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     @Test
+    public void verifyNonAsciiContentHandledCorrectly() throws Exception {
+
+        appendLinesToSource("Ñ ñ", NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+
+        // create an engine with our custom class
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    for (ChangeEvent<String, String> record : records) {
+                        assertThat(record.value()).contains("Ñ");
+                    }
+
+                    for (ChangeEvent<String, String> r : records) {
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ..
+        stopConnector();
+
+    }
+
+    @Test
     public void interruptedTaskShutsDown() throws Exception {
 
         Configuration config = Configuration.create()
@@ -570,8 +618,21 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         linesAdded += numberOfLines;
     }
 
+    protected void appendLinesToSource(String linePrefix, int numberOfLines) throws IOException {
+        CharSequence[] lines = new CharSequence[numberOfLines];
+        for (int i = 0; i != numberOfLines; ++i) {
+            lines[i] = generateLine(linePrefix, linesAdded + i + 1);
+        }
+        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
+        linesAdded += numberOfLines;
+    }
+
     protected String generateLine(int lineNumber) {
-        return "Generated line number " + lineNumber;
+        return generateLine("Generated line number ", lineNumber);
+    }
+
+    protected String generateLine(String linePrefix, int lineNumber) {
+        return linePrefix + lineNumber;
     }
 
     protected void consumeLines(int numberOfLines) throws InterruptedException {
