@@ -7,7 +7,6 @@ package io.debezium.config;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Properties;
-import java.util.function.Supplier;
 
 /**
  * Instantiates given classes reflectively.
@@ -21,8 +20,8 @@ public class Instantiator {
      *
      * @return The newly created instance or {@code null} if no class name was given
      */
-    public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier) {
-        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, null, null);
+    public static <T> T getInstance(String className) {
+        return getInstanceWithProvidedConstructorType(className, null, null);
     }
 
     /**
@@ -32,9 +31,8 @@ public class Instantiator {
      *
      * @return The newly created instance or {@code null} if no class name was given
      */
-    public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
-                                    Configuration configuration) {
-        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Configuration.class, configuration);
+    public static <T> T getInstance(String className, Configuration configuration) {
+        return getInstanceWithProvidedConstructorType(className, Configuration.class, configuration);
     }
 
     /**
@@ -44,17 +42,14 @@ public class Instantiator {
      *
      * @return The newly created instance or {@code null} if no class name was given
      */
-    public static <T> T getInstanceWithProperties(String className, Supplier<ClassLoader> classloaderSupplier,
-                                                  Properties prop) {
-        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Properties.class, prop);
+    public static <T> T getInstanceWithProperties(String className, Properties prop) {
+        return getInstanceWithProvidedConstructorType(className, Properties.class, prop);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
-                                                                  C constructorValue) {
+    public static <T, C> T getInstanceWithProvidedConstructorType(String className, Class<C> constructorType, C constructorValue) {
         if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
-                    : Configuration.class.getClassLoader();
+            ClassLoader classloader = Thread.currentThread().getContextClassLoader();
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()

@@ -976,7 +976,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
                         "io.debezium.connector.oracle.xstream.XStreamAdapter",
-                        StreamingAdapter.class::getClassLoader,
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
@@ -995,7 +994,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
                         "io.debezium.connector.oracle.logminer.LogMinerAdapter",
-                        StreamingAdapter.class::getClassLoader,
                         OracleConnectorConfig.class,
                         connectorConfig);
             }

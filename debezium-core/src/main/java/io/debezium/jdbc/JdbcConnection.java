@@ -128,8 +128,7 @@ public class JdbcConnection implements AutoCloseable {
                 return defaultConnectionFactory.connect(config);
             }
             if (customConnectionFactory == null) {
-                customConnectionFactory = config.getInstance(JdbcConfiguration.CONNECTION_FACTORY_CLASS,
-                        ConnectionFactory.class, classLoaderSupplier);
+                customConnectionFactory = config.getInstance(JdbcConfiguration.CONNECTION_FACTORY_CLASS, ConnectionFactory.class);
             }
             return customConnectionFactory.connect(config);
         }
