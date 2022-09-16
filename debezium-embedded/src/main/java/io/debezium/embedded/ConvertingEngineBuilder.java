@@ -6,6 +6,7 @@
 package io.debezium.embedded;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Properties;
 import java.util.function.Consumer;
@@ -173,8 +174,8 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
                 return isFormat(formatKey, Json.class) && isFormat(formatValue, Json.class)
                         || isFormat(formatValue, CloudEvents.class)
                                 ? (R) new EmbeddedEngineChangeEvent<String, String>(
-                                        key != null ? new String(key) : null,
-                                        value != null ? new String(value) : null,
+                                        key != null ? new String(key, StandardCharsets.UTF_8) : null,
+                                        value != null ? new String(value, StandardCharsets.UTF_8) : null,
                                         record)
                                 : (R) new EmbeddedEngineChangeEvent<byte[], byte[]>(
                                         key,
