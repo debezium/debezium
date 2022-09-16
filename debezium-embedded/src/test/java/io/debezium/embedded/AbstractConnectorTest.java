@@ -1079,9 +1079,9 @@ public abstract class AbstractConnectorTest implements Testing {
 
         final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName(), () -> Thread.currentThread().getContextClassLoader());
+        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
         keyConverter.configure(internalConverterConfig, true);
-        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName(), () -> Thread.currentThread().getContextClassLoader());
+        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
         valueConverter.configure(internalConverterConfig, false);
 
         // Create the worker config, adding extra fields that are required for validation of a worker config

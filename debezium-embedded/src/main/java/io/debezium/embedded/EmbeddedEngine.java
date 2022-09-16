@@ -580,9 +580,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         assert this.classLoader != null;
         assert this.clock != null;
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        keyConverter = Instantiator.getInstance(JsonConverter.class.getName(), () -> Thread.currentThread().getContextClassLoader());
+        keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
         keyConverter.configure(internalConverterConfig, true);
-        valueConverter = Instantiator.getInstance(JsonConverter.class.getName(), () -> Thread.currentThread().getContextClassLoader());
+        valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
         valueConverter.configure(internalConverterConfig, false);
 
         transformations = new Transformations(config);
@@ -695,7 +695,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 if (offsetCommitPolicy == null) {
                     try {
                         offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
-                                () -> getClass().getClassLoader(), config.asProperties());
+                                config.asProperties());
                     }
                     catch (Throwable t) {
                         fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);

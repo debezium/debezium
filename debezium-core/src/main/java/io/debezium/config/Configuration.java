@@ -1441,21 +1441,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(String key, Class<T> type) {
-        return getInstance(key, type, () -> Thread.currentThread().getContextClassLoader());
-    }
-
-    /**
-     * Get an instance of the class given by the value in the configuration associated with the given key.
-     *
-     * @param key the key for the configuration property
-     * @param type the Class of which the resulting object is expected to be an instance of; may not be null
-     * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
-     *            class' ClassLoader should be used
-     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
-     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
-     */
-    default <T> T getInstance(String key, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        return Instantiator.getInstance(getString(key), classloaderSupplier, null);
+        return Instantiator.getInstance(getString(key));
     }
 
     /**
@@ -1469,19 +1455,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(String key, Class<T> clazz, Configuration configuration) {
-        return Instantiator.getInstance(getString(key), () -> Thread.currentThread().getContextClassLoader(), configuration);
-    }
-
-    /**
-     * Get an instance of the class given by the value in the configuration associated with the given field.
-     *
-     * @param field the field for the configuration property
-     * @param clazz the Class of which the resulting object is expected to be an instance of; may not be null
-     * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
-     *         configuration but the value could not be converted to an existing class with a zero-argument constructor
-     */
-    default <T> T getInstance(Field field, Class<T> clazz) {
-        return getInstance(field, clazz, () -> Thread.currentThread().getContextClassLoader());
+        return Instantiator.getInstance(getString(key), configuration);
     }
 
     /**
@@ -1489,13 +1463,11 @@ public interface Configuration {
      *
      * @param field the field for the configuration property
      * @param type the Class of which the resulting object is expected to be an instance of; may not be null
-     * @param classloaderSupplier the supplier of the ClassLoader to be used to load the resulting class; may be null if this
-     *            class' ClassLoader should be used
      * @return the new instance, or null if there is no such key-value pair in the configuration or if there is a key-value
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
-    default <T> T getInstance(Field field, Class<T> type, Supplier<ClassLoader> classloaderSupplier) {
-        return Instantiator.getInstance(getString(field), classloaderSupplier, null);
+    default <T> T getInstance(Field field, Class<T> type) {
+        return Instantiator.getInstance(getString(field));
     }
 
     /**
@@ -1509,7 +1481,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz, Configuration configuration) {
-        return Instantiator.getInstance(getString(field), () -> Thread.currentThread().getContextClassLoader(), configuration);
+        return Instantiator.getInstance(getString(field), configuration);
     }
 
     /**
@@ -1523,7 +1495,7 @@ public interface Configuration {
      *         configuration but the value could not be converted to an existing class with a zero-argument constructor
      */
     default <T> T getInstance(Field field, Class<T> clazz, Properties props) {
-        return Instantiator.getInstanceWithProperties(getString(field), () -> Thread.currentThread().getContextClassLoader(), props);
+        return Instantiator.getInstanceWithProperties(getString(field), props);
     }
 
     /**
