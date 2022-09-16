@@ -693,8 +693,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
                 // Set up the offset commit policy ...
                 if (offsetCommitPolicy == null) {
-                    offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
-                            () -> getClass().getClassLoader(), config.asProperties());
+                    try {
+                        offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
+                                () -> getClass().getClassLoader(), config.asProperties());
+                    }
+                    catch (Throwable t) {
+                        fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);
+                        return;
+                    }
                 }
 
                 OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,

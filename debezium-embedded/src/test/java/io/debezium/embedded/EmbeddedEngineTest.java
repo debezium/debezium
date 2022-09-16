@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
@@ -57,6 +58,7 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
+import io.debezium.util.Throwables;
 
 /**
  * @author Randall Hauch
@@ -642,6 +644,37 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
             ++nextConsumedLineNumber;
         },
                 false);
+    }
+
+    @Test
+    @FixFor("DBZ-5583")
+    public void verifyBadCommitPolicyClassName() {
+
+        Configuration config = Configuration.create()
+                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngine.OFFSET_COMMIT_POLICY, "badclassname") // force ClassNotFoundException
+                .build();
+
+        final AtomicBoolean exceptionCaught = new AtomicBoolean(false);
+
+        engine = EmbeddedEngine.create()
+                .using(config)
+                .notifying((records, committer) -> {
+                })
+                .using(this.getClass().getClassLoader())
+                .using((success, message, error) -> {
+                    Throwable rootCause = Throwables.getRootCause(error);
+                    assertThat(rootCause).isInstanceOf(ClassNotFoundException.class);
+                    assertThat(rootCause.getMessage()).contains("badclassname");
+                    exceptionCaught.set(true);
+                })
+                .build();
+
+        engine.run();
+
+        assertThat(exceptionCaught.get()).isTrue();
     }
 }
 
