@@ -3430,6 +3430,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4842")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
     public void shouldRestartAfterCapturedTableIsDroppedWhileConnectorDown() throws Exception {
         TestHelper.dropTable(connection, "dbz4842");
         try {
