@@ -82,6 +82,7 @@ Christopher Burch
 Christopher Sang
 Chuck Ha
 Claus Guttesen
+Claus Ibsen
 Clément Loiselet
 Cliff Wheadon
 Collin Van Dyck
