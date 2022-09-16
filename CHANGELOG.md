@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Beta2
+September 16th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12392459)
+
+### New features since 2.0.0.Beta1
+
+* Support binlog compression for MySQL [DBZ-2663](https://issues.redhat.com/browse/DBZ-2663)
+* Limit log output for "Streaming requested from LSN" warnings [DBZ-3007](https://issues.redhat.com/browse/DBZ-3007)
+* Redis Sink - Change the format of the message sent to the stream [DBZ-4441](https://issues.redhat.com/browse/DBZ-4441)
+* Debezium UI frontend should use new URLs and new JSON schema descriptors [DBZ-4619](https://issues.redhat.com/browse/DBZ-4619)
+* Provide a signal to pause/resume a running incremental snapshot [DBZ-4727](https://issues.redhat.com/browse/DBZ-4727)
+* support mongodb connection string as configuration option [DBZ-4733](https://issues.redhat.com/browse/DBZ-4733)
+* Update Readme on github for Cassandra 4.x support [DBZ-4839](https://issues.redhat.com/browse/DBZ-4839)
+* Debezium Server verifies existence and format of the config file [DBZ-5116](https://issues.redhat.com/browse/DBZ-5116)
+* Include Oracle Debezium Connector in Debezium Server distribution [DBZ-5122](https://issues.redhat.com/browse/DBZ-5122)
+* Smart Backfills | Ability to backfill selective data [DBZ-5327](https://issues.redhat.com/browse/DBZ-5327)
+* Support multiple tasks in vitess connector [DBZ-5382](https://issues.redhat.com/browse/DBZ-5382)
+* Enhancing Cassandra 4 Connector to read incremental changes and not wait for Commit Log file to be marked complete [DBZ-5410](https://issues.redhat.com/browse/DBZ-5410)
+* Unsupported non-relational tables should be gracefully skipped by the connector during streaming [DBZ-5441](https://issues.redhat.com/browse/DBZ-5441)
+* Support incremental snapshot stop-snapshot signal sourced from Kafka topic [DBZ-5453](https://issues.redhat.com/browse/DBZ-5453)
+* Upgrade Kafka client to 3.2.1 [DBZ-5463](https://issues.redhat.com/browse/DBZ-5463)
+* Restart SQL Server task on "Socket closed" exception [DBZ-5478](https://issues.redhat.com/browse/DBZ-5478)
+* Augment a uniqueness key filed/value in regex topic naming strategy [DBZ-5480](https://issues.redhat.com/browse/DBZ-5480)
+* Support wait/nowait clause in mariadb [DBZ-5485](https://issues.redhat.com/browse/DBZ-5485)
+
+
+### Breaking changes since 2.0.0.Beta1
+
+* Implement object size calculator based on object schema [DBZ-2766](https://issues.redhat.com/browse/DBZ-2766)
+* Avoid unnamed Struct schemas [DBZ-4365](https://issues.redhat.com/browse/DBZ-4365)
+* Revisit the parameter naming [DBZ-5043](https://issues.redhat.com/browse/DBZ-5043)
+* Introduce and centralize message schema versioning [DBZ-5044](https://issues.redhat.com/browse/DBZ-5044)
+* Reverse the logic of handling retriable errors - retry by default [DBZ-5244](https://issues.redhat.com/browse/DBZ-5244)
+
+
+### Fixes since 2.0.0.Beta1
+
+* Source info of incremental snapshot events exports wrong data [DBZ-4329](https://issues.redhat.com/browse/DBZ-4329)
+* "No maximum LSN recorded" log message can be spammed on low-activity databases [DBZ-4631](https://issues.redhat.com/browse/DBZ-4631)
+* Redis Sink config properties are not passed to DB history  [DBZ-5035](https://issues.redhat.com/browse/DBZ-5035)
+* HTTP sink not retrying failing requests [DBZ-5307](https://issues.redhat.com/browse/DBZ-5307)
+* Translation from mongodb document to kafka connect schema fails when nested arrays contain no elements [DBZ-5434](https://issues.redhat.com/browse/DBZ-5434)
+* Duplicate SCNs on same thread Oracle RAC mode incorrectly processed [DBZ-5439](https://issues.redhat.com/browse/DBZ-5439)
+* Typo in postgresql document. [DBZ-5450](https://issues.redhat.com/browse/DBZ-5450)
+* Unit test fails on Windows [DBZ-5452](https://issues.redhat.com/browse/DBZ-5452)
+* Missing the regex properties validation before start connector of DefaultRegexTopicNamingStrategy  [DBZ-5471](https://issues.redhat.com/browse/DBZ-5471)
+* Create Index DDL fails to parse when using TABLESPACE clause with quoted identifier [DBZ-5472](https://issues.redhat.com/browse/DBZ-5472)
+* Outbox doesn't check array consistecy properly when it detemines its schema [DBZ-5475](https://issues.redhat.com/browse/DBZ-5475)
+* Misleading statistics written to the log [DBZ-5476](https://issues.redhat.com/browse/DBZ-5476)
+* Debezium connector task didn't retry when failover in mongodb 5 [DBZ-5479](https://issues.redhat.com/browse/DBZ-5479)
+* ReadOnlyIncrementalSnapshotIT testStopSnapshotKafkaSignal randomly fails [DBZ-5483](https://issues.redhat.com/browse/DBZ-5483)
+* Better error reporting for signal table failures [DBZ-5484](https://issues.redhat.com/browse/DBZ-5484)
+
+
+### Other changes since 2.0.0.Beta1
+
+* Add signal table automatically to include list [DBZ-3293](https://issues.redhat.com/browse/DBZ-3293)
+* No documentation for snapshot.include.collection.list property for Db2 connector [DBZ-4345](https://issues.redhat.com/browse/DBZ-4345)
+* Deprecate internal key/value converter options  [DBZ-4617](https://issues.redhat.com/browse/DBZ-4617)
+* Run system testsuite inside OpenShift  [DBZ-5165](https://issues.redhat.com/browse/DBZ-5165)
+* Upgrade SQL Server driver to 10.2.1.jre8 [DBZ-5290](https://issues.redhat.com/browse/DBZ-5290)
+* Rewrite oracle tests pipeline job to matrix job [DBZ-5412](https://issues.redhat.com/browse/DBZ-5412)
+* Debezium on ROSA sanity testing [DBZ-5416](https://issues.redhat.com/browse/DBZ-5416)
+* Update link format in shared tutorial file [DBZ-5422](https://issues.redhat.com/browse/DBZ-5422)
+* Deprecate legacy topic selector for all connectors [DBZ-5457](https://issues.redhat.com/browse/DBZ-5457)
+* Remove community conditionalization in signaling doc for Oracle incremental and ad hoc snapshots content [DBZ-5458](https://issues.redhat.com/browse/DBZ-5458)
+* Remove the dependency of JdbcConnection on DatabaseSchema [DBZ-5470](https://issues.redhat.com/browse/DBZ-5470)
+* Remove SQL Server SourceTimestampMode [DBZ-5477](https://issues.redhat.com/browse/DBZ-5477)
+
+
+
 ## 2.0.0.Beta1
 July 26th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12391139)
 
