@@ -62,7 +62,8 @@ def jiraGET(path, params = [:]) {
 
 def unresolvedIssuesFromJira() {
     jiraGET('search', [
-        'jql': "project=$JIRA_PROJECT AND fixVersion=$version ORDER BY key ASC"
+        'jql': "project=$JIRA_PROJECT AND fixVersion=$version ORDER BY key ASC",
+        'maxResults': '500'
     ]).issues.collect { ['key': it.key, 'title': it.fields.summary, 'type': it.fields.issuetype.name, 'labels': it.fields.labels] }
 }
 
