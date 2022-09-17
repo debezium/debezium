@@ -79,7 +79,7 @@ that enable SQL Replication in Db2. A capture agent:
 
 The {prodname} connector uses a SQL interface to query change-data tables for  change events.
 
-The database administrator must put the tables for which you want to capture changes into capture mode. For convenience and for automating testing, there are xref:{link-db2-connector}#managing-debezium-db2-connectors[{prodname} user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
+The database administrator must put the tables for which you want to capture changes into capture mode. For convenience and for automating testing, there are xref:{link-db2-connector}#db2-management[{prodname} user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
 
 * Start, stop, and reinitialize the ASN agent
 * Put tables into capture mode
@@ -1564,7 +1564,7 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 .Additional resource
 
-xref:{link-db2-connector}#managing-debezium-db2-connectors[Reference table for {prodname} Db2 management UDFs]
+xref:{link-db2-connector}#db2-management[Reference table for {prodname} Db2 management UDFs]
 
 // Type: concept
 // ModuleID: effect-of-db2-capture-agent-configuration-on-server-load-and-latency

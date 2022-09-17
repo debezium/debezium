@@ -169,7 +169,7 @@ If no custom groups are registered, or if the `include` patterns for any registe
 then Kafka Connect uses the configuration of the `default` group to create topics.
 
 ifdef::community[]
-See xref:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} topics] in the
+See xref:{link-install-debezium}#configuring-debezium-topics[Configuring {prodname} topics] in the
 {prodname} installation guide on generic topic configuration considerations.
 endif::community[]
 
