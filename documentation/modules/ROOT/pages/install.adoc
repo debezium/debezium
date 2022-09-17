@@ -77,7 +77,7 @@ endif::[]
 
 To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
 xref:connectors/mysql.adoc[MySQL Connector],
-xref:connectors/postgresql.adoc#postgresql-deploying-a-connector[Postgres Connector],
+xref:connectors/postgresql.adoc#postgresql-deployment[Postgres Connector],
 xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
 xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connector],
 xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
@@ -90,6 +90,7 @@ for each inserted, updated, and deleted row or document.
 
 See the {prodname} xref:connectors/index.adoc[Connectors] documentation for more information.
 
+[[configuring-debezium-topics]]
 == Configuring {prodname} Topics
 {prodname} uses (either via Kafka Connect or directly) multiple topics for storing data.
 The topics have to be either created by an administrator or by Kafka itself by enabling auto-creation for topics.

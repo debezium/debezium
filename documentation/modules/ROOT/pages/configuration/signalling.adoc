@@ -124,7 +124,7 @@ You create a signaling table by submitting a standard SQL DDL query to the sourc
 
 .Procedure
 
-* Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
+* Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
  +
 `CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);` +
 
@@ -231,7 +231,7 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 
 * xref:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
 ifdef::community[]
-* xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshot[MongoDB connector ad hoc snapshots]
+* xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshots[MongoDB connector ad hoc snapshots]
 endif::community[]
 * xref:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
 * xref:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
