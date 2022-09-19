@@ -50,6 +50,9 @@ public class Instantiator {
     public static <T, C> T getInstanceWithProvidedConstructorType(String className, Class<C> constructorType, C constructorValue) {
         if (className != null) {
             ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+            if (classloader == null) {
+                classloader = Configuration.class.getClassLoader();
+            }
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()
