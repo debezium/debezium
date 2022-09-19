@@ -91,7 +91,9 @@ public interface ReplicationConnection extends AutoCloseable {
         return new PostgresReplicationConnection.ReplicationConnectionBuilder(config);
     }
 
-    public void reconnect() throws SQLException;
+    void reconnect() throws SQLException;
+
+    boolean isSlotAvailable(Lsn startLsn) throws SQLException;
 
     /**
      * A builder for {@link ReplicationConnection}

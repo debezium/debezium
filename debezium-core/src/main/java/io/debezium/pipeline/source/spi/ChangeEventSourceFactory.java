@@ -23,7 +23,7 @@ public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetC
      * Returns a snapshot change event source that may emit change events for schema and/or data changes. Depending on
      * the snapshot mode, a given source may decide to do nothing at all if a previous offset is given. In this case it
      * should return that given offset context from its
-     * {@link StreamingChangeEventSource#execute(ChangeEventSource.ChangeEventSourceContext, Partition, io.debezium.pipeline.spi.OffsetContext)}
+     * {@link StreamingChangeEventSource#execute(ChangeEventSource.ChangeEventSourceContext, Partition, OffsetContext)}
      * method.
      *
      * @param snapshotProgressListener

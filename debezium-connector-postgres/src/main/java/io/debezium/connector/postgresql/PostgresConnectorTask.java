@@ -24,19 +24,20 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -116,19 +117,42 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             if (previousOffset == null) {
                 LOGGER.info("No previous offset found");
-                // if we have no initial offset, indicate that to Snapshotter by passing null
-                snapshotter.init(connectorConfig, null, slotInfo);
             }
             else {
                 LOGGER.info("Found previous offset {}", previousOffset);
-                snapshotter.init(connectorConfig, previousOffset.asOffsetState(), slotInfo);
             }
+            // if we have no initial offset, indicate that to Snapshotter by passing null
+            snapshotter.configure(connectorConfig.getConfig().asProperties(), previousOffset);
 
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
                 replicationConnection = createReplicationConnection(this.taskContext,
                         doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
+
+                // If the slot start lsn is not available it is necessary to reexecute snapshot
+                if (slotInfo != null && previousOffset != null) {
+                    final Lsn startLsn = previousOffset.lastCompletelyProcessedLsn() != null ? previousOffset.lastCompletelyProcessedLsn() : previousOffset.lsn();
+                    try {
+                        if (!replicationConnection.isSlotAvailable(startLsn)) {
+                            if (!snapshotter.shouldSnapshotOnDataError()) {
+                                throw new DebeziumException("The connector is trying to read slot starting at " + startLsn + ", but this is no longer "
+                                        + "available on the server. Reconfigure the connector to use a snapshot when needed.");
+                            }
+                            else {
+                                LOGGER.warn(
+                                        "The connector is trying to read slot starting at '{}', but this is no longer available on the server. Forcing the snapshot execution as it is allowed by the configuration.",
+                                        startLsn);
+                            }
+                            previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+                            snapshotter.configure(connectorConfig.getConfig().asProperties(), null);
+                        }
+                        replicationConnection.reconnect();
+                    }
+                    catch (SQLException ex) {
+                        throw new DebeziumException(ex);
+                    }
+                }
 
                 // we need to create the slot before we start streaming if it doesn't exist
                 // otherwise we can't stream back changes happening while the snapshot is taking place
@@ -236,7 +260,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(doSnapshot, jdbcConnection);
+                replicationConnection = taskContext.createReplicationConnection(doSnapshot, jdbcConnection);
+                break;
             }
             catch (SQLException ex) {
                 retryCount++;

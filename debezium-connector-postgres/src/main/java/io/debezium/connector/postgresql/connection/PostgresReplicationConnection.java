@@ -424,36 +424,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private ReplicationStream createReplicationStream(final Lsn startLsn, WalPositionLocator walPosition) throws SQLException, InterruptedException {
-        PGReplicationStream s;
-
-        try {
-            try {
-                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
-            }
-            catch (PSQLException e) {
-                LOGGER.debug("Could not register for streaming, retrying without optional options", e);
-
-                // re-init the slot after a failed start of slot, as this
-                // may have closed the slot
-                if (useTemporarySlot()) {
-                    initReplicationSlot();
-                }
-
-                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
-            }
-        }
-        catch (PSQLException e) {
-            if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
-                LOGGER.error("Cannot rewind to last processed WAL position", e);
-                throw new ConnectException(
-                        "The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
-            }
-            else {
-                throw e;
-            }
-        }
-
-        final PGReplicationStream stream = s;
+        final PGReplicationStream stream = createPGReplicationStream(startLsn);
 
         return new ReplicationStream() {
 
@@ -572,6 +543,63 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return startLsn;
             }
         };
+    }
+
+    private PGReplicationStream createPGReplicationStream(final Lsn startLsn) throws SQLException, InterruptedException {
+        PGReplicationStream s;
+
+        try {
+            try {
+                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
+            }
+            catch (PSQLException e) {
+                LOGGER.debug("Could not register for streaming, retrying without optional options", e);
+
+                // re-init the slot after a failed start of slot, as this
+                // may have closed the slot
+                if (useTemporarySlot()) {
+                    initReplicationSlot();
+                }
+
+                s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
+            }
+        }
+        catch (PSQLException e) {
+            if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+                LOGGER.error("Cannot rewind to last processed WAL position", e);
+                throw new ConnectException(
+                        "The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgresSQL parameter wal_keep_segments = 0.");
+            }
+            else {
+                throw e;
+            }
+        }
+
+        return s;
+    }
+
+    @Override
+    public boolean isSlotAvailable(Lsn startLsn) throws SQLException {
+        boolean slotAvailable = true;
+        PGReplicationStream s = null;
+        try {
+            s = createPGReplicationStream(startLsn);
+        }
+        catch (Exception e) {
+            if (e instanceof ConnectException && e.getMessage().startsWith("The offset to start reading from has been removed from the database write-ahead log.")) {
+                // The startLsn has been removed from the database write-ahead log.
+                slotAvailable = false;
+            }
+            else {
+                throw new SQLException(e);
+            }
+        }
+        finally {
+            if (s != null) {
+                s.close();
+            }
+        }
+        return slotAvailable;
     }
 
     private PGReplicationStream startPgReplicationStream(final Lsn lsn,

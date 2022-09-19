@@ -10,14 +10,17 @@ import java.util.List;
 import java.util.Optional;
 
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTestSnapshot {
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
-        if (tableId.schema().equals("s1") && tableId.table().equals("a")) {
-            return super.buildSnapshotQuery(tableId, snapshotSelectColumns);
+    public Optional<String> buildSnapshotQuery(DataCollectionId id, List<String> snapshotSelectColumns, char quotingChar) {
+        if (id instanceof TableId) {
+            TableId tableId = (TableId) id;
+            if (tableId.schema().equals("s1") && tableId.table().equals("a")) {
+                return super.buildSnapshotQuery(tableId, snapshotSelectColumns, quotingChar);
+            }
         }
-
         return Optional.empty();
     }
 }

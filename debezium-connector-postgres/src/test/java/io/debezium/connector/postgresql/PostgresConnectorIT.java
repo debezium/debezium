@@ -74,7 +74,6 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
-import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -94,6 +93,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.AbstractSnapshotter;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -1690,7 +1690,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1437")
     public void shouldPeformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor(InitialOnlySnapshotter.class);
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractSnapshotter.class);
 
         TestHelper.dropDefaultReplicationSlot();
 

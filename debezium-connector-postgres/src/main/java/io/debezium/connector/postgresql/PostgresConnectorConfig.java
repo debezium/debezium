@@ -32,16 +32,17 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
-import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
-import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
-import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
-import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.snapshot.AlwaysSnapshotter;
+import io.debezium.snapshot.InitialOnlySnapshotter;
+import io.debezium.snapshot.InitialSnapshotter;
+import io.debezium.snapshot.NeverSnapshotter;
+import io.debezium.snapshot.WhenNeededSnapshotter;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Strings;
 
 /**
@@ -181,6 +182,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed", (c) -> new WhenNeededSnapshotter()),
+
+        /**
          * Always perform a snapshot when starting.
          */
         ALWAYS("always", (c) -> new AlwaysSnapshotter()),
@@ -203,9 +209,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
          */
-        CUSTOM("custom", (c) -> {
-            return c.getInstance(SNAPSHOT_MODE_CLASS, Snapshotter.class);
-        });
+        CUSTOM("custom", (c) -> c.getInstance(SNAPSHOT_MODE_CLASS, Snapshotter.class));
 
         @FunctionalInterface
         public interface SnapshotterBuilder {
@@ -257,6 +261,69 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SnapshotMode parse(String value, String defaultValue) {
             SnapshotMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * This mode will lock in ACCESS SHARE MODE to avoid concurrent schema changes during the snapshot, and
+         * this does not prevent writes to the table, but prevents changes to the table's schema.
+         */
+        SHARED("shared"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.
+         * This mode should be used carefully only when no schema changes are to occur.
+         */
+        NONE("none");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean usesLocking() {
+            return !value.equals(NONE.value);
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
@@ -711,7 +778,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
+                if (config.getString(SNAPSHOT_MODE).equalsIgnoreCase("custom") && config.getString(field).isEmpty()) {
                     output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
                     return 1;
                 }
@@ -720,6 +787,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader). "
                             + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
+
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+            .withDisplayName("Snapshot locking mode")
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The 'shared' "
+                    + "which means the connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot "
+                    + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                    + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
+                    + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
+                    + "snapshot is taken.");
 
     /**
      * A comma-separated list of regular expressions that match the prefix of logical decoding messages to be excluded
@@ -847,6 +927,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
+    private final SnapshotLockingMode snapshotLockingMode;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -864,6 +945,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
     }
 
     protected String hostname() {
@@ -942,6 +1024,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode.getSnapshotter(getConfig());
     }
 
+    public SnapshotLockingMode getSnapshotLockingMode() {
+        return this.snapshotLockingMode;
+    }
+
     protected boolean skipRefreshSchemaOnMissingToastableData() {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
@@ -1001,6 +1087,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_MODE_CLASS,
+                    SNAPSHOT_LOCKING_MODE,
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,

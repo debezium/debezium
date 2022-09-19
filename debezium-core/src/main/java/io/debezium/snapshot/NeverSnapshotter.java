@@ -3,28 +3,29 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.snapshot;
+package io.debezium.snapshot;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.relational.TableId;
+import io.debezium.common.annotation.Incubating;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.snapshot.Snapshotter;
 
-public class NeverSnapshotter implements Snapshotter {
+@Incubating
+public class NeverSnapshotter implements Snapshotter<OffsetContext> {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(NeverSnapshotter.class);
 
     @Override
-    public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
-        if (sourceInfo != null && sourceInfo.snapshotInEffect()) {
+    public void configure(Properties properties, OffsetContext offsetContext) {
+        if (offsetContext != null && offsetContext.isSnapshotRunning()) {
             String msg = "The connector previously stopped while taking a snapshot, but now the connector is configured "
                     + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.";
             LOGGER.error(msg);
@@ -36,17 +37,37 @@ public class NeverSnapshotter implements Snapshotter {
     }
 
     @Override
-    public boolean shouldStream() {
-        return true;
-    }
-
-    @Override
     public boolean shouldSnapshot() {
         return false;
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
+    public boolean includeSchema() {
+        return false;
+    }
+
+    @Override
+    public boolean includeData() {
+        return false;
+    }
+
+    @Override
+    public boolean shouldStream() {
+        return true;
+    }
+
+    @Override
+    public boolean shouldSnapshotOnSchemaError() {
+        return false;
+    }
+
+    @Override
+    public boolean shouldSnapshotOnDataError() {
+        return false;
+    }
+
+    @Override
+    public Optional<String> buildSnapshotQuery(DataCollectionId id, List<String> snapshotSelectColumns, char quotingChar) {
         throw new UnsupportedOperationException("'never' snapshot mode cannot build queries");
     }
 }

@@ -7,13 +7,13 @@ package io.debezium.connector.postgresql;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotCreationResult;
-import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.snapshot.Snapshotter;
 
 /**
  * This is a small class used in PostgresConnectorIT to test a custom snapshot
@@ -21,17 +21,27 @@ import io.debezium.relational.TableId;
  * It is tightly coupled to the test there, but needs to be placed here in order
  * to allow for class loading to work
  */
-public class CustomTestSnapshot implements Snapshotter {
+public class CustomTestSnapshot implements Snapshotter<OffsetContext> {
 
     private boolean hasState;
 
     @Override
-    public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
-        hasState = (sourceInfo != null);
+    public void configure(Properties properties, OffsetContext offsetContext) {
+        hasState = (offsetContext != null);
     }
 
     @Override
     public boolean shouldSnapshot() {
+        return true;
+    }
+
+    @Override
+    public boolean includeSchema() {
+        return true;
+    }
+
+    @Override
+    public boolean includeData() {
         return true;
     }
 
@@ -41,26 +51,29 @@ public class CustomTestSnapshot implements Snapshotter {
     }
 
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
-        if (!hasState && tableId.schema().equals("s2")) {
-            return Optional.empty();
-        }
-        else {
-            String query = snapshotSelectColumns.stream()
-                    .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toDoubleQuotedString()));
-
-            return Optional.of(query);
-        }
+    public boolean shouldSnapshotOnSchemaError() {
+        return false;
     }
 
     @Override
-    public String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
-        if (newSlotInfo != null) {
-            String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
-            return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
+    public boolean shouldSnapshotOnDataError() {
+        return false;
+    }
+
+    @Override
+    public Optional<String> buildSnapshotQuery(DataCollectionId id, List<String> snapshotSelectColumns, char quotingChar) {
+        if (id instanceof TableId) {
+            TableId tableId = (TableId) id;
+            if (!hasState && tableId.schema().equals("s2")) {
+                return Optional.empty();
+            }
+            else {
+                String query = snapshotSelectColumns.stream()
+                        .collect(Collectors.joining(", ", "SELECT ", " FROM " + tableId.toQuotedString(quotingChar)));
+
+                return Optional.of(query);
+            }
         }
-        else {
-            return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
-        }
+        return Optional.empty();
     }
 }

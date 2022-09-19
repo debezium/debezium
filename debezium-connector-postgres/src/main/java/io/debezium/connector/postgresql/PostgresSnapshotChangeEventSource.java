@@ -19,13 +19,13 @@ import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 
 public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> {
@@ -105,12 +105,20 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
                                                RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
-        final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
-        final Optional<String> lockStatement = snapshotter.snapshotTableLockingStatement(lockTimeout, snapshotContext.capturedTables);
-
-        if (lockStatement.isPresent()) {
+        if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+            final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
+            String lineSeparator = System.lineSeparator();
+            StringBuilder statements = new StringBuilder();
+            statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
+            // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
+            // this does not prevent writes to the table, but prevents changes to the table's schema....
+            // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
+            snapshotContext.capturedTables.forEach(tableId -> statements.append("LOCK TABLE ")
+                    .append(tableId.toDoubleQuotedString())
+                    .append(" IN ACCESS SHARE MODE;")
+                    .append(lineSeparator));
             LOGGER.info("Waiting a maximum of '{}' seconds for each table lock", lockTimeout.getSeconds());
-            jdbcConnection.executeWithoutCommitting(lockStatement.get());
+            jdbcConnection.executeWithoutCommitting(statements.toString());
             // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }
@@ -225,12 +233,19 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
-        return snapshotter.buildSnapshotQuery(tableId, columns);
+        return snapshotter.buildSnapshotQuery(tableId, columns, '"');
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {
         LOGGER.info("Setting isolation level");
-        String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
+        String transactionStatement;
+        if (slotCreatedInfo != null) {
+            String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", slotCreatedInfo.snapshotName());
+            transactionStatement = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
+        }
+        else {
+            transactionStatement = "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
+        }
         LOGGER.info("Opening transaction with statement {}", transactionStatement);
         jdbcConnection.executeWithoutCommitting(transactionStatement);
     }

@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.snapshot.AlwaysSnapshotter;
 
 public class CustomStartFromStreamingTestSnapshot extends AlwaysSnapshotter {
     @Override
