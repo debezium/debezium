@@ -295,6 +295,8 @@ sequenceSpec
 createDatabaseOption
     : DEFAULT? (CHARACTER SET | CHARSET | CHAR SET) '='? (charsetName | DEFAULT)
     | DEFAULT? COLLATE '='? collationName
+    | DEFAULT? ENCRYPTION '='? STRING_LITERAL
+    | READ ONLY '='? (DEFAULT | ZERO_DECIMAL | ONE_DECIMAL)
     ;
 
 ownerStatement
