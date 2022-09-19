@@ -150,7 +150,7 @@ public final class RedisSchemaHistory extends AbstractSchemaHistory {
             line = writer.write(record.document());
         }
         catch (IOException e) {
-            LOGGER.error("Failed to convert record to string: {}", record, e);
+            LOGGER.error("Failed to convert record to string", e);
             throw new SchemaHistoryException("Unable to write database schema history record");
         }
 

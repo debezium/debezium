@@ -780,7 +780,7 @@ public class KafkaCluster {
                         ProducerRecord<K, V> record = messageSupplier.get();
                         producer.send(record);
                         producer.flush();
-                        LOGGER.debug("Producer {}: sent message {}", producerName, record);
+                        LOGGER.debug("Producer {}: sent message", producerName);
                     }
                 }
                 finally {
@@ -926,7 +926,7 @@ public class KafkaCluster {
                     consumer.subscribe(new ArrayList<>(topics));
                     while (continuation.getAsBoolean()) {
                         consumer.poll(10).forEach(record -> {
-                            LOGGER.debug("Consumer {}: consuming message {}", clientId, record);
+                            LOGGER.debug("Consumer {}: consuming message", clientId);
                             consumerFunction.accept(record);
                             if (offsetCommitCallback != null) {
                                 consumer.commitAsync(offsetCommitCallback);

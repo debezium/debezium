@@ -124,7 +124,7 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
                         historyWriter.newLine();
                     }
                     catch (IOException e) {
-                        logger.error("Failed to add record to history at {}: {}", path, record, e);
+                        logger.error("Failed to add record to history at {}", path, e);
                         return;
                     }
                 }
@@ -133,7 +133,7 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
                 }
             }
             catch (IOException e) {
-                logger.error("Failed to convert record to string: {}", record, e);
+                logger.error("Failed to convert record to string", e);
             }
         });
     }
