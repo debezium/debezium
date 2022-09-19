@@ -1845,9 +1845,11 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             connection.prepareQuery("UPDATE dbz5581 set A2=? WHERE ID=1", st -> st.setBlob(1, a2u), null);
             connection.commit();
 
-            SourceRecords records = consumeRecordsByTopic(2);
+            connection.execute("UPDATE dbz5581 set A2=NULL WHERE ID=1");
+
+            SourceRecords records = consumeRecordsByTopic(3);
             List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.DEBEZIUM.DBZ5581");
-            assertThat(recordsForTopic).hasSize(2);
+            assertThat(recordsForTopic).hasSize(3);
 
             SourceRecord record = recordsForTopic.get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
@@ -1862,6 +1864,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("A1")).isEqualTo("lwmzVQd6r7");
             assertThat(after.get("A2")).isEqualTo(getByteBufferFromBlob(a2u));
+            assertThat(after.get("A3")).isEqualTo(getUnavailableValuePlaceholder(config));
+            assertThat(after.get("A4")).isEqualTo("cuTVQV0OpK");
+
+            record = recordsForTopic.get(2);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("A1")).isEqualTo("lwmzVQd6r7");
+            assertThat(after.get("A2")).isNull();
             assertThat(after.get("A3")).isEqualTo(getUnavailableValuePlaceholder(config));
             assertThat(after.get("A4")).isEqualTo("cuTVQV0OpK");
 
