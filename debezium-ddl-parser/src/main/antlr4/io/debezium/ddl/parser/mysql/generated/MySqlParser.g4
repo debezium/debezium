@@ -591,7 +591,7 @@ partitionOption
 
 alterDatabase
     : ALTER dbFormat=(DATABASE | SCHEMA) uid?
-      createDatabaseOption+                                         #alterSimpleDatabase
+      createDatabaseOption*                                         #alterSimpleDatabase
     | ALTER dbFormat=(DATABASE | SCHEMA) uid
       UPGRADE DATA DIRECTORY NAME                                   #alterUpgradeName
     ;
