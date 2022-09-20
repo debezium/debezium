@@ -85,6 +85,20 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-5623")
+    public void shouldProcessAlterAddDefinitions() {
+        String ddl = "create table `some_table` (id bigint(20) not null);"
+                + "alter table `some_table` add (primary key `id` (`id`),`k_id` int unsigned not null,`another_field` smallint not null,index `k_id` (`k_id`));"
+                + "alter table `some_table` add column (unique key `another_field` (`another_field`));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "some_table");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.columns().size()).isEqualTo(3);
+    }
+
+    @Test
     @FixFor("DBZ-5424")
     public void shouldProcessNoPrimaryKeyForTable() {
         String ddl = "create table if not exists tbl_without_pk(\n"
