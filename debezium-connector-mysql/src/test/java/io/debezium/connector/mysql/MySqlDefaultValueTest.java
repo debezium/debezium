@@ -595,6 +595,7 @@ public class MySqlDefaultValueTest {
                 + "c3 bigint not null default .12345,\n"
                 + "c4 smallint not null default 100.52345,\n"
                 + "c5 int not null default '-.789',\n"
+                + "c6 decimal(26,6) default \"1\",\n"
                 + "PRIMARY KEY (`id`)\n"
                 + ")";
         parser.parse(ddl, tables);
@@ -609,6 +610,7 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(schema, "c3").defaultValue()).isEqualTo(0L);
         assertThat(getColumnSchema(schema, "c4").defaultValue()).isEqualTo(Short.valueOf("101"));
         assertThat(getColumnSchema(schema, "c5").defaultValue()).isEqualTo(-1);
+        assertThat(getColumnSchema(schema, "c6").defaultValue()).isEqualTo(1.0);
     }
 
     private Schema getColumnSchema(Table table, String column) {
