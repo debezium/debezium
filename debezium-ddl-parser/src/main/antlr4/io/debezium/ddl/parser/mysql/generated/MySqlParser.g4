@@ -733,6 +733,8 @@ alterSpecification
     | REPAIR PARTITION (uidList | ALL)                              #alterByRepairPartition
     | REMOVE PARTITIONING                                           #alterByRemovePartitioning
     | UPGRADE PARTITIONING                                          #alterByUpgradePartitioning
+    | ADD COLUMN? ifNotExists?
+        '(' createDefinition (',' createDefinition)* ')'            #alterByAddDefinitions // ifNotExists is MariaDB-specific
     ;
 
 
