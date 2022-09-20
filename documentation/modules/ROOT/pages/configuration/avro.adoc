@@ -125,6 +125,7 @@ value.converter=io.apicurio.registry.utils.converter.AvroConverter
 value.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
 value.converter.apicurio.registry.auto-register=true
 value.converter.apicurio.registry.find-latest=true
+schema.name.adjustment.mode=avro
 ----
 
 Internally, Kafka Connect always uses JSON key/value converters for storing configuration and offsets.
@@ -183,6 +184,7 @@ docker run -it --rm --name connect \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL=http://apicurio:8080/apis/registry/v2 \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_AUTO-REGISTER=true \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_FIND-LATEST=true \
+    -e CONNECT_SCHEMA_NAME_ADJUSTMENT_MODE=avro \
     -p 8083:8083 debezium/connect:{debezium-docker-label}
 ----
 endif::community[]
@@ -288,6 +290,7 @@ spec:
     database.include.list: inventory
     schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
     schema.history.internal.kafka.topic: schema-changes.inventory
+    schema.name.adjustment.mode: avro
     key.converter: io.apicurio.registry.utils.converter.AvroConverter
     key.converter.apicurio.registry.url: http://apicurio:8080/api
     key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy

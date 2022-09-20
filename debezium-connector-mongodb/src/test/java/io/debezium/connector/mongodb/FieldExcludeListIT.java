@@ -23,6 +23,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
 import io.debezium.doc.FixFor;
@@ -1597,6 +1598,7 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, fieldExcludeList)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO)
                 .build();
     }
 
