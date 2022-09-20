@@ -107,14 +107,17 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         Struct value = new Struct(valueSchema);
         switch (operation) {
             case CREATE:
-                final String jsonStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
-                value.put(FieldName.AFTER, jsonStr);
+                extractFullDocument(document, value);
                 break;
             case UPDATE:
+                // Not null when full documents before change are enabled
+                if (document.getFullDocumentBeforeChange() != null) {
+                    extractFullDocumentBeforeChange(document, value);
+                }
+
                 // Not null when full documents are enabled for updates
                 if (document.getFullDocument() != null) {
-                    final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
-                    value.put(FieldName.AFTER, fullDocStr);
+                    extractFullDocument(document, value);
                 }
 
                 if (document.getUpdateDescription() != null) {
@@ -156,9 +159,23 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 }
                 break;
             case DELETE:
+                // Not null when full documents before change are enabled
+                if (document.getFullDocumentBeforeChange() != null) {
+                    extractFullDocumentBeforeChange(document, value);
+                }
                 break;
         }
         return value;
+    }
+
+    private void extractFullDocument(ChangeStreamDocument<BsonDocument> document, Struct value) {
+        final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
+        value.put(FieldName.AFTER, fullDocStr);
+    }
+
+    private void extractFullDocumentBeforeChange(ChangeStreamDocument<BsonDocument> document, Struct value) {
+        final String fullDocBeforeChangeStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocumentBeforeChange()));
+        value.put(FieldName.BEFORE, fullDocBeforeChangeStr);
     }
 
     @Override
