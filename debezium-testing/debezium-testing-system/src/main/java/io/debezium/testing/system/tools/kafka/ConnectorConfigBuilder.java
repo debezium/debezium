@@ -61,6 +61,8 @@ public class ConnectorConfigBuilder {
         config.put("value.converter.apicurio.registry.auto-register", true);
         config.put("value.converter.apicurio.registry.find-latest", true);
 
+        config.put("schema.name.adjustment.mode", "avro");
+
         return this;
     }
 

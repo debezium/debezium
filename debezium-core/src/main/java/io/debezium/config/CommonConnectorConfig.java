@@ -509,7 +509,7 @@ public abstract class CommonConnectorConfig {
     public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
-            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
+            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.NONE)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including: "

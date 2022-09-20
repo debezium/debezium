@@ -127,7 +127,8 @@ public class ApicurioRegistryTest {
             statement.execute("insert into todo.Todo values (1, 'Be Awesome')");
 
             debeziumContainer.registerConnector("my-connector-avro", getConfiguration(
-                    2, "io.apicurio.registry.utils.converter.AvroConverter"));
+                    2, "io.apicurio.registry.utils.converter.AvroConverter",
+                    "schema.name.adjustment.mode", "avro"));
 
             consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
 

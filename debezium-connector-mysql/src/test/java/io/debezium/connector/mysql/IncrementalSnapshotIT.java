@@ -29,6 +29,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
@@ -71,7 +73,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true);
+                .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
+                .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
     }
 
     @Override
@@ -93,7 +96,8 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
-                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
+                .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
     }
 
     @Override

@@ -17,6 +17,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Builder;
@@ -226,6 +228,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
             else {
                 converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
             }
+            converterConfig = converterConfig.edit()
+                    .withDefault(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO)
+                    .build();
         }
         else if (isFormat(format, Protobuf.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();

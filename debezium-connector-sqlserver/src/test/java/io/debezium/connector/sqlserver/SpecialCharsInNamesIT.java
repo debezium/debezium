@@ -17,6 +17,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -260,6 +262,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig(databaseName)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, false)
+                .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO)
                 .build();
         connection.execute(
                 "CREATE TABLE tablea (id int primary key, cola varchar(30))",
