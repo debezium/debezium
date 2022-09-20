@@ -1359,10 +1359,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a",
                 Arrays.asList("id", "name"));
 
-        connection.execute("ALTER TABLE excluded_column_table_a ADD note varchar(30)");
-        TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a_2",
-                Arrays.asList("id", "name", "note"));
-
         final Configuration config = TestHelper.defaultConfig()
                 .build();
 
@@ -1370,34 +1366,48 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120, 'a note')");
-
-        final SourceRecords records = consumeRecordsByTopic(3);
+        final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.excluded_column_table_a");
 
-        Schema expectedSchema = SchemaBuilder.struct()
+        Schema expectedSchemaSnapshot = SchemaBuilder.struct()
+                .optional()
+                .name("server1.testDB1.dbo.excluded_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct expectedValueSnapshot = new Struct(expectedSchemaSnapshot)
+                .put("id", 10)
+                .put("name", "a name");
+
+        Assertions.assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaSnapshot)
+                .valueAfterFieldIsEqualTo(expectedValueSnapshot);
+
+        connection.execute("ALTER TABLE excluded_column_table_a ADD note varchar(30)");
+        TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a_2",
+                Arrays.asList("id", "name", "note"));
+
+        connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120, 'a note')");
+
+        final SourceRecords records2 = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA2 = records2.recordsForTopic("server1.testDB1.dbo.excluded_column_table_a");
+
+        Schema expectedSchemaStreaming = SchemaBuilder.struct()
                 .optional()
                 .name("server1.testDB1.dbo.excluded_column_table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("note", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
-        Struct expectedValueSnapshot = new Struct(expectedSchema)
-                .put("id", 10)
-                .put("name", "a name")
-                .put("note", null);
-
-        Struct expectedValueStreaming = new Struct(expectedSchema)
+        Struct expectedValueStreaming = new Struct(expectedSchemaStreaming)
                 .put("id", 11)
                 .put("name", "some_name")
                 .put("note", "a note");
 
-        Assertions.assertThat(tableA).hasSize(2);
-        SourceRecordAssert.assertThat(tableA.get(0))
-                .valueAfterFieldSchemaIsEqualTo(expectedSchema)
-                .valueAfterFieldIsEqualTo(expectedValueSnapshot);
-        SourceRecordAssert.assertThat(tableA.get(1))
-                .valueAfterFieldSchemaIsEqualTo(expectedSchema)
+        Assertions.assertThat(tableA2).hasSize(1);
+        SourceRecordAssert.assertThat(tableA2.get(0))
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaStreaming)
                 .valueAfterFieldIsEqualTo(expectedValueStreaming);
 
         stopConnector();
