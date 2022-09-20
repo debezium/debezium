@@ -42,6 +42,7 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
@@ -314,6 +315,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 Arrays.asList(Aggregates.match(filters)), BsonDocument.class);
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
+        }
+        if (taskContext.getCaptureMode().isIncludePreImage()) {
+            rsChangeStream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         if (rsOffsetContext.lastResumeToken() != null) {
             LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
