@@ -72,6 +72,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             final Schema valueSchema = SchemaBuilder.struct()
                     .name(adjuster.adjust(Envelope.schemaName(topicName)))
+                    .field(FieldName.BEFORE, Json.builder().optional().build())
                     .field(FieldName.AFTER, Json.builder().optional().build())
                     // Oplog fields
                     .field(MongoDbFieldName.PATCH, Json.builder().optional().build())

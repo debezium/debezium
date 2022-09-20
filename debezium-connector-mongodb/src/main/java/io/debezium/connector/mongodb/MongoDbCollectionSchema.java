@@ -111,6 +111,8 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 value.put(FieldName.AFTER, jsonStr);
                 break;
             case UPDATE:
+                extractFullDocumentBeforeChange(document, value);
+
                 // Not null when full documents are enabled for updates
                 if (document.getFullDocument() != null) {
                     final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
@@ -156,9 +158,17 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 }
                 break;
             case DELETE:
-                break;
+                extractFullDocumentBeforeChange(document, value);
         }
         return value;
+    }
+
+    private void extractFullDocumentBeforeChange(ChangeStreamDocument<BsonDocument> document, Struct value) {
+        // Not null when full documents before change are enabled for updates
+        if (document.getFullDocumentBeforeChange() != null) {
+            final String fullDocBeforeChangeStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocumentBeforeChange()));
+            value.put(FieldName.BEFORE, fullDocBeforeChangeStr);
+        }
     }
 
     @Override

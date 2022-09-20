@@ -130,6 +130,7 @@ miphik,Andrey Savchuk
 narzdavid,Narz David
 LarsWerkman,Lars Werkman
 chadthamn,Chad Marmon
+xinbinhuang,Xinbin Huang
 xqshe,Xinquan She
 wangminchao,Wang Min Chao
 markallanson,Mark Allanson
