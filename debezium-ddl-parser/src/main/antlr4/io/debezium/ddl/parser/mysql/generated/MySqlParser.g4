@@ -498,7 +498,7 @@ tableOption
     | SECONDARY_ENGINE_ATTRIBUTE '='? STRING_LITERAL                                #tableOptionSecondaryEngineAttribute
     | STATS_AUTO_RECALC '='? extBoolValue=(DEFAULT | '0' | '1')                     #tableOptionRecalculation
     | STATS_PERSISTENT '='? extBoolValue=(DEFAULT | '0' | '1')                      #tableOptionPersistent
-    | STATS_SAMPLE_PAGES '='? decimalLiteral                                        #tableOptionSamplePage
+    | STATS_SAMPLE_PAGES '='? (DEFAULT | decimalLiteral)                            #tableOptionSamplePage
     | TABLESPACE uid tablespaceStorage?                                             #tableOptionTablespace
     | TABLE_TYPE '=' tableType                                                      #tableOptionTableType
     | tablespaceStorage                                                             #tableOptionTablespace
