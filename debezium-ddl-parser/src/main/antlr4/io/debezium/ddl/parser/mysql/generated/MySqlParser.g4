@@ -1865,8 +1865,7 @@ flushStatement
     ;
 
 killStatement
-    : KILL connectionFormat=(CONNECTION | QUERY)?
-      (decimalLiteral+ | mysqlVariable)
+    : KILL connectionFormat=(CONNECTION | QUERY)? expression
     ;
 
 loadIndexIntoCache
