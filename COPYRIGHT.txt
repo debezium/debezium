@@ -27,6 +27,7 @@ Andreas Bergmeier
 Andras Istvan Nagy
 Andrew Garrett
 Andrew Tongen
+Andrew Walker
 Andrey Ignatenko
 Andrey Pustovetov
 Andrey Savchuk
@@ -279,6 +280,7 @@ Nenad Stojanovikj
 Nick Murray
 Niels Pardon
 Nikhil Benesch
+Niro Levy
 Nishant Singh
 Nitin Agarwal
 Olavi Mustanoja
