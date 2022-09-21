@@ -257,7 +257,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext, TableId tableId) {
         try {
             Optional<OffsetDateTime> snapshotTs = jdbcConnection.getScnToTimestamp(snapshotContext.offset.getScn());
-            if (snapshotTs.isEmpty()) {
+            if (!snapshotTs.isPresent()) {
                 throw new ConnectException("Failed reading SCN timestamp from source database");
             }
 

@@ -336,7 +336,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
         try {
             Optional<Timestamp> snapshotTs = jdbcConnection.getCurrentTimestamp();
-            if (snapshotTs.isEmpty()) {
+            if (!snapshotTs.isPresent()) {
                 throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database");
             }
 
