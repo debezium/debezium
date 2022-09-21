@@ -6,3 +6,9 @@ KILL QUERY @query_variable;
 KILL CONNECTION @@global_variable;
 KILL QUERY @@global_variable;
 #end
+#begin
+create procedure f (a1 int)
+begin
+	kill query a1;
+end;
+#end
