@@ -114,7 +114,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 }
                 LOGGER.warn("Cannot undo change '{}' since event with row-id {} was not found.", row, row.getRowId());
             }
-            else {
+            else if (!getConfig().isLobEnabled()) {
                 LOGGER.warn("Cannot undo change '{}' since transaction was not found.", row);
             }
         }
