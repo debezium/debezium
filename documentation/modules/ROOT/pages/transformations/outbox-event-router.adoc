@@ -187,6 +187,10 @@ transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 ----
 
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
+To apply the transformation only to events that originate in the outbox table, define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to those events only.
+
 // Type: concept
 // Title: Options for applying the Outbox event router transformation selectively
 // ModuleID: options-for-applying-the-outbox-event-router-transformation-selectively

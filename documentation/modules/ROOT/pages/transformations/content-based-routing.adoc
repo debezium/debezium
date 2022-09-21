@@ -135,6 +135,11 @@ The preceding example specifies the use of the `Groovy` expression language.
 
 Records that do not match the pattern are routed to the default topic.
 
+.Customizing the configuration
+The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
+Other types of messages that a connector might emit (heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes) do not contain this field.
+To avoid processing failures, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
+
 // Type: concept
 // ModuleID: variables-for-use-in-debezium-content-based-routing-expressions
 //Title: Variables for use in {prodname} content-based routing expressions

@@ -180,6 +180,10 @@ transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
 ----
 
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
+To apply the transformation only to events that originate in the outbox collection, define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to those events only.
+
 // Type: concept
 // Title: Options for applying the MongoDB outbox event router transformation selectively
 // ModuleID: options-for-applying-the-mongodb-outbox-event-router-transformation-selectively

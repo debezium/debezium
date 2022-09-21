@@ -140,7 +140,7 @@ transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 ----
 
-As for any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
+As with any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
 
 The following `.properties` example sets several event flattening SMT options:
 
@@ -167,6 +167,10 @@ transforms.unwrap.add.fields=table,lsn
 ----
 
 `add.fields=table,lsn`:: Adds change event metadata for the `table` and `lsn` fields to the simplified Kafka record.
+
+.Customizing the configuration
+The connector might emit many types of event messages (heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
+To apply the transformation to a subset of events, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
 // Type: concept
 // ModuleID: example-of-adding-debezium-metadata-to-the-kafka-record
