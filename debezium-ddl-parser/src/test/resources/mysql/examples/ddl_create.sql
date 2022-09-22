@@ -105,6 +105,10 @@ CREATE TABLE CustomerTable (
     Phone varchar(24)
  ) ENGINE = CONNECT TABLE_TYPE = ODBC;
 
+CREATE TABLE CustomerTable (
+    table_type varchar(5)
+);
+
 CREATE TABLE `daily_intelligences`(
 `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '',
 `partner_code` varchar(32) DEFAULT NULL COMMENT '',
