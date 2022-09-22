@@ -205,7 +205,9 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
         transactionCache.remove(transactionId);
         abandonedTransactionsCache.remove(transactionId);
-        recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
+        if (getConfig().isLobEnabled()) {
+            recentlyProcessedTransactionsCache.put(transactionId, rollbackScn);
+        }
     }
 
     @Override
