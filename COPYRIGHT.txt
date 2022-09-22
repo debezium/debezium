@@ -127,6 +127,7 @@ Eric S. Kreiseir
 Erik Malm
 Ethan Zou
 Ewen Cheslack-Postava
+Ezer Karavani
 Fabian Aussems
 Fabian Martinez
 Fabio Cantarini
