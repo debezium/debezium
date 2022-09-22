@@ -89,9 +89,11 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
             complete(ctx);
 
             if (completedSuccessfully) {
+                LOGGER.info("Snapshot completed");
                 snapshotProgressListener.snapshotCompleted(partition);
             }
             else {
+                LOGGER.warn("Snapshot uncompleted");
                 snapshotProgressListener.snapshotAborted(partition);
             }
         }
