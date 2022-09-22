@@ -93,7 +93,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
                 snapshotProgressListener.snapshotCompleted(partition);
             }
             else {
-                LOGGER.warn("Snapshot uncompleted");
+                LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
                 snapshotProgressListener.snapshotAborted(partition);
             }
         }
