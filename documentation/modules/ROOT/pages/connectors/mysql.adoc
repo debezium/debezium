@@ -2046,6 +2046,47 @@ mysql> binlog_rows_query_log_events=ON
 ** `ON` = enabled
 ** `OFF` = disabled
 
+// Type: procedure
+// ModuleID: validate-binlog-row-value-options-for-debezium-mysql-connectors
+// Title: validate binlog row value options for {prodname} MySQL connectors
+[[validate-binlog-row-value-options]]
+=== Validating binlog row value options
+
+Check `binlog_row_value_options` variable, and make sure that value is **not** set to `PARTIAL_JSON`, since in such case connector might fail to consume *UPDATE* events.
+
+.Prerequisites
+
+* A MySQL server.
+* Basic knowledge of SQL commands.
+* Access to the MySQL configuration file.
+
+.Procedure
+
+. Check current variable value
++
+[source,SQL]
+----
+mysql> show global variables where variable_name = 'binlog_row_value_options';
+----
+
+. Result
++
+[source,SQL]
+----
++--------------------------+-------+
+| Variable_name            | Value |
++--------------------------+-------+
+| binlog_row_value_options |       |
++--------------------------+-------+
+----
+
+. In case value is `PARTIAL_JSON`, unset this variable by:
++
+[source,SQL]
+----
+mysql> set @@global.binlog_row_value_options="" ;
+----
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-mysql-connectors
 // Title: Deployment of {prodname} MySQL connectors
