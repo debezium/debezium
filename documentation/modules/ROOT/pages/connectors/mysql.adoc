@@ -1986,14 +1986,16 @@ Check `binlog_row_value_options` variable, and make sure that value is **not** s
 * Access to the MySQL configuration file.
 
 .Procedure
-Check current variable value
+
+. Check current variable value
 +
 [source,SQL]
 ----
 mysql> show global variables where variable_name = 'binlog_row_value_options';
 ----
+
+. Result
 +
-.Result
 [source,SQL]
 ----
 +--------------------------+-------+
@@ -2002,13 +2004,14 @@ mysql> show global variables where variable_name = 'binlog_row_value_options';
 | binlog_row_value_options |       |
 +--------------------------+-------+
 ----
-in case value is `PARTIAL_JSON`, unset this variable by:
+
+. in case value is `PARTIAL_JSON`, unset this variable by:
 +
 [source,SQL]
 ----
 mysql> set @@global.binlog_row_value_options="" ;
 ----
-+
+
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-mysql-connectors
