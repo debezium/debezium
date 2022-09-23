@@ -5,12 +5,17 @@
  */
 package io.debezium.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Functionality for dealing with {@link Throwable}s.
  *
  * @author Gunnar Morling
  */
 public class Throwables {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Throwables.class);
 
     public static Throwable getRootCause(Throwable throwable) {
         while (true) {
@@ -20,5 +25,10 @@ public class Throwables {
             }
             throwable = cause;
         }
+    }
+
+    public static void logErrorAndTraceRecord(Logger logger, String message, Exception e, Object record) {
+        logger.error(message, e);
+        LOGGER.trace("Source of error is {}", record);
     }
 }

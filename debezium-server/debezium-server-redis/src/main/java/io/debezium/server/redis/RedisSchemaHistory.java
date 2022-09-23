@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import io.debezium.util.Throwables;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -150,7 +151,7 @@ public final class RedisSchemaHistory extends AbstractSchemaHistory {
             line = writer.write(record.document());
         }
         catch (IOException e) {
-            LOGGER.error("Failed to convert record to string", e);
+            Throwables.logErrorAndTraceRecord(LOGGER, "Failed to convert record to string", e, record);
             throw new SchemaHistoryException("Unable to write database schema history record");
         }
 
