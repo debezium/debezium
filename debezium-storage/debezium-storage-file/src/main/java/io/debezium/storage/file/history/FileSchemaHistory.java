@@ -34,6 +34,7 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
+import io.debezium.util.Throwables;
 
 /**
  * A {@link SchemaHistory} implementation that stores the schema history in a local file.
@@ -124,7 +125,7 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
                         historyWriter.newLine();
                     }
                     catch (IOException e) {
-                        logger.error("Failed to add record to history at {}", path, e);
+                        Throwables.logErrorAndTraceRecord(logger, "Failed to add record to history at " + path, e, record);
                         return;
                     }
                 }
@@ -133,7 +134,7 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
                 }
             }
             catch (IOException e) {
-                logger.error("Failed to convert record to string", e);
+                Throwables.logErrorAndTraceRecord(logger, "Failed to convert record to string", e, record);
             }
         });
     }
