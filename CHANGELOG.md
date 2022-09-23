@@ -2,6 +2,105 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.6.Final
+September 23rd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12391578)
+
+### New features since 1.9.5.Final
+
+* Read Debezium Metrics From Debezium Server Consumer [DBZ-5235](https://issues.redhat.com/browse/DBZ-5235)
+* Treat SQLServerException with "Broken pipe (Write failed)" exception message as a retriable exception [DBZ-5292](https://issues.redhat.com/browse/DBZ-5292)
+* Add INITIAL_ONLY to Db2 snapshot mode [DBZ-5429](https://issues.redhat.com/browse/DBZ-5429)
+* Unsupported non-relational tables should be gracefully skipped by the connector during streaming [DBZ-5441](https://issues.redhat.com/browse/DBZ-5441)
+* Restart SQL Server task on "Socket closed" exception [DBZ-5478](https://issues.redhat.com/browse/DBZ-5478)
+* Handle Vstream Connection reset [DBZ-5551](https://issues.redhat.com/browse/DBZ-5551)
+* Improve documentation editing experience by setting attributes for the preview [DBZ-5576](https://issues.redhat.com/browse/DBZ-5576)
+* Traditional snapshot process setting source.ts_ms [DBZ-5591](https://issues.redhat.com/browse/DBZ-5591)
+* Support for seting stats_sample_pages=default in alter table statements [DBZ-5631](https://issues.redhat.com/browse/DBZ-5631)
+* support for using any expression in kill statements [DBZ-5636](https://issues.redhat.com/browse/DBZ-5636)
+
+
+### Breaking changes since 1.9.5.Final
+
+None
+
+
+### Fixes since 1.9.5.Final
+
+* System test-suite instabilties in CI [DBZ-3862](https://issues.redhat.com/browse/DBZ-3862)
+* Source info of incremental snapshot events exports wrong data [DBZ-4329](https://issues.redhat.com/browse/DBZ-4329)
+* Redis Sink config properties are not passed to DB history  [DBZ-5035](https://issues.redhat.com/browse/DBZ-5035)
+* Memory leak in EventDeserializer caused by tableMapEventByTableId [DBZ-5126](https://issues.redhat.com/browse/DBZ-5126)
+* Postgres Incremental Snapshot on parent partitioned table not working [DBZ-5240](https://issues.redhat.com/browse/DBZ-5240)
+* Lob type data is inconsistent between source and sink, after modifying the primary key [DBZ-5295](https://issues.redhat.com/browse/DBZ-5295)
+* HTTP sink not retrying failing requests [DBZ-5307](https://issues.redhat.com/browse/DBZ-5307)
+* Caused by: java.io.EOFException: Failed to read next byte from position 2005308603 [DBZ-5333](https://issues.redhat.com/browse/DBZ-5333)
+* Unsigned tinyint conversion fails for MySQL 8.x [DBZ-5343](https://issues.redhat.com/browse/DBZ-5343)
+* NullPointerException thrown when unique index based on both system and non-system generated columns [DBZ-5356](https://issues.redhat.com/browse/DBZ-5356)
+* AWS DocumentDB (with MongoDB Compatibility) Connect Fail [DBZ-5371](https://issues.redhat.com/browse/DBZ-5371)
+* Debezium Cassandra 4 Connector not working with 1.9.4 release BUT works with 1.9.2 release [DBZ-5380](https://issues.redhat.com/browse/DBZ-5380)
+* org.postgresql.util.PSQLException: Bad value for type timestamp/date/time: CURRENT_TIMESTAMP [DBZ-5384](https://issues.redhat.com/browse/DBZ-5384)
+* Missing "previousId" property with parsing the rename statement in kafka history topic [DBZ-5386](https://issues.redhat.com/browse/DBZ-5386)
+* Check constraint introduces a column based on constraint in the schema change event. [DBZ-5390](https://issues.redhat.com/browse/DBZ-5390)
+* Clarify which database name to use for signal.data.collection when using Oracle with pluggable database support [DBZ-5399](https://issues.redhat.com/browse/DBZ-5399)
+* Timestamp with time zone column's default values not in GMT [DBZ-5403](https://issues.redhat.com/browse/DBZ-5403)
+* Upgrade to Kafka 3.1 broke build compatibility with Kafka 2.x and Kafka 3.0 [DBZ-5404](https://issues.redhat.com/browse/DBZ-5404)
+* PostgresConnectorIT#shouldRecoverFromRetriableException fails randomly [DBZ-5408](https://issues.redhat.com/browse/DBZ-5408)
+* OracleConnectorIT waitForCurrentScnToHaveBeenSeenByConnector method can produce a NumberFormatException [DBZ-5428](https://issues.redhat.com/browse/DBZ-5428)
+* OffsetStore not stopped if it fails to fully start [DBZ-5433](https://issues.redhat.com/browse/DBZ-5433)
+* Translation from mongodb document to kafka connect schema fails when nested arrays contain no elements [DBZ-5434](https://issues.redhat.com/browse/DBZ-5434)
+* Duplicate SCNs on same thread Oracle RAC mode incorrectly processed [DBZ-5439](https://issues.redhat.com/browse/DBZ-5439)
+* Typo in sqlserver document. [DBZ-5440](https://issues.redhat.com/browse/DBZ-5440)
+* Typo in postgresql document. [DBZ-5450](https://issues.redhat.com/browse/DBZ-5450)
+* Create Index DDL fails to parse when using TABLESPACE clause with quoted identifier [DBZ-5472](https://issues.redhat.com/browse/DBZ-5472)
+* Outbox doesn't check array consistecy properly when it detemines its schema [DBZ-5475](https://issues.redhat.com/browse/DBZ-5475)
+* Misleading statistics written to the log [DBZ-5476](https://issues.redhat.com/browse/DBZ-5476)
+* Debezium connector task didn't retry when failover in mongodb 5 [DBZ-5479](https://issues.redhat.com/browse/DBZ-5479)
+* Oracle DATADUMP DDL cannot be parsed [DBZ-5488](https://issues.redhat.com/browse/DBZ-5488)
+* Mysql connector parser the ddl statement failed when including keyword "buckets" [DBZ-5499](https://issues.redhat.com/browse/DBZ-5499)
+* duplicate call to config.validateAndRecord() in RedisDatabaseHistory [DBZ-5506](https://issues.redhat.com/browse/DBZ-5506)
+* DDL statement couldn't be parsed : mismatched input 'ENGINE' [DBZ-5508](https://issues.redhat.com/browse/DBZ-5508)
+* LogMiner DML parser incorrectly interprets concatenation operator inside quoted column value [DBZ-5521](https://issues.redhat.com/browse/DBZ-5521)
+* Mysql Connector DDL Parser does not parse all privileges [DBZ-5522](https://issues.redhat.com/browse/DBZ-5522)
+* SQL Server random test failures - EventProcessingFailureHandlingIT [DBZ-5525](https://issues.redhat.com/browse/DBZ-5525)
+* CREATE TABLE with JSON-based CHECK constraint clause causes MultipleParsingExceptions [DBZ-5526](https://issues.redhat.com/browse/DBZ-5526)
+* SQL Server test failure - verifyOffsets [DBZ-5527](https://issues.redhat.com/browse/DBZ-5527)
+* Support EMPTY column identifier [DBZ-5550](https://issues.redhat.com/browse/DBZ-5550)
+* Use TCCL as the default classloader to load interface implementations [DBZ-5561](https://issues.redhat.com/browse/DBZ-5561)
+* max.queue.size.in.bytes is invalid [DBZ-5569](https://issues.redhat.com/browse/DBZ-5569)
+* Vitess: Handle VStream close unepectedly [DBZ-5579](https://issues.redhat.com/browse/DBZ-5579)
+* Oracle connector parsing SELECT_LOB_LOCATOR event missing constant `unavailable.value.placeholder` [DBZ-5581](https://issues.redhat.com/browse/DBZ-5581)
+* Field validation errors are misleading for positive, non-zero expectations [DBZ-5588](https://issues.redhat.com/browse/DBZ-5588)
+* LIST_VALUE_CLAUSE not allowing TIMESTAMP LITERAL [DBZ-5592](https://issues.redhat.com/browse/DBZ-5592)
+* Orcale DDL does not support comments on materialized views [DBZ-5595](https://issues.redhat.com/browse/DBZ-5595)
+* Message with LSN foo larger than expected LSN bar [DBZ-5597](https://issues.redhat.com/browse/DBZ-5597)
+* Oracle DDL does not support DEFAULT ON NULL [DBZ-5605](https://issues.redhat.com/browse/DBZ-5605)
+* Datatype mdsys.sdo_geometry not supported [DBZ-5609](https://issues.redhat.com/browse/DBZ-5609)
+* MySQL connector cannot parse default value of decimal colum enclosed in double quotes [DBZ-5630](https://issues.redhat.com/browse/DBZ-5630)
+* Continuously WARNs about undo transactions when LOB is enabled [DBZ-5635](https://issues.redhat.com/browse/DBZ-5635)
+* Literal "${project.version}" in the source record instead of the actual version [DBZ-5640](https://issues.redhat.com/browse/DBZ-5640)
+* TABLE_TYPE keyword can be used as identifier [DBZ-5643](https://issues.redhat.com/browse/DBZ-5643)
+* Large numbers of ROLLBACK transactions can lead to memory leak when LOB is not enabled. [DBZ-5645](https://issues.redhat.com/browse/DBZ-5645)
+
+
+### Other changes since 1.9.5.Final
+
+* Clean-up unused documentation variables [DBZ-2595](https://issues.redhat.com/browse/DBZ-2595)
+* Oracle SCAN VIP support [DBZ-3987](https://issues.redhat.com/browse/DBZ-3987)
+* Intermittent test failures on CI: EventProcessingFailureHandlingIT [DBZ-4004](https://issues.redhat.com/browse/DBZ-4004)
+* Downstream test for outbox event routing SMT [DBZ-4266](https://issues.redhat.com/browse/DBZ-4266)
+* No documentation for snapshot.include.collection.list property for Db2 connector [DBZ-4345](https://issues.redhat.com/browse/DBZ-4345)
+* Improve Filter SMT documentation / examples [DBZ-4417](https://issues.redhat.com/browse/DBZ-4417)
+* Update instructions for deploying Debezium on RHEL (downstream-only change) [DBZ-5293](https://issues.redhat.com/browse/DBZ-5293)
+* Build stable branches for connector-specific repos [DBZ-5409](https://issues.redhat.com/browse/DBZ-5409)
+* Address User guide review comments for Oracle connector [DBZ-5418](https://issues.redhat.com/browse/DBZ-5418)
+* OracleSchemaMigrationIT fails on non-pluggable (non-CDB) databases [DBZ-5419](https://issues.redhat.com/browse/DBZ-5419)
+* Update link format in shared tutorial file [DBZ-5422](https://issues.redhat.com/browse/DBZ-5422)
+* Remove community conditionalization in signaling doc for Oracle incremental and ad hoc snapshots content [DBZ-5458](https://issues.redhat.com/browse/DBZ-5458)
+* MySQL read.only property incorrectly appears in downstream documentation [DBZ-5555](https://issues.redhat.com/browse/DBZ-5555)
+* Upgrade binary log client to 0.27.2 [DBZ-5620](https://issues.redhat.com/browse/DBZ-5620)
+
+
+
 ## 1.9.5.Final
 July 8th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12390730)
 
