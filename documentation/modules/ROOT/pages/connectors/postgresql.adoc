@@ -2664,27 +2664,61 @@ If you change the name value, after a restart, instead of continuing to emit eve
 
 |[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `+schema.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
+Any schema name not included in `schema.include.list` is excluded from having its changes captured.
+By default, all non-system schemas have their changes captured. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not also set the `schema.exclude.list` property.
 
 |[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
+Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not set the `schema.include.list` property.
 
 |[[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `+table.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture.
+When this property is set, the connector captures changes only from the specified tables.
+Each identifier is of the form _schemaName_._tableName_.
+By default, the connector captures changes in every non-system table in each schema whose changes are being captured. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[postgresql-property-table-exclude-list]]<<postgresql-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
+Each identifier is of the form _schemaName_._tableName_.
+When this property is set, the connector captures changes from every table that you do not specify. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not set the `table.include.list` property.
 
 |[[postgresql-property-column-include-list]]<<postgresql-property-column-include-list, `+column.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not also set the `column.exclude.list` property.
 
 |[[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.include.list` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
@@ -2884,13 +2918,21 @@ Applicable only when xref:postgresql-property-decimal-handling-mode[`decimal.han
 
 |[[postgresql-property-logical-decoding-message-prefix-include-list]]<<postgresql-property-logical-decoding-message-prefix-include-list, `+message.prefix.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *want* to capture. Any logical decoding message with a prefix not included in `message.prefix.include.list` is excluded By default, all logical decoding messages are captured. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
+|An optional, comma-separated list of regular expressions that match the names of the logical decoding message prefixes that you want the connector to capture.
+By default, the connector captures all logical decoding messages.
+When this property is set, the connector captures only logical decoding message with the prefixes specified by the property.
+All other logical decoding messages are excluded.
+If you include this property in the configuration, do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
 |[[postgresql-property-logical-decoding-message-prefix-exclude-list]]<<postgresql-property-logical-decoding-message-prefix-exclude-list, `+message.prefix.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *do not* to capture. Any logical decoding message with a prefix that is not included in `message.prefix.exclude.list` is included. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property. To exclude all logical decoding messages pass `.*` into this config.
+|An optional, comma-separated list of regular expressions that match the names of the logical decoding message prefixes that you do not want the connector to capture.
+When this property is set, the connector does not capture logical decoding messages that use the specified prefixes.
+All other messages are captured.
+If you include this property in the configuration, do not also set xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property.
+To exclude all logical decoding messages pass `.*` into this config.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
@@ -2960,9 +3002,11 @@ endif::community[]
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:postgresql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
 
-This property does not affect the behavior of incremental snapshots.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`

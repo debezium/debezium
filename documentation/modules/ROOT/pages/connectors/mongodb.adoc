@@ -1428,23 +1428,45 @@ If you change the name value, after a restart, instead of continuing to emit eve
 
 |[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `+database.include.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in `database.include.list` is excluded from monitoring. By default all databases are monitored.
-Must not be used with `database.exclude.list`.
+|An optional comma-separated list of regular expressions that match database names to be monitored.
+By default, all databases are monitored. +
+When `database.include.list` is set, the connector monitors only the databases that the property specifies.
+Other databases are excluded from monitoring.
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not also set the `database.exclude.list` property.
 
 |[[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `+database.exclude.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in `database.exclude.list` is monitored.
-Must not be used with `database.include.list`.
+|An optional comma-separated list of regular expressions that match database names to be excluded from monitoring.
+When `database.exclude.list` is set, the connector monitors every database except the ones that the property specifies.
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not set the `database.include.list` property.
 
 |[[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `+collection.include.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored; any collection not included in `collection.include.list` is excluded from monitoring. Each identifier is of the form _databaseName_._collectionName_. By default the connector will monitor all collections except those in the `local` and `admin` databases.
-Must not be used with `collection.exclude.list`.
+|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored.
+By default, the connector monitors all collections except those in the `local` and `admin` databases.
+When `collection.include.list` is set, the connector monitors only the collections that the property specifies.
+Other collections are excluded from monitoring.
+Collection identifiers are of the form _databaseName_._collectionName_.
+
+To match the name of a namespace, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings in the name. +
+If you include this property in the configuration, do not also set the `collection.exclude.list` property.
 
 |[[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list, `+collection.exclude.list+`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring; any collection not included in `collection.exclude.list` is monitored. Each identifier is of the form _databaseName_._collectionName_.
-Must not be used with `collection.include.list`.
+|An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring.
+When `collection.exclude.list` is set, the connector monitors every collection except the ones that the property specifies.
+Collection identifiers are of the form _databaseName_._collectionName_. +
+
+To match the name of a namespace, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not set the `collection.include.list` property.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
@@ -1457,11 +1479,18 @@ The *oplog* mode specifies that the MongoDB oplog will be accessed directly; thi
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `collection.include.list` for which you *want* to take the snapshot.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
+The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
+This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
 
 |[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
-|An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
+|An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
+Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
 
 |[[mongodb-property-field-renames]]<<mongodb-property-field-renames, `+field.renames+`>>
 |_empty string_
