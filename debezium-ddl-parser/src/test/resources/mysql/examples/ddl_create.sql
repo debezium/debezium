@@ -42,7 +42,19 @@ create table rack_shelf_bin ( id int unsigned not null auto_increment unique pri
 CREATE TABLE `tblSRCHjob_desc` (`description_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, `description` mediumtext NOT NULL, PRIMARY KEY (`description_id`)) ENGINE=TokuDB AUTO_INCREMENT=4095997820 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=TOKUDB_QUICKLZ;
 create table invisible_column_test(id int, col1 int INVISIBLE);
 create table visible_column_test(id int, col1 int VISIBLE);
-create table table_with_buckets(id int(11) auto_increment NOT NULL COMMENT 'ID', buckets int(11) NOT NULL COMMENT '分桶数');
+create table system_versioning_test(id int, col1 int WITHOUT SYSTEM VERSIONING) WITH SYSTEM VERSIONING;
+
+CREATE TABLE system_versioning_test_with_period (
+  `id` int NOT NULL,
+  col1 int WITHOUT SYSTEM VERSIONING,
+  col2 int NOT NULL,
+  valid_from timestamp(6) GENERATED ALWAYS AS ROW START INVISIBLE,
+  valid_to timestamp(6) GENERATED ALWAYS AS ROW END INVISIBLE,
+  PRIMARY KEY (`id`,`valid_to`),
+  UNIQUE KEY `UK_sys_versioning` (`col2`,`valid_to`),
+  KEY `IDX_col1` (`col1`),
+  PERIOD FOR SYSTEM_TIME (`valid_from`, `valid_to`)
+) WITH SYSTEM VERSIONING;
 
 CREATE TABLE table_items (id INT, purchased DATE)
     PARTITION BY RANGE( YEAR(purchased) )

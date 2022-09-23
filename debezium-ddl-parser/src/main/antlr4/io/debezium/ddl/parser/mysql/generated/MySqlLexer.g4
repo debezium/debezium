@@ -1057,6 +1057,7 @@ OCT:                                 'OCT';
 OCTET_LENGTH:                        'OCTET_LENGTH';
 ORD:                                 'ORD';
 OVERLAPS:                            'OVERLAPS';
+PERIOD_FOR:                          'PERIOD FOR';
 PERIOD_ADD:                          'PERIOD_ADD';
 PERIOD_DIFF:                         'PERIOD_DIFF';
 PI:                                  'PI';
@@ -1159,6 +1160,7 @@ SUBDATE:                             'SUBDATE';
 SUBSTRING_INDEX:                     'SUBSTRING_INDEX';
 SUBTIME:                             'SUBTIME';
 SYSTEM_USER:                         'SYSTEM_USER';
+SYSTEM_TIME:                         'SYSTEM_TIME';
 TAN:                                 'TAN';
 TIMEDIFF:                            'TIMEDIFF';
 TIMESTAMPADD:                        'TIMESTAMPADD';
@@ -1203,6 +1205,9 @@ FEDERATED_ADMIN:                     'FEDERATED_ADMIN';
 READ_ONLY_ADMIN:                     'READ_ONLY_ADMIN';
 REPLICA:                             'REPLICA';
 REPLICATION_MASTER_ADMIN:            'REPLICATION_MASTER_ADMIN';
+ROW_START:                           'ROW START';
+ROW_END:                             'ROW END';
+SYSTEM_VERSIONING:                   'SYSTEM VERSIONING';
 
 // Operators
 // Operators. Assigns

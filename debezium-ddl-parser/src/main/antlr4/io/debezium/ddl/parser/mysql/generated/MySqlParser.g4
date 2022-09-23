@@ -396,6 +396,7 @@ createDefinition
     : uid columnDefinition                                          #columnDeclaration
     | tableConstraint                                               #constraintDeclaration
     | indexColumnDefinition                                         #indexDeclaration
+    | periodDefinition                                              #systemVersioningPeriodDeclaration
     ;
 
 columnDefinition
@@ -405,7 +406,6 @@ columnDefinition
 columnConstraint
     : nullNotnull                                                   #nullColumnConstraint
     | DEFAULT defaultValue                                          #defaultColumnConstraint
-    | (VISIBLE | INVISIBLE)                                         #invisibleColumnConstraint
     | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
@@ -414,10 +414,12 @@ columnConstraint
     | STORAGE storageval=(DISK | MEMORY | DEFAULT)                  #storageColumnConstraint
     | referenceDefinition                                           #referenceColumnConstraint
     | COLLATE collationName                                         #collateColumnConstraint
-    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED | PERSISTENT)? #generatedColumnConstraint
+    | (GENERATED ALWAYS)? AS (ROW_START | ROW_END | '(' expression ')') (VIRTUAL | STORED | PERSISTENT)? #generatedColumnConstraint
+    | (VISIBLE | INVISIBLE)                                         #invisibleColumnConstraint
     | SERIAL DEFAULT VALUE                                          #serialDefaultColumnConstraint
     | (CONSTRAINT name=uid?)?
       CHECK '(' expression ')'                                      #checkColumnConstraint
+    | WITHOUT SYSTEM_VERSIONING                                     #withoutSystemVersioningColumn
     ;
 
 tableConstraint
@@ -463,6 +465,10 @@ indexColumnDefinition
       indexColumnNames indexOption*                                 #specialIndexDeclaration
     ;
 
+periodDefinition
+    : PERIOD_FOR SYSTEM_TIME '(' uid ',' uid ')'
+    ;
+
 tableOption
     : ENGINE '='? engineName?                                                       #tableOptionEngine
     | ENGINE_ATTRIBUTE '='? STRING_LITERAL                                          #tableOptionEngineAttribute
@@ -504,6 +510,7 @@ tableOption
     | tablespaceStorage                                                             #tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                                                #tableOptionTransactional
     | UNION '='? '(' tables ')'                                                     #tableOptionUnion
+    | WITH SYSTEM_VERSIONING                                                        #tableOptionSystemVersioning
     ;
 
 tableType
@@ -522,6 +529,10 @@ partitionDefinitions
         (SUBPARTITIONS subCount=decimalLiteral)?
       )?
     ('(' partitionDefinition (',' partitionDefinition)* ')')?
+    ;
+
+systemVersioningDefinitions
+    : (ADD | DROP) SYSTEM_VERSIONING
     ;
 
 partitionFunctionDefinition
@@ -711,6 +722,7 @@ alterSpecification
     | IMPORT TABLESPACE                                             #alterByImportTablespace
     | FORCE                                                         #alterByForce
     | validationFormat=(WITHOUT | WITH) VALIDATION                  #alterByValidate
+    | ADD periodDefinition                                          #alterBySysVersioningPeriod
     | ADD PARTITION ifNotExists?
         '('
           partitionDefinition (',' partitionDefinition)*
@@ -733,8 +745,7 @@ alterSpecification
     | REPAIR PARTITION (uidList | ALL)                              #alterByRepairPartition
     | REMOVE PARTITIONING                                           #alterByRemovePartitioning
     | UPGRADE PARTITIONING                                          #alterByUpgradePartitioning
-    | ADD COLUMN? ifNotExists?
-        '(' createDefinition (',' createDefinition)* ')'            #alterByAddDefinitions // ifNotExists is MariaDB-specific
+    | systemVersioningDefinitions                                   #alterBySystemVersioning
     ;
 
 
@@ -2367,6 +2378,7 @@ specificFunction
       | CURRENT_USER | LOCALTIME | UTC_TIMESTAMP | SCHEMA
       ) ('(' ')')?                                                  #simpleFunctionCall
     | CONVERT '(' expression separator=',' convertedDataType ')'    #dataTypeFunctionCall
+    | COALESCE '(' expression separator=',' expression ')'          #mariaDB
     | CONVERT '(' expression USING charsetName ')'                  #dataTypeFunctionCall
     | CAST '(' expression AS convertedDataType ')'                  #dataTypeFunctionCall
     | VALUES '(' fullColumnName ')'                                 #valuesFunctionCall
@@ -2742,7 +2754,7 @@ functionNameBase
     | ASYMMETRIC_DECRYPT | ASYMMETRIC_DERIVE
     | ASYMMETRIC_ENCRYPT | ASYMMETRIC_SIGN | ASYMMETRIC_VERIFY
     | ATAN | ATAN2 | BENCHMARK | BIN | BIT_COUNT | BIT_LENGTH
-    | BUFFER | CEIL | CEILING | CENTROID | CHARACTER_LENGTH
+    | BUFFER | COALESCE | CEIL | CEILING | CENTROID | CHARACTER_LENGTH
     | CHARSET | CHAR_LENGTH | COERCIBILITY | COLLATION
     | COMPRESS | CONCAT | CONCAT_WS | CONNECTION_ID | CONV
     | CONVERT_TZ | COS | COT | COUNT | CRC32

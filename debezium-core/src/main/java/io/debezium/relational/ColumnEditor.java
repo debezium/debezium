@@ -279,6 +279,10 @@ public interface ColumnEditor {
      */
     ColumnEditor unsetDefaultValueExpression();
 
+    ColumnEditor hidden(boolean hidden);
+
+    ColumnEditor periodDateType(PeriodDateType periodDateType);
+
     /**
      * Obtain an immutable column definition representing the current state of this editor. Typically, an editor is created and
      * used to build a column, and then discarded. However, this editor with its current state can be reused after this method,

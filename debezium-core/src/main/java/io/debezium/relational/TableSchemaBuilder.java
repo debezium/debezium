@@ -165,7 +165,7 @@ public class TableSchemaBuilder {
         StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator, table.systemVersionColumns());
     }
 
     public boolean isMultiPartitionMode() {

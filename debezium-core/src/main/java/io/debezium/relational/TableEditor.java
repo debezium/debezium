@@ -195,6 +195,25 @@ public interface TableEditor {
      */
     TableEditor setPrimaryKeyNames(List<String> pkColumnNames);
 
+    TableEditor setSystemVersionColumns(String rowStartColumn, String rowEndColumn);
+
+    /**
+     * The list of column names that make up the primary key for this table. The resulting list should not be modified directly;
+     * instead, the set of primary key names should be defined with {@link #setPrimaryKeyNames(String...)}.
+     *
+     * @return the list of column names that make up the primary key; never null but possibly empty
+     */
+    PeriodDefinition systemVersionColumnNames();
+
+    /**
+     * Determine whether this table has a primary key.
+     * @return {@code true} if this table has at least one {@link #primaryKeyColumnNames() primary key column}, or {@code false}
+     * if there are no primary key columns
+     */
+    default boolean isSystemVersioned() {
+        return systemVersionColumnNames() != null;
+    }
+
     /**
      * Sets this table's primary key to contain all columns, ensuring that all values are unique within the table.
      * This is analogous to calling {@code setPrimaryKeyNames(columnNames())} except that the primary key is updated

@@ -39,6 +39,10 @@ public interface Table {
      */
     List<String> primaryKeyColumnNames();
 
+    default PeriodDefinition systemVersionColumns() {
+        return new PeriodDefinition(null, null);
+    }
+
     /**
      * Get the columns that make up the primary key for this table.
      * @return the immutable list of columns that make up the primary key; never null but possibly empty

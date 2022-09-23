@@ -115,6 +115,28 @@ public interface Column extends Comparable<Column> {
     }
 
     /**
+     * Determine whether this column is hidden (commonly used with temporal or system-versioned tables)
+     *
+     * @return {@code false} if it is hidden (the default), or {@code false} otherwise
+     */
+    default boolean isHidden() {
+        return false;
+    }
+
+    /**
+     * Applies to timestamp columns on system-versioned tables. This time can represent either:
+     *  START_DATE - when the row became active, essentially the create date for a versioned row
+     *  END_DATE   - when the row becomes/became inactive, essentially the delete date for a versioned row
+     *
+     *  A system-versioned table will have 2 timestamp columns, either explicitly defined or implicit, one representing
+     *  the START_DATE and the other representing the END_DATE (end date would be in the future for active rows).
+     * @return an optional PeriodDateType value representing which date this column holds (start or end)
+     */
+    default Optional<PeriodDateType> periodDateType() {
+        return Optional.empty();
+    }
+
+    /**
      * Determine whether this column's values are automatically incremented by the database.
      *
      * @return {@code true} if the values are auto-incremented, or {@code false} otherwise

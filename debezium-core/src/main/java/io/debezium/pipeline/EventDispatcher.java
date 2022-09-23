@@ -393,6 +393,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     null,
                     headers);
 
+            // TODO: DBX-4059 - check offsetContext.getTransactionContext() to suppress 'c' events on system versioned tables?
+            //       alternatively don't suppress anything but ensure the transaction times and row start/end are included in the event
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
 
             if (emitTombstonesOnDelete && operation == Operation.DELETE) {
