@@ -528,10 +528,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         // Wait for snapshot completion
-        consumeRecordsByTopic(1);
+        TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(snapshotRecords.allRecordsInOrder()).hasSize(1);
 
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
-        consumeRecordsByTopic(1);
+        final SourceRecords insertRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(insertRecords.allRecordsInOrder()).hasSize(1);
 
         connection.setAutoCommit(false);
 
