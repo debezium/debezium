@@ -233,18 +233,21 @@ public class LogMinerQueryBuilder {
      */
     private static String listOfPatternsToSql(List<Pattern> patterns, String columnName, boolean inclusion) {
         StringBuilder predicate = new StringBuilder();
-        for (Iterator<Pattern> i = patterns.iterator(); i.hasNext();) {
-            Pattern pattern = i.next();
+        if (!patterns.isEmpty()) {
             if (inclusion) {
                 predicate.append("NOT ");
             }
             // NOTE: The REGEXP_LIKE operator was added in Oracle 10g (10.1.0.0.0)
-            final String text = resolveRegExpLikePattern(pattern);
-            predicate.append("REGEXP_LIKE(").append(columnName).append(",'").append(text).append("','i')");
-            if (i.hasNext()) {
-                // Exclude lists imply combining them via AND, Include lists imply combining them via OR?
-                predicate.append(inclusion ? " AND " : " OR ");
+            predicate.append("REGEXP_LIKE(").append(columnName).append(",'");
+            for (Iterator<Pattern> i = patterns.iterator(); i.hasNext();) {
+                final Pattern pattern = i.next();
+                final String text = resolveRegExpLikePattern(pattern);
+                predicate.append(text);
+                if (i.hasNext()) {
+                    predicate.append("|");
+                }
             }
+            predicate.append("','i')");
         }
         return predicate.toString();
     }

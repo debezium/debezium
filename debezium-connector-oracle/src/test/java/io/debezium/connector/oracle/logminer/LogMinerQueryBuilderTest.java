@@ -141,57 +141,52 @@ public class LogMinerQueryBuilderTest {
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaInclude() {
-        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') OR REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
+        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$|^SCHEMA2$','i')) ";
         assertQueryWithConfig(SCHEMA_INCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaExclude() {
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
+        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$|^SCHEMA2$','i')) ";
         assertQueryWithConfig(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", schema, null);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithTableInclude() {
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
+        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$|^DEBEZIUM\\.TABLEB$','i')) ";
         assertQueryWithConfig(TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithTableExcludes() {
-        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "AND NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
+        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$|^DEBEZIUM\\.TABLEB$','i')) ";
         assertQueryWithConfig(TABLE_EXCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", null, table);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaTableIncludes() {
-        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') OR REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
+        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$|^SCHEMA2$','i')) ";
+        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$|^DEBEZIUM\\.TABLEB$','i')) ";
         assertQueryWithConfig(SCHEMA_INCLUDE_LIST, "SCHEMA1,SCHEMA2", TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", schema, table);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaTableExcludes() {
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "AND NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
+        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$|^SCHEMA2$','i')) ";
+        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$|^DEBEZIUM\\.TABLEB$','i')) ";
         assertQueryWithConfig(SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", TABLE_EXCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", schema, table);
     }
 
     @Test
     @FixFor("DBZ-3009")
     public void testLogMinerQueryWithSchemaExcludeTableInclude() {
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
+        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$|^SCHEMA2$','i')) ";
+        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$|^DEBEZIUM\\.TABLEB$','i')) ";
         assertQueryWithConfig(SCHEMA_EXCLUDE_LIST, "SCHEMA1,SCHEMA2", TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB", schema, table);
     }
 
