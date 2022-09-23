@@ -2484,31 +2484,61 @@ The connector is also unable to recover its database schema history topic.
 
 |[[mysql-property-database-include-list]]<<mysql-property-database-include-list, `+database.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the names of the databases for which to capture changes. The connector does not capture changes in any database whose name is not in `database.include.list`. By default, the connector captures changes in all databases.
-Do not also set the `database.exclude.list` connector confiuration property.
+|An optional, comma-separated list of regular expressions that match the names of the databases for which to capture changes.
+The connector does not capture changes in any database whose name is not in `database.include.list`.
+By default, the connector captures changes in all databases. +
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not also set the `database.exclude.list` property.
 
 |[[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `+database.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the names of databases for which you do not want to capture changes. The connector captures changes in any database whose name is not in the `database.exclude.list`.
-Do not also set the `database.include.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match the names of databases for which you do not want to capture changes.
+The connector captures changes in any database whose name is not in the `database.exclude.list`. +
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not also set the `database.include.list` property.
 
 |[[mysql-property-table-include-list]]<<mysql-property-table-include-list, `+table.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture. The connector does not capture changes in any table not included in `table.include.list`. Each identifier is of the form _databaseName_._tableName_. By default, the connector captures changes in every non-system table in each database whose changes are being captured.
-Do not also specify the `table.exclude.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture.
+The connector does not capture changes in any table that is not included in `table.include.list`.
+Each identifier is of the form _databaseName_._tableName_.
+By default, the connector captures changes in every non-system table in each database whose changes are being captured. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list, `+table.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture. The connector captures changes in any table not included in `table.exclude.list`. Each identifier is of the form _databaseName_._tableName_.
-Do not also specify the `table.include.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
+The connector captures changes in any table that is not included in `table.exclude.list`.
+Each identifier is of the form _databaseName_._tableName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
 
 |[[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `+column.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+If you include this property in the configuration, do not also set the `column.include.list` property.
 
 |[[mysql-property-column-include-list]]<<mysql-property-column-include-list, `+column.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not set the `column.exclude.list` property.
 
 |[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
@@ -2673,12 +2703,21 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mysql-property-gtid-source-includes]]<<mysql-property-gtid-source-includes, `+gtid.source.includes+`>>
 |No default
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that match one of these include patterns are used.
-Do not also specify a setting for `gtid.source.excludes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used that the connector uses to find the binlog position on the MySQL server.
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that match one of the specified `include` patterns.
+
+To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire UUID string; it does not match substrings that might be present in the UUID. +
+If you include this property in the configuration, do not also set the `gtid.source.excludes` property.
 
 |[[mysql-property-gtid-source-excludes]]<<mysql-property-gtid-source-excludes, `+gtid.source.excludes+`>>
 |No default
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that do not match any of these exclude patterns are used. Do not also specify a value for `gtid.source.includes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set that the connector uses to find the binlog position on the MySQL server.
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that do not match any of the specified `exclude` patterns.
+
+To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire UUID string; it does not match substrings that might be present in the UUID. +
+If you include this property in the configuration, do not also set the `gtid.source.includes` property.
 
 |[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
@@ -2841,8 +2880,11 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:mysql-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
-This property does not affect the behavior of incremental snapshots.
+This property takes effect only if the connector's xref:mysql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default

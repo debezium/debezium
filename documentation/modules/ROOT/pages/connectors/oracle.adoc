@@ -2588,10 +2588,18 @@ You can set the following values:
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
 
-This property does not affect the behavior of incremental snapshots.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2626,8 +2634,19 @@ In the resulting snapshot, the connector includes only the records for which `de
 
 |[[oracle-property-schema-include-list]]<<oracle-property-schema-include-list, `+schema.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
+Any schema name not included in `schema.include.list` is excluded from having its changes captured.
+By default, all non-system schemas have their changes captured. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not also set the `schema.exclude.list` property.
 
 |[[oracle-property-include-schema-comments]]<<oracle-property-include-schema-comments, `+include.schema.comments+`>>
 |`false`
@@ -2635,50 +2654,93 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 
 |[[oracle-property-schema-exclude-list]]<<oracle-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
-In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only. +
+endif::community[]
+Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not set the`schema.include.list` property.
 
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
-Tables that are not included in the include list are excluded from monitoring.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+fdef::community[]
+If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+endif::community[]
+When this property is set, the connector captures changes only from the specified tables.
 Each table identifier uses the following format: +
  +
 `__<schema_name>.<table_name>__` +
  +
-By default, the connector monitors every non-system table in each captured database.
-Do not use this property in combination with `table.exclude.list`.
-If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+By default, the connector monitors every non-system table in each captured database. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+endif::community[]
 The connector captures change events from any table that is not specified in the exclude list.
 Specify the identifier for each table using the following format: +
  +
 `_<schemaName>.<tableName>_`.
 
-Do not use this property in combination with `table.include.list`.
-If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
 Fully-qualified names for columns use the following format: +
  +
 `_<Schema_name>.<table_name>.<column_name>_` +
  +
-The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
+The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
 
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
 Fully-qualified column names use the following format: +
  +
 `_<schema_name>.<table_name>.<column_name>_` +
  +
-The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value.
+The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
