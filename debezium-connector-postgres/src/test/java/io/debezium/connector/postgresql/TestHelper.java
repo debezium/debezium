@@ -239,7 +239,7 @@ public final class TestHelper {
 
     public static Version getServerVersion() {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config))) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return ServerVersion.from(
                 connection.queryAndMap(
                     "SHOW server_version",
