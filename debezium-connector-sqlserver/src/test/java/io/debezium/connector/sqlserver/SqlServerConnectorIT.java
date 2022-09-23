@@ -639,7 +639,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
         assertConnectorIsRunning();
 
-        consumeRecordsByTopic(1);
+        TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(snapshotRecords.allRecordsInOrder()).hasSize(1);
 
         connection.setAutoCommit(false);
 
@@ -659,12 +661,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        final SourceRecords records2 = consumeRecordsByTopic(6);
+
+        final int expectedRecords = 20;
+        final SourceRecords records2 = consumeRecordsByTopic(expectedRecords - records1.allRecordsInOrder().size());
 
         final List<SourceRecord> tableB = records1.recordsForTopic("server1.testDB1.dbo.tableb");
         tableB.addAll(records2.recordsForTopic("server1.testDB1.dbo.tableb"));
 
-        Assertions.assertThat(tableB).hasSize(20);
+        Assertions.assertThat(tableB).hasSize(expectedRecords);
 
         stopConnector();
     }
