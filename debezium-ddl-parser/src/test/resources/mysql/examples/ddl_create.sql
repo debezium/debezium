@@ -535,3 +535,9 @@ CREATE SEQUENCE if NOT EXISTS workdb.s2 START=1 CYCLE MINVALUE=10000 MAXVALUE=99
 CREATE OR REPLACE SEQUENCE if NOT EXISTS s2 START=100 CACHE 1000;
 CREATE SEQUENCE `seq_8b4d1cdf-377e-4021-aef3-f7c9846903fc` INCREMENT BY 1 START WITH 1;
 #end
+
+#begin
+-- From MariaDB 10.1.2, pre-query variables are supported
+-- src: https://mariadb.com/kb/en/set-statement/
+SET STATEMENT max_statement_time=60 FOR CREATE TABLE some_table (val int);
+#end

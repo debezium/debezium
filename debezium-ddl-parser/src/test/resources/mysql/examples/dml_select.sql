@@ -213,3 +213,9 @@ FROM
     ORDER BY amount DESC LIMIT 1)
   AS max_sale;
 #end
+
+#begin
+-- From MariaDB 10.1.2, pre-query variables are supported
+-- src: https://mariadb.com/kb/en/set-statement/
+SET STATEMENT some_statement=60 FOR SELECT a FROM some_table;
+#end

@@ -42,9 +42,9 @@ sqlStatements
     ;
 
 sqlStatement
-    : ddlStatement | dmlStatement | transactionStatement
+    : setStatementFor? (ddlStatement | dmlStatement | transactionStatement // setStatementFor is is MariaDB-specific only
     | replicationStatement | preparedStatement
-    | administrationStatement | utilityStatement
+    | administrationStatement | utilityStatement)
     ;
 
 emptyStatement
@@ -2827,3 +2827,6 @@ functionNameBase
     // MariaDB
     | LASTVAL | NEXTVAL | SETVAL
     ;
+
+// MariaDB statements
+setStatementFor: SET STATEMENT ID EQUAL_SYMBOL constant (COMMA ID EQUAL_SYMBOL constant)* FOR; // MariaDB-specific only
