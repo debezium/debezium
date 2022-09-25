@@ -232,7 +232,7 @@ WITH:                                'WITH';
 WRITE:                               'WRITE';
 XOR:                                 'XOR';
 ZEROFILL:                            'ZEROFILL';
-
+STATEMENT:                           'STATEMENT';
 
 // DATA TYPE Keywords
 
