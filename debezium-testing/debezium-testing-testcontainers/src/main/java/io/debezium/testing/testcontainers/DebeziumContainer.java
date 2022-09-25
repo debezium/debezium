@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static java.time.temporal.ChronoUnit.SECONDS;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -19,7 +17,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -46,6 +44,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;
+    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofMinutes(5);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     protected static final ObjectMapper MAPPER = new ObjectMapper();
@@ -71,9 +70,10 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private void defaultConfig() {
         setWaitStrategy(
-                new LogMessageWaitStrategy()
-                        .withRegEx(".*Session key updated.*")
-                        .withStartupTimeout(Duration.of(60, SECONDS)));
+                new HttpWaitStrategy()
+                        .forPath("/connectors")
+                        .forPort(KAFKA_CONNECT_PORT)
+                        .withStartupTimeout(DEBEZIUM_CONTAINER_STARTUP_TIMEOUT));
         withEnv("GROUP_ID", "1");
         withEnv("CONFIG_STORAGE_TOPIC", "debezium_connect_config");
         withEnv("OFFSET_STORAGE_TOPIC", "debezium_connect_offsets");
