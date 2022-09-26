@@ -2810,7 +2810,9 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 [[postgresql-property-column-mask-hash-v2]]<<postgresql-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
+Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_. +
+To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2898,7 +2900,7 @@ A database administrator or the user configured to perform replications must hav
 If the connector cannot find the publication, the connector throws an exception and stops. +
  +
 `filtered` - If a publication exists, the connector uses it.
-If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `schema.include.list`, `schema.exclude.list`, and `table.include.list`, and `table.exclude.list` connector configuration properties. 
+If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `schema.include.list`, `schema.exclude.list`, and `table.include.list`, and `table.exclude.list` connector configuration properties.
 For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
 If the publication exists, the connector updates the publication for tables that match the current filter configuration.
 For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
