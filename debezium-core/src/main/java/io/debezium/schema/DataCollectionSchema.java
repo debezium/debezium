@@ -9,6 +9,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.data.Envelope;
 import io.debezium.relational.PeriodDefinition;
+import io.debezium.spi.schema.DataCollectionId;
 
 public interface DataCollectionSchema {
 
@@ -18,5 +19,7 @@ public interface DataCollectionSchema {
 
     Envelope getEnvelopeSchema();
 
-    PeriodDefinition periodDefinition();
+    default PeriodDefinition periodDefinition() {
+        return null;
+    }
 }

@@ -318,6 +318,7 @@ class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         updatePrimaryKeys();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, systemVersionColumnNames());
+        List<Attribute> attributes = new ArrayList<>(this.attributes.values());
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes, systemVersionColumnNames());
     }
 }

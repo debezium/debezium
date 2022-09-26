@@ -178,6 +178,8 @@ final class NoOpTableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, null);
+        List<Attribute> attributes = new ArrayList<>();
+        PeriodDefinition periodDefinition = null;
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes, periodDefinition);
     }
 }

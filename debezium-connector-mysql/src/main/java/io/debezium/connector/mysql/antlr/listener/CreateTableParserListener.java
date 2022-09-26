@@ -13,6 +13,7 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.PeriodDateType;
 import io.debezium.relational.Table;
