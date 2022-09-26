@@ -2673,7 +2673,7 @@ If you include this property in the configuration, do not set the`schema.include
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
-fdef::community[]
+ifdef::community[]
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
 endif::community[]
 When this property is set, the connector captures changes only from the specified tables.
