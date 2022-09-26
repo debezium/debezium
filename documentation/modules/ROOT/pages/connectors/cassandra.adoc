@@ -230,7 +230,7 @@ For id = 1001 and registration_date = 1562202942545, the key payload in JSON rep
 
 [NOTE]
 ====
-Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary key are always included in the event's key.
+Although the `field.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary key are always included in the event's key.
 ====
 
 
