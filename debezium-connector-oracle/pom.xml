@@ -433,6 +433,10 @@
                                 <time>120000</time> <!-- 2 minutes max -->
                               </wait>
                             </run>
+                            <external>
+                              <type>properties</type>
+                              <mode>override</mode>
+                            </external>
                           </image>
                         </images>
                       </configuration>
@@ -513,6 +517,10 @@
                                             <log>Infinispan Server [0-9a-zA-z.]* started</log>
                                         </wait>
                                     </run>
+                                    <external>
+                                        <type>properties</type>
+                                        <mode>override</mode>
+                                    </external>
                                 </image>
                             </images>
                         </configuration>

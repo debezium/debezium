@@ -140,6 +140,10 @@
                                     <log>SQL Server is now ready for client connections</log>
                                 </wait>
                             </run>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
                         </image>
                     </images>
                 </configuration>
