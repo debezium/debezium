@@ -2707,7 +2707,7 @@ If you include this property in the configuration, do not also set the `table.in
 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
@@ -2726,7 +2726,7 @@ If you include this property in the configuration, do not also set the `column.e
 
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
