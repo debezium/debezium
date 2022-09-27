@@ -132,6 +132,10 @@
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                   <!-- A container that initiates the data replica set and adds it as shard to router -->
                   <image>
@@ -155,6 +159,10 @@
                         <time>30000</time> <!-- 30 seconds max -->
                       </wait>
                     </run>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                 </images>
               </configuration>

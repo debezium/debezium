@@ -175,6 +175,10 @@
                                    <run>${docker.initimage}</run>
                                  </runCmds>
                             </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
                         </image>
                     </images>
                 </configuration>

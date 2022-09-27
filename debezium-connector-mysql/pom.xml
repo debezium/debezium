@@ -209,6 +209,10 @@
                         <targetDir>/</targetDir>
                       </assembly>
                     </build>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team
@@ -268,6 +272,10 @@
                           <targetDir>/</targetDir>
                         </assembly>
                     </build>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                   <image>
                     <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
@@ -318,6 +326,10 @@
                         <targetDir>/</targetDir>
                       </assembly>
                     </build>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                   <image>
                     <!-- 
@@ -372,6 +384,10 @@
                         <targetDir>/</targetDir>
                       </assembly>
                     </build>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                   <image>
                     <!--
@@ -420,6 +436,10 @@
                         <targetDir>/</targetDir>
                       </assembly>
                     </build>
+                    <external>
+                      <type>properties</type>
+                      <mode>override</mode>
+                    </external>
                   </image>
                 </images>
               </configuration>
