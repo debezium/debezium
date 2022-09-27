@@ -159,3 +159,4 @@ nicholas-fwang,Inki Hwang
 gmouss,Moustapha Mahfoud
 avis408,Avinash Vishwakarma
 nirolevy,Niro Levy
+nirlevy,Nir Levy
