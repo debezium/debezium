@@ -147,6 +147,14 @@ jobs:
         with:
           files: |
             debezium-core/**
+            debezium-schema-generator/**
+            debezium-connect-rest-extension/**
+            debezium-connector-mongodb/**
+            debezium-connector-mysql/**                        
+            debezium-connector-postgres/**
+            debezium-connector-sqlserver/**
+            debezium-connector-oracle/**
+            debezium-storage/**
             support/checkstyle/**
             debezium-parent/pom.xml
             debezium-bom/pom.xml
