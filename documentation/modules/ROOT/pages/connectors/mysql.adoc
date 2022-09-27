@@ -2542,7 +2542,15 @@ If you include this property in the configuration, do not set the `column.exclud
 
 |[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event record values if the field values are longer than the specified number of characters. You can configure multiple properties with different lengths in a single configuration. The length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Fully-qualified names for columns observe the following format: _databaseName_._tableName_._columnName_.
+
+When this property is set, values in the specified columns of change event records are truncated when they exceed the number of characters specified by the _length_ in the property name.
+
+You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, column.truncate.to.20.chars.
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an anchored regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
 |[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_

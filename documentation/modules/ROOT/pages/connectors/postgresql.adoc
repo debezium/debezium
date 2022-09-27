@@ -2800,7 +2800,15 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+The fully-qualified name of a column observes the following format: `_<schemaName>_._<tableName>_._<columnName>_`.
+
+When this property is set, values in the specified columns of change event records are truncated when they exceed the number of characters specified by the _length_ in the property name.
+
+You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, column.truncate.to.20.chars.
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an anchored regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
 |[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
