@@ -23,14 +23,16 @@ final class TableImpl implements Table {
     private final String defaultCharsetName;
     private final String comment;
     private final List<Attribute> attributes;
+    private final PeriodDefinition periodDefinition;
 
     @PackagePrivate
     TableImpl(Table table) {
-        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName(), table.comment(), table.attributes());
+        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName(), table.comment(), table.attributes(), null);
     }
 
     @PackagePrivate
-    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment, List<Attribute> attributes) {
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment,
+              List<Attribute> attributes, PeriodDefinition periodDefinition) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
@@ -42,6 +44,7 @@ final class TableImpl implements Table {
         this.defaultCharsetName = defaultCharsetName;
         this.comment = comment;
         this.attributes = attributes;
+        this.periodDefinition = periodDefinition;
     }
 
     @Override

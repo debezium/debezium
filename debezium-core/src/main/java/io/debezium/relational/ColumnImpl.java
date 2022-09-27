@@ -30,24 +30,14 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final List<String> enumValues;
     private final String comment;
 
-    protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated) {
-        this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false, null);
-    }
-
-    protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-                         boolean optional, boolean autoIncremented, boolean generated, String defaultValueExpression, boolean hasDefaultValue) {
-        this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
-                defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, null);
-    }
+    private final boolean hidden;
+    private final PeriodDateType periodDateType;
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
                          String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
                          List<String> enumValues, boolean optional, boolean autoIncremented, boolean generated,
-                         String defaultValueExpression, boolean hasDefaultValue, String comment) {
+                         String defaultValueExpression, boolean hasDefaultValue, String comment,
+                         boolean hidden, PeriodDateType periodDateType) {
         this.name = columnName;
         this.position = position;
         this.jdbcType = jdbcType;
@@ -69,6 +59,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.hasDefaultValue = hasDefaultValue;
         this.enumValues = enumValues == null ? new ArrayList<>() : enumValues;
         this.comment = comment;
+        this.hidden = hidden;
+        this.periodDateType = periodDateType;
         assert this.length >= -1;
     }
 
@@ -145,6 +137,16 @@ final class ColumnImpl implements Column, Comparable<Column> {
     @Override
     public List<String> enumValues() {
         return enumValues;
+    }
+
+    @Override
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    @Override
+    public Optional<PeriodDateType> periodDateType() {
+        return Optional.ofNullable(periodDateType);
     }
 
     @Override

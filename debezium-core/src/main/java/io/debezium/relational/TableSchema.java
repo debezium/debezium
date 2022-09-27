@@ -59,6 +59,7 @@ public class TableSchema implements DataCollectionSchema {
     private final Schema valueSchema;
     private final StructGenerator keyGenerator;
     private final StructGenerator valueGenerator;
+    private final PeriodDefinition periodDefinition;
 
     /**
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
@@ -72,13 +73,15 @@ public class TableSchema implements DataCollectionSchema {
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
      */
-    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator) {
+    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema,
+                       Schema valueSchema, StructGenerator valueGenerator, PeriodDefinition periodDefinition) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
+        this.periodDefinition = periodDefinition;
     }
 
     @Override
@@ -139,6 +142,11 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct valueFromColumnData(Object[] columnData) {
         return columnData == null ? null : valueGenerator.generateValue(columnData);
+    }
+
+    @Override
+    public PeriodDefinition periodDefinition() {
+        return periodDefinition;
     }
 
     @Override

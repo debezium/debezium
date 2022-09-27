@@ -80,6 +80,16 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor setSystemVersionColumns(String rowStartColumn, String rowEndColumn) {
+        return this;
+    }
+
+    @Override
+    public PeriodDefinition systemVersionColumnNames() {
+        return null;
+    }
+
+    @Override
     public TableEditor setUniqueValues() {
         this.uniqueValues = true;
         return this;
@@ -169,6 +179,7 @@ final class NoOpTableEditorImpl implements TableEditor {
         }
         List<Column> columns = new ArrayList<>();
         List<Attribute> attributes = new ArrayList<>();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes);
+        PeriodDefinition periodDefinition = null;
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes, periodDefinition);
     }
 }

@@ -23,6 +23,8 @@ class TableEditorImpl implements TableEditor {
     private String comment;
     private LinkedHashMap<String, Attribute> attributes = new LinkedHashMap<>();
 
+    private PeriodDefinition sysVersionedColumns = null;
+
     protected TableEditorImpl() {
     }
 
@@ -122,6 +124,17 @@ class TableEditorImpl implements TableEditor {
         this.pkColumnNames.addAll(pkColumnNames);
         uniqueValues = false;
         return this;
+    }
+
+    @Override
+    public TableEditor setSystemVersionColumns(String rowStartColumn, String rowEndColumn) {
+        this.sysVersionedColumns = new PeriodDefinition(rowStartColumn, rowEndColumn);
+        return this;
+    }
+
+    @Override
+    public PeriodDefinition systemVersionColumnNames() {
+        return sysVersionedColumns;
     }
 
     @Override
@@ -306,6 +319,6 @@ class TableEditorImpl implements TableEditor {
         });
         updatePrimaryKeys();
         List<Attribute> attributes = new ArrayList<>(this.attributes.values());
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes, systemVersionColumnNames());
     }
 }

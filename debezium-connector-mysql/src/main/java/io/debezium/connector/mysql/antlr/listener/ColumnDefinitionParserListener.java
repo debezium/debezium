@@ -23,6 +23,7 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.PeriodDateType;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.ddl.DataType;
 import io.debezium.util.Strings;
@@ -121,6 +122,18 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             }
         }
         super.enterCommentColumnConstraint(ctx);
+    }
+
+    @Override
+    public void enterGeneratedColumnConstraint(MySqlParser.GeneratedColumnConstraintContext ctx) {
+        if (ctx.ROW_START() != null) {
+            columnEditor.periodDateType(PeriodDateType.START_DATE);
+        }
+        else if (ctx.ROW_END() != null) {
+            columnEditor.periodDateType(PeriodDateType.END_DATE);
+        }
+
+        super.enterGeneratedColumnConstraint(ctx);
     }
 
     @Override

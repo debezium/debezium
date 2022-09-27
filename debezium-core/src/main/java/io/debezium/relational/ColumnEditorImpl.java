@@ -29,6 +29,10 @@ final class ColumnEditorImpl implements ColumnEditor {
     private List<String> enumValues;
     private String comment;
 
+    private boolean hidden = false;
+
+    private PeriodDateType periodDateType = null;
+
     protected ColumnEditorImpl() {
     }
 
@@ -229,9 +233,22 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor hidden(boolean hidden) {
+        this.hidden = hidden;
+        return this;
+    }
+
+    @Override
+    public ColumnEditor periodDateType(PeriodDateType periodDateType) {
+        this.periodDateType = periodDateType;
+        return this;
+    }
+
+    @Override
     public Column create() {
         return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
-                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue, comment);
+                length, scale, enumValues, optional, autoIncremented, generated, defaultValueExpression, hasDefaultValue,
+                comment, hidden, periodDateType);
     }
 
     @Override
