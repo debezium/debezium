@@ -2964,6 +2964,10 @@ Applicable only when xref:postgresql-property-decimal-handling-mode[`decimal.han
 By default, the connector captures all logical decoding messages.
 When this property is set, the connector captures only logical decoding message with the prefixes specified by the property.
 All other logical decoding messages are excluded.
+
+To match the name of a message prefix, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire message prefix string; the expression does not match substrings that might be present in a prefix.
+
 If you include this property in the configuration, do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
@@ -2972,9 +2976,13 @@ For information about the structure of _message_ events and about their ordering
 |No default
 |An optional, comma-separated list of regular expressions that match the names of the logical decoding message prefixes that you do not want the connector to capture.
 When this property is set, the connector does not capture logical decoding messages that use the specified prefixes.
-All other messages are captured.
-If you include this property in the configuration, do not also set xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property.
-To exclude all logical decoding messages pass `.*` into this config.
+All other messages are captured. +
+To exclude all logical decoding messages, set the value of this property to `.*`.
+
+To match the name of a message prefix, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire message prefix string; the expression does not match substrings that might be present in a prefix.
+
+If you include this property in the configuration, do not also set xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property. +
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
