@@ -43,6 +43,7 @@ CREATE TABLE `tblSRCHjob_desc` (`description_id` bigint(20) unsigned NOT NULL AU
 create table invisible_column_test(id int, col1 int INVISIBLE);
 create table visible_column_test(id int, col1 int VISIBLE);
 create table table_with_buckets(id int(11) auto_increment NOT NULL COMMENT 'ID', buckets int(11) NOT NULL COMMENT '分桶数');
+create table statement(id int);
 
 CREATE TABLE table_items (id INT, purchased DATE)
     PARTITION BY RANGE( YEAR(purchased) )
