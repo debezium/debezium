@@ -157,7 +157,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                     // Parse and get Jackson JsonNode.
                     final JsonNode jsonPayload = parseJsonPayload(payloadString);
                     // Build a new Schema and new payload Struct that replace existing ones.
-                    payloadSchema = SchemaBuilderUtil.jsonNodeToSchema(jsonPayload);
+                    payloadSchema = SchemaBuilderUtil.toConnectSchema(fieldPayload, jsonPayload);
                     payload = StructBuilderUtil.jsonNodeToStruct(jsonPayload, payloadSchema);
                 }
                 catch (Exception e) {

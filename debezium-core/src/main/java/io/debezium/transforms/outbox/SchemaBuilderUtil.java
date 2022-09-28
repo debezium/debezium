@@ -25,36 +25,9 @@ import com.fasterxml.jackson.databind.node.NullNode;
 public class SchemaBuilderUtil {
 
     /**
-    * Build a new connect Schema inferring structure and types from Json document.
-    * @param document A Jackson JsonNode to extract schema from
-    * @return A new Schema matching this Json node.
-    */
-    public static Schema jsonNodeToSchema(JsonNode document) {
-        return jsonNodeToSchemaBuilder(document).build();
-    }
-
-    private static SchemaBuilder jsonNodeToSchemaBuilder(JsonNode document) {
-        final SchemaBuilder schemaBuilder = SchemaBuilder.struct().optional();
-        if (document != null) {
-            Iterator<Entry<String, JsonNode>> fieldsEntries = document.fields();
-            while (fieldsEntries.hasNext()) {
-                Entry<String, JsonNode> fieldEntry = fieldsEntries.next();
-                addFieldSchema(fieldEntry, schemaBuilder);
-            }
-        }
-        return schemaBuilder;
-    }
-
-    private static void addFieldSchema(Entry<String, JsonNode> fieldEntry, SchemaBuilder builder) {
-        final String fieldName = fieldEntry.getKey();
-        final JsonNode fieldValue = fieldEntry.getValue();
-        final Schema fieldSchema = jsonValueToSchema(fieldValue);
-        if (fieldSchema != null && !hasField(builder, fieldName)) {
-            builder.field(fieldName, fieldSchema);
-        }
-    }
-
-    private static Schema jsonValueToSchema(JsonNode node) {
+     * Build a new connect Schema inferring structure and types from Json node.
+     */
+    public static Schema toConnectSchema(String key, JsonNode node) {
         switch (node.getNodeType()) {
             case STRING:
                 return Schema.OPTIONAL_STRING_SCHEMA;
@@ -70,15 +43,54 @@ public class SchemaBuilderUtil {
                 return Schema.OPTIONAL_FLOAT64_SCHEMA;
             case ARRAY:
                 ArrayNode arrayNode = (ArrayNode) node;
-                return arrayNode.isEmpty() ? null : SchemaBuilder.array(findArrayMemberSchema(arrayNode)).optional().build();
+                return arrayNode.isEmpty() ? null : SchemaBuilder.array(toConnectSchemaWithCycles(key, arrayNode)).optional().build();
             case OBJECT:
-                return jsonNodeToSchema(node);
+                final SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(key).optional();
+                if (node != null) {
+                    Iterator<Entry<String, JsonNode>> fieldsEntries = node.fields();
+                    while (fieldsEntries.hasNext()) {
+                        final Entry<String, JsonNode> fieldEntry = fieldsEntries.next();
+                        final String fieldName = fieldEntry.getKey();
+                        final Schema fieldSchema = toConnectSchema(key + "." + fieldName, fieldEntry.getValue());
+                        if (fieldSchema != null && !hasField(schemaBuilder, fieldName)) {
+                            schemaBuilder.field(fieldName, fieldSchema);
+                        }
+                    }
+                }
+                return schemaBuilder.build();
             default:
                 return null;
         }
     }
 
-    /** */
+    private static Schema toConnectSchemaWithCycles(String key, ArrayNode array) throws ConnectException {
+        Schema schema = null;
+        final JsonNode sample = getFirstArrayElement(array);
+        if (sample.isObject()) {
+            final Iterator<JsonNode> elements = array.elements();
+            while (elements.hasNext()) {
+                final JsonNode element = elements.next();
+                if (!element.isObject()) {
+                    continue;
+                }
+                if (schema == null) {
+                    schema = toConnectSchema(key, element);
+                    continue;
+                }
+                // If the first element of Arrays is empty, will add missing fields.
+                schema = toConnectSchema(key, element);
+            }
+        }
+        else {
+            schema = toConnectSchema(null, sample);
+            if (schema == null) {
+                throw new ConnectException(String.format("Array '%s' has unrecognized member schema.", array.asText()));
+            }
+        }
+
+        return schema;
+    }
+
     private static JsonNode getFirstArrayElement(ArrayNode array) throws ConnectException {
         JsonNode refNode = NullNode.getInstance();
         Schema refSchema = null;
@@ -106,9 +118,9 @@ public class SchemaBuilderUtil {
             // We may return different schemas for NUMBER type, check here they are same.
             if (refNode.getNodeType() == JsonNodeType.NUMBER) {
                 if (refSchema == null) {
-                    refSchema = jsonValueToSchema(refNode);
+                    refSchema = toConnectSchema(null, refNode);
                 }
-                Schema elementSchema = jsonValueToSchema(element);
+                Schema elementSchema = toConnectSchema(null, element);
                 if (refSchema != elementSchema) {
                     throw new ConnectException(String.format("Field is not a homogenous array (%s x %s), different number types (%s x %s)",
                             refNode.asText(), element.asText(), refSchema, elementSchema));
@@ -117,44 +129,6 @@ public class SchemaBuilderUtil {
         }
 
         return refNode;
-    }
-
-    private static Schema findArrayMemberSchema(ArrayNode array) throws ConnectException {
-        final JsonNode sample = getFirstArrayElement(array);
-        if (sample.isObject()) {
-            return buildDocumentUnionSchema(array);
-        }
-
-        final Schema schema = jsonValueToSchema(sample);
-        if (schema == null) {
-            throw new ConnectException(String.format("Array '%s' has unrecognized member schema.",
-                    array.asText()));
-        }
-        return schema;
-    }
-
-    private static Schema buildDocumentUnionSchema(ArrayNode array) {
-        SchemaBuilder builder = null;
-
-        Iterator<JsonNode> elements = array.elements();
-        while (elements.hasNext()) {
-            JsonNode element = elements.next();
-
-            if (!element.isObject()) {
-                continue;
-            }
-            if (builder == null) {
-                builder = jsonNodeToSchemaBuilder(element);
-                continue;
-            }
-
-            Iterator<Entry<String, JsonNode>> fieldsEntries = element.fields();
-            while (fieldsEntries.hasNext()) {
-                Entry<String, JsonNode> fieldEntry = fieldsEntries.next();
-                addFieldSchema(fieldEntry, builder);
-            }
-        }
-        return builder.build();
     }
 
     private static boolean hasField(SchemaBuilder builder, String fieldName) {
