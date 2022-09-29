@@ -193,6 +193,10 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
+        
+         Scheduler s = new Scheduler();
+         LOGGER.info("Started off Scheduler");
+         s.schedule(()->LOGGER.info("Current milliseconds behind source: {} ms", metrics.getMilliSecondsBehindSource()),30000,60000);
 
         // Set up the log reader ...
         client = taskContext.getBinaryLogClient();
@@ -306,7 +310,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
 
         ts = clock.currentTimeInMillis() - eventTs;
-        LOGGER.trace("Current milliseconds behind source: {} ms", ts);
+        //LogConsolidated.log(LOGGER, "MilliSecondsBehindSource", 60000, "Current milliseconds behind source: "+ts +"ms");
+        //LOGGER.trace("Current milliseconds behind source: {} ms", ts);
         metrics.setMilliSecondsBehindSource(ts);
     }
 
