@@ -512,8 +512,8 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including: "
-                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default); "
-                    + "'none' does not apply any adjustment");
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore; "
+                    + "'none' does not apply any adjustment (default)");
 
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
             .withDisplayName("Query fetch size")
