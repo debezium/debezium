@@ -2158,7 +2158,7 @@ When this property is set, the connector adds the following fields to the schema
 * `pass:[_]pass:[_]debezium.source.column.length` +
 * `pass:[_]pass:[_]debezium.source.column.scale` +
 
-These parameters propagate a column's original type name and length, for variable-width types, respectively. +
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
 The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
@@ -2174,7 +2174,7 @@ When this property is set, for columns with matching data types, the connector e
 * `pass:[_]pass:[_]debezium.source.column.length` +
 * `pass:[_]pass:[_]debezium.source.column.scale` +
 
-These parameters propagate a column's original type name and length, (for variable-width types), respectively. +
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
 The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
