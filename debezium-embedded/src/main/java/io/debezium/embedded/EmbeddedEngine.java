@@ -196,7 +196,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(0)
+            .withDefault(-1)
             .withValidation(Field::isInteger)
             .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
 
