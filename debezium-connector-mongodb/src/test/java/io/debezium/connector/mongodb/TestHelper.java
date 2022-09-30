@@ -9,7 +9,9 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Struct;
@@ -53,6 +55,21 @@ public class TestHelper {
         return cfgBuilder.build();
     }
 
+    public static MongoPrimary primary(MongoDbTaskContext context) {
+        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
+    }
+
+    public static BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
+        AtomicInteger attempts = new AtomicInteger();
+        return (desc, error) -> {
+            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
+                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
+            }
+            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+        };
+    }
+
     public static void cleanDatabase(MongoPrimary primary, String dbName) {
         primary.execute("clean-db", mongo -> {
             MongoDatabase db1 = mongo.getDatabase(dbName);
@@ -74,17 +91,20 @@ public class TestHelper {
         return ret.get();
     }
 
-    public static boolean transactionsSupported(MongoPrimary primary, String dbName) {
+    public static List<Integer> getVersionArray(MongoPrimary primary, String dbName) {
         final Document serverInfo = databaseInformation(primary, dbName);
         @SuppressWarnings("unchecked")
         final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
+        return version;
+    }
+
+    public static boolean transactionsSupported(MongoPrimary primary, String dbName) {
+        final List<Integer> version = getVersionArray(primary, dbName);
         return version.get(0) >= 4;
     }
 
     public static boolean decimal128Supported(MongoPrimary primary, String dbName) {
-        final Document serverInfo = databaseInformation(primary, dbName);
-        @SuppressWarnings("unchecked")
-        final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
+        final List<Integer> version = getVersionArray(primary, dbName);
         return (version.get(0) >= 4) || (version.get(0) == 3 && version.get(1) >= 4);
     }
 
