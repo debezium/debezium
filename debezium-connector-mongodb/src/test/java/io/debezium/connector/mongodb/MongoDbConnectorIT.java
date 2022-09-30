@@ -23,10 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
@@ -1245,7 +1243,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
     protected MongoPrimary primary() {
         ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
+        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
@@ -1317,16 +1315,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
         }
         return results;
-    }
-
-    protected BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
     }
 
     @Test(expected = ConnectException.class)
