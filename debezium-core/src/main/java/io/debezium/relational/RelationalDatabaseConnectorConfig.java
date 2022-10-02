@@ -500,10 +500,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
+    protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
                                                 ColumnFilterMode columnFilterMode, boolean useCatalogBeforeSchema) {
-        super(config, logicalName, defaultSnapshotFetchSize);
+        super(config, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);

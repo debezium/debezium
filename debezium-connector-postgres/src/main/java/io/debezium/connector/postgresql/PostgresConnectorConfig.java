@@ -851,7 +851,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public PostgresConnectorConfig(Configuration config) {
         super(
                 config,
-                config.getString(CommonConnectorConfig.TOPIC_PREFIX),
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE,

@@ -33,7 +33,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
     private boolean useCatalogBeforeSchema;
-    private final String logicalName;
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
 
@@ -60,26 +59,24 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
-                                                          Configuration config, String logicalName,
+                                                          Configuration config,
                                                           TableFilter systemTablesFilter,
                                                           boolean useCatalogBeforeSchema,
                                                           int defaultSnapshotFetchSize,
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
+        super(config, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
-        this.logicalName = logicalName;
         this.connectorClass = connectorClass;
         this.multiPartitionMode = multiPartitionMode;
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config,
                                                           TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
                                                           boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, useCatalogBeforeSchema);
+        super(config, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, useCatalogBeforeSchema);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
-        this.logicalName = logicalName;
         this.connectorClass = connectorClass;
         this.multiPartitionMode = multiPartitionMode;
     }

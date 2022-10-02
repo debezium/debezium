@@ -25,7 +25,7 @@ public class ErrorHandlerTest {
     private static final class TestConnectorConfig extends CommonConnectorConfig {
 
         protected TestConnectorConfig(Configuration config) {
-            super(config, "test", 0);
+            super(config, 0);
         }
 
         @Override

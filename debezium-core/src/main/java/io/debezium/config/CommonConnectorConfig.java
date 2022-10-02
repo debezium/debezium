@@ -595,7 +595,7 @@ public abstract class CommonConnectorConfig {
     private final int maxBatchSize;
     private final long maxQueueSizeInBytes;
     private final Duration pollInterval;
-    private final String logicalName;
+    protected final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration heartbeatInterval;
     private final Duration snapshotDelay;
@@ -616,14 +616,14 @@ public abstract class CommonConnectorConfig {
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
 
-    protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
+    protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
-        this.logicalName = logicalName;
+        this.logicalName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
