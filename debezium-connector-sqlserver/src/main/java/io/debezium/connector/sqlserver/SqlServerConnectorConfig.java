@@ -18,7 +18,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -335,9 +334,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(SqlServerConnector.class, config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), new SystemTablesPredicate(),
-                x -> x.schema() + "." + x.table(), true,
-                ColumnFilterMode.SCHEMA, true);
+        super(
+                SqlServerConnector.class,
+                config,
+                new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(),
+                true,
+                ColumnFilterMode.SCHEMA,
+                true);
 
         final String databaseNames = config.getString(DATABASE_NAMES.name());
 

@@ -539,7 +539,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int cursorMaxAwaitTimeMs;
 
     public MongoDbConnectorConfig(Configuration config) {
-        super(config, config.getString(CommonConnectorConfig.TOPIC_PREFIX), DEFAULT_SNAPSHOT_FETCH_SIZE);
+        super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());

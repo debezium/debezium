@@ -48,7 +48,7 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0));
         converter = mappers.mappingConverterFor(tableId, column2);
         assertThat(converter).isNull();
     }
@@ -59,7 +59,7 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames.toUpperCase())
                 .build();
 
-        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0));
 
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
@@ -82,7 +82,7 @@ public class ColumnMappersTest {
                 .with("column.mask.with.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0)); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
@@ -149,7 +149,7 @@ public class ColumnMappersTest {
                 .with("column.mask.hash.SHA-256.with.salt.salt123", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0)); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
@@ -165,7 +165,7 @@ public class ColumnMappersTest {
                 .with("column.mask.hash.v2.SHA-256.with.salt.salt123", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0)); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);

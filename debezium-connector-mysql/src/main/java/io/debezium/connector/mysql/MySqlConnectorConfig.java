@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -963,7 +962,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         super(
                 MySqlConnector.class,
                 config,
-                config.getString(CommonConnectorConfig.TOPIC_PREFIX),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
