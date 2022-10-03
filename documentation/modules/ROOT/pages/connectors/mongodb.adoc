@@ -86,7 +86,7 @@ The {prodname} connector watches the stream and delivers the changes downstream.
 And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
 When all the data is copied, the connector then creates a change stream from the position it read earlier from the oplog.
 
-This is the recommended mode starting with MongoDB 4.x.
+This is the recommended mode starting with MongoDB 4.x and cannot be used with MongoDB 3.x.
 
 [WARNING]
 ====
