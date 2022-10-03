@@ -58,26 +58,7 @@ MongoDB replication works by having the primary record the changes in its _oplog
 When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[snapshot] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the snapshot.
 This new server becomes a secondary (and able to handle queries) when it catches up to the tail of the primary's oplog.
 
-MongoDB connector supports two distinct modes of capturing the changes controlled by the xref:mongodb-property-capture-mode[`capture.mode`] option:
-
-* oplog based
-* change streams based
-
-'''
-
-=== Oplog capture mode (legacy)
-
-The {prodname} MongoDB connector uses the same replication mechanism as described above, though it does not actually become a member of the replica set.
-Just like MongoDB secondaries, however, the connector always reads the oplog of the replica set's primary.
-And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
-When all the data is copied, the connector then starts streaming changes from the position it read earlier from the oplog. Operations in the MongoDB oplog are https://docs.mongodb.com/manual/core/replica-set-oplog/[idempotent], so no matter how many times the operations are applied, they result in the same end state.
-
-The disadvantage of this mode is that only _insert_ change events will contain the full document, whereas _update_ events only contain a representation of changed fields (i.e. unmodified fields cannot be obtained from an _update_ event), and _delete_ events contain no representation of the deleted document apart from its key.
-
-This mode should be considered as the legacy one.
-It is not supported on MongoDB 5 and the user is strongly advised to not use it for MongoDB 4.x server.
-
-=== Change Stream mode
+=== Change Stream
 
 The {prodname} MongoDB connector uses a similar replication mechanism to the one described above, though it does not actually become a member of the replica set.
 The main difference is that the connector does not read the oplog directly, but delegates capturing and decoding the oplog to MongoDB's https://docs.mongodb.com/manual/changeStreams/[Change Streams] feature.
@@ -85,19 +66,6 @@ With change streams, the MongoDB server exposes changes to collections as an eve
 The {prodname} connector watches the stream and delivers the changes downstream.
 And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
 When all the data is copied, the connector then creates a change stream from the position it read earlier from the oplog.
-
-This is the recommended mode starting with MongoDB 4.x.
-
-[WARNING]
-====
-Both capture modes use different values stored in offsets that allow them to resume streaming from the last position seen after a connector restart.
-Thus it is not possible to switch from the change streams mode to the oplog mode.
-To prevent any inadvertent capture mode changes, the connector has a built-in safety check.
-
-When the connector is started it checks the stored offsets.
-If the original capture mode was oplog-based and the new mode is change streams based, then it will try to migrate to change streams.
-If the original capture mode was change streams based, it will keep using change streams, also if the new mode is oplog-based, and a warning about this will be emitted to the logs.
-====
 
 As the MongoDB connector processes changes, it periodically records the position in the oplog/stream where the event originated.
 When the connector stops, it records the last oplog/stream position that it processed, so that upon restart it simply begins streaming from that position.
@@ -204,7 +172,7 @@ For more information, see the https://docs.mongodb.com/manual/core/replica-set-a
 === Logical connector name
 
 The connector configuration property `mongodb.name` serves as a _logical name_ for the MongoDB replica set or sharded cluster.
-The connector uses the logical name in a number of ways: as the prefix for all topic names, and as a unique identifier when recording the oplog/change stream position of each replica set.
+The connector uses the logical name in a number of ways: as the prefix for all topic names, and as a unique identifier when recording the change stream position of each replica set.
 
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
 We recommend logical names begin with an alphabetic or underscore character, and remaining characters that are alphanumeric or underscore.
@@ -760,7 +728,7 @@ However, by using the xref:{link-avro-serialization}#avro-serialization[Avro con
 
 |6
 |`after`
-|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field, when the `capture.mode` option is set either to `oplog` or `change_streams`.
+|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field, when the `capture.mode` option is set either to `change_streams`.
 
 |7
 |`source`
@@ -772,7 +740,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Names of the collection and database that contain the new document.
 * If the event was part of a snapshot.
 * Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event (oplog capture mode only).
+* Unique identifier of the MongoDB operation (the `h` field in the oplog event).
 * Unique identifiers of the MongoDB session `lsid` and transaction number `txnNumber` in case the change was executed inside a transaction (change streams capture mode only).
 
 |8
@@ -794,89 +762,6 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 [id="mongodb-update-events"]
 === _update_ events
-
-==== Oplog capture mode (legacy)
-The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does not have an `after` value. Instead, it has these two fields:
-
-* `patch` is a string field that contains the JSON representation of the idempotent update operation
-
-* `filter` is a string field that contains the JSON representation of the selection criteria for the update. The `filter` string can include multiple shard key fields for sharded collections.
-
-Here is an example of a change event value in an event that the connector generates for an update in the `customers` collection:
-
-[source,json,indent=0,options="nowrap",subs="+attributes"]
-----
-{
-    "schema": { ... },
-    "payload": {
-      "op": "u", // <1>
-      "ts_ms": 1465491461815, // <2>
-      "patch": "{\"$set\":{\"first_name\":\"Anne Marie\"}}", // <3>
-      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}", // <4>
-      "source": { // <5>
-        "version": "{debezium-version}",
-        "connector": "mongodb",
-        "name": "fulfillment",
-        "ts_ms": 1558965508000,
-        "snapshot": false,
-        "db": "inventory",
-        "rs": "rs0",
-        "collection": "customers",
-        "ord": 6,
-        "h": 1546547425148721999
-      }
-    }
-  }
-----
-
-.Descriptions of _update_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
-
-|1
-|`op`
-a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `u` indicates that the operation updated a document.
-
-|2
-|`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|3
-|`patch`
-|Contains the JSON string representation of the actual MongoDB idempotent change to the document. In this example, the update changed the `first_name` field to a new value. +
- +
-An _update_ event value does not contain an `after` field.
-
-|4
-|`filter`
-|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be updated.
-
-|5
-|`source`
-a|Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes:
-
-* {prodname} version.
-* Name of the connector that generated the event.
-* Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
-* Names of the collection and database that contain the updated document.
-* If the event was part of a snapshot.
-* Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
-
-|===
-
-[WARNING]
-====
-In a {prodname} change event, MongoDB provides the content of the `patch` field. The format of this field depends on the version of the MongoDB database. Consequently, be prepared for potential changes to the format when you upgrade to a newer MongoDB database version. Examples in this document were obtained from MongoDB 3.4, In your application, event formats might be different.
-====
-
-[NOTE]
-====
-In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ states of the changed document. Consequently, it is not possible for a {prodname} connector to provide this information. However, a {prodname} connector provides a document's starting state in _create_ and _read_ events. Downstream consumers of the stream can reconstruct document state by keeping the latest state for each document and comparing the state in a new event with the saved state. {prodname} connector's are not able to keep this state.
-====
 
 ==== Change streams capture mode
 The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if the `capture.mode` option is set to `change_streams_update_full`. There is a new structured field `updateDescription` with a few additional fields in this case:
@@ -982,7 +867,6 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
     "payload": {
       "op": "d", // <1>
       "ts_ms": 1465495462115, // <2>
-      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}", // <3>
       "source": { // <4>
         "version": "{debezium-version}",
         "connector": "mongodb",
@@ -1015,10 +899,6 @@ a|Optional field that displays the time at which the connector processed the eve
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |3
-|`filter`
-|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be deleted (oplog capture mode only).
-
-|4
 |`source`
 a|Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ or _update_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes:
 
@@ -1028,7 +908,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Names of the collection and database that contained the deleted document.
 * If the event was part of a snapshot.
 * Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
-* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event (oplog capture mode only).
+* Unique identifier of the MongoDB operation (the `h` field in the oplog event).
 * Unique identifiers of the MongoDB session `lsid` and transaction number `txnNumber` in case the change was executed inside a transaction (change streams capture mode only).
 
 |===
@@ -1046,7 +926,7 @@ All MongoDB connector events for a uniquely identified document have exactly the
 [[setting-up-mongodb]]
 == Setting up MongoDB
 
-The MongoDB connector uses MongoDB's oplog/change streams to capture the changes, so the connector works only with MongoDB replica sets or with sharded clusters where each shard is a separate replica set.
+The MongoDB connector uses MongoDB's change streams to capture the changes, so the connector works only with MongoDB replica sets or with sharded clusters where each shard is a separate replica set.
 See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
 Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
@@ -1058,7 +938,6 @@ ifdef::community[]
 === MongoDB in the Cloud
 
 You can use the {prodname} connector for MongoDB with https://www.mongodb.com/atlas/database[MongoDB Atlas].
-When connecting {prodname} to MongoDB Atlas, enable one of the xref:mongodb-property-capture-mode[`capture modes`] to be based on change streams, rather than oplog.
 Note that MongoDB Atlas only supports secure connections via SSL, i.e. the xref:mongodb-property-mongodb-ssl-enabled[`+mongodb.ssl.enabled`] connector option _must_ be set to `true`.
 endif::community[]
 
@@ -1304,7 +1183,7 @@ The service records the configuration and starts one connector task that perform
 * Connects to the MongoDB replica set or sharded cluster.
 * Assigns tasks for each replica set.
 * Performs a snapshot, if necessary.
-* Reads the oplog/change stream.
+* Reads the change stream.
 * Streams change event records to Kafka topics.
 
 [[mongodb-adding-connector-configuration]]
@@ -1328,7 +1207,7 @@ endif::community[]
 After the connector starts, it completes the following actions:
 
 * xref:{link-mongodb-connector}#mongodb-performing-a-snapshot[Performs a consistent snapshot] of the collections in your MongoDB replica sets.
-* Reads the oplogs/change streams for the replica sets.
+* Reads the change streams for the replica sets.
 * Produces change events for every inserted, updated, and deleted document.
 * Streams change event records to Kafka topics.
 
@@ -1470,12 +1349,11 @@ If you include this property in the configuration, do not set the `collection.in
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
-|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies that the connector reads a snapshot when either no offset is found or if the oplog/change stream no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
+|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies that the connector reads a snapshot when either no offset is found or if the change stream no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document. +
-The *oplog* mode specifies that the MongoDB oplog will be accessed directly; this is the legacy method and should not be used for new connector instances.
+|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
