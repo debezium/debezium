@@ -205,7 +205,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     }
 
     protected void doEnqueue(T record) throws InterruptedException {
-        if (LOGGER.isDebugEnabled()) {
+        if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Enqueuing source record '{}'", record);
         }
 

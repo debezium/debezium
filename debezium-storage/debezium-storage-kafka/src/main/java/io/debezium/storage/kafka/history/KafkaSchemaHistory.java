@@ -345,10 +345,10 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                         }
                     }
                     catch (final IOException e) {
-                        Throwables.logErrorAndTraceRecord(LOGGER, "Error while deserializing history record", e, record);
+                        Throwables.logErrorAndTraceRecord(LOGGER, record, "Error while deserializing history record", e);
                     }
                     catch (final Exception e) {
-                        Throwables.logErrorAndTraceRecord(LOGGER, "Unexpected exception while processing record", e, record);
+                        Throwables.logErrorAndTraceRecord(LOGGER, record, "Unexpected exception while processing record", e);
                         throw e;
                     }
                 }

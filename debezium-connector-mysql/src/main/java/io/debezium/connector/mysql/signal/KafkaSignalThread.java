@@ -136,7 +136,7 @@ public class KafkaSignalThread<T extends DataCollectionId> {
                     return;
                 }
                 catch (final Exception e) {
-                    Throwables.logErrorAndTraceRecord(LOGGER, "Skipped signal due to an error", e, record);
+                    Throwables.logErrorAndTraceRecord(LOGGER, record, "Skipped signal due to an error", e);
                 }
             }
         }
