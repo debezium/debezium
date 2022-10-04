@@ -27,8 +27,13 @@ public class Throwables {
         }
     }
 
-    public static void logErrorAndTraceRecord(Logger logger, String message, Exception e, Object record) {
+    public static void logErrorAndTraceRecord(Logger logger, Object record, String message, Throwable e) {
         logger.error(message, e);
-        LOGGER.trace("Source of error is {}", record);
+        LOGGER.trace("Source of error is record '{}'", record);
+    }
+
+    public static void logErrorAndTraceRecord(Logger logger, Object record, String message, Object... arguments) {
+        logger.error(message, arguments);
+        LOGGER.trace("Source of error is record '{}'", record);
     }
 }
