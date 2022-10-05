@@ -266,7 +266,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected PreparedStatement createQueryStatement() throws SQLException {
-        final String query = LogMinerQueryBuilder.build(getConfig(), getSchema());
+        final String query = LogMinerQueryBuilder.build(getConfig());
         return jdbcConnection.connection().prepareStatement(query,
                 ResultSet.TYPE_FORWARD_ONLY,
                 ResultSet.CONCUR_READ_ONLY,
