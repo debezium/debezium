@@ -165,11 +165,20 @@ node('Slave') {
                     docker login -u ${credentials[0]} -p ${credentials[1]} quay.io
                 """
             }
+            dir(IMAGES_DIR) {
+                sh """
+                ./setup-local-builder.sh
+                docker run --privileged --rm tonistiigi/binfmt --install all
+                """
+            }
+            sh ""
         }
         stage('master') {
             echo "Building images for streams $streamsToBuild"
             dir(IMAGES_DIR) {
-                sh "PUSH_IMAGES=true DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" ./build-all.sh"
+                sh """
+                DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" ./build-all-multiplatform.sh
+                """
             }
         }
         for (stream in streamsToBuild) {
@@ -180,8 +189,8 @@ node('Slave') {
                         sh """
                             git checkout v$tag
                             git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
-                            git checkout $IMAGES_BRANCH build-all.sh build-debezium.sh build-mongo.sh build-postgres.sh
-                            PUSH_IMAGES=true RELEASE_TAG=$tag ./build-debezium.sh $stream
+                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-mongo-multiplatform.sh build-postgres-multiplatform.sh
+                            RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
                             git reset --hard
                         """
                     }

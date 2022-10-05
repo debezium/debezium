@@ -23,6 +23,7 @@ pipelineJob('release-debezium-upstream') {
         )
         stringParam('IMAGES_REPOSITORY', 'github.com/debezium/container-images.git', 'Repository from which Debezium images are built')
         stringParam('IMAGES_BRANCH', 'main', 'A branch from which Debezium images are built')
+        stringParam('MULTIPLATFORM_PLATFORMS', 'linux/amd64', 'Which platforms to build images for')
         stringParam('POSTGRES_DECODER_REPOSITORY', 'github.com/debezium/postgres-decoderbufs.git', 'Repository from which PostgreSQL decoder plugin is built')
         stringParam('POSTGRES_DECODER_BRANCH', 'main', 'A branch from which Debezium images are built PostgreSQL decoder plugin is built')
         stringParam('UI_REPOSITORY', 'github.com/debezium/debezium-ui.git', 'Repository from which Debezium UI is built')
