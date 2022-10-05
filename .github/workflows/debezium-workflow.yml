@@ -272,7 +272,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version-mongo-server: ["4.0", "4.4", "5.0"]
+        version-mongo-server: ["4.0", "4.4", "5.0", "6.0"]
     steps:
       - name: Checkout Action
         uses: actions/checkout@v2
