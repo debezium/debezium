@@ -59,8 +59,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         // By default do not load whole result sets into memory
         config = config.edit()
-                .withDefault("database.responseBuffering", "adaptive")
-                .withDefault("database.fetchSize", 10_000)
+                .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "responseBuffering", "adaptive")
+                .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "fetchSize", 10_000)
                 .build();
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
