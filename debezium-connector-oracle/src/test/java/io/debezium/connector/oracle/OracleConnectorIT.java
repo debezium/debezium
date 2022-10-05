@@ -215,6 +215,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.MY-TABLE")
+                    // DBZ-5541 changed default from "avro" to "none", this test explicitly requires avro
+                    // since the VerifyRecord class still validates avro and the table name used is not
+                    // compatible with avro naming conventions.
+                    .with(OracleConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, "avro")
                     .build();
 
             start(OracleConnector.class, config);
