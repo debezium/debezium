@@ -223,7 +223,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
             rsChangeStream.resumeAfter(doc);
         }
-        else {
+        else if (oplogStart.getTime() > 0) {
             LOGGER.info("Resume token not available, starting streaming from time '{}'", oplogStart);
             rsChangeStream.startAtOperationTime(oplogStart);
         }
