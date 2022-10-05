@@ -22,6 +22,7 @@ pipelineJob('release-deploy-container-images') {
         stringParam('IMAGES_BRANCH', 'main', 'Branch used for images repository')
         stringParam('STREAMS_TO_BUILD_COUNT', '2', 'How many most recent streams should be built')
         stringParam('TAGS_PER_STREAM_COUNT', '1', 'How any most recent tags per stream should be built')
+        stringParam('MULTIPLATFORM_PLATFORMS', 'linux/amd64,linux/arm64', 'Which platforms to build images for')
     }
 
     definition {

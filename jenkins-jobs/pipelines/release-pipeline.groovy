@@ -525,21 +525,30 @@ node('Slave') {
                 }
             }
             dir("$IMAGES_DIR") {
-                modifyFile('build-all.sh') {
+                modifyFile('build-all-multiplatform.sh') {
                     it.replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$IMAGE_TAG\"")
                 }
             }
             dir(IMAGES_DIR) {
-                sh "env SKIP_UI=true ./build-all.sh"
+                script {
+                    env.DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME='localhost:5500/debezium'
+                    env.DEBEZIUM_DOCKER_REGISTRY_SECONDARY_NAME='localhost:5500/debeziumquay'
+                }
+                sh """
+                    docker run --privileged --rm tonistiigi/binfmt --install all
+                    ./setup-local-builder.sh
+                    docker compose -f local-registry/docker-compose.yml up -d
+                    env SKIP_UI=true ./build-all-multiplatform.sh
+                """
             }
             sh """
                 docker rm -f connect zookeeper kafka mysql || true
-                docker run -it -d --name mysql -p 53306:3306 -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw debezium/example-mysql:$IMAGE_TAG
-                docker run -it -d --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 debezium/zookeeper:$IMAGE_TAG
+                docker run -it -d --name mysql -p 53306:3306 -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/example-mysql:$IMAGE_TAG
+                docker run -it -d --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/zookeeper:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name kafka -p 9092:9092 --link zookeeper:zookeeper debezium/kafka:$IMAGE_TAG
+                docker run -it -d --name kafka -p 9092:9092 --link zookeeper:zookeeper $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:$IMAGE_TAG
+                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect:$IMAGE_TAG
                 sleep 30
     
                 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '
