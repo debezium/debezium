@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
+import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionMonitor;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -41,8 +41,15 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<PostgresPartition, T> inconsistentSchemaHandler,
                                    EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
-        super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, metadataProvider,
-                heartbeat, schemaNameAdjuster);
+        super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, heartbeat, schemaNameAdjuster,
+                new PostgresTransactionMonitor(
+                        connectorConfig,
+                        metadataProvider,
+                        schemaNameAdjuster,
+                        (record) -> {
+                            queue.enqueue(new DataChangeEvent(record));
+                        },
+                        topicNamingStrategy.transactionTopic()));
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);
         this.messageFilter = connectorConfig.getMessageFilter();
