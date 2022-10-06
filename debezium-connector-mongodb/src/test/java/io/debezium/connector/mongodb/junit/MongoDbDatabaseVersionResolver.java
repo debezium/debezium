@@ -15,7 +15,7 @@ import io.debezium.junit.DatabaseVersionResolver;
 /**
  * Implementation of {@link DatabaseVersionResolver} specific for MySQL.
  *
- * @author Chris Cranford
+ * @author Xinbin Huang
  */
 public class MongoDbDatabaseVersionResolver implements DatabaseVersionResolver {
 
