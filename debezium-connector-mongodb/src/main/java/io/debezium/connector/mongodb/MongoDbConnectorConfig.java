@@ -126,7 +126,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         /**
          * The classic oplog based capturing.
          */
-        OPLOG("oplog", false, false),
+        OPLOG("oplog", false, false, false),
 
         /**
          * Change capture based on MongoDB Change Streams support.
