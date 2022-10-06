@@ -6,12 +6,8 @@
 package io.debezium.connector.mongodb;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
