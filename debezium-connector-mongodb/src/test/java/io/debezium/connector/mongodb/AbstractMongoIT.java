@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
+
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
