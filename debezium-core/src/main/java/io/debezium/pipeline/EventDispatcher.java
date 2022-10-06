@@ -131,6 +131,30 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
 
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, Heartbeat heartbeat,
+                           SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor) {
+        this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
+        this.connectorConfig = connectorConfig;
+        this.topicNamingStrategy = topicNamingStrategy;
+        this.schema = schema;
+        this.historizedSchema = schema.isHistorized() ? (HistorizedDatabaseSchema<T>) schema : null;
+        this.queue = queue;
+        this.filter = filter;
+        this.changeEventCreator = changeEventCreator;
+        this.streamingReceiver = new StreamingChangeRecordReceiver();
+        this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
+        this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
+        this.skippedOperations = connectorConfig.getSkippedOperations();
+        this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
+        this.transactionMonitor = transactionMonitor;
+        this.signal = new Signal<>(connectorConfig, this);
+        this.heartbeat = heartbeat;
+        schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
+        schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+    }
+
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
                                       SnapshotReceiver<P> receiver)
             throws InterruptedException {

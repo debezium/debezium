@@ -681,11 +681,13 @@ public abstract class AbstractConnectorTest implements Testing {
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
                     final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
+                    final String txId = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY);
+                    String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.BEGIN.name())) {
-                        endTransactions.add(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.add(id);
                     }
                     else {
-                        endTransactions.remove(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.remove(id);
                     }
                 }
                 else {
