@@ -194,8 +194,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                         break;
                                 }
                             }),
-                    schemaNameAdjuster,
-                    jdbcConnection);
+                    schemaNameAdjuster);
 
             ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffsets,
