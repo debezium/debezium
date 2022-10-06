@@ -65,8 +65,9 @@ public class TransactionMonitor {
 
     private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaFactory.get().transactionEventCountPerDataCollectionSchema();
 
-    private final Schema transactionKeySchema;
-    private final Schema transactionValueSchema;
+    protected final Schema transactionKeySchema;
+    protected final Schema transactionValueSchema;
+
     private final EventMetadataProvider eventMetadataProvider;
     private final String topicName;
     private final BlockingConsumer<SourceRecord> sender;
@@ -138,39 +139,26 @@ public class TransactionMonitor {
         beginTransaction(partition, offset, timestamp);
     }
 
-    private void transactionEvent(OffsetContext offsetContext, DataCollectionId source, Struct value) {
-        final long dataCollectionEventOrder = offsetContext.getTransactionContext().event(source);
-        if (value == null) {
-            LOGGER.debug("Event with key {} without value. Cannot enrich source block.");
-            return;
-        }
-        final Struct txStruct = new Struct(TRANSACTION_BLOCK_SCHEMA);
-        txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
-        txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, offsetContext.getTransactionContext().getTotalEventCount());
-        txStruct.put(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, dataCollectionEventOrder);
-        value.put(Envelope.FieldName.TRANSACTION, txStruct);
-    }
-
-    private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
+    protected Struct prepareTxKey(OffsetContext offsetContext) {
         final Struct key = new Struct(transactionKeySchema);
         key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
+        return key;
+    }
+
+    protected Struct prepareTxBeginValue(OffsetContext offsetContext, Instant timestamp) {
         final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         value.put(DEBEZIUM_TRANSACTION_TS_MS, timestamp.toEpochMilli());
-
-        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
-                topicName, null, key.schema(), key, value.schema(), value));
+        return value;
     }
 
-    private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
-        final Struct key = new Struct(transactionKeySchema);
-        key.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
+    protected Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp) {
         final Struct value = new Struct(transactionValueSchema);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
-        value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
         value.put(DEBEZIUM_TRANSACTION_TS_MS, timestamp.toEpochMilli());
+        value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
 
         final Set<Entry<String, Long>> perTableEventCount = offsetContext.getTransactionContext().getPerTableEventCount().entrySet();
         final List<Struct> valuePerTableCount = new ArrayList<>(perTableEventCount.size());
@@ -182,6 +170,37 @@ public class TransactionMonitor {
         }
         value.put(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, valuePerTableCount);
 
+        return value;
+    }
+
+    protected Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
+        final Struct txStruct = new Struct(TRANSACTION_BLOCK_SCHEMA);
+        txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
+        txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, offsetContext.getTransactionContext().getTotalEventCount());
+        txStruct.put(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, dataCollectionEventOrder);
+        return txStruct;
+    }
+
+    private void transactionEvent(OffsetContext offsetContext, DataCollectionId source, Struct value) {
+        final long dataCollectionEventOrder = offsetContext.getTransactionContext().event(source);
+        if (value == null) {
+            LOGGER.debug("Event with key {} without value. Cannot enrich source block.");
+            return;
+        }
+        final Struct txStruct = prepareTxStruct(offsetContext, dataCollectionEventOrder, value);
+        value.put(Envelope.FieldName.TRANSACTION, txStruct);
+    }
+
+    private void beginTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
+        final Struct key = prepareTxKey(offsetContext);
+        final Struct value = prepareTxBeginValue(offsetContext, timestamp);
+        sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
+                topicName, null, key.schema(), key, value.schema(), value));
+    }
+
+    private void endTransaction(Partition partition, OffsetContext offsetContext, Instant timestamp) throws InterruptedException {
+        final Struct key = prepareTxKey(offsetContext);
+        final Struct value = prepareTxEndValue(offsetContext, timestamp);
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
