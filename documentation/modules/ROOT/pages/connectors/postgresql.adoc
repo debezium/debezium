@@ -409,7 +409,7 @@ Metadata for transactions that occur before you deploy the connector is not avai
 For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
 
 `status`:: `BEGIN` or `END`.
-`id`:: String representation of the unique transaction identifier.
+`id`:: String representation of the unique transaction identifier composed of Postgres transaction ID itself and LSN of given operation separated by colon, i.e. the format is `txID:LSN`.
 `ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
 If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
@@ -421,7 +421,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 ----
 {
   "status": "BEGIN",
-  "id": "571",
+  "id": "571:53195829",
   "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
@@ -429,7 +429,7 @@ If the data source does not provide {prodname} with the event time, then the fie
 
 {
   "status": "END",
-  "id": "571",
+  "id": "571:53195832",
   "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
@@ -473,7 +473,7 @@ Following is an example of a message:
   "op": "c",
   "ts_ms": "1580390884335",
   "transaction": {
-    "id": "571",
+    "id": "571:53195832",
     "total_order": "1",
     "data_collection_order": "1"
   }
