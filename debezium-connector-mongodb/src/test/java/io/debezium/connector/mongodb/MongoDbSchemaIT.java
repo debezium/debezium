@@ -46,6 +46,7 @@ public class MongoDbSchemaIT {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         return new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(),
                 connectorConfig.getSourceInfoStructMaker().schema(),
-                connectorConfig.schemaNameAdjustmentMode().createAdjuster());
+                connectorConfig.schemaNameAdjustmentMode().createAdjuster(),
+                connectorConfig.getUseRawEvents());
     }
 }

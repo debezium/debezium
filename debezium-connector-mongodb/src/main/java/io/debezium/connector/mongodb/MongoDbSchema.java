@@ -41,30 +41,36 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             .field(MongoDbFieldName.ARRAY_FIELD_NAME, Schema.STRING_SCHEMA)
             .field(MongoDbFieldName.ARRAY_NEW_SIZE, Schema.INT32_SCHEMA)
             .build();
-    public static final Schema UPDATED_DESCRIPTION_SCHEMA = SchemaBuilder.struct()
-            .optional()
-            .name(SCHEMA_NAME_UPDATED_DESCRIPTION)
-            .field(MongoDbFieldName.REMOVED_FIELDS,
-                    SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-            .field(MongoDbFieldName.UPDATED_FIELDS,
-                    Json.builder().optional().build())
-            .field(MongoDbFieldName.TRUNCATED_ARRAYS,
-                    SchemaBuilder.array(TRUNCATED_ARRAY_SCHEMA).optional().build())
-            .build();
 
     private final Filters filters;
     private final TopicSelector<CollectionId> topicSelector;
     private final Schema sourceSchema;
     private final SchemaNameAdjuster adjuster;
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
-    private final JsonSerialization serialization = new JsonSerialization();
+    private final Serialization serialization;
+    private final boolean isRawEvents;
 
     public MongoDbSchema(Filters filters, TopicSelector<CollectionId> topicSelector, Schema sourceSchema,
-                         SchemaNameAdjuster schemaNameAdjuster) {
+                         SchemaNameAdjuster schemaNameAdjuster, boolean isRawEvents) {
         this.filters = filters;
         this.topicSelector = topicSelector;
         this.sourceSchema = sourceSchema;
         this.adjuster = schemaNameAdjuster;
+        this.isRawEvents = isRawEvents;
+        this.serialization = isRawEvents ? new BsonSerialization() : new JsonSerialization();
+    }
+
+    public static Schema getUpdateDescriptionSchema(boolean isRaw) {
+        Schema updatedFields = isRaw ? Schema.OPTIONAL_BYTES_SCHEMA : Json.builder().optional().build();
+        return SchemaBuilder.struct()
+                .optional()
+                .name(SCHEMA_NAME_UPDATED_DESCRIPTION)
+                .field(MongoDbFieldName.REMOVED_FIELDS,
+                        SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                .field(MongoDbFieldName.UPDATED_FIELDS, updatedFields)
+                .field(MongoDbFieldName.TRUNCATED_ARRAYS,
+                        SchemaBuilder.array(TRUNCATED_ARRAY_SCHEMA).optional().build())
+                .build();
     }
 
     @Override
@@ -82,15 +88,26 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .field("id", Schema.STRING_SCHEMA)
                     .build();
 
+            Schema beforeSchema;
+            Schema afterSchema;
+            if (isRawEvents) {
+                beforeSchema = Schema.OPTIONAL_BYTES_SCHEMA;
+                afterSchema = Schema.OPTIONAL_BYTES_SCHEMA;
+            }
+            else {
+                beforeSchema = Json.builder().optional().build();
+                afterSchema = Json.builder().optional().build();
+            }
+
             final Schema valueSchema = SchemaBuilder.struct()
                     .name(adjuster.adjust(Envelope.schemaName(topicName)))
-                    .field(FieldName.BEFORE, Json.builder().optional().build())
-                    .field(FieldName.AFTER, Json.builder().optional().build())
+                    .field(FieldName.BEFORE, beforeSchema)
+                    .field(FieldName.AFTER, afterSchema)
                     // Oplog fields
                     .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                     .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                     // Change Streams field
-                    .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
+                    .field(MongoDbFieldName.UPDATE_DESCRIPTION, getUpdateDescriptionSchema(isRawEvents))
                     .field(FieldName.SOURCE, sourceSchema)
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)

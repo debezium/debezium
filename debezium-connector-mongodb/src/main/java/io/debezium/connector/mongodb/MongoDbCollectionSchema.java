@@ -39,11 +39,11 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema valueSchema;
     private final Function<BsonDocument, Object> keyGeneratorOplog;
     private final Function<BsonDocument, Object> keyGeneratorChangeStream;
-    private final Function<BsonDocument, String> valueGenerator;
+    private final Function<BsonDocument, Object> valueGenerator;
 
     public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<BsonDocument, Object> keyGenerator,
                                    Function<BsonDocument, Object> keyGeneratorChangeStream, Envelope envelopeSchema, Schema valueSchema,
-                                   Function<BsonDocument, String> valueGenerator) {
+                                   Function<BsonDocument, Object> valueGenerator) {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
@@ -92,17 +92,17 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
             case READ:
             case CREATE:
             case NOOP:
-                final String jsonStr = valueGenerator.apply(fieldFilter.apply(document));
+                final Object jsonStr = valueGenerator.apply(fieldFilter.apply(document));
                 value.put(FieldName.AFTER, jsonStr);
                 break;
             case UPDATE:
-                final String patchStr = valueGenerator.apply(fieldFilter.apply(document));
+                final Object patchStr = valueGenerator.apply(fieldFilter.apply(document));
                 value.put(MongoDbFieldName.PATCH, patchStr);
-                final String updateFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
+                final Object updateFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
                 value.put(MongoDbFieldName.FILTER, updateFilterStr);
                 break;
             case DELETE:
-                final String deleteFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
+                final Object deleteFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
                 value.put(MongoDbFieldName.FILTER, deleteFilterStr);
                 break;
         }
@@ -111,6 +111,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
 
     public Struct valueFromDocumentChangeStream(ChangeStreamDocument<BsonDocument> document, Envelope.Operation operation) {
         Struct value = new Struct(valueSchema);
+
         switch (operation) {
             case CREATE:
                 extractFullDocument(document, value);
@@ -127,7 +128,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 }
 
                 if (document.getUpdateDescription() != null) {
-                    final Struct updateDescription = new Struct(MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA);
+                    final Struct updateDescription = new Struct(valueSchema.field(MongoDbFieldName.UPDATE_DESCRIPTION).schema());
                     List<String> removedFields = document.getUpdateDescription().getRemovedFields();
                     if (removedFields != null && !removedFields.isEmpty()) {
                         removedFields = removedFields.stream()
@@ -141,7 +142,9 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
 
                     final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
                     if (updatedFields != null) {
-                        updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.applyChange(updatedFields).toJson());
+                        BsonDocument filtered = fieldFilter.applyChange(updatedFields);
+                        updateDescription.put(MongoDbFieldName.UPDATED_FIELDS,
+                                valueGenerator.apply(filtered));
                     }
 
                     // TODO Test filters for truncated arrays
@@ -175,13 +178,15 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     }
 
     private void extractFullDocument(ChangeStreamDocument<BsonDocument> document, Struct value) {
-        final String fullDocStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocument()));
-        value.put(FieldName.AFTER, fullDocStr);
+        BsonDocument filteredDoc = fieldFilter.apply(document.getFullDocument());
+        Object payload = valueGenerator.apply(filteredDoc);
+        value.put(FieldName.AFTER, payload);
     }
 
     private void extractFullDocumentBeforeChange(ChangeStreamDocument<BsonDocument> document, Struct value) {
-        final String fullDocBeforeChangeStr = valueGenerator.apply(fieldFilter.apply(document.getFullDocumentBeforeChange()));
-        value.put(FieldName.BEFORE, fullDocBeforeChangeStr);
+        BsonDocument filteredDocBeforeChange = fieldFilter.apply(document.getFullDocumentBeforeChange());
+        Object payload = valueGenerator.apply(filteredDocBeforeChange);
+        value.put(FieldName.BEFORE, payload);
     }
 
     @Override

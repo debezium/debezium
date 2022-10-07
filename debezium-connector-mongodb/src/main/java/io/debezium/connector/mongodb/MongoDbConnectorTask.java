@@ -77,7 +77,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.taskContext = new MongoDbTaskContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(), structSchema, schemaNameAdjuster, connectorConfig.getUseRawEvents());
 
         final ReplicaSets replicaSets = getReplicaSets(config);
         final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);

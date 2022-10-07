@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb.transforms.outbox;
 
-import static io.debezium.connector.mongodb.MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -34,6 +33,7 @@ import org.junit.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.VerifyRecord;
@@ -426,7 +426,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
-                .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
+                .field(MongoDbFieldName.UPDATE_DESCRIPTION, MongoDbSchema.getUpdateDescriptionSchema(false))
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -484,7 +484,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
-                .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
+                .field(MongoDbFieldName.UPDATE_DESCRIPTION, MongoDbSchema.getUpdateDescriptionSchema(false))
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -958,7 +958,7 @@ public class MongoEventRouterTest {
                 .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                 .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
-                .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
+                .field(MongoDbFieldName.UPDATE_DESCRIPTION, MongoDbSchema.getUpdateDescriptionSchema(false))
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
                 .field(Envelope.FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
