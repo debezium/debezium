@@ -2,6 +2,77 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.CR1
+October 7th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12397018)
+
+### New features since 2.0.0.Beta2
+
+* Implement retries for Debezium embedded engine [DBZ-4629](https://issues.redhat.com/browse/DBZ-4629)
+* MySqlErrorHandler should handle SocketException [DBZ-5486](https://issues.redhat.com/browse/DBZ-5486)
+* Traditional snapshot process setting source.ts_ms [DBZ-5591](https://issues.redhat.com/browse/DBZ-5591)
+* Clean up "logical name" config [DBZ-5594](https://issues.redhat.com/browse/DBZ-5594)
+* Upgrade Kafka client to 3.3.1 [DBZ-5600](https://issues.redhat.com/browse/DBZ-5600)
+* When writing docs, use website stylesheet for IDE preview in IntelliJ [DBZ-5616](https://issues.redhat.com/browse/DBZ-5616)
+* Support READ ONLY/ENCRYPTION options for alter database statment [DBZ-5622](https://issues.redhat.com/browse/DBZ-5622)
+* Clarify semantics of include/exclude options [DBZ-5625](https://issues.redhat.com/browse/DBZ-5625)
+* Added support for Mongo pre-image in change stream [DBZ-5628](https://issues.redhat.com/browse/DBZ-5628)
+* Support for seting stats_sample_pages=default in alter table statements [DBZ-5631](https://issues.redhat.com/browse/DBZ-5631)
+* support for using any expression in kill statements [DBZ-5636](https://issues.redhat.com/browse/DBZ-5636)
+* Logging enhancement for non-incremental snapshot in postgres connector [DBZ-5639](https://issues.redhat.com/browse/DBZ-5639)
+* Support set statement in mariadb [DBZ-5650](https://issues.redhat.com/browse/DBZ-5650)
+* Add Mongo-initiator 6.0 container image [DBZ-5666](https://issues.redhat.com/browse/DBZ-5666)
+* Remove logic name parameter from sub connector config [DBZ-5671](https://issues.redhat.com/browse/DBZ-5671)
+
+
+### Breaking changes since 2.0.0.Beta2
+
+* Default schema.name.adjustment.mode to "none" [DBZ-5541](https://issues.redhat.com/browse/DBZ-5541)
+
+
+### Fixes since 2.0.0.Beta2
+
+* ConvertingEngineBuilder looses the accents [DBZ-4213](https://issues.redhat.com/browse/DBZ-4213)
+* Debezium Db2 Connector fails to handle default values in schema when is making the snapshot [DBZ-4990](https://issues.redhat.com/browse/DBZ-4990)
+* Debezium 2.0.0.Beta1 Azure SQL breaking change [DBZ-5496](https://issues.redhat.com/browse/DBZ-5496)
+* Oracle connector parsing SELECT_LOB_LOCATOR event missing constant `unavailable.value.placeholder` [DBZ-5581](https://issues.redhat.com/browse/DBZ-5581)
+* Starting Embedded Engine swallows ClassNotFoundException so user cannot see why engine does not work [DBZ-5583](https://issues.redhat.com/browse/DBZ-5583)
+* Message with LSN foo larger than expected LSN bar [DBZ-5597](https://issues.redhat.com/browse/DBZ-5597)
+* Fix broken anchors in docs [DBZ-5618](https://issues.redhat.com/browse/DBZ-5618)
+* DDL Parsing Error [DBZ-5623](https://issues.redhat.com/browse/DBZ-5623)
+* MySQL connector cannot parse default value of decimal colum enclosed in double quotes [DBZ-5630](https://issues.redhat.com/browse/DBZ-5630)
+* Support grant LOAD FROM S3, SELECT INTO S3, INVOKE LAMBDA with aws mysql [DBZ-5633](https://issues.redhat.com/browse/DBZ-5633)
+* Continuously WARNs about undo transactions when LOB is enabled [DBZ-5635](https://issues.redhat.com/browse/DBZ-5635)
+* Literal "${project.version}" in the source record instead of the actual version [DBZ-5640](https://issues.redhat.com/browse/DBZ-5640)
+* TABLE_TYPE keyword can be used as identifier [DBZ-5643](https://issues.redhat.com/browse/DBZ-5643)
+* Large numbers of ROLLBACK transactions can lead to memory leak when LOB is not enabled. [DBZ-5645](https://issues.redhat.com/browse/DBZ-5645)
+* Race in DebeziumContainer during startup [DBZ-5651](https://issues.redhat.com/browse/DBZ-5651)
+* Outbox pattern nested payload leads to connector crash [DBZ-5654](https://issues.redhat.com/browse/DBZ-5654)
+* Allow the word STATEMENT to be a table / column name [DBZ-5662](https://issues.redhat.com/browse/DBZ-5662)
+* ValidatePostgresConnectionIT.testInvalidPostgresConnection fails [DBZ-5664](https://issues.redhat.com/browse/DBZ-5664)
+* Hardcoded driver task properties are not being passed to underlying connections [DBZ-5670](https://issues.redhat.com/browse/DBZ-5670)
+* Keyword virtual can be used as an identifier [DBZ-5674](https://issues.redhat.com/browse/DBZ-5674)
+* MongoDB Connector with DocumentDB errors with "{$natural: -1} is not supported" [DBZ-5677](https://issues.redhat.com/browse/DBZ-5677)
+
+
+### Other changes since 2.0.0.Beta2
+
+* Align connector properties to have an empty default cell if property has no default [DBZ-3327](https://issues.redhat.com/browse/DBZ-3327)
+* Improve Filter SMT documentation / examples [DBZ-4417](https://issues.redhat.com/browse/DBZ-4417)
+* Test failure on CI: SqlServerConnectorIT#updatePrimaryKeyTwiceWithRestartInMiddleOfTx [DBZ-4475](https://issues.redhat.com/browse/DBZ-4475)
+* Intermittent test failure: SqlServerConnectorIT#updatePrimaryKeyWithRestartInMiddle() [DBZ-4490](https://issues.redhat.com/browse/DBZ-4490)
+* Edit content newly added to the MongoDB connector doc  [DBZ-5542](https://issues.redhat.com/browse/DBZ-5542)
+* Upgrade apicurio to 2.2.5.Final [DBZ-5549](https://issues.redhat.com/browse/DBZ-5549)
+* Modify the Instantiator to not require classloader [DBZ-5585](https://issues.redhat.com/browse/DBZ-5585)
+* Use quay.io in test containers [DBZ-5603](https://issues.redhat.com/browse/DBZ-5603)
+* Remove records from being logged at all levels [DBZ-5612](https://issues.redhat.com/browse/DBZ-5612)
+* Upgrade binary log client to 0.27.2 [DBZ-5620](https://issues.redhat.com/browse/DBZ-5620)
+* Allow to change docker maven properties from command line [DBZ-5657](https://issues.redhat.com/browse/DBZ-5657)
+* Update docker maven plugin [DBZ-5658](https://issues.redhat.com/browse/DBZ-5658)
+* Run UI tests on all connector changes [DBZ-5660](https://issues.redhat.com/browse/DBZ-5660)
+* Cleanup UI e2e tests after removing default value for topic.prefix [DBZ-5667](https://issues.redhat.com/browse/DBZ-5667)
+
+
+
 ## 2.0.0.Beta2
 September 16th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12392459)
 
