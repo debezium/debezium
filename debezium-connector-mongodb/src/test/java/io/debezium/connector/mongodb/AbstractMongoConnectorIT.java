@@ -15,8 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
@@ -262,18 +260,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
-    }
-
-    protected BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
+        return TestHelper.primary(context);
     }
 
     private static boolean collectionExists(MongoDatabase database, String collectionName) {

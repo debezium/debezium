@@ -19,6 +19,8 @@ LiuHanlin,Liu Hanlin
 GraySmog,Wang-Yu-Chao
 Brendan Maguire,Brandon Maguire
 BinLi1988,Bin Li
+cmartinez-enve,César Martínez
+Cesar Martinez,César Martínez
 brandonbrown,Brandon Brown
 hpgrahsl,Hans-Peter Grahsl
 jchipmunk,Andrey Pustovetov
@@ -126,5 +128,37 @@ AleksejsSibanovs,Aleksejs Sibanovs
 nenad,Nenad Stojanovikj
 miphik,Andrey Savchuk
 narzdavid,Narz David
-LarsWerkman, Lars Werkman
-chadthman, Chad Marmon
+LarsWerkman,Lars Werkman
+chadthamn,Chad Marmon
+xinbinhuang,Xinbin Huang
+xqshe,Xinquan She
+wangminchao,Wang Min Chao
+markallanson,Mark Allanson
+AlexMiroshnikov,Alexey Miroshnikov
+roeselert,Timo Roeseler
+troeselereos,Timo Roeseler
+Himanshu-LT,Himanshu Mishra
+Chrisss93,Chris Lee
+connorszczepaniak-wk,Connor Szczepaniak
+ajunwalker,Andrew Walker
+alwaysbemark,Mark Bereznitsky
+Eliran,Eliran Agranovich
+rahulkhanna,Rahul Khanna
+ProofOfPizza,Chai Stofkoper
+kanha gupta,Kanha Gupta
+gongzhongqiang,Zhongqiang Gong
+doupengwei,Pengwei Dou
+fisache,Inki Hwang
+ggaborg,Gabor Andras
+comil4444,崔世杰
+BetaCat,合龙 张
+tjwornjs,Seo Jae-kwon
+druud,Ruud H.G. van Tol
+thangdc94,Phạm Ngọc Thắng
+debjeetsarkar,Debjeet Sarkar
+nicholas-fwang,Inki Hwang
+gmouss,Moustapha Mahfoud
+avis408,Avinash Vishwakarma
+nirolevy,Niro Levy
+nirlevy,Nir Levy
+rajdangwal,Rajendra Dangwal

@@ -126,27 +126,42 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         /**
          * The classic oplog based capturing.
          */
-        OPLOG("oplog", false, false),
+        OPLOG("oplog", false, false, false),
 
         /**
          * Change capture based on MongoDB Change Streams support.
          */
-        CHANGE_STREAMS("change_streams", true, false),
+        CHANGE_STREAMS("change_streams", true, false, false),
 
         /**
          * Change capture based on MongoDB change Streams support.
          * The update message will contain the full document.
          */
-        CHANGE_STREAMS_UPDATE_FULL("change_streams_update_full", true, true);
+        CHANGE_STREAMS_UPDATE_FULL("change_streams_update_full", true, true, false),
+
+        /**
+         * Change capture based on MongoDB Change Streams support with pre-image.
+         * When applicable, the change event will include the full document before change.
+         */
+        CHANGE_STREAMS_WITH_PRE_IMAGE("change_streams_with_pre_image", true, false, true),
+
+        /**
+         * Change capture based on MongoDB change Streams support with pre-image.
+         * When applicable, the change event will include the full document before change.
+         * The update message will contain the full document.
+         */
+        CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE("change_streams_update_full_with_pre_image", true, true, true);
 
         private final String value;
         private final boolean changeStreams;
         private final boolean fullUpdate;
+        private final boolean includePreImage;
 
-        private CaptureMode(String value, boolean changeStreams, boolean fullUpdate) {
+        private CaptureMode(String value, boolean changeStreams, boolean fullUpdate, boolean includePreImage) {
             this.value = value;
             this.changeStreams = changeStreams;
             this.fullUpdate = fullUpdate;
+            this.includePreImage = includePreImage;
         }
 
         @Override
@@ -198,6 +213,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         public boolean isFullUpdate() {
             return fullUpdate;
+        }
+
+        public boolean isIncludePreImage() {
+            return includePreImage;
         }
     }
 
