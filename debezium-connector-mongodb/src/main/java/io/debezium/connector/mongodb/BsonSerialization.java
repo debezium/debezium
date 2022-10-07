@@ -13,6 +13,7 @@ import org.bson.io.BasicOutputBuffer;
 
 public class BsonSerialization implements Serialization {
     private final static JsonSerialization jsonSerialization = new JsonSerialization();
+    private final BsonDocumentCodec codec = new BsonDocumentCodec();
 
     @Override
     public Object getDocumentIdOplog(BsonDocument document) {
@@ -28,7 +29,7 @@ public class BsonSerialization implements Serialization {
     public Object getDocumentValue(BsonDocument document) {
         BasicOutputBuffer outputBuffer = new BasicOutputBuffer();
         BsonBinaryWriter writer = new BsonBinaryWriter(outputBuffer);
-        (new BsonDocumentCodec()).encode(writer, document, EncoderContext.builder().build());
+        codec.encode(writer, document, EncoderContext.builder().build());
         return outputBuffer.toByteArray();
     }
 }
