@@ -558,8 +558,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("If we populate raw_oplog field in the output. Should only use with capture.mode=oplog.");
 
-    public static final Field USE_RAW_EVENTS = Field.create("mongodb.use_raw_events")
-            .withDisplayName("Populate raw events for MongoDB")
+    public static final Field ENABLE_BSON = Field.create("mongodb.enable_bson")
+            .withDisplayName("Populate raw BSON for MongoDB")
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
             .withWidth(Width.SHORT)
@@ -681,7 +681,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
     private final boolean enableRawOplog;
-    private final boolean useRawEvents;
+    private final boolean enableBson;
     private final boolean allowCmdCollection;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
@@ -695,7 +695,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
         this.enableRawOplog = config.getBoolean(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, false);
-        this.useRawEvents = config.getBoolean(MongoDbConnectorConfig.USE_RAW_EVENTS, false);
+        this.enableBson = config.getBoolean(MongoDbConnectorConfig.ENABLE_BSON, false);
         this.allowCmdCollection = config.getBoolean(MongoDbConnectorConfig.ALLOW_CMD_COLLECTION, false);
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
@@ -806,8 +806,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return enableRawOplog;
     }
 
-    public boolean getUseRawEvents() {
-        return useRawEvents;
+    public boolean getEnableBson() {
+        return enableBson;
     }
 
     public boolean getAllowCmdCollection() {

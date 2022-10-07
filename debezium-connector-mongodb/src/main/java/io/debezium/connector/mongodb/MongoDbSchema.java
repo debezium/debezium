@@ -48,16 +48,16 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final SchemaNameAdjuster adjuster;
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final Serialization serialization;
-    private final boolean isRawEvents;
+    private final boolean enableBson;
 
     public MongoDbSchema(Filters filters, TopicSelector<CollectionId> topicSelector, Schema sourceSchema,
-                         SchemaNameAdjuster schemaNameAdjuster, boolean isRawEvents) {
+                         SchemaNameAdjuster schemaNameAdjuster, boolean enableBson) {
         this.filters = filters;
         this.topicSelector = topicSelector;
         this.sourceSchema = sourceSchema;
         this.adjuster = schemaNameAdjuster;
-        this.isRawEvents = isRawEvents;
-        this.serialization = isRawEvents ? new BsonSerialization() : new JsonSerialization();
+        this.enableBson = enableBson;
+        this.serialization = enableBson ? new BsonSerialization() : new JsonSerialization();
     }
 
     public static Schema getUpdateDescriptionSchema(boolean isRaw) {
@@ -90,7 +90,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             Schema beforeSchema;
             Schema afterSchema;
-            if (isRawEvents) {
+            if (enableBson) {
                 beforeSchema = Schema.OPTIONAL_BYTES_SCHEMA;
                 afterSchema = Schema.OPTIONAL_BYTES_SCHEMA;
             }
@@ -107,7 +107,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
                     .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                     // Change Streams field
-                    .field(MongoDbFieldName.UPDATE_DESCRIPTION, getUpdateDescriptionSchema(isRawEvents))
+                    .field(MongoDbFieldName.UPDATE_DESCRIPTION, getUpdateDescriptionSchema(enableBson))
                     .field(FieldName.SOURCE, sourceSchema)
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
