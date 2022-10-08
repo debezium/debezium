@@ -268,6 +268,18 @@ As mentioned above, the connector tasks always use the replica set's primary nod
 To summarize, the MongoDB connector continues running in most situations. Communication problems might cause the connector to wait until the problems are resolved.
 
 // Type: concept
+[[mongodb-pre-image-support]]
+=== Pre-image support
+Starting in MongoDB 6.0, you can configure change stream to emit pre-image to populate the `before` field for Mongo change events. To utilize pre-image, you need to first enable `changeStreamPreAndPostImages` for a collection using
+`db.createCollection()`, `create`, or `collMod`. And configure `capture.mode` as one of the `*_with_pre_image` options.
+
+[NOTE]
+.Size limits on Mong change stream events
+====
+Since the size of Mongo change stream event is limited to 16 megabytes, enabling pre-image will increase the likelihood of hitting this limit and cause failure. To avoid that, please refer to Mongo's https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images/[official documentation] for recommendation and details.
+====
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-mongodb-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} MongoDB change event records
 [[mongodb-topic-names]]
@@ -371,7 +383,6 @@ Following is an example of what a message looks like:
 [source,json,indent=0,subs="+attributes"]
 ----
 {
-  "patch": null,
   "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}",
   "source": {
 ...
@@ -677,7 +688,6 @@ The following example shows the value portion of a change event that the connect
       },
     "payload": { // <5>
       "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}", // <6>
-      "patch": null,
       "source": { // <7>
         "version": "{debezium-version}",
         "connector": "mongodb",
@@ -728,7 +738,7 @@ However, by using the xref:{link-avro-serialization}#avro-serialization[Avro con
 
 |6
 |`after`
-|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field, when the `capture.mode` option is set either to `change_streams`.
+|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field regardless of `capture.mode` option.
 
 |7
 |`source`
@@ -764,7 +774,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 === _update_ events
 
 ==== Change streams capture mode
-The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if the `capture.mode` option is set to `change_streams_update_full`. There is a new structured field `updateDescription` with a few additional fields in this case:
+The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if the `capture.mode` option is set to `change_streams_update_full`. A `before` value would be provided if the `capture.mode` option is set to one of the `*_with_pre_image` option. There is a new structured field `updateDescription` with a few additional fields in this case:
 
 * `updatedFields` is a string field that contains the JSON representation of the updated document fields with their values
 
@@ -781,13 +791,14 @@ Here is an example of a change event value in an event that the connector genera
     "payload": {
       "op": "u", // <1>
       "ts_ms": 1465491461815, // <2>
-      "after":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne Marie\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", // <3>
+      "before":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"unknown\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", // <3>
+      "after":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne Marie\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", // <4>
       "updateDescription": {
         "removedFields": null,
-        "updatedFields": "{\"first_name\": \"Anne Marie\"}", // <4>
+        "updatedFields": "{\"first_name\": \"Anne Marie\"}", // <5>
         "truncatedArrays": null
       },
-      "source": { // <5>
+      "source": { // <6>
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
@@ -823,16 +834,22 @@ a|Optional field that displays the time at which the connector processed the eve
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |3
+|`before`
+|Contains the JSON string representation of the actual MongoDB document before change.
++
+An _update_ event value does not contain an `before` field if the capture mode is not set to one of the`*_with_preimage` options.
+
+|4
 |`after`
 |Contains the JSON string representation of the actual MongoDB document.
  +
 An _update_ event value does not contain an `after` field if the capture mode is not set to `change_streams_update_full`
 
-|4
+|5
 |`updatedFields`
 |Contains the JSON string representation of the updated field values of the document. In this example, the update changed the `first_name` field to a new value.
 
-|5
+|6
 |`source`
 a|Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes:
 
@@ -858,7 +875,7 @@ If your application depends on gradual change evolution then you should rely on 
 [id="mongodb-delete-events"]
 === _delete_ events
 
-The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection. The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection. In particular, a _delete_ event contains neither an `after` value nor a `patch` or `updateDescription` values. Here is an example of a _delete_ event for a document in the `customers` collection:
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection. The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection. In particular, a _delete_ event contains neither an `after` value nor a `updateDescription` value. Here is an example of a _delete_ event for a document in the `customers` collection:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -867,6 +884,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
     "payload": {
       "op": "d", // <1>
       "ts_ms": 1465495462115, // <2>
+      "before":"{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne Marie\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}",// <3>
       "source": { // <4>
         "version": "{debezium-version}",
         "connector": "mongodb",
@@ -899,6 +917,12 @@ a|Optional field that displays the time at which the connector processed the eve
 In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |3
+|`before`
+|Contains the JSON string representation of the actual MongoDB document before change.
++
+An _update_ event value does not contain an `before` field if the capture mode is not set to one of the`*_with_preimage` options.
+
+|4
 |`source`
 a|Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ or _update_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes:
 
@@ -932,6 +956,8 @@ Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutori
 
 You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
 When change streams are used (the default) the user also must have cluster-wide privilege actions `find` and `changeStream`.
+
+When you intend to utilize pre-image and populate the `before` field, you need to first enable `changeStreamPreAndPostImages` for a collection using `db.createCollection()`, `create`, or `collMod`.
 
 ifdef::community[]
 [[mongodb-in-the-cloud]]
@@ -1353,7 +1379,7 @@ If you include this property in the configuration, do not set the `collection.in
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document.
+|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document. To capture pre-image, you can use the pre-image version of the previous two capture modes - *change_streams_update_full_with_pre_image* and *change_streams_with_pre_image*.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
