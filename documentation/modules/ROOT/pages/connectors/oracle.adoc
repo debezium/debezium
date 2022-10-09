@@ -3181,7 +3181,7 @@ If you supply a raw JDBC URL for the database by using the xref:oracle-property-
 
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
-|No default
+|`t`
 |A comma-separated list of the operation types that you want the connector to skip during streaming.
 You can configure the connector to skip the following types of operations:
 

@@ -2506,6 +2506,39 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-5610")
+    public void shouldEmitTruncateOperation() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.NONE)
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "none")
+                .build();
+
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("insert into orders values(1000, '2022-10-09', 1002, 90, 106)");
+                connection.execute("truncate table orders;");
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        Struct truncateStruct = (Struct) changeEvents.get(1).value();
+
+        assertInsert(changeEvents.get(0), "order_number", 1000);
+        assertThat(truncateStruct.get("before")).isNull();
+        assertThat(truncateStruct.get("after")).isNull();
+        assertThat(truncateStruct.get("op")).isEqualTo("t");
+        assertThat(changeEvents.size()).isEqualTo(2);
+
+        stopConnector();
+    }
+
     private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
         protected BlockingQueue<SourceRecord> recordQueue;
 

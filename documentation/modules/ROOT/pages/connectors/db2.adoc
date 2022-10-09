@@ -2383,10 +2383,10 @@ In the resulting snapshot, the connector includes only the records for which `de
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
 
 |[[db2-property-skipped-operations]]<<db2-property-skipped-operations, `+skipped.operations+`>>
-|No default
-| comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
-By default, no operations are skipped.
+|`t`
+|A comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped.
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default

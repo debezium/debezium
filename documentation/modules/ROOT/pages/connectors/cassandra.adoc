@@ -1054,10 +1054,10 @@ refreshing the cached Cassandra table schemas.
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[cassandra-property-skipped-operations]]<<cassandra-property-skipped-operations, `+skipped.operations+`>>
-|No default
-| comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
-By default, no operations are skipped.
+|`t`
+|A comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped.
 
 |[[cassandra-property-topic-naming-strategy]]<<cassandra-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
