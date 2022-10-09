@@ -40,6 +40,7 @@ import io.debezium.relational.ddl.DdlParserListener.TableEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableTruncatedEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -258,6 +259,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                             else if (event instanceof TableDroppedEvent) {
                                 emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
                                         SchemaChangeEventType.DROP, snapshot);
+                            }
+                            else if (event instanceof TableTruncatedEvent) {
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.TRUNCATE, snapshot);
                             }
                             else if (event instanceof SetVariableEvent) {
                                 // SET statement with multiple variable emits event for each variable. We want to emit only

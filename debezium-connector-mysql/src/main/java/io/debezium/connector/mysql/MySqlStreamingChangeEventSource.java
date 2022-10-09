@@ -78,6 +78,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -595,6 +596,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
+                if (tableId != null && !connectorConfig.getSkippedOperations().contains(Operation.TRUNCATE)
+                        && schemaChangeEvent.getType().equals(SchemaChangeEventType.TRUNCATE)) {
+                    eventDispatcher.dispatchDataChangeEvent(partition, tableId,
+                            new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.TRUNCATE, null, null));
+                }
                 eventDispatcher.dispatchSchemaChangeEvent(partition, tableId, (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(schemaChangeEvent);
