@@ -265,8 +265,12 @@ createView
       )?
       ownerStatement?
       (SQL SECURITY secContext=(DEFINER | INVOKER))?
-      VIEW fullId ('(' uidList ')')? AS withClause? selectStatement
-      (WITH checkOption=(CASCADED | LOCAL)? CHECK OPTION)?
+      VIEW fullId ('(' uidList ')')? AS
+      (
+        '(' withClause? selectStatement ')'
+        |
+        withClause? selectStatement (WITH checkOption=(CASCADED | LOCAL)? CHECK OPTION)?
+      )
     ;
 
 createSequence
