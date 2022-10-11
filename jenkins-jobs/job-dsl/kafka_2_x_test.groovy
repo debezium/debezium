@@ -30,6 +30,10 @@ freeStyleJob('debezium-kafka-2.x-test') {
     }
 
     publishers {
+        archiveArtifacts {
+            pattern('**/target/surefire-reports/*.xml')
+            pattern('**/target/failsafe-reports/*.xml')
+        }
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
         mailer('jpechane@redhat.com', false, true)

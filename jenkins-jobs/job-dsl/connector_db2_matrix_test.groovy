@@ -31,9 +31,17 @@ matrixJob('connector-debezium-db2-matrix-test') {
         timeout {
             noActivity(1200)
         }
+        credentialsBinding {
+            usernamePassword('QUAY_USERNAME', 'QUAY_PASSWORD', 'rh-integration-quay-creds')
+            string('RP_TOKEN', 'report-portal-token')
+        }
     }
 
     publishers {
+        archiveArtifacts {
+            pattern('**/target/surefire-reports/*.xml')
+            pattern('**/target/failsafe-reports/*.xml')
+        }
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
         mailer('debezium-qe@redhat.com', false, true)
@@ -56,9 +64,11 @@ if [ "$PRODUCT_BUILD" == true ] ; then
     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
     pushd debezium-*-src
     pushd debezium-connector-db2-*
+    ATTRIBUTES="downstream db2"
 else
     git clone $REPOSITORY .
     git checkout $BRANCH
+    ATTRIBUTES="upstream db2"
 fi
 
 # Run connector tests
@@ -66,7 +76,18 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dtest.argline="-Ddebezium.test.records.waittime=5" \
     -Dinsecure.repositories=WARN \
-    $PROFILE_PROD 
+    $PROFILE_PROD
+    
+RESULTS_FOLDER=final-results
+RESULTS_PATH=$RESULTS_FOLDER/results
+
+mkdir -p $RESULTS_PATH
+cp target/failsafe-reports/*.xml $RESULTS_PATH
+rm -rf $RESULTS_PATH/failsafe-summary.xml
+
+docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+
+./jenkins-jobs/scripts/report.sh --connector true --env-file env-file.env --results-folder $RESULTS_FOLDER --attributes "$ATTRIBUTES"
 ''')
     }
 }
