@@ -41,9 +41,17 @@ matrixJob('connector-debezium-postgresql-matrix-test') {
         timeout {
             noActivity(3600)
         }
+        credentialsBinding {
+            usernamePassword('QUAY_USERNAME', 'QUAY_PASSWORD', 'rh-integration-quay-creds')
+            string('RP_TOKEN', 'report-portal-token')
+        }
     }
 
     publishers {
+        archiveArtifacts {
+            pattern('**/target/surefire-reports/*.xml')
+            pattern('**/target/failsafe-reports/*.xml')
+        }
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
         mailer('debezium-qe@redhat.com', false, true)
@@ -66,9 +74,12 @@ if [ "$PRODUCT_BUILD" == true ] ; then
     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
     pushd debezium-*-src
     pushd $(ls | grep -P 'debezium-[^-]+.Final')
+    ATTRIBUTES="downstream PostgreSQL $POSTGRES_VERSION $DECODER_PLUGIN"
+
 else
     git clone $REPOSITORY . 
     git checkout $BRANCH
+    ATTRIBUTES="upstream PostgreSQL $POSTGRES_VERSION $DECODER_PLUGIN"
 fi
 
 # Setup pg config for Alpine distributions
@@ -88,6 +99,18 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezi
     -Dinsecure.repositories=WARN \
     $PROFILE_PROD \
     $MAVEN_ARGS
+    
+RESULTS_FOLDER=final-results
+RESULTS_PATH=$RESULTS_FOLDER/results
+
+mkdir -p $RESULTS_PATH
+cp **/target/surefire-reports/*.xml $RESULTS_PATH
+cp **/target/failsafe-reports/*.xml $RESULTS_PATH
+rm -rf $RESULTS_PATH/failsafe-summary.xml
+
+docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+
+./jenkins-jobs/scripts/report.sh --connector true --env-file env-file.env --results-folder $RESULTS_FOLDER --attributes "$ATTRIBUTES"
 ''')
     }
 }
