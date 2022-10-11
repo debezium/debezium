@@ -34,10 +34,10 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
         TableId oldTable = parser.parseQualifiedTableId(ctx.tableName(0).fullId());
         TableId newTable = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         if (parser.getTableFilter().isIncluded(oldTable) && !parser.getTableFilter().isIncluded(newTable)) {
-            LOG.warn("Renaming whitelisted table {} to non-whitelisted table {}, this can lead to schema inconsistency", oldTable, newTable);
+            LOG.warn("Renaming included table {} to non-included table {}, this can lead to schema inconsistency", oldTable, newTable);
         }
         else if (!parser.getTableFilter().isIncluded(oldTable) && parser.getTableFilter().isIncluded(newTable)) {
-            LOG.warn("Renaming non-whitelisted table {} to whitelisted table {}, this can lead to schema inconsistency", oldTable, newTable);
+            LOG.warn("Renaming non-included table {} to included table {}, this can lead to schema inconsistency", oldTable, newTable);
         }
         parser.databaseTables().renameTable(oldTable, newTable);
         parser.signalAlterTable(newTable, oldTable, ctx);
