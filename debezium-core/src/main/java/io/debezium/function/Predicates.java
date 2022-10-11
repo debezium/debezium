@@ -174,6 +174,11 @@ public class Predicates {
         return includes(regexPatterns, (str) -> str);
     }
 
+    public static Predicate<String> includes(String regexPatterns, int regexFlags) {
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, regexFlags);
+        return includedInPatterns(patterns, str -> str);
+    }
+
     /**
      * Generate a predicate function that for any supplied string returns {@code true} if <i>none</i> of the regular
      * expressions in the supplied comma-separated list matches the predicate parameter.
@@ -184,6 +189,10 @@ public class Predicates {
      */
     public static Predicate<String> excludes(String regexPatterns) {
         return includes(regexPatterns).negate();
+    }
+
+    public static Predicate<String> excludes(String regexPatterns, int regexFlags) {
+        return includes(regexPatterns, regexFlags).negate();
     }
 
     /**
