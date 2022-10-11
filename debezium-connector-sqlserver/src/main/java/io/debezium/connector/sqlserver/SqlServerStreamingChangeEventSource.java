@@ -392,7 +392,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         return true;
                     }
                     else {
-                        LOGGER.info("CDC is enabled for table {} but the table is not whitelisted by connector", changeTable);
+                        LOGGER.info("CDC is enabled for table {} but the table is not on connector's table include list", changeTable);
                         return false;
                     }
                 })
@@ -400,7 +400,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         if (includeListChangeTables.isEmpty()) {
             LOGGER.warn(
-                    "No whitelisted table has enabled CDC, whitelisted table list does not contain any table with CDC enabled or no table match the white/blacklist filter(s)");
+                    "No table on connector's include list has enabled CDC, tables on include list do not contain any table with CDC enabled or no table match the include/exclude filter(s)");
         }
 
         final List<SqlServerChangeTable> tables = new ArrayList<>();
