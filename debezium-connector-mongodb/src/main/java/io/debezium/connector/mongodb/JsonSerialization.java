@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.function.Function;
 
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
@@ -19,7 +18,7 @@ import com.mongodb.BasicDBObject;
  *
  * @author Jiri Pechanec
  */
-class JsonSerialization {
+class JsonSerialization implements Serialization {
 
     @FunctionalInterface
     public static interface Transformer extends Function<BsonDocument, String> {
@@ -53,7 +52,8 @@ class JsonSerialization {
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
     }
 
-    public String getDocumentIdOplog(BsonDocument document) {
+    @Override
+    public Object getDocumentIdOplog(BsonDocument document) {
         if (document == null) {
             return null;
         }
@@ -67,7 +67,8 @@ class JsonSerialization {
         return keyValue.substring(start, end);
     }
 
-    public String getDocumentIdChangeStream(BsonDocument document) {
+    @Override
+    public Object getDocumentIdChangeStream(BsonDocument document) {
         if (document == null) {
             return null;
         }
@@ -81,6 +82,7 @@ class JsonSerialization {
         return keyValue.substring(start, end);
     }
 
+    @Override
     public String getDocumentValue(BsonDocument document) {
         return transformer.apply(document);
     }
