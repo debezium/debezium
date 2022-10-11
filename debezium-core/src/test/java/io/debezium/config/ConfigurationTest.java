@@ -207,7 +207,7 @@ public class ConfigurationTest {
     @FixFor("DBZ-469")
     public void defaultDdlFilterShouldFilterOutRdsHeartbeatInsert() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("INSERT INTO mysql.rds_heartbeat2(id, value) values (1,1510678117058) ON DUPLICATE KEY UPDATE value = 1510678117058")).isTrue();
     }
 
@@ -215,7 +215,7 @@ public class ConfigurationTest {
     @FixFor("DBZ-661")
     public void defaultDdlFilterShouldFilterOutFlushRelayLogs() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("FLUSH RELAY LOGS")).isTrue();
     }
 
@@ -223,7 +223,7 @@ public class ConfigurationTest {
     @FixFor("DBZ-1492")
     public void defaultDdlFilterShouldFilterOutRdsSysinfoStatements() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("DELETE FROM mysql.rds_sysinfo where name = 'innodb_txn_key'")).isTrue();
         assertThat(ddlFilter.test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Thu Sep 19 19:38:23 UTC 2019')")).isTrue();
     }
@@ -232,7 +232,7 @@ public class ConfigurationTest {
     @FixFor("DBZ-1775")
     public void defaultDdlFilterShouldFilterOutRdsMonitorStatements() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("DELETE FROM mysql.rds_monitor")).isTrue();
     }
 
@@ -240,12 +240,26 @@ public class ConfigurationTest {
     @FixFor("DBZ-3762")
     public void defaultDdlFilterShouldFilterOutMySqlInlineComments() {
         String defaultDdlFilter = Configuration.create().build().getString(SchemaHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         assertThat(ddlFilter.test("# Dummy event replacing event type 160")).isTrue();
         assertThat(ddlFilter.test("    # Dummy event with leading white space characters")).isTrue();
         // Other statements which don't contain comments only or e.g. Postgres JSON filter by path shouldn't be removed.
         assertThat(ddlFilter.test("INSERT INTO test(id) VALUES (1001); # test insert")).isFalse();
         assertThat(ddlFilter.test("SELECT '[1, 2, 3]'::JSONB #> '{1}';")).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-5709")
+    public void customDdlFilterShouldFilterOutMySqlCreateViewStatements() {
+        String customDdlFilter = Configuration.create().with(SchemaHistory.DDL_FILTER, "CREATE.*VIEW.*")
+                .build().getString(SchemaHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(customDdlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        String createView = "create algorithm=undefined definer=`bi_rw`@`172.29.%` sql security definer view \n" +
+                "v_some_table as (\n" +
+                "with a as (select * from some_table) \n" +
+                "select * from a\n" +
+                ");";
+        assertThat(ddlFilter.test(createView)).isTrue();
     }
 
     @Test
