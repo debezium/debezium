@@ -259,7 +259,7 @@ To emit the `eventType` field value in the outbox message header, configure the 
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=eventType:header:type
+transforms.outbox.collection.fields.additional.placement=eventType:header:type
 ----
 
 The result will be a header on the Kafka message with `type` as its key, and the value of the `eventType` field as its value.
@@ -270,7 +270,7 @@ To emit the `eventType` field value in the outbox message envelope, configure th
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=eventType:envelope:type
+transforms.outbox.collection.fields.additional.placement=eventType:envelope:type
 ----
 
 To control which partition the outbox message is produced on, configure the SMT like this:
@@ -279,7 +279,7 @@ To control which partition the outbox message is produced on, configure the SMT 
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=partitionField:partition
+transforms.outbox.collection.fields.additional.placement=partitionField:partition
 ----
 
 Note that for the `partition` placement, adding an alias will have no effect.
