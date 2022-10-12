@@ -137,9 +137,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
                 if (!isContinuousMining && startScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
-                    // startScn is the exclusive lower bound, so must be >= (firstScn - 1)
-                    throw new DebeziumException(
-                            "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
+                    // don't let some really old transactions get in the way when restarting connector
+                    startScn = offsetContext.getCommitScn().getMaxCommittedScn();
+                    LOGGER.info("startScn coerced to commitScn '{}'", startScn);
                 }
 
                 setNlsSessionParameters(jdbcConnection);
