@@ -74,6 +74,12 @@
                 <version>${version.mongo.driver}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>${version.sqlserver.driver}</version>
+            </dependency>
+
             <!-- Debezium dependencies -->
             <dependency>
                 <groupId>io.debezium</groupId>
