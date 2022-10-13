@@ -211,3 +211,9 @@ FROM
     ORDER BY amount DESC LIMIT 1)
   AS max_sale;
 #end
+
+-- Index hints: https://dev.mysql.com/doc/refman/8.0/en/index-hints.html
+SELECT * FROM table1 USE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
+SELECT * FROM table1 FORCE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
+SELECT * FROM t1 USE INDEX (PRIMARY) ORDER BY a;
+SELECT * FROM t1 FORCE INDEX (PRIMARY) ORDER BY a;
