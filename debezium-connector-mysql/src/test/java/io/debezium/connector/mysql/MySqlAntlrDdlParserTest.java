@@ -353,6 +353,31 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldProcessQueryWithIndexHintPrimary() {
+        String sp = "CREATE DEFINER=`my-user`@`%` PROCEDURE `my_table`()\n" +
+                "BEGIN\n" +
+                "  DECLARE i INT DEFAULT 0;\n" +
+                "  DECLARE minID INT DEFAULT 0;\n" +
+                "  DECLARE maxID INT DEFAULT 0;\n" +
+                "  DECLARE limitSize INT DEFAULT 1000;\n" +
+                "  DECLARE total_rows INT DEFAULT 0;\n" +
+                "  SET total_rows = (SELECT count(*) FROM db.my_table a);\n" +
+                "  WHILE i <= total_rows DO\n" +
+                "      SET minID = (select min(a.id) FROM db.my_table a);\n" +
+                "      SET maxID = (select max(id) from (select a.id FROM db.my_table a  USE INDEX(PRIMARY) order by a.id asc limit limitSize) top);\n" +
+                "      START TRANSACTION;\n" +
+                "        DELETE db.my_table FROM db.my_table USE INDEX(PRIMARY) WHERE db.my_table.id >= minId AND db.my_table.id <= maxID ;\n" +
+                "      COMMIT;\n" +
+                "    do SLEEP(1);\n" +
+                "    SET i = i + limitSize;\n" +
+                "  END WHILE;\n" +
+                "END";
+        parser.parse(sp, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
