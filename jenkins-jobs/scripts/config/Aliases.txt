@@ -163,3 +163,4 @@ nirolevy,Niro Levy
 nirlevy,Nir Levy
 rajdangwal,Rajendra Dangwal
 Sage-Pierce,Sage Pierce
+joschi,Jochen Schalanda
