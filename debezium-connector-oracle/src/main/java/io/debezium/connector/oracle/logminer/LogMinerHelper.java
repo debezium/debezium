@@ -125,8 +125,8 @@ public class LogMinerHelper {
         LOGGER.trace("Getting logs to be mined for offset scn {}", offsetScn);
 
         final List<LogFile> logFiles = new ArrayList<>();
-        final Set<LogFile> onlineLogFiles = new HashSet<>();
-        final Set<LogFile> archivedLogFiles = new HashSet<>();
+        final Set<LogFile> onlineLogFiles = new LinkedHashSet<>();
+        final Set<LogFile> archivedLogFiles = new LinkedHashSet<>();
 
         connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName), rs -> {
             while (rs.next()) {
