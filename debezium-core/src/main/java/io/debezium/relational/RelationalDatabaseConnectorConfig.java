@@ -520,8 +520,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.tableFilters = null;
         }
 
-        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
-        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+        String columnExcludeList = columnExcludeList();
+        String columnIncludeList = columnIncludeList();
 
         if (columnIncludeList != null) {
             this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
@@ -594,6 +594,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public String tableIncludeList() {
         return getConfig().getString(TABLE_INCLUDE_LIST);
+    }
+
+    public String columnIncludeList() {
+        return getConfig().getString(COLUMN_INCLUDE_LIST);
+    }
+
+    public String columnExcludeList() {
+        return getConfig().getString(COLUMN_EXCLUDE_LIST);
     }
 
     public ColumnNameFilter getColumnFilter() {
