@@ -1679,20 +1679,9 @@ endif::product[]
 [id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
 === Compatibility with Oracle installation types
 
-
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
 
-ifdef::product[]
-[IMPORTANT]
-====
-Using the connector in a RAC environment is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-endif::product[]
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
 [id="schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
@@ -2480,10 +2469,6 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
 Valid values include raw TNS names and RAC connection strings.
-ifdef::product[]
-[NOTE]
-Using the connector in a RAC environment is a Technology Preview feature.
-endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |No default
@@ -3030,10 +3015,6 @@ endif::product[]
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
 This field is required to enable compatibility with an Oracle RAC deployment.
-ifdef::product[]
-[NOTE]
-Using the connector in a RAC environment is a Technology Preview feature.
-endif::product[]
 
 Specify the list of RAC nodes by using one of the following methods:
 
