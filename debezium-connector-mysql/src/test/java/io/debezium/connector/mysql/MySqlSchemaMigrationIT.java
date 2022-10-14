@@ -125,9 +125,9 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         connection.execute("RENAME TABLE `monitored` TO `_monitored_old`, `_monitored_new` TO `monitored`");
         connection.execute("insert into monitored values(default, 3)");
 
-        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table "
+        final String msg1 = "Renaming included table " + DATABASE.qualifiedTableName("monitored") + " to non-included table "
                 + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
-        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "
+        final String msg2 = "Renaming non-included table " + DATABASE.qualifiedTableName("_monitored_new") + " to included table "
                 + DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
 
         records = consumeRecordsByTopic(2);
@@ -176,9 +176,9 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         connection.execute("RENAME TABLE `monitored` TO `_monitored_old`, `_monitored_new` TO `monitored`");
         connection.execute("insert into monitored values(default, 3)");
 
-        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table "
+        final String msg1 = "Renaming included table " + DATABASE.qualifiedTableName("monitored") + " to non-included table "
                 + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
-        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "
+        final String msg2 = "Renaming non-included table " + DATABASE.qualifiedTableName("_monitored_new") + " to included table "
                 + DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
 
         records = consumeRecordsByTopic(2);
