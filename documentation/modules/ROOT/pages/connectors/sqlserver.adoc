@@ -2032,7 +2032,7 @@ The following configuration properties are _required_ unless a default value is 
 |Specifies the maximum number of tasks to create for this connector.
 The default value is acceptable when you use the connector with a single node database.
 In a clustered database, modify the default to specify a value that is greater than the number of nodes in the cluster.
-By setting the property to a value greater than the number of nodes, you permit the connector to create a task for each node, enabling the connector to distribute work by launching a unique task to read from each node.
+Setting the property to a value that is greater than the number of nodes permits the connector distribute work by creating separate tasks to read from each node.
 
 |[[sqlserver-property-database-hostname]]<<sqlserver-property-database-hostname, `+database.hostname+`>>
 |No default
