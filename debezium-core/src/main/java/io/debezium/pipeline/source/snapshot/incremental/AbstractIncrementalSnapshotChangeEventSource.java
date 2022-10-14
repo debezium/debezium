@@ -44,6 +44,7 @@ import io.debezium.relational.SnapshotChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
@@ -73,6 +74,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected EventDispatcher<P, T> dispatcher;
     protected IncrementalSnapshotContext<T> context = null;
     protected JdbcConnection jdbcConnection;
+    protected ColumnNameFilter columnFilter;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
 
     public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -84,6 +86,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                                         DataChangeEventListener<P> dataChangeEventListener) {
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
+        this.columnFilter = config.getColumnFilter();
         this.dispatcher = dispatcher;
         this.databaseSchema = (RelationalDatabaseSchema) databaseSchema;
         this.clock = clock;
@@ -217,10 +220,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
-                "*",
+                buildProjection(table),
                 Optional.ofNullable(condition),
                 additionalCondition,
                 orderBy);
+    }
+
+    protected String buildProjection(Table table) {
+        String projection = "*";
+        if (!Strings.isNullOrBlank(connectorConfig.columnIncludeList())
+                || !Strings.isNullOrBlank(connectorConfig.columnExcludeList())) {
+            TableId tableId = table.id();
+            projection = table.columns().stream()
+                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                    .map(column -> jdbcConnection.quotedColumnIdString(column.name()))
+                    .collect(Collectors.joining(", "));
+        }
+        return projection;
     }
 
     private void addLowerBound(Table table, StringBuilder sql) {
@@ -262,7 +278,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
-        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(),
+        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
                 additionalCondition, orderBy);
     }
 
