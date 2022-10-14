@@ -865,8 +865,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                     }
                                 }
                                 else {
-                                    // As maxRetries is 0, do not retry restarting and stop the work.
-                                    // This will break the infinite looping for retries.
+                                    // As maxRetries is 0, do not retry restarting and stop the work. This will break
+                                    // the infinite looping for retries.
                                     handlerError = e;
                                     break;
                                 }
