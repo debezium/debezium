@@ -1550,6 +1550,10 @@ See xref:{link-mongodb-connector}#mongodb-transaction-metadata[Transaction Metad
 |10000 (10 seconds)
 |The number of milliseconds the driver will wait before a new connection attempt is aborted.
 
+|[[mongodb-property-mongodb-heartbeat-frequency-ms]]<<mongodb-property-mongodb-heartbeat-frequency-ms, `+mongodb.heartbeat.frequency.ms+`>>
+|10000 (10 seconds)
+|The frequency that the cluster monitor attempts to reach each server.
+
 |[[mongodb-property-mongodb-socket-timeout-ms]]<<mongodb-property-mongodb-socket-timeout-ms, `+mongodb.socket.timeout.ms+`>>
 |0
 |The number of milliseconds before a send/receive on the socket can take before a timeout occurs.

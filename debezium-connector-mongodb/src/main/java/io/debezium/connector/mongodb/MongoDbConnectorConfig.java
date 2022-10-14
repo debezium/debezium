@@ -368,6 +368,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(0)
             .withDescription("The socket timeout, given in milliseconds. Defaults to 0 ms.");
 
+    public static final Field HEARTBEAT_FREQUENCY_MS = Field.create("mongodb.heartbeat.frequency.ms")
+            .withDisplayName("Heartbeat frequency ms")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10_000)
+            .withDescription("The frequency that the cluster monitor attempts to reach each server. Defaults to 10 seconds (10,000 ms).");
+
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
      * Must not be used with {@link #DATABASE_EXCLUDE_LIST}.
@@ -519,6 +528,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
                     CONNECT_TIMEOUT_MS,
+                    HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     MONGODB_POLL_INTERVAL_MS,
