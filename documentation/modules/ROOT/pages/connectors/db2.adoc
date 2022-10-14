@@ -1327,7 +1327,7 @@ Represents the number of milliseconds since the epoch, and does not include time
 
 The `DATETIME` type represents a timestamp without time zone information.
 Such columns are converted into an equivalent Kafka Connect value based on UTC.
-For example, the `DATETIME` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596945104".
+For example, the `DATETIME` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596000".
 
 The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
