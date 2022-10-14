@@ -2,6 +2,40 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.0.Final
+October 14th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385340)
+
+### New features since 2.0.0.CR1
+
+None
+
+
+### Breaking changes since 2.0.0.CR1
+
+* Transaction IDs in PostgreSQL transaction metadata topics subject to wraparound [DBZ-5329](https://issues.redhat.com/browse/DBZ-5329)
+
+
+### Fixes since 2.0.0.CR1
+
+* ORA-01289: cannot add duplicate logfile [DBZ-5276](https://issues.redhat.com/browse/DBZ-5276)
+* Function DATE_ADD can be used as an identifier [DBZ-5679](https://issues.redhat.com/browse/DBZ-5679)
+* MySqlConnector parse create view statement failed [DBZ-5708](https://issues.redhat.com/browse/DBZ-5708)
+* The DDL_FILTER of SchemaHistory doesn't work for including break lines ddl statement [DBZ-5709](https://issues.redhat.com/browse/DBZ-5709)
+* Debezium Server 1.9.6 is using MSSQL JDBC 7.2.2 instead of 9.4.1 [DBZ-5711](https://issues.redhat.com/browse/DBZ-5711)
+* Invalid prop names in MongoDB outbox router docs [DBZ-5715](https://issues.redhat.com/browse/DBZ-5715)
+* tests are running forever [DBZ-5718](https://issues.redhat.com/browse/DBZ-5718)
+* cassandra connector first startup ever may fail [DBZ-5719](https://issues.redhat.com/browse/DBZ-5719)
+* Vitess: Handle Vstream error: unexpected server EOF [DBZ-5722](https://issues.redhat.com/browse/DBZ-5722)
+* ParsingException: DDL statement couldn't be parsed (index hints) [DBZ-5724](https://issues.redhat.com/browse/DBZ-5724)
+
+
+### Other changes since 2.0.0.CR1
+
+* Remove whilelisted/blacklisted from log messages [DBZ-5710](https://issues.redhat.com/browse/DBZ-5710)
+* MySqlSchemaMigrationIT runs failed [DBZ-5728](https://issues.redhat.com/browse/DBZ-5728)
+
+
+
 ## 2.0.0.CR1
 October 7th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12397018)
 
