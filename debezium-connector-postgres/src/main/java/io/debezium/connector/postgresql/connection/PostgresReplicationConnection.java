@@ -325,6 +325,31 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
+        if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
+            try {
+                Statement stmt = pgConnection().createStatement();
+                String seekCommand = String.format(
+                        "SELECT pg_replication_slot_advance('%s', '%s')",
+                        slotName,
+                        lsn.asString());
+                LOGGER.info("Seeking to {} on the replication slot with command {}", lsn, seekCommand);
+                stmt.execute(seekCommand);
+            }
+            catch (PSQLException e) {
+                if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")) {
+                    LOGGER.warn("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
+                }
+                else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
+                    throw new DebeziumException(
+                            String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
+                                    e.getMessage()));
+                }
+                else {
+                    throw e;
+                }
+            }
+        }
+
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
         int tryCount = 0;
