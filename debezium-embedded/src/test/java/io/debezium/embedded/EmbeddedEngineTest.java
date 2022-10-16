@@ -37,6 +37,7 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
 import org.fest.assertions.Assertions;
@@ -93,6 +94,28 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         @Override
         public void close() {
+        }
+    }
+
+    public static class FilterPredicate implements Predicate<SourceRecord> {
+        @Override
+        public ConfigDef config() {
+            return null;
+        }
+
+        @Override
+        public boolean test(SourceRecord sourceRecord) {
+            return sourceRecord.value().equals("Generated line number 1");
+        }
+
+        @Override
+        public void close() {
+
+        }
+
+        @Override
+        public void configure(Map<String, ?> map) {
+
         }
     }
 
@@ -472,11 +495,14 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("offset.flush.interval.ms", "0");
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
+        props.setProperty("predicates", "filter");
+        props.setProperty("predicates.filter.type", FilterPredicate.class.getName());
         props.setProperty("transforms", "filter, router");
         props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.RegexRouter");
         props.setProperty("transforms.router.regex", "(.*)");
         props.setProperty("transforms.router.replacement", "trf$1");
         props.setProperty("transforms.filter.type", "io.debezium.embedded.EmbeddedEngineTest$FilterTransform");
+        props.setProperty("transforms.filter.predicate", "filter");
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(5);
