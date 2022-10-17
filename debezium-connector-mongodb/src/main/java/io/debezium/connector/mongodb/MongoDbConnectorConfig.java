@@ -605,6 +605,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(0)
             .withDescription("The socket timeout, given in milliseconds. Defaults to 0 ms.");
 
+    public static final Field HEARTBEAT_FREQUENCY_MS = Field.create("mongodb.heartbeat.frequency.ms")
+            .withDisplayName("Heartbeat frequency ms")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10_000)
+            .withDescription("The frequency that the cluster monitor attempts to reach each server. Defaults to 10 seconds (10,000 ms).");
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
@@ -638,6 +647,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
                     CONNECT_TIMEOUT_MS,
+                    HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     POLL_INTERVAL_SEC,
