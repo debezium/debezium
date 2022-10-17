@@ -14,7 +14,7 @@
     <properties>
         <version.kinesis>2.13.13</version.kinesis>
         <version.pubsub>25.0.0</version.pubsub>
-        <version.pulsar>2.9.2</version.pulsar>
+        <version.pulsar>2.10.1</version.pulsar>
         <version.eventhubs>5.12.1</version.eventhubs>
         <version.jedis>4.1.1</version.jedis>
         <version.pravega>0.9.1</version.pravega>
