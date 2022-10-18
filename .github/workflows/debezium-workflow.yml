@@ -349,7 +349,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        postgres-plugin: ["assembly", "assembly,postgres-14,pgoutput-decoder"]
+        postgres-plugin: ["assembly", "assembly,postgres-15,pgoutput-decoder"]
     steps:
       - name: Checkout Action
         uses: actions/checkout@v2
