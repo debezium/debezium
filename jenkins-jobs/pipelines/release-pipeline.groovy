@@ -1,6 +1,8 @@
 import groovy.json.*
 import java.util.stream.*
 
+import com.cloudbees.groovy.cps.NonCPS
+
 if (
     !RELEASE_VERSION ||
     !DEVELOPMENT_VERSION ||

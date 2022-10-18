@@ -1,4 +1,4 @@
-pipelineJob('release-deploy-snapshots') {
+pipelineJob('release-deploy_snapshots_pipeline') {
     displayName('Debezium Deploy Snapshots')
     description('Deploy -SNAPSHOT versions to Maven Central')
 
@@ -29,7 +29,7 @@ pipelineJob('release-deploy-snapshots') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/deploy-snapshots.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/deploy_snapshots_pipeline.groovy'))
         }
     }
 }

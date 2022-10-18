@@ -28,7 +28,7 @@ pipelineJob('release-deploy-container-images') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/build-debezium-images.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/build_debezium_images_pipeline.groovy'))
         }
     }
 }

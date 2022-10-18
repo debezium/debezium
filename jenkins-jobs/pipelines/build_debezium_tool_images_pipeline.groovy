@@ -13,11 +13,11 @@ node('Slave') {
                 deleteDir()
             }
             checkout([$class                           : 'GitSCM',
-                      branches                         : [[name: IMAGES_BRANCH]],
+                      branches                         : [[name: params.IMAGES_BRANCH]],
                       doGenerateSubmoduleConfigurations: false,
                       extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
                       submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                      userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
             withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
@@ -40,6 +40,6 @@ node('Slave') {
             }
         }
     } finally {
-        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }

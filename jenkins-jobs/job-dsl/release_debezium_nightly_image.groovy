@@ -28,7 +28,7 @@ freeStyleJob('release-debezium-nightly-image') {
     }
 
     triggers {
-        upstream('release-deploy-snapshots')
+        upstream('release-deploy_snapshots_pipeline')
     }
 
     publishers {

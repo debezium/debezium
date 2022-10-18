@@ -13,17 +13,17 @@ pipeline {
         stage('Checkout and prepare git') {
             steps {
                 script {
-                    if (OSIA_GIT_REPOSITORY.isEmpty()) {
+                    if (params.OSIA_GIT_REPOSITORY.isEmpty()) {
                         withCredentials([
-                                string(credentialsId: "${OSIA_GIT_SECRET}", variable: 'TMP_OSIA_GIT_REPOSITORY')
+                                string(credentialsId: "${params.OSIA_GIT_SECRET}", variable: 'TMP_OSIA_GIT_REPOSITORY')
                         ]){env.OSIA_GIT_REPOSITORY = TMP_OSIA_GIT_REPOSITORY}
                     }
                 }
                 checkout([
                         $class           : 'GitSCM',
-                        branches         : [[name: "${OSIA_GIT_BRANCH}"]],
-                        userRemoteConfigs: [[url: "${OSIA_GIT_REPOSITORY}",
-                                             credentialsId: "${GITLAB_CREDENTIALS}"]],
+                        branches         : [[name: "${params.OSIA_GIT_BRANCH}"]],
+                        userRemoteConfigs: [[url: "${params.OSIA_GIT_REPOSITORY}",
+                                             credentialsId: "${params.GITLAB_CREDENTIALS}"]],
                         extensions       : [[$class: 'CleanCheckout'],
                                             [$class: 'RelativeTargetDirectory',
                                              relativeTargetDir: 'OSIA-dbz']] +
@@ -33,7 +33,7 @@ pipeline {
                 ])
                 script {
                     withCredentials([
-                            sshUserPrivateKey(credentialsId: "${GITLAB_CREDENTIALS}", keyFileVariable: 'TMP_SSH_KEY_FILE')
+                            sshUserPrivateKey(credentialsId: "${params.GITLAB_CREDENTIALS}", keyFileVariable: 'TMP_SSH_KEY_FILE')
                     ]){
                         sh '''
                         git config --global user.name "Debezium CI"
@@ -54,10 +54,10 @@ pipeline {
             }
             steps {
                 withCredentials([
-                        string(credentialsId: "${ANSIBLE_VAULT_PASSWORD}", variable: 'ANSIBLE_PASSWORD')
+                        string(credentialsId: "${params.ANSIBLE_VAULT_PASSWORD}", variable: 'ANSIBLE_PASSWORD')
                 ]) {
                     sh '''
-                    set -ex  
+                    set -ex
                     cd "${WORKSPACE}/OSIA-dbz/secrets"
                     echo "${ANSIBLE_PASSWORD}" > ../password.txt
                     ansible-vault decrypt --vault-password-file ../password.txt *
@@ -79,10 +79,10 @@ pipeline {
             }
             steps {
                 withCredentials([
-                        string(credentialsId: "${ANSIBLE_VAULT_PASSWORD}", variable: 'ANSIBLE_PASSWORD')
+                        string(credentialsId: "${params.ANSIBLE_VAULT_PASSWORD}", variable: 'ANSIBLE_PASSWORD')
                 ]) {
                     sh '''
-                    set -ex  
+                    set -ex
                     cd "${WORKSPACE}/OSIA-dbz/secrets"
                     echo "${ANSIBLE_PASSWORD}" > ../password.txt
                     ansible-vault decrypt --vault-password-file ../password.txt *
@@ -93,14 +93,12 @@ pipeline {
                 }
             }
         }
-
-
     }
 
     post {
         always {
-            mail to: 'debezium-qe@redhat.com', subject: "OCP cluster deployment/removal #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: 'debezium-qe@redhat.com', subject: "OCP cluster deployment/removal #${env.BUILD_NUMBER} finished", body: """
+${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
     }

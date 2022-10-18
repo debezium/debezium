@@ -1,10 +1,11 @@
 import groovy.json.*
 import java.util.*
+import com.cloudbees.groovy.cps.NonCPS
 
 IMAGES_DIR = 'images'
-TAG_REST_ENDPOINT = "https://api.github.com/repos/${DEBEZIUM_REPOSITORY}/tags"
-STREAMS_TO_BUILD_COUNT = STREAMS_TO_BUILD_COUNT.toInteger()
-TAGS_PER_STREAM_COUNT = TAGS_PER_STREAM_COUNT.toInteger()
+TAG_REST_ENDPOINT = "https://api.github.com/repos/${params.DEBEZIUM_REPOSITORY}/tags"
+STREAMS_TO_BUILD_COUNT = params.STREAMS_TO_BUILD_COUNT.toInteger()
+TAGS_PER_STREAM_COUNT = params.TAGS_PER_STREAM_COUNT.toInteger()
 GIT_CREDENTIALS_ID = 'debezium-github'
 DOCKER_CREDENTIALS_ID = 'debezium-dockerhub'
 QUAYIO_CREDENTIALS_ID = 'debezium-quay'
@@ -143,11 +144,11 @@ node('Slave') {
                 deleteDir()
             }
             checkout([$class                           : 'GitSCM',
-                      branches                         : [[name: IMAGES_BRANCH]],
+                      branches                         : [[name: params.IMAGES_BRANCH]],
                       doGenerateSubmoduleConfigurations: false,
                       extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
                       submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                      userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
             withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
@@ -198,6 +199,6 @@ node('Slave') {
             }
         }
     } finally {
-        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }
