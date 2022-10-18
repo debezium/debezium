@@ -10,11 +10,12 @@ matrixJob('connector-debezium-postgresql-matrix-test') {
         (DECODER_PLUGIN == "pgoutput" && (POSTGRES_VERSION == "10" || POSTGRES_VERSION == "11")) ||
          POSTGRES_VERSION == "12" ||
          POSTGRES_VERSION == "13" ||
-         POSTGRES_VERSION == "14"
+         POSTGRES_VERSION == "14" ||
+         POSTGRES_VERSION == "15"
          ''')
 
     axes {
-        text('POSTGRES_VERSION', '10', '11', '12', '13', '14')
+        text('POSTGRES_VERSION', '10', '11', '12', '13', '14', '15')
         text('DECODER_PLUGIN', 'decoderbufs', 'pgoutput')
         label("Node", "Slave")
     }
