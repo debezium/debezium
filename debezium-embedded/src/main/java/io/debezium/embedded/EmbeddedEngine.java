@@ -864,12 +864,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                         delayStrategy.sleepWhen(!startedSuccessfully);
                                     }
                                 }
-                                else {
-                                    // As maxRetries is 0, do not retry restarting and stop the work. This will break
-                                    // the infinite looping for retries.
-                                    handlerError = e;
-                                    break;
-                                }
                             }
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
