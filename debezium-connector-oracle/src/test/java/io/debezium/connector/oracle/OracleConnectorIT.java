@@ -4326,6 +4326,59 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5682")
+    public void shouldCaptureChangesForTableUniqueIndexWithNullColumnValuesWhenLobEnabled() throws Exception {
+        TestHelper.dropTable(connection, "dbz5682");
+        try {
+            connection.execute("CREATE TABLE dbz5682 (col_bpchar varchar2(30), col_varchar varchar2(30), col_int4 number(5), " +
+                    "constraint uk_dbz5862 unique (col_bpchar, col_varchar))");
+            TestHelper.streamTable(connection, "dbz5682");
+
+            connection.execute("INSERT INTO dbz5682 values ('1', null, 1)");
+
+            // This test requires that LOB_ENABLED be set to true in order to trigger the failure behavior,
+            // which was not expecting that a primary key column's value would ever be NULL, but when the
+            // table uses a unique index, like this example, it's possible.
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5682")
+                    .with(OracleConnectorConfig.LOB_ENABLED, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Snapshot records
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.DEBEZIUM.DBZ5682");
+            assertThat(recordsForTopic).hasSize(1);
+
+            Struct after = ((Struct) recordsForTopic.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("COL_BPCHAR")).isEqualTo("1");
+            assertThat(after.get("COL_VARCHAR")).isNull();
+            assertThat(after.get("COL_INT4")).isEqualTo(1);
+
+            connection.execute("INSERT INTO dbz5682 values ('2', null, 2)");
+
+            // Streaming records
+            records = consumeRecordsByTopic(1);
+
+            recordsForTopic = records.recordsForTopic("server1.DEBEZIUM.DBZ5682");
+            assertThat(recordsForTopic).hasSize(1);
+
+            after = ((Struct) recordsForTopic.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("COL_BPCHAR")).isEqualTo("2");
+            assertThat(after.get("COL_VARCHAR")).isNull();
+            assertThat(after.get("COL_INT4")).isEqualTo(2);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5682");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
