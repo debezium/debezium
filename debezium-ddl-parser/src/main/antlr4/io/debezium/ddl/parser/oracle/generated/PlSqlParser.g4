@@ -1940,7 +1940,7 @@ system_partitioning
     ;
 
 range_partition_desc
-    : PARTITION partition_name? range_values_clause table_partition_description
+    : PARTITION partition_name? range_values_clause? table_partition_description?
         ( ( '(' ( range_subpartition_desc (',' range_subpartition_desc)*
                 | list_subpartition_desc (',' list_subpartition_desc)*
                 | individual_hash_subparts (',' individual_hash_subparts)*
@@ -1952,7 +1952,7 @@ range_partition_desc
     ;
 
 list_partition_desc
-    : PARTITION partition_name? list_values_clause table_partition_description
+    : PARTITION partition_name? list_values_clause? table_partition_description?
         ( ( '(' ( range_subpartition_desc (',' range_subpartition_desc)*
                 | list_subpartition_desc (',' list_subpartition_desc)*
                 | individual_hash_subparts (',' individual_hash_subparts)*
@@ -2920,9 +2920,10 @@ modify_table_partition
     ;
 
 split_table_partition
-    : SPLIT PARTITION partition_name INTO '('
-            (range_partition_desc (',' range_partition_desc)* |
-                list_partition_desc (',' list_partition_desc)* ) ')'
+    : SPLIT partition_extended_names (
+            AT '(' literal (',' literal)* ')' INTO '(' range_partition_desc (',' range_partition_desc)*  ')'
+            | INTO '(' (range_partition_desc (',' range_partition_desc)* | list_partition_desc (',' list_partition_desc)* ) ')'
+            )
     ;
 
 truncate_table_partition
