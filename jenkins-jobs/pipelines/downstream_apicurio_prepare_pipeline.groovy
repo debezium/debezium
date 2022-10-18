@@ -36,7 +36,7 @@ pipeline {
         stage('Copy Images & Process Resource') {
             steps {
                 withCredentials([
-                        usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+                        usernamePassword(credentialsId: "${params.QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
 
                 ]) {
                     sh '''
@@ -50,7 +50,7 @@ pipeline {
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --deployment-desc="${APIC_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
                         --img-output="${WORKSPACE}/published_images.txt"            \\
-                        `if [ $PUSH_IMAGES = false ]; then echo " -s"; fi`            
+                        `if [ $PUSH_IMAGES = false ]; then echo " -s"; fi`
                     '''
                     zip(archive: true, zipFile: 'apicurio-registry-install-examples.zip', dir: 'apicurio')
 
@@ -68,9 +68,9 @@ pipeline {
 
     post {
         always {
-            mail to: MAIL_TO, subject: "Downstream apicurio preparation #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
-"""
+            mail(to: params.MAIL_TO, subject: "Downstream apicurio preparation #${env.BUILD_NUMBER} finished", body: """
+                ${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
+            """)
         }
         success {
             archiveArtifacts "**/published_images*.txt"

@@ -26,7 +26,7 @@ pipelineJob('ocp-cluster-deployment') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/cluster_deployment.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/cluster_deployment_pipeline.groovy'))
             sandbox()
         }
     }

@@ -37,7 +37,10 @@ pipeline {
                         expression { !params.APICURIO_PREPARE_BUILD_NUMBER }
                     }
                     steps {
-                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: "${WORKSPACE}/apicurio" ,filter: 'apicurio-registry-install-examples.zip', selector: lastSuccessful()
+                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job',
+                                target: "${WORKSPACE}/apicurio",
+                                filter: 'apicurio-registry-install-examples.zip',
+                                selector: lastSuccessful()
                     }
                 }
                 stage('Copy apicurio artifacts') {
@@ -45,7 +48,10 @@ pipeline {
                         expression { params.APICURIO_PREPARE_BUILD_NUMBER }
                     }
                     steps {
-                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job', target: "${WORKSPACE}/apicurio" , filter: 'apicurio-registry-install-examples.zip', selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
+                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job',
+                                target: "${WORKSPACE}/apicurio",
+                                filter: 'apicurio-registry-install-examples.zip',
+                                selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
                     }
                 }
 
@@ -54,7 +60,10 @@ pipeline {
                         expression { !params.STRIMZI_PREPARE_BUILD_NUMBER }
                     }
                     steps {
-                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: "${WORKSPACE}/strimzi" , filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
+                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job',
+                                target: "${WORKSPACE}/strimzi",
+                                filter: 'amq-streams-install-examples.zip',
+                                selector: lastSuccessful()
                     }
                 }
                 stage('Copy strimzi artifacts') {
@@ -62,7 +71,10 @@ pipeline {
                         expression { params.STRIMZI_PREPARE_BUILD_NUMBER }
                     }
                     steps {
-                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', target: "${WORKSPACE}/strimzi" , filter: 'amq-streams-install-examples.zip', selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
+                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job',
+                                target: "${WORKSPACE}/strimzi",
+                                filter: 'amq-streams-install-examples.zip',
+                                selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
                     }
                 }
             }
@@ -72,7 +84,7 @@ pipeline {
             steps {
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
-                        file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
+                        file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     oc login -u "${OCP_USERNAME}" -p "${OCP_PASSWORD}" --insecure-skip-tls-verify=true "${OCP_URL}"
@@ -128,7 +140,7 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
+                    file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
@@ -150,7 +162,7 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
+                    file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
@@ -170,7 +182,7 @@ pipeline {
             steps {
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
-                        file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
+                        file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     cd ${DEBEZIUM_LOCATION}
