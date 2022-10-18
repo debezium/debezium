@@ -198,6 +198,14 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
+By default, the connector uses the `ALL_TABLES` database view to resolve the table names that should be stored in the schema history topic based on the user account's granted permissions.
+
+To adjust which tables are stored in the schema history topic,
+the user account's permissions can be altered, controlling the tables that are visible in the `ALL_TABLES` view or by setting the connector property link:#oracle-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `true`.
+====
+
+[IMPORTANT]
+====
 When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database schema history topic.
 The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
