@@ -7,6 +7,7 @@ package io.debezium.embedded;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -46,7 +47,6 @@ public class TransformationsTest {
         properties.setProperty("transforms.b.value.literal", "b");
         properties.setProperty("transforms.b.predicate", "hasheader");
         properties.setProperty("transforms.b.negate", "true");
-        properties.setProperty("transforms.b.predicate", "hasheader");
 
         Configuration configuration = Configuration.from(properties);
         SourceRecord updated;
@@ -59,6 +59,12 @@ public class TransformationsTest {
                     new ConnectHeaders().addString("existingHeader", "someValue")));
             assertNotNull(updated.headers().lastWithName("h1"));
             assertEquals("a", updated.headers().lastWithName("h1").value());
+
+            // record does not have header, transformation not applied
+            a = transformations.getTransformation("a");
+            updated = a.apply(new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "t1", 1, null, "key", null, "value", System.currentTimeMillis(),
+                    new ConnectHeaders()));
+            assertNull(updated.headers().lastWithName("h1"));
 
             // record does not have header, but transformation will still apply due to negation
             Transformation<SourceRecord> b = transformations.getTransformation("b");

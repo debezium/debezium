@@ -97,9 +97,10 @@ public class Transformations implements Closeable {
         return record;
     }
 
-    private static Transformation<SourceRecord> createPredicateTransformation(
-                                                                              boolean negate, Predicate<SourceRecord> predicate,
+    private static Transformation<SourceRecord> createPredicateTransformation(boolean negate,
+                                                                              Predicate<SourceRecord> predicate,
                                                                               Transformation<SourceRecord> transformation) {
+
         return new Transformation<>() {
             @Override
             public SourceRecord apply(SourceRecord sourceRecord) {
@@ -127,7 +128,6 @@ public class Transformations implements Closeable {
 
             @Override
             public void configure(Map<String, ?> map) {
-
             }
         };
     }
