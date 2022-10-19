@@ -70,6 +70,7 @@ There are multiple sections configured:
 * `debezium.sink` is for the sink system configuration
 * `debezium.format` is for the output serialization format configuration
 * `debezium.transforms` is for the configuration of message transformations
+* `debezium.predicates` is for the configuration of message transformation predicates
 
 An example configuration file can look like so:
 
@@ -338,8 +339,47 @@ The configuration will need to contain the list of transformations, implementati
 |
 |Configuration properties passed to the transformation with name `<name>`.
 
+[id="debezium-transforms-name-predicate"]
+|`debezium.transforms.<name>.predicate`
+|
+|The name of the predicate to be applied to the transformation with name `<name>`.
+
+[id="debezium-transforms-name-negate"]
+|`debezium.transforms.<name>.negate`
+| false
+|Determines if the result of the predicate to the transformation with name `<name>` will be negated.
+
 |===
 
+[id="debezium-predicates-configuration-options"]
+=== Predicates configuration
+
+A Predicate can be associated with a transformation in order to make the transformation optional.
+The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[Filter and Conditional SMTs] defined by Kafka Connect.
+The configuration will need to contain the list of predicates, implementation class for each predicate and configuration options for each of the predicates.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+[id="debezium-predicates"]
+|`debezium.predicates`
+|
+|The comma separated list of symbolic names of predicates.
+
+[id="debezium-predicates-name-type"]
+|`debezium.predicates.<name>.type`
+|
+|The name of Java class implementing the predicate with name `<name>`.
+
+[id="debezium-predicates-name"]
+|`debezium.predicates.<name>.*`
+|
+|Configuration properties passed to the predicate with name `<name>`.
+
+|===
 
 [id="debezium-additional-configuration-options"]
 === Additional configuration

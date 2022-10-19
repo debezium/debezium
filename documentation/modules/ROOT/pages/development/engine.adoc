@@ -262,7 +262,7 @@ Allowed values are:
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records (see xref:{link-avro-serialization}[Avro Serialization] for more details)
 * `CloudEvents.class` - the output value is a pair of key and value encoded as xref:{link-cloud-events}[Cloud Events] messages
 
-Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
+Internally, the engine uses the appropriate Kafka Connect converter implementation to which the conversion is delegated.
 The converter can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
@@ -310,6 +310,33 @@ props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterT
 2. Implementation of the `router` transformation is `org.apache.kafka.connect.transforms.RegexRouter`
 3. The `router` transformation has two configurations options -`regex` and `replacement`
 4. Implementation of the `filter` transformation is `io.debezium.embedded.ExampleFilterTransform`
+
+[[engine-message-transformations-predicates]]
+== Message Transformation Predicates
+
+Predicates can be applied to transformations to make the transformations optional.
+
+An example of the configuration is
+[source,java,indent=0]
+----
+final Properties props = new Properties();
+...
+props.setProperty("transforms", "filter");                                                 // (1)
+props.setProperty("predicates", "headerExists");                                           // (2)
+props.setProperty("predicates.headerExists.type", "org.apache.kafka.connect.transforms.predicates.HasHeaderKey"); //(3)
+props.setProperty("predicates.headerExists.name", "header.name");                          // (4)
+props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterTransform");// (5)
+props.setProperty("transforms.filter.predicate", "headerExists");                          // (6)
+props.setProperty("transforms.filter.negate", "true");                                     // (7)
+----
+
+1. One transformation is defined - `filter`
+2. One predicate is defined - `headerExists`
+3. Implementation of the `headerExists` predicate is `org.apache.kafka.connect.transforms.predicates.HasHeaderKey`
+4. The `headerExists` predicate has one configuration option - `name`
+5. Implementation of the `filter` transformation is `io.debezium.embedded.ExampleFilterTransform`
+6. The `filter` transformation requires the predicate `headerExists`
+7. The `filter` transformation expects the value of the predicate to be negated, making the predicate determine if the header does not exist
 
 [[advanced-consuming]]
 == Advanced Record Consuming
