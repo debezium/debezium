@@ -674,289 +674,289 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     @Override
     public void run() {
-        boolean canStart = false;
         synchronized (this) {
-            canStart = runningThread.compareAndSet(null, Thread.currentThread());
+            boolean canStart = runningThread.compareAndSet(null, Thread.currentThread());
+            if (!canStart) {
+                return;
+            }
         }
 
-        if (canStart) {
-            final String engineName = config.getString(ENGINE_NAME);
-            final String connectorClassName = config.getString(CONNECTOR_CLASS);
-            final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
-            // Only one thread can be in this part of the method at a time ...
-            latch.countUp();
+        final String engineName = config.getString(ENGINE_NAME);
+        final String connectorClassName = config.getString(CONNECTOR_CLASS);
+        final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
+        // Only one thread can be in this part of the method at a time ...
+        latch.countUp();
+        try {
+            if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
+                fail("Failed to start connector with invalid configuration (see logs for actual errors)");
+                return;
+            }
+
+            // Instantiate the connector ...
+            SourceConnector connector = null;
             try {
-                if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
-                    fail("Failed to start connector with invalid configuration (see logs for actual errors)");
-                    return;
-                }
+                @SuppressWarnings("unchecked")
+                Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
+                connector = connectorClass.getDeclaredConstructor().newInstance();
+            }
+            catch (Throwable t) {
+                fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
+                return;
+            }
 
-                // Instantiate the connector ...
-                SourceConnector connector = null;
+            // Instantiate the offset store ...
+            final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+            OffsetBackingStore offsetStore = null;
+            try {
+                @SuppressWarnings("unchecked")
+                Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+                offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+            }
+            catch (Throwable t) {
+                fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+                return;
+            }
+
+            // Initialize the offset store ...
+            try {
+                offsetStore.configure(workerConfig);
+                offsetStore.start();
+            }
+            catch (Throwable t) {
+                fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
+                offsetStore.stop();
+                return;
+            }
+
+            // Set up the offset commit policy ...
+            if (offsetCommitPolicy == null) {
                 try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
-                    connector = connectorClass.getDeclaredConstructor().newInstance();
+                    offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
+                            config.asProperties());
                 }
                 catch (Throwable t) {
-                    fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
+                    fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);
                     return;
                 }
+            }
 
-                // Instantiate the offset store ...
-                final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-                OffsetBackingStore offsetStore = null;
+            OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
+                    keyConverter, valueConverter);
+
+            // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
+            ConnectorContext context = new SourceConnectorContext() {
+
+                @Override
+                public void requestTaskReconfiguration() {
+                    // Do nothing ...
+                }
+
+                @Override
+                public void raiseError(Exception e) {
+                    fail(e.getMessage(), e);
+                }
+
+                @Override
+                public OffsetStorageReader offsetStorageReader() {
+                    return offsetReader;
+                }
+            };
+            connector.initialize(context);
+            OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
+                    keyConverter, valueConverter);
+
+            Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
+
+            try {
+                // Start the connector with the given properties and get the task configurations ...
+                connector.start(workerConfig.originalsStrings());
+                connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
+                List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+                Class<? extends Task> taskClass = connector.taskClass();
+                if (taskConfigs.isEmpty()) {
+                    String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
+                    fail(msg);
+                    return;
+                }
+                task = null;
                 try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                    offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+                    task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
+                }
+                catch (IllegalAccessException | InstantiationException t) {
+                    fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
+                    return;
+                }
+                try {
+                    SourceTaskContext taskContext = new SourceTaskContext() {
+                        @Override
+                        public OffsetStorageReader offsetStorageReader() {
+                            return offsetReader;
+                        }
+
+                        // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
+                        // and otherwise would break builds based on Kafka 1.x
+                        public Map<String, String> configs() {
+                            // TODO Auto-generated method stub
+                            return null;
+                        }
+                    };
+                    task.initialize(taskContext);
+                    task.start(taskConfigs.get(0));
+                    connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
                 }
                 catch (Throwable t) {
-                    fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+                    // Clean-up allocated resources
+                    try {
+                        LOGGER.debug("Stopping the task");
+                        task.stop();
+                    }
+                    catch (Throwable tstop) {
+                        LOGGER.info("Error while trying to stop the task");
+                    }
+                    // Mask the passwords ...
+                    Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
+                    String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
+                            + config;
+                    fail(msg, t);
                     return;
                 }
 
-                // Initialize the offset store ...
+                recordsSinceLastCommit = 0;
+                Throwable handlerError = null;
                 try {
-                    offsetStore.configure(workerConfig);
-                    offsetStore.start();
-                }
-                catch (Throwable t) {
-                    fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
-                    offsetStore.stop();
-                    return;
-                }
-
-                // Set up the offset commit policy ...
-                if (offsetCommitPolicy == null) {
-                    try {
-                        offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
-                                config.asProperties());
-                    }
-                    catch (Throwable t) {
-                        fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);
-                        return;
-                    }
-                }
-
-                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                        keyConverter, valueConverter);
-
-                // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                ConnectorContext context = new SourceConnectorContext() {
-
-                    @Override
-                    public void requestTaskReconfiguration() {
-                        // Do nothing ...
-                    }
-
-                    @Override
-                    public void raiseError(Exception e) {
-                        fail(e.getMessage(), e);
-                    }
-
-                    @Override
-                    public OffsetStorageReader offsetStorageReader() {
-                        return offsetReader;
-                    }
-                };
-                connector.initialize(context);
-                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
-                        keyConverter, valueConverter);
-
-                Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
-
-                try {
-                    // Start the connector with the given properties and get the task configurations ...
-                    connector.start(workerConfig.originalsStrings());
-                    connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
-                    List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
-                    Class<? extends Task> taskClass = connector.taskClass();
-                    if (taskConfigs.isEmpty()) {
-                        String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
-                        fail(msg);
-                        return;
-                    }
-                    task = null;
-                    try {
-                        task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-                    }
-                    catch (IllegalAccessException | InstantiationException t) {
-                        fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
-                        return;
-                    }
-                    try {
-                        SourceTaskContext taskContext = new SourceTaskContext() {
-                            @Override
-                            public OffsetStorageReader offsetStorageReader() {
-                                return offsetReader;
-                            }
-
-                            // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
-                            // and otherwise would break builds based on Kafka 1.x
-                            public Map<String, String> configs() {
-                                // TODO Auto-generated method stub
-                                return null;
-                            }
-                        };
-                        task.initialize(taskContext);
-                        task.start(taskConfigs.get(0));
-                        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
-                    }
-                    catch (Throwable t) {
-                        // Clean-up allocated resources
+                    timeOfLastCommitMillis = clock.currentTimeInMillis();
+                    RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
+                    while (runningThread.get() != null) {
+                        List<SourceRecord> changeRecords = null;
                         try {
-                            LOGGER.debug("Stopping the task");
-                            task.stop();
-                        }
-                        catch (Throwable tstop) {
-                            LOGGER.info("Error while trying to stop the task");
-                        }
-                        // Mask the passwords ...
-                        Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
-                        String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
-                                + config;
-                        fail(msg, t);
-                        return;
-                    }
-
-                    recordsSinceLastCommit = 0;
-                    Throwable handlerError = null;
-                    try {
-                        timeOfLastCommitMillis = clock.currentTimeInMillis();
-                        RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
-                        while (runningThread.get() != null) {
-                            List<SourceRecord> changeRecords = null;
-                            try {
-                                LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
-                                changeRecords = task.poll(); // blocks until there are values ...
-                                LOGGER.debug("Embedded engine returned from polling task for records");
-                            }
-                            catch (InterruptedException e) {
-                                // Interrupted while polling ...
-                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
-                                if (this.runningThread.get() == Thread.currentThread()) {
-                                    // this thread is still set as the running thread -> we were not interrupted
-                                    // due the stop() call -> probably someone else called the interrupt on us ->
-                                    // -> we should raise the interrupt flag
-                                    Thread.currentThread().interrupt();
-                                }
-                                break;
-                            }
-                            catch (RetriableException e) {
-                                int maxRetries = getErrorsMaxRetries();
-                                LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-                                if (maxRetries != 0) {
-                                    DelayStrategy delayStrategy = delayStrategy(config);
-                                    int totalRetries = 0;
-                                    boolean startedSuccessfully = false;
-                                    while (!startedSuccessfully) {
-                                        try {
-                                            totalRetries++;
-                                            LOGGER.info("Starting connector, attempt {}", totalRetries);
-                                            task.stop();
-                                            task.start(taskConfigs.get(0));
-                                            startedSuccessfully = true;
-                                        }
-                                        catch (Exception ex) {
-                                            if (totalRetries == maxRetries) {
-                                                LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
-                                                throw ex;
-                                            }
-                                            else {
-                                                LOGGER.error("Can't start the connector, will retry later...", ex);
-                                            }
-                                        }
-                                        delayStrategy.sleepWhen(!startedSuccessfully);
-                                    }
-                                }
-                            }
-                            try {
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} records from the task", changeRecords.size());
-                                    changeRecords = changeRecords.stream()
-                                            .map(transformations::transform)
-                                            .filter(x -> x != null)
-                                            .collect(Collectors.toList());
-                                }
-
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
-
-                                    try {
-                                        handler.handleBatch(changeRecords, committer);
-                                    }
-                                    catch (StopConnectorException e) {
-                                        break;
-                                    }
-                                }
-                                else {
-                                    LOGGER.debug("Received no records from the task");
-                                }
-                            }
-                            catch (Throwable t) {
-                                // There was some sort of unexpected exception, so we should stop work
-                                handlerError = t;
-                                break;
-                            }
-                        }
-                    }
-                    finally {
-                        if (handlerError != null) {
-                            // There was an error in the handler so make sure it's always captured...
-                            fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
-                                    handlerError);
-                        }
-                        try {
-                            // First stop the task ...
-                            LOGGER.info("Stopping the task and engine");
-                            task.stop();
-                            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
-                            // Always commit offsets that were captured from the source records we actually processed ...
-                            commitOffsets(offsetWriter, commitTimeout, task);
-                            if (handlerError == null) {
-                                // We stopped normally ...
-                                succeed("Connector '" + connectorClassName + "' completed normally.");
-                            }
+                            LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
+                            changeRecords = task.poll(); // blocks until there are values ...
+                            LOGGER.debug("Embedded engine returned from polling task for records");
                         }
                         catch (InterruptedException e) {
-                            LOGGER.debug("Interrupted while committing offsets");
-                            Thread.currentThread().interrupt();
+                            // Interrupted while polling ...
+                            LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
+                            if (this.runningThread.get() == Thread.currentThread()) {
+                                // this thread is still set as the running thread -> we were not interrupted
+                                // due the stop() call -> probably someone else called the interrupt on us ->
+                                // -> we should raise the interrupt flag
+                                Thread.currentThread().interrupt();
+                            }
+                            break;
+                        }
+                        catch (RetriableException e) {
+                            int maxRetries = getErrorsMaxRetries();
+                            LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
+                            if (maxRetries != 0) {
+                                DelayStrategy delayStrategy = delayStrategy(config);
+                                int totalRetries = 0;
+                                boolean startedSuccessfully = false;
+                                while (!startedSuccessfully) {
+                                    try {
+                                        totalRetries++;
+                                        LOGGER.info("Starting connector, attempt {}", totalRetries);
+                                        task.stop();
+                                        task.start(taskConfigs.get(0));
+                                        startedSuccessfully = true;
+                                    }
+                                    catch (Exception ex) {
+                                        if (totalRetries == maxRetries) {
+                                            LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
+                                            throw ex;
+                                        }
+                                        else {
+                                            LOGGER.error("Can't start the connector, will retry later...", ex);
+                                        }
+                                    }
+                                    delayStrategy.sleepWhen(!startedSuccessfully);
+                                }
+                            }
+                        }
+                        try {
+                            if (changeRecords != null && !changeRecords.isEmpty()) {
+                                LOGGER.debug("Received {} records from the task", changeRecords.size());
+                                changeRecords = changeRecords.stream()
+                                        .map(transformations::transform)
+                                        .filter(x -> x != null)
+                                        .collect(Collectors.toList());
+                            }
+
+                            if (changeRecords != null && !changeRecords.isEmpty()) {
+                                LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
+
+                                try {
+                                    handler.handleBatch(changeRecords, committer);
+                                }
+                                catch (StopConnectorException e) {
+                                    break;
+                                }
+                            }
+                            else {
+                                LOGGER.debug("Received no records from the task");
+                            }
                         }
                         catch (Throwable t) {
-                            fail("Error while trying to stop the task and commit the offsets", t);
+                            // There was some sort of unexpected exception, so we should stop work
+                            handlerError = t;
+                            break;
                         }
                     }
-                }
-                catch (Throwable t) {
-                    fail("Error while trying to run connector class '" + connectorClassName + "'", t);
                 }
                 finally {
-                    // Close the offset storage and finally the connector ...
+                    if (handlerError != null) {
+                        // There was an error in the handler so make sure it's always captured...
+                        fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
+                                handlerError);
+                    }
                     try {
-                        offsetStore.stop();
+                        // First stop the task ...
+                        LOGGER.info("Stopping the task and engine");
+                        task.stop();
+                        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
+                        // Always commit offsets that were captured from the source records we actually processed ...
+                        commitOffsets(offsetWriter, commitTimeout, task);
+                        if (handlerError == null) {
+                            // We stopped normally ...
+                            succeed("Connector '" + connectorClassName + "' completed normally.");
+                        }
+                    }
+                    catch (InterruptedException e) {
+                        LOGGER.debug("Interrupted while committing offsets");
+                        Thread.currentThread().interrupt();
                     }
                     catch (Throwable t) {
-                        fail("Error while trying to stop the offset store", t);
-                    }
-                    finally {
-                        try {
-                            connector.stop();
-                            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStopped);
-                        }
-                        catch (Throwable t) {
-                            fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
-                        }
+                        fail("Error while trying to stop the task and commit the offsets", t);
                     }
                 }
             }
-            finally {
-                latch.countDown();
-                // No need to do the switch in synchronized block as we already shut down so there's no need to synchronize with stop() method.
-                runningThread.set(null);
-                // after we've "shut down" the engine, fire the completion callback based on the results we collected
-                completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
+            catch (Throwable t) {
+                fail("Error while trying to run connector class '" + connectorClassName + "'", t);
             }
+            finally {
+                // Close the offset storage and finally the connector ...
+                try {
+                    offsetStore.stop();
+                }
+                catch (Throwable t) {
+                    fail("Error while trying to stop the offset store", t);
+                }
+                finally {
+                    try {
+                        connector.stop();
+                        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStopped);
+                    }
+                    catch (Throwable t) {
+                        fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
+                    }
+                }
+            }
+        }
+        finally {
+            latch.countDown();
+            // No need to do the switch in synchronized block as we already shut down so there's no need to synchronize with stop() method.
+            runningThread.set(null);
+            // after we've "shut down" the engine, fire the completion callback based on the results we collected
+            completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
         }
     }
 
