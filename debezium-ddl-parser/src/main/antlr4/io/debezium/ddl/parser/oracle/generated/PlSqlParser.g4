@@ -1847,13 +1847,14 @@ object_table_substitution
 
 relational_table
     : ('(' relational_property (',' relational_property)* ')')?
-      (ON COMMIT (DELETE | PRESERVE) ROWS)?
-      physical_properties? column_properties? table_partitioning_clauses?
-      (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
-      parallel_clause?
-      (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-      (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
-    ;
+          (DEFAULT COLLATION collation_name)?
+          (ON COMMIT (DELETE | PRESERVE) ROWS)?
+          physical_properties? column_properties? table_partitioning_clauses?
+          (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
+          parallel_clause?
+          (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
+          (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
+        ;
 
 relational_property
     : ( out_of_line_constraint
@@ -3248,6 +3249,7 @@ end_time_column
 
 column_definition
     : column_name (datatype | type_name)?
+         (COLLATE collation_name)?
          SORT?
          (VISIBLE | INVISIBLE)?
          (DEFAULT (ON NULL_)? column_default_value | identity_clause)?
