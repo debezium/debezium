@@ -79,6 +79,10 @@ public class LogFile {
         return sequence;
     }
 
+    public int getThread() {
+        return thread;
+    }
+
     /**
      * Returns whether this log file instance is considered the current online redo log record.
      */
@@ -109,5 +113,18 @@ public class LogFile {
         }
         final LogFile other = (LogFile) obj;
         return thread == other.thread && Objects.equals(sequence, other.sequence);
+    }
+
+    @Override
+    public String toString() {
+        return "LogFile{" +
+                "fileName='" + fileName + '\'' +
+                ", firstScn=" + firstScn +
+                ", nextScn=" + nextScn +
+                ", sequence=" + sequence +
+                ", current=" + current +
+                ", type=" + type +
+                ", thread=" + thread +
+                '}';
     }
 }

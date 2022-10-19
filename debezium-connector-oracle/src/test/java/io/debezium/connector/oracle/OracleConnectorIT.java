@@ -70,6 +70,7 @@ import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.LogMinerAdapter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -3296,6 +3297,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundarySmallTrxs() throws Exception {
         TestHelper.dropTable(connection, "dbz5085");
         try {
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerAdapter.class);
+
             setConsumeTimeout(10, TimeUnit.SECONDS);
 
             connection.execute("CREATE TABLE dbz5085 (id numeric(9,0) primary key, data varchar2(50))");
@@ -3305,9 +3308,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
                     .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
-
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
 
             final int expected = 50;
 
@@ -3324,6 +3324,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 // simulate longer lived transactions
                 Thread.sleep(100L);
             }
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // make sure transaction doesn't commit too early
+            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+
             connection.commit();
 
             // wait until we get to streaming phase
@@ -3365,6 +3372,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundaryLargeTrxs() throws Exception {
         TestHelper.dropTable(connection, "dbz5085");
         try {
+            LogInterceptor logInterceptor = new LogInterceptor(LogMinerAdapter.class);
+
             setConsumeTimeout(10, TimeUnit.SECONDS);
 
             connection.execute("CREATE TABLE dbz5085 (id numeric(9,0) primary key, data varchar2(50))");
@@ -3374,9 +3383,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
                     .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
-
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
 
             final int expected = 50;
 
@@ -3393,6 +3399,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 // simulate longer lived transactions
                 Thread.sleep(100L);
             }
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // make sure transaction doesn't commit too early
+            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+
             connection.commit();
 
             // wait until we get to streaming phase
