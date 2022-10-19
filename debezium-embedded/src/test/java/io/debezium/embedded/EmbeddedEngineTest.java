@@ -84,7 +84,9 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         @Override
         public SourceRecord apply(SourceRecord record) {
-            return ((String) record.value()).equals("Generated line number 1") ? null : record;
+            final String payload = (String) record.value();
+            return payload.equals("Generated line number 1") || payload.equals("Generated line number 2") ? null
+                    : record;
         }
 
         @Override
