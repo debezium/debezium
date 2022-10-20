@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.OperatorController;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -22,7 +23,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class StrimziOperatorController extends OperatorController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaController.class);
-    private static final String DEPLOYMENT_PREFIX = "strimzi-cluster-operator";
+    private static final String DEPLOYMENT_PREFIX = ConfigProperties.STRIMZI_OPERATOR_NAME;
     private static final String DEPLOYMENT_PREFIX_OLM = "amq-streams-cluster-operator";
     private static final Map<String, String> OPERATOR_LABELS = Map.of("strimzi.io/kind", "cluster-operator");
 

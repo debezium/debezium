@@ -56,6 +56,7 @@
     <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
 
     <!--Strimzi configuration-->
+    <strimzi.operator.name>strimzi-cluster-operator</strimzi.operator.name>
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
     <strimzi.crd.version>v1beta2</strimzi.crd.version>
     <strimzi.kc.build>true</strimzi.kc.build>
@@ -471,6 +472,7 @@
                 <test.ocp.project.oracle>${ocp.project.oracle}</test.ocp.project.oracle>
 
                 <!--Strimzi Configuration-->
+                <test.strimzi.operator.name>${strimzi.operator.name}</test.strimzi.operator.name>
                 <test.strimzi.version.kafka>${version.strimzi.kafka}</test.strimzi.version.kafka>
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
                 <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
