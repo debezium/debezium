@@ -494,6 +494,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
     private final ColumnNameFilter columnFilter;
+    private final boolean columnsFiltered;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
@@ -520,8 +521,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.tableFilters = null;
         }
 
-        String columnExcludeList = columnExcludeList();
-        String columnIncludeList = columnIncludeList();
+        String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
+        String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
+
+        columnsFiltered = !(Strings.isNullOrEmpty(columnExcludeList) && Strings.isNullOrEmpty(columnIncludeList));
 
         if (columnIncludeList != null) {
             this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
@@ -596,16 +599,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getString(TABLE_INCLUDE_LIST);
     }
 
-    public String columnIncludeList() {
-        return getConfig().getString(COLUMN_INCLUDE_LIST);
-    }
-
-    public String columnExcludeList() {
-        return getConfig().getString(COLUMN_EXCLUDE_LIST);
-    }
-
     public ColumnNameFilter getColumnFilter() {
         return columnFilter;
+    }
+
+    public boolean isColumnsFiltered() {
+        return columnsFiltered;
     }
 
     public Boolean isFullColummnScanRequired() {
