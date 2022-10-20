@@ -74,10 +74,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private String routeByField;
-    private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
-    private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
-    private final InsertField<R> removedDelegate = new InsertField.Value<R>();
-    private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
+    private final ExtractField<R> afterDelegate = new ExtractField.Value<>();
+    private final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
+    private final InsertField<R> removedDelegate = new InsertField.Value<>();
+    private final InsertField<R> updatedDelegate = new InsertField.Value<>();
     private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
     private SmtManager<R> smtManager;
 

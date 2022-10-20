@@ -8,8 +8,10 @@ package io.debezium.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -226,6 +228,14 @@ public class ExtractNewRecordStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
     }
 
+    private Header getSourceRecordHeader(SourceRecord record, String headerKey) {
+        Iterator<Header> operationHeader = record.headers().allWithName(headerKey);
+        if (!operationHeader.hasNext()) {
+            return null;
+        }
+        return operationHeader.next();
+    }
+
     private String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
         Iterator<Header> operationHeader = record.headers().allWithName(headerKey);
         if (!operationHeader.hasNext()) {
@@ -233,7 +243,6 @@ public class ExtractNewRecordStateTest {
         }
 
         Object value = operationHeader.next().value();
-
         return value != null ? value.toString() : null;
     }
 
@@ -724,6 +733,64 @@ public class ExtractNewRecordStateTest {
 
             final SourceRecord unnamedSchemaRecord = createUnknownUnnamedSchemaRecord();
             assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void testAddUpdatedFieldToHeaders() {
+        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put("header.changed.name", "Changed");
+            props.put("header.unchanged.name", "Unchanged");
+            transform.configure(props);
+
+            final SourceRecord updatedRecord = createUpdateRecord();
+            final SourceRecord transformRecord = transform.apply(updatedRecord);
+            final Header changedHeader = getSourceRecordHeader(transformRecord, "Changed");
+            final List<String> changedHeaderValues = (List<String>) changedHeader.value();
+            final Header unchangedHeader = getSourceRecordHeader(transformRecord, "Unchanged");
+            final List<String> unchangedHeaderValues = (ArrayList<String>) unchangedHeader.value();
+
+            assertThat(transformRecord.headers().size()).isEqualTo(2);
+            assertThat(changedHeaderValues.size()).isEqualTo(1);
+            assertThat(changedHeaderValues.get(0)).isEqualTo("name");
+            assertThat(changedHeader.schema().name()).isEqualTo("Changed");
+            assertThat(unchangedHeaderValues.size()).isEqualTo(1);
+            assertThat(unchangedHeaderValues.get(0)).isEqualTo("id");
+        }
+
+        // Not set unchanged header
+        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put("header.changed.name", "Changed");
+            transform.configure(props);
+
+            final SourceRecord updatedRecord = createUpdateRecord();
+            final SourceRecord transformRecord = transform.apply(updatedRecord);
+            final Header changedHeader = getSourceRecordHeader(transformRecord, "Changed");
+            final List<String> changedHeaderValues = (List<String>) changedHeader.value();
+            final Header unchangedHeader = getSourceRecordHeader(transformRecord, "Unchanged");
+
+            assertThat(transformRecord.headers().size()).isEqualTo(1);
+            assertThat(changedHeaderValues.contains("name")).isTrue();
+            assertThat(unchangedHeader).isNull();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void testAddCreatedFieldToHeaders() {
+        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            transform.configure(props);
+            props.put("header.changed.name", "Changed");
+            props.put("header.unchanged.name", "Unchanged");
+            transform.configure(props);
+
+            final SourceRecord createdRecord = createCreateRecord();
+            final SourceRecord transformRecord = transform.apply(createdRecord);
+            assertThat(transformRecord.headers()).isEmpty();
         }
     }
 }
