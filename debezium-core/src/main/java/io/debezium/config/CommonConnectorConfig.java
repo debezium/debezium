@@ -482,7 +482,7 @@ public abstract class CommonConnectorConfig {
                     + "The converters are defined using '<converter.prefix>.type' config option and configured using options '<converter.prefix>.<option>'");
 
     public static final Field SKIPPED_OPERATIONS = Field.create("skipped.operations")
-            .withDisplayName("skipped Operations")
+            .withDisplayName("Skipped Operations")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 11))
             .withWidth(Width.SHORT)
