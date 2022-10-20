@@ -1497,7 +1497,7 @@ endif::community[]
 |`t`
 |A comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped.
+By default, truncate operations are skipped (not emitted by this connector).
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |No default
