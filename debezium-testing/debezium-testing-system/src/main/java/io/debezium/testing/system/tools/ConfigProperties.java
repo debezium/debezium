@@ -50,6 +50,7 @@ public final class ConfigProperties {
     public static final Optional<String> OCP_PULL_SECRET_PATH = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     // Strimzi configuration
+    public static final String STRIMZI_OPERATOR_NAME = System.getProperty("test.strimzi.operator.name", "strimzi-cluster-operator");
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
