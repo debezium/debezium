@@ -228,8 +228,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected String buildProjection(Table table) {
         String projection = "*";
-        if (!Strings.isNullOrBlank(connectorConfig.columnIncludeList())
-                || !Strings.isNullOrBlank(connectorConfig.columnExcludeList())) {
+        if (connectorConfig.isColumnsFiltered()) {
             TableId tableId = table.id();
             projection = table.columns().stream()
                     .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
