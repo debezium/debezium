@@ -134,7 +134,7 @@
         <version.cassandra4>4.0.2</version.cassandra4>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
-        <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
+        <version.com.google.protobuf>3.19.6</version.com.google.protobuf>
     </properties>
 
     <modules>
