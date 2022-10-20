@@ -2097,10 +2097,11 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-tasks-max]]<<sqlserver-property-tasks-max, `+tasks.max+`>>
 |`1`
 |Specifies the maximum number of tasks to create for this connector.
-The default value is acceptable when you use the connector with a single node database.
-In a clustered database, modify the default to specify a value that is greater than the number of nodes in the cluster.
-Setting the property to a value that is greater than the number of nodes permits the connector distribute work by creating separate tasks to read from each node.
+The default value is acceptable when you use the connector with a single database.
+If xref:sqlserver-property-database-names[`database.names`] is configured with multiple entries, so that the connector captures data from more than one logical database, increase the `tasks.max` value to enable the connector to distribute work.
+Set the value to a number that is greater than the number of logical databases to permit the connector to launch a unique task to read from each logical database.
 
+you can improve performance by to use a separate task for each database
 |[[sqlserver-property-database-hostname]]<<sqlserver-property-database-hostname, `+database.hostname+`>>
 |No default
 |IP address or hostname of the SQL Server database server.
