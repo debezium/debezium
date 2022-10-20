@@ -68,6 +68,7 @@ public class DebeziumEngineIT {
     public void before() throws SQLException {
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
         OFFSET_STORE_PATH.toFile().delete();
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
         TestHelper.execute(
                 "CREATE SCHEMA engine;",
@@ -244,6 +245,7 @@ public class DebeziumEngineIT {
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty("offset.flush.interval.ms", "3000");
         props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("slot.drop.on.stop", "false");
         props.setProperty("offset.storage",
                 TestOffsetStore.class.getName());
 
