@@ -16,7 +16,6 @@
         <version.pubsub>25.0.0</version.pubsub>
         <version.pulsar>2.10.1</version.pulsar>
         <version.eventhubs>5.12.1</version.eventhubs>
-        <version.jedis>4.1.1</version.jedis>
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.8.0</version.nats>
         <version.stan>2.2.3</version.stan>
@@ -160,11 +159,6 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-messaging-eventhubs</artifactId>
                 <version>${version.eventhubs}</version>
-            </dependency>
-            <dependency>
-                <groupId>redis.clients</groupId>
-                <artifactId>jedis</artifactId>
-                <version>${version.jedis}</version>
             </dependency>
             <dependency>
                 <groupId>io.nats</groupId>

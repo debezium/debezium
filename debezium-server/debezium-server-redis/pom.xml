@@ -16,6 +16,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-server-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-redis</artifactId>
+        </dependency>
 
         <!-- Target systems -->
         <dependency>
