@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.server.redis;
+package io.debezium.storage.redis;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,9 +20,8 @@ import redis.clients.jedis.exceptions.JedisDataException;
 public class RedisConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisConnection.class);
 
-    protected static final String DEBEZIUM_REDIS_SINK_CLIENT_NAME = "debezium:redis:sink";
-    protected static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
-    protected static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
+    public static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
+    public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
 
     private String address;
     private String user;

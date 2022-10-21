@@ -32,6 +32,7 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
+import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.DelayStrategy;
 
 import redis.clients.jedis.Jedis;
@@ -52,6 +53,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisStreamChangeConsumer.class);
+
+    private static final String DEBEZIUM_REDIS_SINK_CLIENT_NAME = "debezium:redis:sink";
 
     private static final String PROP_PREFIX = "debezium.sink.redis.";
     private static final String PROP_ADDRESS = PROP_PREFIX + "address";
@@ -122,7 +125,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         }
 
         RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
-        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_REDIS_SINK_CLIENT_NAME);
+        client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME);
     }
 
     @PreDestroy
