@@ -12,11 +12,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
+import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -103,8 +105,11 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             return getDatabaseHostname();
         }
         awaitIngress();
-        return getLoadBalancedService().getStatus().getLoadBalancer()
-                .getIngress().get(0).getHostname();
+
+        LoadBalancerIngress ingres = getLoadBalancedService().getStatus().getLoadBalancer().getIngress().get(0);
+        String address = (ingres.getHostname() != null) ? ingres.getHostname() : ingres.getIp();
+
+        return Objects.requireNonNull(address, "Unable to retrieve hostname or ip for service ingres");
     }
 
     @Override
