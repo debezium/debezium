@@ -351,7 +351,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    protected void validateSlotIsInExpectedState(Lsn lsn) throws SQLException, PSQLException {
+    protected void validateSlotIsInExpectedState(Lsn lsn) throws SQLException {
         try (Statement stmt = pgConnection().createStatement()) {
             String seekCommand = String.format(
                     "SELECT pg_replication_slot_advance('%s', '%s')",
@@ -370,7 +370,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 e.getMessage()));
             }
             else {
-                throw e;
+                throw new DebeziumException(e);
             }
         }
     }
