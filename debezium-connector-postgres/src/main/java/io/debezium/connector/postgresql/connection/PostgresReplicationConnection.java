@@ -352,8 +352,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void validateSlotIsInExpectedState(Lsn lsn) throws SQLException, PSQLException {
-        try {
-            Statement stmt = pgConnection().createStatement();
+        try (Statement stmt = pgConnection().createStatement()) {
             String seekCommand = String.format(
                     "SELECT pg_replication_slot_advance('%s', '%s')",
                     slotName,
