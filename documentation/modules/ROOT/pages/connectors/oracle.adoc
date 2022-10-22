@@ -2149,6 +2149,7 @@ EOF
 If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
 
 |===
++
 The command creates a Dockerfile with the name `debezium-container-for-oracle.yaml` in the current directory.
 
 .. Build the container image from the `debezium-container-for-oracle.yaml` Docker file that you created in the previous step.
