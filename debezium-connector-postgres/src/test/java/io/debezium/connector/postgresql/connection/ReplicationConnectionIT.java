@@ -86,7 +86,6 @@ public class ReplicationConnectionIT {
 
     @Test(expected = DebeziumException.class)
     public void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
-        LogInterceptor interceptor = new LogInterceptor(PostgresReplicationConnection.class);
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
             conn1.startStreaming(new WalPositionLocator());
@@ -95,7 +94,7 @@ public class ReplicationConnectionIT {
                 fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
             }
             catch (Exception e) {
-                assertTrue(interceptor.containsWarnMessage("and retrying, attempt number 2 over 2"));
+                assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
                 throw e;
             }
         }
