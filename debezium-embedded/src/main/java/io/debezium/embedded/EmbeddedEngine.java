@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -34,8 +35,10 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
+import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
+import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceConnectorContext;
@@ -765,6 +768,17 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         return offsetReader;
                     }
                 };
+                Map<String, String> connectorConfig = workerConfig.originalsStrings();
+
+                ConfigInfos configInfos = validateConnector(connectorClassName, connector, connectorConfig);
+                if (configInfos.errorCount() > 0) {
+                    String errors = configInfos.values().stream()
+                            .flatMap(v -> v.configValue().errors().stream())
+                            .collect(Collectors.joining("  "));
+                    fail("Connector configuration is not valid.  " + errors);
+                    return;
+                }
+
                 connector.initialize(context);
                 OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
                         keyConverter, valueConverter);
@@ -773,7 +787,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
                 try {
                     // Start the connector with the given properties and get the task configurations ...
-                    connector.start(workerConfig.originalsStrings());
+                    connector.start(connectorConfig);
                     connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
                     List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     Class<? extends Task> taskClass = connector.taskClass();
@@ -962,6 +976,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
             }
         }
+    }
+
+    private ConfigInfos validateConnector(String connectorClassName, SourceConnector connector, Map<String, String> connectorConfig) {
+        Config validatedConnectorConfig = connector.validate(connectorConfig);
+
+        return AbstractHerder.generateResult(
+                connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(), connector.config().groups());
     }
 
     private int getErrorsMaxRetries() {
