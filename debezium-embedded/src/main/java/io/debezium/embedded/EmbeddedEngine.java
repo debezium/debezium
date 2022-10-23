@@ -859,7 +859,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             LOGGER.info("Error while trying to stop the task");
                         }
                         // Mask the passwords ...
-                        Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
+                        Configuration config = Configuration.from(taskConfigs.get(taskId)).withMaskedPasswords();
                         String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
                                 + config;
                         fail(msg, t);
@@ -901,7 +901,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                             totalRetries++;
                                             LOGGER.info("Starting connector, attempt {}", totalRetries);
                                             task.stop();
-                                            task.start(taskConfigs.get(0));
+                                            task.start(taskConfigs.get(taskId));
                                             startedSuccessfully = true;
                                         }
                                         catch (Exception ex) {
