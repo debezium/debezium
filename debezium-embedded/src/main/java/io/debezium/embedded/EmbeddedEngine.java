@@ -659,15 +659,15 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
 
-        //If multiple engines are started in a server, ensure that the offset
-        //storage does not clash with each other. 
+        // If multiple engines are started in a server, ensure that the offset
+        // storage does not clash with each other.
         if (this.maxTasks != null && this.taskId != null && this.maxTasks > 0) {
             if (embeddedConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
-                embeddedConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(), 
+                embeddedConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(),
                         String.format(embeddedConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), this.taskId));
-            } 
+            }
             else if (embeddedConfig.containsKey(OFFSET_STORAGE_KAFKA_TOPIC.name())) {
-                embeddedConfig.replace(OFFSET_STORAGE_KAFKA_TOPIC.name(), 
+                embeddedConfig.replace(OFFSET_STORAGE_KAFKA_TOPIC.name(),
                         String.format(embeddedConfig.get(OFFSET_STORAGE_KAFKA_TOPIC.name()), this.taskId));
             }
         }
@@ -725,7 +725,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
-
 
             LOGGER.info("Setting up Task name: {}, id: {}, maxTasks: {}", engineName, taskId, maxTasks);
 

@@ -169,7 +169,7 @@ public class DebeziumServer {
             });
         }
 
-       LOGGER.info("Engine executor started");
+        LOGGER.info("Engine executor started");
     }
 
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix, boolean overwrite) {
