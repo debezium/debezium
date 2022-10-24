@@ -48,7 +48,6 @@ public class MySqlDecimalIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
-        skipAvroValidation(); // https://github.com/confluentinc/schema-registry/issues/1693
     }
 
     @After

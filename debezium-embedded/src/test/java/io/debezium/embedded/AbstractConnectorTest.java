@@ -891,7 +891,6 @@ public abstract class AbstractConnectorTest implements Testing {
 
     /**
      * Disable record validation using Avro converter.
-     * Introduced to workaround https://github.com/confluentinc/schema-registry/issues/1693
      */
     protected void skipAvroValidation() {
         skipAvroValidation = true;
