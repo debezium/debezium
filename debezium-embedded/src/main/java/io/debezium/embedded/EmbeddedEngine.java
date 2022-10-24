@@ -864,6 +864,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                         delayStrategy.sleepWhen(!startedSuccessfully);
                                     }
                                 }
+                                else {
+                                    handlerError = e;
+                                    break;
+                                }
                             }
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
