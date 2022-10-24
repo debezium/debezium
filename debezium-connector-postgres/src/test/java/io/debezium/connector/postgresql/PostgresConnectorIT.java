@@ -2151,7 +2151,10 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
-        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s2").build();
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s2")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
 
         // Start connector, verify that it does not log no captured tables warning
         start(PostgresConnector.class, config);
@@ -2626,6 +2629,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder initalConfigBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
 
         start(PostgresConnector.class, initalConfigBuilder.build());
