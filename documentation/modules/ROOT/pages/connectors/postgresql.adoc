@@ -2352,7 +2352,6 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 For example, from a terminal window, enter the following command:
 +
 =====================================================================
-
 [source,shell,subs="+attributes,+quotes"]
 ----
 cat <<EOF >debezium-container-for-{context}.yaml // <1>
@@ -2416,18 +2415,32 @@ docker push _<myregistry.io>_/debezium-container-for-postgresql:latest
 .. Create a new {prodname} PostgreSQL `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnect
 metadata:
   name: my-connect-cluster
-  annotations: strimzi.io/use-connector-resources: "true" // <1>
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
 spec:
   image: debezium-container-for-postgresql // <2>
 ----
-<1> `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-<2> `spec.image` specifies the name of the image that you created to run your {prodname} connector. This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply your `KafkaConnect` CR to the OpenShift Kafka instance by running the following command:
 +
