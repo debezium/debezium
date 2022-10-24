@@ -1794,6 +1794,7 @@ docker push _<myregistry.io>_/debezium-container-for-db2:latest
 .. Create a new {prodname} Db2 `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -1806,9 +1807,20 @@ spec:
   #...
   image: debezium-container-for-db2  // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
