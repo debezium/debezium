@@ -661,7 +661,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         // If multiple engines are started in a server, ensure that the offset
         // storage does not clash with each other.
-        if (this.maxTasks != null && this.taskId != null && this.maxTasks > 0) {
+        if (this.maxTasks > 0) {
             if (embeddedConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
                 embeddedConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(),
                         String.format(embeddedConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), this.taskId));
