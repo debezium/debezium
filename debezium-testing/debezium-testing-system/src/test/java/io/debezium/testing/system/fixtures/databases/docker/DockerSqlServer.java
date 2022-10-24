@@ -22,7 +22,7 @@ public class DockerSqlServer extends DockerDatabaseFixture<SqlDatabaseController
 
     @Override
     protected SqlDatabaseController databaseController() throws Exception {
-        Class.forName("org.postgresql.Driver");
+        Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
         DockerSqlServerDeployer deployer = new DockerSqlServerDeployer.Builder()
                 .withNetwork(network)
                 .build();
