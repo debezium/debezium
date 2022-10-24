@@ -50,8 +50,8 @@ public class OcpSqlServerController extends OcpSqlDatabaseController {
 
     @Override
     public String getPublicDatabaseUrl() {
-        return "jdbc:" + getDatabaseType() + "://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort();
-
+        return "jdbc:" + getDatabaseType() + "://" + getPublicDatabaseHostname() + ":" + getPublicDatabasePort()
+                + ";encrypt=false";
     }
 
     public void initialize() throws InterruptedException {
