@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.9.7.Final
+October 25th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12397192)
+
+### New features since 1.9.6.Final
+
+* MySqlErrorHandler should handle SocketException [DBZ-5486](https://issues.redhat.com/browse/DBZ-5486)
+
+
+### Breaking changes since 1.9.6.Final
+
+None
+
+
+### Fixes since 1.9.6.Final
+
+* ORA-01289: cannot add duplicate logfile [DBZ-5276](https://issues.redhat.com/browse/DBZ-5276)
+* Using snapshot boundary mode "all" causes DebeziumException on Oracle RAC [DBZ-5302](https://issues.redhat.com/browse/DBZ-5302)
+* Missing snapshot pending transactions [DBZ-5482](https://issues.redhat.com/browse/DBZ-5482)
+* Outbox pattern nested payload leads to connector crash [DBZ-5654](https://issues.redhat.com/browse/DBZ-5654)
+* Keyword virtual can be used as an identifier [DBZ-5674](https://issues.redhat.com/browse/DBZ-5674)
+* MongoDB Connector with DocumentDB errors with "{$natural: -1} is not supported" [DBZ-5677](https://issues.redhat.com/browse/DBZ-5677)
+* Function DATE_ADD can be used as an identifier [DBZ-5679](https://issues.redhat.com/browse/DBZ-5679)
+* UNIQUE INDEX with NULL value throws exception when lob.enabled is true [DBZ-5682](https://issues.redhat.com/browse/DBZ-5682)
+* MySqlConnector parse create view statement failed [DBZ-5708](https://issues.redhat.com/browse/DBZ-5708)
+* Debezium Server 1.9.6 is using MSSQL JDBC 7.2.2 instead of 9.4.1 [DBZ-5711](https://issues.redhat.com/browse/DBZ-5711)
+* Vitess: Handle Vstream error: unexpected server EOF [DBZ-5722](https://issues.redhat.com/browse/DBZ-5722)
+* ParsingException: DDL statement couldn't be parsed (index hints) [DBZ-5724](https://issues.redhat.com/browse/DBZ-5724)
+* Oracle SQL parsing error when collation used [DBZ-5726](https://issues.redhat.com/browse/DBZ-5726)
+* Unparseable DDL statement [DBZ-5734](https://issues.redhat.com/browse/DBZ-5734)
+* Remove note from snapshot metrics docs file that flags incremental snapshots as TP feature [DBZ-5748](https://issues.redhat.com/browse/DBZ-5748)
+
+
+### Other changes since 1.9.6.Final
+
+* SQL Server connector docs should mention multi-task support [DBZ-5714](https://issues.redhat.com/browse/DBZ-5714)
+* Remove downstream TP designation for RAC content in Oracle connector docs  [DBZ-5735](https://issues.redhat.com/browse/DBZ-5735)
+* Update Pulsar client to 2.10.1 [DBZ-5737](https://issues.redhat.com/browse/DBZ-5737)
+* Debezium connectors ship with an old version of google-protobuf vulnerable to CVE-2022-3171 [DBZ-5747](https://issues.redhat.com/browse/DBZ-5747)
+
+
+
 ## 1.9.6.Final
 September 23rd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12391578)
 
