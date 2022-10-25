@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 
-OPTS=$(getopt -o d:o: --long dir:,output: -n 'parse-options' -- "$@")
+CONNECTORS="db2 mongodb mysql oracle postgres sqlserver"
+OPTS=$(getopt -o d:o:c: --long dir:,output:,connectors: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -9,6 +10,7 @@ while true; do
   case "$1" in
     -d | --dir )                DIR=$2;                         shift; shift ;;
     -o | --output )             OUTPUT=$2;                      shift; shift ;;
+    -c | --connectors )         CONNECTORS=$2;                  shift; shift ;;
     -h | --help )               PRINT_HELP=true;                shift ;;
     -- ) shift; break ;;
     * ) break ;;
@@ -18,12 +20,14 @@ done
 shopt -s globstar nullglob
 pushd "$DIR" || exit
 rm -f "$OUTPUT"
-for connector in **/*connector*.{zip,jar}; do
-    name=$(echo "$connector" | sed -rn 's@^(.*)-[0-9]*\..*$@\1@p')
-    artifact="$name"
+for connector in ${CONNECTORS}; do
+    file=$(ls **/*${connector}*.zip)
+
+    artifact="debezium-connector-$connector"
     echo "$artifact"
-    echo "$artifact::$connector" >> "$OUTPUT"
+    echo "$artifact::$file" >> "$OUTPUT"
 done
+
 
 scripting=$(ls **/*scripting*.{zip,jar})
 artifact="debezium-scripting"
