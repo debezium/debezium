@@ -310,6 +310,7 @@ public interface SchemaNameAdjuster {
         }
         else {
             sb.append(replacement.replace(c));
+            sb.append((int)c);
             changed = true;
         }
         for (int i = 1; i != proposedName.length(); ++i) {
@@ -319,6 +320,7 @@ public interface SchemaNameAdjuster {
             }
             else {
                 sb.append(replacement.replace(c));
+                sb.append((int)c);
                 changed = true;
             }
         }
