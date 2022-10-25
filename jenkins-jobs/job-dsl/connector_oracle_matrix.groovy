@@ -79,7 +79,7 @@ do
 done
 
 # Prepare tests
-ORACLE_ARTIFACT_VERSION=$(mvn -s $HOME/.m2/settings-snapshots.xml -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver ${MVN_PROFILE})
+ORACLE_ARTIFACT_VERSION=$(mvn -s $HOME/.m2/settings-snapshots.xml -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver ${PROFILE_PROD})
 ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
 
 pushd ${ORACLE_ARTIFACT_DIR}
@@ -107,7 +107,7 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-
     -Ddatabase.user=${MVN_PROP_USER_NAME}       \\
     ${MVN_PROP_PDB_NAME}                        \\
     ${MVN_PROP_DATABASE_NAME}                   \\
-    ${MVN_PROFILE}
+    ${PROFILE_PROD}
 
 # Cleanup
 docker stop $(docker ps -a -q) || true
