@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
         <version>2.1.0-SNAPSHOT</version>
-	<relativePath>../debezium-parent/pom.xml</relativePath>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-mysql</artifactId>
@@ -150,320 +151,320 @@
     <build>
         <plugins>
             <plugin>
-              <groupId>io.fabric8</groupId>
-              <artifactId>docker-maven-plugin</artifactId>
-              <configuration>
-                <watchInterval>500</watchInterval>
-                <logDate>default</logDate>
-                <verbose>true</verbose>
-                <imagePullPolicy>IfNotPresent</imagePullPolicy>
-                <images>
-                  <!--
-                  Images based on "mysql/mysql-server" Docker image
-                  -->
-                  <image>
-                    <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
-                    <name>debezium/mysql-server-test-database</name>
-                    <run>
-                      <namingStrategy>none</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${mysql.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>mysql</prefix>
-                        <enabled>true</enabled>
-                        <color>yellow</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                        <time>${mysql.init.timeout}</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>
-                        <run>${docker.initimage}</run>
-                      </runCmds>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <targetDir>/</targetDir>
-                      </assembly>
-                    </build>
-                    <external>
-                      <type>properties</type>
-                      <mode>override</mode>
-                    </external>
-                  </image>
-                  <image>
-                    <!-- A Docker image using a partial MySQL installation maintained by MySQL team
-                     that enable mysql ssl connection -->
-                    <name>debezium/mysql-server-test-database-ssl</name>
-                    <run>
-                      <namingStrategy>none</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${mysql.ssl.port}:3306</port>
-                      </ports>
-                      <volumes>
-                        <bind>
-                          <volume>${project.basedir}/src/test/resources/ssl-certs:/etc/certs</volume>
-                        </bind>
-                      </volumes>
-                      <log>
-                        <prefix>mysql</prefix>
-                        <enabled>true</enabled>
-                        <color>yellow</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                        <time>${mysql.init.timeout}</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
-                        <runCmds>
-                          <run>${docker.initimage}</run>
-                        </runCmds>
-                        <assembly>
-                          <inline>
-                            <fileSets>
-                              <fileSet>
-                                <directory>${project.basedir}/src/test/docker/server-ssl</directory>
-                                <includes>
-                                  <include>my.cnf</include>
-                                </includes>
-                                <outputDirectory>etc/mysql</outputDirectory>
-                              </fileSet>
-                              <fileSet>
-                                <directory>${project.basedir}/src/test/docker/init</directory>
-                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                              </fileSet>
-                              <fileSet>
-                                <directory>${project.basedir}/src/test/docker/init-ssl</directory>
-                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                              </fileSet>
-                            </fileSets>
-                          </inline>
-                          <targetDir>/</targetDir>
-                        </assembly>
-                    </build>
-                    <external>
-                      <type>properties</type>
-                      <mode>override</mode>
-                    </external>
-                  </image>
-                  <image>
-                    <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
-                    <name>debezium/mysql-server-gtids-test-database</name>
-                    <alias>database-gtids</alias>
-                    <run>
-                      <namingStrategy>alias</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
-                      </env>
-                      <ports>
-                        <port>${mysql.gtid.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>mysql-gtids</prefix>
-                        <enabled>true</enabled>
-                        <color>cyan</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                        <time>${mysql.init.timeout}</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>
-                        <run>${docker.initimage}</run>
-                      </runCmds>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server-gtids</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <targetDir>/</targetDir>
-                      </assembly>
-                    </build>
-                    <external>
-                      <type>properties</type>
-                      <mode>override</mode>
-                    </external>
-                  </image>
-                  <image>
-                    <!-- 
-                    A Docker image using a MySQL installation maintained by MySQL team
-                    that is a replica of `debezium/mysql-server-gtids-test-database`
-                    -->
-                    <name>debezium/mysql-server-gtids-test-database-replica</name>
-                    <run>
-                      <namingStrategy>none</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_USER>${mysql.replica.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${mysql.replica.password}</MYSQL_PASSWORD>
-                      </env>
-                      <links>
-                        <link>database-gtids</link>
-                      </links>
-                      <ports>
-                        <port>${mysql.gtid.replica.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>mysql-gtids-replica</prefix>
-                        <enabled>true</enabled>
-                        <color>magenta</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                        <time>${mysql.init.timeout}</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>mysql/mysql-server:${version.mysql.server}</from>
-                      <runCmds>
-                        <run>${docker.initimage}</run>
-                      </runCmds>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server-replica</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init-replica</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <targetDir>/</targetDir>
-                      </assembly>
-                    </build>
-                    <external>
-                      <type>properties</type>
-                      <mode>override</mode>
-                    </external>
-                  </image>
-                  <image>
-                    <!--
-                    A Docker image using a Percona Server installation
-                    -->
-                    <name>debezium/percona-server-test-database</name>
-                    <run>
-                      <namingStrategy>none</namingStrategy>
-                      <env>
-                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
-                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
-                        <TZ>Pacific/Pago_Pago</TZ>
-                      </env>
-                      <ports>
-                        <port>${mysql.percona.port}:3306</port>
-                      </ports>
-                      <log>
-                        <prefix>percona-server</prefix>
-                        <enabled>true</enabled>
-                        <color>magenta</color>
-                      </log>
-                      <wait>
-                        <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                        <time>${mysql.init.timeout}</time>
-                      </wait>
-                    </run>
-                    <build>
-                      <from>percona/percona-server:${version.mysql.server}</from>
-                      <assembly>
-                        <inline>
-                          <fileSets>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server</directory>
-                              <includes>
-                                <include>my.cnf</include>
-                              </includes>
-                              <outputDirectory>etc/mysql</outputDirectory>
-                            </fileSet>
-                            <fileSet>
-                              <directory>${project.basedir}/src/test/docker/init</directory>
-                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                            </fileSet>
-                          </fileSets>
-                        </inline>
-                        <targetDir>/</targetDir>
-                      </assembly>
-                    </build>
-                    <external>
-                      <type>properties</type>
-                      <mode>override</mode>
-                    </external>
-                  </image>
-                </images>
-              </configuration>
-              <!--
-              Connect this plugin to the maven lifecycle around the integration-test phase:
-              start the container in pre-integration-test and stop it in post-integration-test.
-              -->
-              <executions>
-                <execution>
-                  <id>start</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>build</goal>
-                    <goal>start</goal>
-                  </goals>
-                </execution>
-                <execution>
-                  <id>stop</id>
-                  <phase>post-integration-test</phase>
-                  <goals>
-                    <goal>stop</goal>
-                  </goals>
-                </execution>
-              </executions>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <watchInterval>500</watchInterval>
+                    <logDate>default</logDate>
+                    <verbose>true</verbose>
+                    <imagePullPolicy>IfNotPresent</imagePullPolicy>
+                    <images>
+                        <!--
+                        Images based on "mysql/mysql-server" Docker image
+                        -->
+                        <image>
+                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                            <name>debezium/mysql-server-test-database</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${mysql.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mysql</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team
+                             that enable mysql ssl connection -->
+                            <name>debezium/mysql-server-test-database-ssl</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${mysql.ssl.port}:3306</port>
+                                </ports>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/test/resources/ssl-certs:/etc/certs</volume>
+                                    </bind>
+                                </volumes>
+                                <log>
+                                    <prefix>mysql</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-ssl</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init-ssl</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
+                            <name>debezium/mysql-server-gtids-test-database</name>
+                            <alias>database-gtids</alias>
+                            <run>
+                                <namingStrategy>alias</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${mysql.gtid.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mysql-gtids</prefix>
+                                    <enabled>true</enabled>
+                                    <color>cyan</color>
+                                </log>
+                                <wait>
+                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-gtids</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!--
+                            A Docker image using a MySQL installation maintained by MySQL team
+                            that is a replica of `debezium/mysql-server-gtids-test-database`
+                            -->
+                            <name>debezium/mysql-server-gtids-test-database-replica</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_USER>${mysql.replica.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.replica.password}</MYSQL_PASSWORD>
+                                </env>
+                                <links>
+                                    <link>database-gtids</link>
+                                </links>
+                                <ports>
+                                    <port>${mysql.gtid.replica.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mysql-gtids-replica</prefix>
+                                    <enabled>true</enabled>
+                                    <color>magenta</color>
+                                </log>
+                                <wait>
+                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>mysql/mysql-server:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-replica</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init-replica</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!--
+                            A Docker image using a Percona Server installation
+                            -->
+                            <name>debezium/percona-server-test-database</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                    <TZ>Pacific/Pago_Pago</TZ>
+                                </env>
+                                <ports>
+                                    <port>${mysql.percona.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>percona-server</prefix>
+                                    <enabled>true</enabled>
+                                    <color>magenta</color>
+                                </log>
+                                <wait>
+                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>percona/percona-server:${version.mysql.server}</from>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                    </images>
+                </configuration>
+                <!--
+                Connect this plugin to the maven lifecycle around the integration-test phase:
+                start the container in pre-integration-test and stop it in post-integration-test.
+                -->
+                <executions>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!-- 
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
@@ -504,8 +505,8 @@
                 </executions>
             </plugin>
             <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-assembly-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>io.debezium</groupId>
@@ -563,13 +564,15 @@
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-              <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database,debezium/mysql-server-test-database-ssl</docker.filter>
-              <mysql.port>4301</mysql.port>
-              <mysql.gtid.port>4302</mysql.gtid.port>
-              <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
-              <mysql.percona.port>4304</mysql.percona.port>
-              <mysql.ssl.port>4305</mysql.ssl.port>
+                <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
+                <docker.filter>
+                    debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database,debezium/mysql-server-test-database-ssl
+                </docker.filter>
+                <mysql.port>4301</mysql.port>
+                <mysql.gtid.port>4302</mysql.gtid.port>
+                <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
+                <mysql.percona.port>4304</mysql.percona.port>
+                <mysql.ssl.port>4305</mysql.ssl.port>
             </properties>
             <build>
                 <plugins>
@@ -700,120 +703,120 @@
             </build>
         </profile>
 
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Do not perform any Docker-related functionality
-            To use, specify "-DskipITs" on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>skip-integration-tests</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>skipITs</name>
-          </property>
-        </activation>
-        <properties>
-          <docker.skip>true</docker.skip>
-        </properties>
-      </profile>
-      <profile>
-        <id>quick</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>quick</name>
-          </property>
-        </activation>
-        <properties>
-          <skipITs>true</skipITs>
-          <docker.skip>true</docker.skip>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the alternative Docker image for MySQL.
-            To use, specify "-Dmysql-gtids" or -Pmysql-gtids on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>mysql-gtids</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>mysql-gtids</name>
-          </property>
-        </activation>
-        <properties>
-          <!-- Docker properties -->
-          <docker.filter>debezium/mysql-server-gtids-test-database</docker.filter>
-          <!-- Integration test properties -->
-          <database.port>${mysql.gtid.port}</database.port>
-          <database.replica.port>${mysql.gtid.port}</database.replica.port>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the Docker image for Percona Server.
-            To use, specify "-Dpercona-server" or -Ppercona-server on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-            <profile>
-              <id>percona-server</id>
-              <activation>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
                 <activeByDefault>false</activeByDefault>
                 <property>
-                  <name>percona-server</name>
+                    <name>skipITs</name>
                 </property>
-              </activation>
-              <properties>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Use the alternative Docker image for MySQL.
+              To use, specify "-Dmysql-gtids" or -Pmysql-gtids on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>mysql-gtids</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mysql-gtids</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties -->
+                <docker.filter>debezium/mysql-server-gtids-test-database</docker.filter>
+                <!-- Integration test properties -->
+                <database.port>${mysql.gtid.port}</database.port>
+                <database.replica.port>${mysql.gtid.port}</database.replica.port>
+            </properties>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Use the Docker image for Percona Server.
+              To use, specify "-Dpercona-server" or -Ppercona-server on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>percona-server</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>percona-server</name>
+                </property>
+            </activation>
+            <properties>
                 <!-- Docker properties -->
                 <docker.filter>debezium/percona-server-test-database</docker.filter>
                 <!-- Integration test properties -->
                 <database.port>${mysql.percona.port}</database.port>
                 <database.replica.port>${mysql.percona.port}</database.replica.port>
                 <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
-              </properties>
-            </profile>
-            <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Use the Docker image for a MySQL replica of another MySQL server 
-            configured to use GTIDs. To use, specify "-Dmysql-replica" 
-            or -Pmysql-replica on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+            </properties>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        Use the Docker image for a MySQL replica of another MySQL server
+        configured to use GTIDs. To use, specify "-Dmysql-replica"
+        or -Pmysql-replica on the Maven command line.
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 
-      <profile>
-        <id>mysql-replica</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>mysql-replica</name>
-          </property>
-        </activation>
-        <properties>
-          <!-- Docker properties -->
-          <mysql.gtid.port>3306</mysql.gtid.port>
-          <mysql.gtid.replica.port>4306</mysql.gtid.replica.port>
-          <docker.filter>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
-          <!-- Integration test properties -->
-          <database.port>${mysql.gtid.port}</database.port>
-          <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
-        </properties>
-      </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      Use the alternative Docker image for MySQL.
-      To use, specify "-Dmysql-ssl" or -Pmysql-ssl on the Maven command line.
-      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>mysql-ssl</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>mysql-ssl</name>
-          </property>
-        </activation>
-        <properties>
-          <!-- Docker properties -->
-          <docker.filter>debezium/mysql-server-test-database-ssl</docker.filter>
-          <!-- Integration test properties -->
-          <database.port>${mysql.ssl.port}</database.port>
-          <database.replica.port>${mysql.ssl.port}</database.replica.port>
-          <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
-        </properties>
-      </profile>
+        <profile>
+            <id>mysql-replica</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mysql-replica</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties -->
+                <mysql.gtid.port>3306</mysql.gtid.port>
+                <mysql.gtid.replica.port>4306</mysql.gtid.replica.port>
+                <docker.filter>debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
+                <!-- Integration test properties -->
+                <database.port>${mysql.gtid.port}</database.port>
+                <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
+            </properties>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        Use the alternative Docker image for MySQL.
+        To use, specify "-Dmysql-ssl" or -Pmysql-ssl on the Maven command line.
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>mysql-ssl</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mysql-ssl</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties -->
+                <docker.filter>debezium/mysql-server-test-database-ssl</docker.filter>
+                <!-- Integration test properties -->
+                <database.port>${mysql.ssl.port}</database.port>
+                <database.replica.port>${mysql.ssl.port}</database.replica.port>
+                <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
+            </properties>
+        </profile>
     </profiles>
 </project>
