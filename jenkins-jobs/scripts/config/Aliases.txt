@@ -165,3 +165,4 @@ rajdangwal,Rajendra Dangwal
 Sage-Pierce,Sage Pierce
 joschi,Jochen Schalanda
 janjwerner-confluent,Jan Werner
+SimonChou12138,周民帅
