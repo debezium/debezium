@@ -11,6 +11,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
+import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
+    public Uni<Void> onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
@@ -67,5 +68,6 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
             persist(dataMap);
         }
+        return null;
     }
 }

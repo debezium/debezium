@@ -59,13 +59,6 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
                 session -> session.persist(dataMap)
                         .invoke(()->session.setReadOnly(dataMap,true))
         );
-
-//        Uni<Mutiny.Session> session = sessionFactory.openSession();
-//        session.chain(
-//                session1 -> session1.persist(dataMap)
-//                        .invoke(item -> session1.setReadOnly(dataMap,true))
-//        ).eventually(session.close);
-
     }
 
     /**
