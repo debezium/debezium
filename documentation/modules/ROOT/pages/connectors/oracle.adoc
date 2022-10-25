@@ -1722,6 +1722,19 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 
 To enable the connector to capture changes from a table, the table must use a schema that is not named in the preceding list.
 
+// Type: concept
+// Title: Tables that the {prodname} Oracle connector excludes when capturing change events
+[id="tables-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
+=== Tables excluded from capture
+
+When the {prodname} Oracle connector captures tables, it automatically excludes tables that match the following rules:
+
+* Compression Advisor tables matching the pattern `CMP[3|4]$[0-9]+`.
+* Index-organized tables matching the pattern `SYS_IOT_OVER_%`.
+* Spatial tables matching the patterns `MDRT_%`, `MDRS_%`, or `MDXT_%`.
+
+If a table matches any of these rules, the table will need to be renamed for the connector to capture its changes.
+
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
 // Title: Preparing Oracle databases for use with {prodname}
