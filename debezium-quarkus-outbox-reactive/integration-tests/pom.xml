@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.debezium</groupId>
-        <artifactId>debezium-quarkus-outbox-parent</artifactId>
+        <artifactId>debezium-quarkus-outbox-reactive-parent</artifactId>
         <version>2.1.0-SNAPSHOT</version>
 	<relativePath>../pom.xml</relativePath>
     </parent>
@@ -52,7 +52,17 @@
 
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-hibernate-reactive</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-reactive-pg-client</artifactId>
         </dependency>
 
         <dependency>

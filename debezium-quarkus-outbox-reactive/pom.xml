@@ -10,8 +10,8 @@
 	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>debezium-quarkus-outbox-parent</artifactId>
-    <name>Debezium Quarkus :: Outbox</name>
+    <artifactId>debezium-quarkus-outbox-reactive-parent</artifactId>
+    <name>Debezium Quarkus :: Reactive Outbox</name>
     <packaging>pom</packaging>
 
     <dependencyManagement>

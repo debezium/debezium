@@ -12,8 +12,13 @@ import java.util.Map;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 
+
+import io.smallrye.mutiny.Uni;
 import org.hibernate.Session;
+import org.hibernate.reactive.mutiny.Mutiny;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,29 +42,49 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    Mutiny.SessionFactory sessionFactory;
+
+//    @Inject
+//    Uni<Mutiny.Session> session;
+
     /**
      * Debezium runtime configuration
      */
     @Inject
     DebeziumOutboxRuntimeConfig config;
 
+    protected Uni<Void> persist(Map<String, Object> dataMap) {
+        return sessionFactory.withSession(
+                session -> session.persist(dataMap)
+                        .invoke(()->session.setReadOnly(dataMap,true))
+        );
+
+//        Uni<Mutiny.Session> session = sessionFactory.openSession();
+//        session.chain(
+//                session1 -> session1.persist(dataMap)
+//                        .invoke(item -> session1.setReadOnly(dataMap,true))
+//        ).eventually(session.close);
+
+    }
+
     /**
      * Persists the map of key/value pairs to the database.
      *
      * @param dataMap the data map, should never be {@code null}
      */
-    protected void persist(Map<String, Object> dataMap) {
-        // Unwrap to Hibernate session and save
-        Session session = entityManager.unwrap(Session.class);
-        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
-        session.setReadOnly(dataMap, true);
-
-        // Remove entity if the configuration deems doing so, leaving useful
-        // for debugging
-        if (config.removeAfterInsert) {
-            session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
-        }
-    }
+//    protected void persist(Map<String, Object> dataMap) {
+//        // Unwrap to Hibernate session and save
+//        Session session = entityManager.unwrap(Session.class);
+//        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+//        session.setReadOnly(dataMap, true);
+//
+//        // Remove entity if the configuration deems doing so, leaving useful
+//        // for debugging
+//        if (config.removeAfterInsert) {
+//            session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
+//        }
+//    }
 
     protected Map<String, Object> getDataMapFromEvent(ExportedEvent<?, ?> event) {
         final HashMap<String, Object> dataMap = new HashMap<>();
