@@ -865,8 +865,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                     }
                                 }
                                 else {
-                                    handlerError = e;
-                                    break;
+                                    throw e;
                                 }
                             }
                             try {
