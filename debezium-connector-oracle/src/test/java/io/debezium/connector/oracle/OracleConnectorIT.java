@@ -2777,6 +2777,78 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     }
 
+    @Test
+    @FixFor("DBZ-5756")
+    public void testShouldIgnoreCompressionAdvisorTablesDuringSnapshotAndStreaming() throws Exception {
+        // This test creates a dummy table to mimic the creation of a compression advisor table.
+        TestHelper.dropTable(connection, "CMP3$12345");
+        try {
+
+            // Create the advisor table prior to the connector starting
+            connection.execute("CREATE TABLE CMP3$12345 (id numeric(9,0), id2 numeric(9,0), data varchar2(50), primary key(id, id2))");
+            TestHelper.streamTable(connection, "CMP3$12345");
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (1, 1, 'data')");
+
+            Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CMP.*").build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (2, 2, 'data')");
+
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+                    assertNoRecordsToConsume();
+                    return false;
+                });
+            }
+            catch (ConditionTimeoutException e) {
+                // expected
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "CMP3$12345");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5756")
+    public void testShouldIgnoreCompressionAdvisorTablesDuringStreaming() throws Exception {
+        // This test creates a dummy table to mimic the creation of a compression advisor table.
+        TestHelper.dropTable(connection, "CMP3$12345");
+        try {
+            Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CMP.*").build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Create the advisor table while the connector is running
+            connection.execute("CREATE TABLE CMP3$12345 (id numeric(9,0), id2 numeric(9,0), data varchar2(50), primary key(id, id2))");
+            TestHelper.streamTable(connection, "CMP3$12345");
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (1, 1, 'data')");
+
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+                    assertNoRecordsToConsume();
+                    return false;
+                });
+            }
+            catch (ConditionTimeoutException e) {
+                // expected
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "CMP3$12345");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private <T> T getStreamingMetric(String metricName) throws JMException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
