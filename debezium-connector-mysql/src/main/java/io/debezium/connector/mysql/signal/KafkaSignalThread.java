@@ -36,8 +36,8 @@ import io.debezium.pipeline.signal.ResumeIncrementalSnapshot;
 import io.debezium.pipeline.signal.StopSnapshot;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
+import io.debezium.util.Loggings;
 import io.debezium.util.Threads;
-import io.debezium.util.Throwables;
 
 /**
  * The class responsible for processing of signals delivered to Debezium via a dedicated Kafka topic.
@@ -136,7 +136,7 @@ public class KafkaSignalThread<T extends DataCollectionId> {
                     return;
                 }
                 catch (final Exception e) {
-                    Throwables.logErrorAndTraceRecord(LOGGER, record, "Skipped signal due to an error", e);
+                    Loggings.logErrorAndTraceRecord(LOGGER, record, "Skipped signal due to an error", e);
                 }
             }
         }

@@ -31,7 +31,7 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.Collect;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.Throwables;
+import io.debezium.util.Loggings;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.StreamEntryID;
@@ -151,7 +151,7 @@ public final class RedisSchemaHistory extends AbstractSchemaHistory {
             line = writer.write(record.document());
         }
         catch (IOException e) {
-            Throwables.logErrorAndTraceRecord(LOGGER, record, "Failed to convert record to string", e);
+            Loggings.logErrorAndTraceRecord(LOGGER, record, "Failed to convert record to string", e);
             throw new SchemaHistoryException("Unable to write database schema history record");
         }
 
