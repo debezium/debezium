@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,6 +210,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         totalTime.toMillis(), metrics.getLagFromSourceInMilliseconds(), offsetContext.getScn(),
                         offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
                         metrics.getMillisecondToSleepBetweenMiningQuery());
+
+                if (metrics.getNumberOfActiveTransactions() > 0) {
+                    LOGGER.debug("All active transactions: {}",
+                            getTransactionCache().values().stream()
+                                    .map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
+                                    .collect(Collectors.joining(",")));
+                }
 
                 metrics.addProcessedRows(counters.rows);
                 return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
