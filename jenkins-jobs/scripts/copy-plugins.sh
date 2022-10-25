@@ -53,6 +53,12 @@ for archive in ${ARCHIVE_URLS}; do
       mkdir -p "${dest}" && pushd ${dest} && curl -OJs "${lib}" && popd || exit
     fi
     connectors_version=$(echo "$archive" | sed -rn 's|.*AMQ-CDC-(.*)/.*$|dbz-\1|p')
+
+    if [ -z "$connectors_version" ]; then
+          echo "[Processing] unable to parse connectors version, trying different approach"
+          connectors_version=$(echo "$archive" | rev | cut -d '/' -f 1 | rev | cut -d '-' -f 2)
+    fi
+    echo "[Processing] connectors version is ${connectors_version}"
 done
 
 for input in ${EXTRA_LIBS}; do
