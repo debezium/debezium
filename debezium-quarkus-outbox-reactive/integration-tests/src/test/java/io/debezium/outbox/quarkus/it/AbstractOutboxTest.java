@@ -14,11 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.metamodel.Metamodel;
 
-import io.smallrye.mutiny.Uni;
-import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metamodel.spi.MetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -38,8 +34,8 @@ public abstract class AbstractOutboxTest {
 
     @Inject
     Mutiny.SessionFactory sessionFactory;
-//    @Inject
-//    EntityManager entityManager;
+    // @Inject
+    // EntityManager entityManager;
 
     @Inject
     MyService myService;
@@ -48,7 +44,7 @@ public abstract class AbstractOutboxTest {
     public void testOutboxEntityMetamodelExists() throws Exception {
         final MetamodelImplementor metadata = (MetamodelImplementor) sessionFactory.getMetamodel();
 
-        //final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
+        // final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
 
         final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
@@ -69,10 +65,9 @@ public abstract class AbstractOutboxTest {
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();
-        final Map row = (Map)sessionFactory.withSession(
-                session -> session.createQuery("FROM OutboxEvent").getSingleResult()
-        );
-        //final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
+        final Map row = (Map) sessionFactory.withSession(
+                session -> session.createQuery("FROM OutboxEvent").getSingleResult());
+        // final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));
         assertEquals("MyOutboxEvent", row.get("aggregateType"));

@@ -11,7 +11,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
-import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +20,7 @@ import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
+import io.smallrye.mutiny.Uni;
 
 /**
  * An application-scoped {@link EventDispatcher} implementation that is responsible not only

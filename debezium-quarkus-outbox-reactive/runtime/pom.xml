@@ -10,8 +10,8 @@
 	<relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>debezium-quarkus-outbox</artifactId>
-    <name>Debezium Quarkus :: Outbox :: Runtime</name>
+    <artifactId>debezium-quarkus-outbox-reactive</artifactId>
+    <name>Debezium Quarkus :: Reactive Outbox :: Runtime</name>
 
     <dependencies>
         <!-- Quarkus extensions -->

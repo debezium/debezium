@@ -8,11 +8,11 @@ package io.debezium.outbox.quarkus.internal;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 
-import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.smallrye.mutiny.Uni;
 
 /**
  * The default application-scoped {@link EventDispatcher} implementation that is responsible

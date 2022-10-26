@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import org.hibernate.QueryException;
-import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metamodel.spi.MetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ public class OutboxWithoutOpenTracingTest extends AbstractOutboxTest {
     @Test
     public void testOutboxEntityMetamodelDoesntHaveTracingSpanColumn() throws Exception {
         final MetamodelImplementor metadata = (MetamodelImplementor) sessionFactory.getMetamodel();
-       // final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
+        // final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
 
         final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);

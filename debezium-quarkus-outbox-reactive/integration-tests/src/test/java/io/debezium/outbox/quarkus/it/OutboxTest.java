@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;
@@ -30,23 +29,23 @@ import io.quarkus.test.junit.TestProfile;
 @TestProfile(OutboxProfiles.Default.class)
 public class OutboxTest extends AbstractOutboxTest {
 
-//    @Inject
-//    EntityManager entityManager;
+    // @Inject
+    // EntityManager entityManager;
 
     @Inject
     MyService myService;
 
     @Inject
     Mutiny.SessionFactory sessionFactory;
+
     @Override
     @Test
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();
-        final Map row = (Map)sessionFactory.withSession(
-                session -> session.createQuery("FROM OutboxEvent").getSingleResult()
-        );
-        //final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
+        final Map row = (Map) sessionFactory.withSession(
+                session -> session.createQuery("FROM OutboxEvent").getSingleResult());
+        // final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
