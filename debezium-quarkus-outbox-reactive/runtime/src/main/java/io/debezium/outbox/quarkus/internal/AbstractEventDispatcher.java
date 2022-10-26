@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.smallrye.mutiny.Uni;
 
+import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
+
 /**
  * Abstract base class for the Debezium Outbox {@link EventDispatcher} contract.
  *
@@ -51,7 +53,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         // Log.info("we are starting the persist method");
         // Log.info(Thread.currentThread().getName());
         return sessionFactory.withSession(
-                session -> session.persist(dataMap)
+                session -> session.persist(OUTBOX_ENTITY_FULLNAME,dataMap)
                         .invoke(() -> session.setReadOnly(dataMap, true)));
     }
 
