@@ -10,7 +10,7 @@
 	<relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>debezium-quarkus-outbox-integration-tests</artifactId>
+    <artifactId>debezium-quarkus-outbox-reactive-integration-tests</artifactId>
     <name>Debezium Quarkus :: Outbox :: Integration Tests</name>
 
     <dependencyManagement>
