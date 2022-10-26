@@ -41,7 +41,7 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
                     .withStartupTimeout(Duration.ofSeconds(30));
 
             postgresContainer.start();
-            return Collections.singletonMap("quarkus.datasource.jdbc.url", postgresContainer.getJdbcUrl());
+            return Collections.singletonMap("quarkus.datasource.reactive.url", postgresContainer.getJdbcUrl());
         }
         catch (Exception e) {
             throw new RuntimeException(e);
