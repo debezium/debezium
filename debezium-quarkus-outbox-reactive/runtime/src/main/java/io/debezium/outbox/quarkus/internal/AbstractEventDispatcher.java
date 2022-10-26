@@ -48,6 +48,8 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     DebeziumOutboxRuntimeConfig config;
 
     protected Uni<Void> persist(Map<String, Object> dataMap) {
+        // Log.info("we are starting the persist method");
+        // Log.info(Thread.currentThread().getName());
         return sessionFactory.withSession(
                 session -> session.persist(dataMap)
                         .invoke(() -> session.setReadOnly(dataMap, true)));

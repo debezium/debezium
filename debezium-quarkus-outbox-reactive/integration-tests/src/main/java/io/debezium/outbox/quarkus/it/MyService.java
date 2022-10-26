@@ -5,6 +5,8 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import static io.debezium.spi.topic.TopicNamingStrategy.LOGGER;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,8 +30,9 @@ public class MyService {
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
-        // event.fire(new MyOutboxEvent(values));
+        LOGGER.debug("An exported event was found for type {}");
+        event.fire(new MyOutboxEvent(values));
 
-        return Uni.createFrom().voidItem().invoke(() -> event.fire(new MyOutboxEvent(values)));
+        return Uni.createFrom().voidItem();
     }
 }
