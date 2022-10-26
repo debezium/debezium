@@ -8,8 +8,11 @@ package io.debezium.storage.redis;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 
 /**
@@ -30,6 +33,15 @@ public class RedisConnection {
     private int socketTimeout;
     private boolean sslEnabled;
 
+    /**
+     * 
+     * @param address
+     * @param user
+     * @param password
+     * @param connectionTimeout
+     * @param socketTimeout
+     * @param sslEnabled
+     */
     public RedisConnection(String address, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
         this.address = address;
         this.user = user;
@@ -39,31 +51,56 @@ public class RedisConnection {
         this.sslEnabled = sslEnabled;
     }
 
-    public Jedis getRedisClient(String clientName) {
+    /**
+     * 
+     * @param clientName
+     * @param waitEnabled
+     * @param waitTimeout
+     * @param waitRetry
+     * @param waitRetryDelay
+     * @return
+     * @throws RedisClientConnectionException
+     */
+    public RedisClient getRedisClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
+        if (waitEnabled && waitTimeout <= 0) {
+            throw new DebeziumException("Redis client wait timeout should be positive");
+        }
+
         HostAndPort address = HostAndPort.from(this.address);
 
-        Jedis client = new Jedis(address.getHost(), address.getPort(), this.connectionTimeout, this.socketTimeout, this.sslEnabled);
-
-        if (this.user != null) {
-            client.auth(this.user, this.password);
-        }
-        else if (this.password != null) {
-            client.auth(this.password);
-        }
-        else {
-            // make sure that client is connected
-            client.ping();
-        }
-
+        Jedis client;
         try {
-            client.clientSetname(clientName);
+            client = new Jedis(address.getHost(), address.getPort(), this.connectionTimeout, this.socketTimeout, this.sslEnabled);
+
+            if (this.user != null) {
+                client.auth(this.user, this.password);
+            }
+            else if (this.password != null) {
+                client.auth(this.password);
+            }
+            else {
+                // make sure that client is connected
+                client.ping();
+            }
+
+            try {
+                client.clientSetname(clientName);
+            }
+            catch (JedisDataException e) {
+                LOGGER.warn("Failed to set client name", e);
+            }
         }
-        catch (JedisDataException e) {
-            LOGGER.warn("Failed to set client name", e);
+        catch (JedisConnectionException e) {
+            throw new RedisClientConnectionException(e);
         }
 
-        LOGGER.info("Using Jedis '{}'", client);
+        RedisClient jedisClient = new JedisClient(client);
 
-        return client;
+        // we use 1 for number of replicas as in Redis Enterprise there can be only one replica shard
+        RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(jedisClient, 1, waitTimeout, waitRetry, waitRetryDelay) : jedisClient;
+
+        LOGGER.info("Using Redis client '{}'", redisClient);
+
+        return redisClient;
     }
 }
