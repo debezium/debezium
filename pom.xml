@@ -112,7 +112,7 @@
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.11.0.Final</quarkus.version>
+        <quarkus.version>2.13.0.Final</quarkus.version>
 
         <!-- Apicurio -->
         <version.apicurio>2.2.5.Final</version.apicurio>
