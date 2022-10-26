@@ -15,10 +15,13 @@ import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
+import javax.persistence.metamodel.Metamodel;
 
+import io.smallrye.mutiny.Uni;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metamodel.spi.MetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
@@ -32,6 +35,9 @@ import io.quarkus.test.common.QuarkusTestResource;
  */
 @QuarkusTestResource(DatabaseTestResource.class)
 public abstract class AbstractOutboxTest {
+
+    @Inject
+    Mutiny.SessionFactory sessionFactory;
     @Inject
     EntityManager entityManager;
 
@@ -40,6 +46,8 @@ public abstract class AbstractOutboxTest {
 
     @Test
     public void testOutboxEntityMetamodelExists() throws Exception {
+        final MetamodelImplementor metadata = sessionFactory.getMetamodel();
+
         final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
 
         final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);

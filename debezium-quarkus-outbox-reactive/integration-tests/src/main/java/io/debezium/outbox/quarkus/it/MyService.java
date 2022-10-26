@@ -28,6 +28,8 @@ public class MyService {
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
-        return event.fireAsync(new MyOutboxEvent(values));
+        //event.fire(new MyOutboxEvent(values));
+
+        return Uni.createFrom().voidItem().invoke(()->event.fire(new MyOutboxEvent(values)));
     }
 }
