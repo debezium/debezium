@@ -39,9 +39,9 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
                     .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
                     .withEnv("LANG", "en_US.utf8")
                     .withStartupTimeout(Duration.ofSeconds(30));
-
             postgresContainer.start();
-            return Collections.singletonMap("quarkus.datasource.reactive.url", postgresContainer.getJdbcUrl());
+            String postgresstring = "vertx-reactive:postgresql://" + postgresContainer.getHost() + ":" + "5432" + "/" + "postgres";
+            return Collections.singletonMap("quarkus.datasource.reactive.url", postgresstring);
         }
         catch (Exception e) {
             throw new RuntimeException(e);

@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
-import javax.persistence.EntityManager;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.slf4j.Logger;
@@ -33,8 +32,8 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     protected static final String AGGREGATE_ID = "aggregateId";
     protected static final String AGGREGATE_TYPE = "aggregateType";
 
-    @Inject
-    EntityManager entityManager;
+    // @Inject
+    // EntityManager entityManager;
 
     @Inject
     Mutiny.SessionFactory sessionFactory;

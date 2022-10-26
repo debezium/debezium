@@ -34,8 +34,8 @@ public abstract class AbstractOutboxTest {
 
     @Inject
     Mutiny.SessionFactory sessionFactory;
-//     @Inject
-//     EntityManager entityManager;
+    // @Inject
+    // EntityManager entityManager;
 
     @Inject
     MyService myService;
