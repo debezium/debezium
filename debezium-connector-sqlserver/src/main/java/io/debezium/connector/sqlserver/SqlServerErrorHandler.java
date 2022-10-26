@@ -37,6 +37,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("Try the statement later.")
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("Socket closed")
+                        || throwable.getMessage().contains("Cannot continue the execution because the session is in the kill state.")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage().contains("The server failed to resume the transaction")
                         || throwable.getMessage().contains("Verify the connection properties")
