@@ -25,13 +25,13 @@
 
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-quarkus-outbox</artifactId>
+                <artifactId>debezium-quarkus-outbox-reactive</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-quarkus-outbox-deployment</artifactId>
+                <artifactId>debezium-quarkus-outbox-reactive-deployment</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -42,7 +42,7 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-quarkus-outbox</artifactId>
+            <artifactId>debezium-quarkus-outbox-reactive</artifactId>
         </dependency>
 
 <!--        <dependency>-->
@@ -103,7 +103,7 @@
 
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-quarkus-outbox-deployment</artifactId>
+            <artifactId>debezium-quarkus-outbox-reactive-deployment</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

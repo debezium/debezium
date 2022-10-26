@@ -6,7 +6,7 @@
 package io.debezium.outbox.quarkus.it;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -41,7 +41,11 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
                     .withStartupTimeout(Duration.ofSeconds(30));
             postgresContainer.start();
             String postgresstring = "vertx-reactive:postgresql://" + postgresContainer.getHost() + ":" + "5432" + "/" + "postgres";
-            return Collections.singletonMap("quarkus.datasource.reactive.url", postgresstring);
+            Map properties = new HashMap<String, String>();
+            properties.put("quarkus.datasource.reactive.url", postgresstring);
+            properties.put("quarkus.datasource.db-kind", "postgresql");
+            return properties;
+            // return Collections.singletonMap("quarkus.datasource.reactive.url", postgresstring);
         }
         catch (Exception e) {
             throw new RuntimeException(e);

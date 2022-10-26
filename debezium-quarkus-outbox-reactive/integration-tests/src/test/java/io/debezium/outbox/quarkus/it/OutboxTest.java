@@ -17,6 +17,7 @@ import javax.inject.Inject;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.logging.Log;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
@@ -43,8 +44,10 @@ public class OutboxTest extends AbstractOutboxTest {
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();
+        Log.info(Thread.currentThread().getName());
         final Map row = (Map) sessionFactory.withSession(
-                session -> session.createQuery("FROM OutboxEvent").getSingleResult());
+                session -> session.createQuery("FROM OutboxEvent").getSingleResult())
+                .await().indefinitely();
         // final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));
