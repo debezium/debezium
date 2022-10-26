@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import io.quarkus.logging.Log;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.mutiny.Uni;
 
 /**
  * Integration tests for the Debezium Outbox extension, using default configuration from application.properties.
@@ -43,7 +44,7 @@ public class OutboxTest extends AbstractOutboxTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
-        myService.doSomething();
+        Uni<Void> wait = myService.doSomething().invoke(() -> Log.info("is this working?"));
         Log.info(Thread.currentThread().getName());
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())
