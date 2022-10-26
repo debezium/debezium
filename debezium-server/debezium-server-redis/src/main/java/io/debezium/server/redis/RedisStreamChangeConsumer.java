@@ -6,6 +6,7 @@
 package io.debezium.server.redis;
 
 import java.time.Duration;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -32,14 +33,10 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
+import io.debezium.storage.redis.RedisClient;
+import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.DelayStrategy;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.StreamEntryID;
-import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.jedis.exceptions.JedisDataException;
 
 /**
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
@@ -63,6 +60,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_CONNECTION_TIMEOUT = PROP_PREFIX + "connection.timeout.ms";
     private static final String PROP_SOCKET_TIMEOUT = PROP_PREFIX + "socket.timeout.ms";
     private static final String PROP_MESSAGE_FORMAT = PROP_PREFIX + "message.format";
+    private static final String PROP_WAIT_ENABLED = PROP_PREFIX + "wait.enabled";
+    private static final String PROP_WAIT_TIMEOUT = PROP_PREFIX + "wait.timeout.ms";
+    private static final String PROP_WAIT_RETRY_ENABLED = PROP_PREFIX + "wait.retry.enabled";
+    private static final String PROP_WAIT_RETRY_DELAY = PROP_PREFIX + "wait.retry.delay.ms";
 
     private static final String MESSAGE_FORMAT_COMPACT = "compact";
     private static final String MESSAGE_FORMAT_EXTENDED = "extended";
@@ -93,7 +94,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
     String nullValue;
 
-    private Jedis client = null;
+    private RedisClient client;
 
     private BiFunction<String, String, Map<String, String>> recordMapFunction;
 
@@ -124,8 +125,13 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
         }
 
+        boolean waitEnabled = config.getOptionalValue(PROP_WAIT_ENABLED, Boolean.class).orElse(false);
+        long waitTimeout = config.getOptionalValue(PROP_WAIT_TIMEOUT, Long.class).orElse(1000L);
+        boolean waitRetryEnabled = config.getOptionalValue(PROP_WAIT_RETRY_ENABLED, Boolean.class).orElse(false);
+        long waitRetryDelay = config.getOptionalValue(PROP_WAIT_RETRY_DELAY, Long.class).orElse(1000L);
+
         RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
-        client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME);
+        client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME, waitEnabled, waitTimeout, waitRetryEnabled, waitRetryDelay);
     }
 
     @PreDestroy
@@ -186,33 +192,23 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     }
                 }
                 else {
-                    Pipeline pipeline;
                     try {
                         LOGGER.trace("Preparing a Redis Pipeline of {} records", clonedBatch.size());
 
-                        // Make sure the connection is still alive before creating the pipeline
-                        // to reduce the chance of ending up with duplicate records
-                        client.ping();
-                        pipeline = client.pipelined();
-
-                        // Add the batch records to the stream(s) via Pipeline
+                        List<SimpleEntry<String, Map<String, String>>> recordsMap = new ArrayList<>(clonedBatch.size());
                         for (ChangeEvent<Object, Object> record : clonedBatch) {
                             String destination = streamNameMapper.map(record.destination());
                             String key = (record.key() != null) ? getString(record.key()) : nullKey;
                             String value = (record.value() != null) ? getString(record.value()) : nullValue;
                             Map<String, String> recordMap = recordMapFunction.apply(key, value);
-                            // Add the record to the destination stream
-                            pipeline.xadd(destination, StreamEntryID.NEW_ENTRY, recordMap);
+                            recordsMap.add(new SimpleEntry<>(destination, recordMap));
                         }
-
-                        // Sync the pipeline in Redis and parse the responses (response per command with the same order)
-                        List<Object> responses = pipeline.syncAndReturnAll();
+                        List<String> responses = client.xadd(recordsMap);
                         List<ChangeEvent<Object, Object>> processedRecords = new ArrayList<ChangeEvent<Object, Object>>();
                         int index = 0;
                         int totalOOMResponses = 0;
 
-                        for (Object response : responses) {
-                            String message = response.toString();
+                        for (String message : responses) {
                             // When Redis reaches its max memory limitation, an OOM error message will be retrieved.
                             // In this case, we will retry execute the failed commands, assuming some memory will be freed eventually as result
                             // of evicting elements from the stream by the target DB.
@@ -239,20 +235,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                             completedSuccessfully = true;
                         }
                     }
-                    catch (JedisConnectionException jce) {
+                    catch (RedisClientConnectionException jce) {
                         LOGGER.error("Connection error", jce);
                         close();
-                    }
-                    catch (JedisDataException jde) {
-                        // When Redis is starting, a JedisDataException will be thrown with this message.
-                        // We will retry communicating with the target DB as once of the Redis is available, this message will be gone.
-                        if (jde.getMessage().equals("LOADING Redis is loading the dataset in memory")) {
-                            LOGGER.error("Redis is starting", jde);
-                        }
-                        else {
-                            LOGGER.error("Unexpected JedisDataException", jde);
-                            throw new DebeziumException(jde);
-                        }
                     }
                     catch (Exception e) {
                         LOGGER.error("Unexpected Exception", e);

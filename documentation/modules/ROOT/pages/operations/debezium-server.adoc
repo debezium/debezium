@@ -228,6 +228,22 @@ To use Redis to store offsets, use `io.debezium.storage.redis.offset.RedisOffset
 |
 |(Optional)  If using Redis to store offsets, define the hash key in redis. If the `redis.key` configuration is not supplied, and the default value is `metadata:debezium:offsets`
 
+|[[debezium-source-offset-redis-wait-enabled]]<<redis-wait-enabled, `debezium.source.offset.storage.redis.wait.enabled`>>
+|`false`
+|If using Redis to store offsets, enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[debezium-source-offset-redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.source.offset.storage.redis.wait.timeout.ms`>>
+|`1000`
+|If using Redis to store offsets, defines the timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[debezium-source-offset-redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.source.offset.storage.redis.wait.retry.enabled`>>
+|`false`
+|If using Redis to store offsets, enables retry on wait for replica failure.
+
+|[[debezium-source-offset-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.offset.storage.redis.wait.retry.delay.ms`>>
+|`1000`
+|If using Redis to store offsets, defines the delay of retry on wait for replica failure.
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
@@ -278,6 +294,23 @@ There are also other options available
 |[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.schema.history.internal.redis.socket.timeout.ms`>>
 |
 |Socket timeout of Redis client if using `RedisSchemaHistory`. Default: 2000 (ms)
+
+|[[debezium-source-database-history-redis-wait-enabled]]<<redis-wait-enabled, `debezium.source.schema.history.internal.redis.wait.enabled`>>
+|`false`
+|If using Redis to store schema history, enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[debezium-source-database-history-redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.source.schema.history.internal.redis.wait.timeout.ms`>>
+|`1000`
+|If using Redis to store schema history, defines the timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[debezium-source-database-history-redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.source.schema.history.internal.redis.wait.retry.enabled`>>
+|`false`
+|If using Redis to store schema history, enables retry on wait for replica failure.
+
+|[[debezium-source-database-history-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.schema.history.internal.redis.wait.retry.delay.ms`>>
+|`1000`
+|If using Redis to store schema history, defines the delay of retry on wait for replica failure.
 
 |===
 
@@ -854,6 +887,23 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |[[redis-socket-timeout-ms]]<<redis-socket-timeout-ms, `debezium.sink.redis.socket.timeout.ms`>>
 |`2000`
 |Socket timeout for Redis client.
+
+|[[redis-wait-enabled]]<<redis-wait-enabled, `debezium.sink.redis.wait.enabled`>>
+|`false`
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.sink.redis.wait.timeout.ms`>>
+|`1000`
+|Timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.sink.redis.wait.retry.enabled`>>
+|`false`
+|Enables retry on wait for replica failure.
+
+|[[redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.sink.redis.wait.retry.delay.ms`>>
+|`1000`
+|Delay of retry on wait for replica failure.
 
 |[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
 |`compact`
