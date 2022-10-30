@@ -7,6 +7,8 @@ package io.debezium.converters.spi;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * A {@link java.util.ServiceLoader} interface that connectors should implement if they wish to provide
@@ -30,6 +32,10 @@ public interface CloudEventsProvider {
      * @return a concrete parser
      */
     RecordParser createParser(Schema schema, Struct record);
+
+    default RecordParser createParser(Schema schema, SourceRecord record) {
+        throw new DataException("By default is not supported");
+    }
 
     /**
      * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content

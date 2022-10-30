@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -472,6 +473,39 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate message body
         assertThat(routedEvent.value()).isNull();
+    }
+
+    @Test
+    @FixFor({ "DBZ-3642" })
+    public void shouldConvertToCloudEvent() throws Exception {
+        startConnectorWithNoSnapshot();
+
+        outboxEventRouter = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        outboxEventRouter.configure(config);
+
+        databaseConnection().execute(createInsert(
+                "f9171eb6-19f3-4579-9206-0e179d2ebad7",
+                "UserCreated",
+                "User",
+                "7bdf2e9e",
+                "{\"email\": \"gh@mefi.in\", \"type\": \"SomeType\"}",
+                ""));
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicName()).get(0);
+        SourceRecord routedEvent = outboxEventRouter.apply(record);
+
+        Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(valueStruct.getString("email")).isEqualTo("gh@mefi.in");
+        assertThat(valueStruct.getString("type")).isEqualTo("SomeType");
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJson(routedEvent, false, true);
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(routedEvent, "email", false, true);
+        CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(routedEvent, "source_record", "source_record", false, true);
     }
 
     protected String getFieldEventType() {

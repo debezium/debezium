@@ -39,6 +39,16 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, Consumer<JsonNode> furtherAssertions) {
+        shouldConvertToCloudEventsInJson(record, hasTransaction, false, furtherAssertions);
+    }
+
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData) {
+        shouldConvertToCloudEventsInJson(record, hasTransaction, recordValueWithoutMetaData, valueJson -> {
+        });
+    }
+
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData,
+                                                        Consumer<JsonNode> furtherAssertions) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
@@ -79,7 +89,15 @@ public class CloudEventsConverterTest {
 
             // Convert the value and inspect it ...
             msg = "converting value using CloudEvents JSON converter";
-            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            Object valueToConvert;
+            if (recordValueWithoutMetaData) {
+                valueToConvert = record;
+            }
+            else {
+                valueToConvert = record.value();
+            }
+
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), valueToConvert);
             msg = "deserializing value using JSON deserializer";
 
             try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
@@ -96,21 +114,26 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
-            msg = "inspecting required CloudEvents extension attributes for Debezium";
-            assertThat(valueJson.get("iodebeziumop")).isNotNull();
-            assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
-            if (hasTransaction) {
-                msg = "inspecting transaction metadata attributes";
-                assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
-                assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
-                assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+            boolean checkExtensionFields = !recordValueWithoutMetaData;
+            if (checkExtensionFields) {
+                msg = "inspecting required CloudEvents extension attributes for Debezium";
+                assertThat(valueJson.get("iodebeziumop")).isNotNull();
+                assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
+                if (hasTransaction) {
+                    msg = "inspecting transaction metadata attributes";
+                    assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
+                    assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
+                    assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+                }
             }
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
-            // before field may be null
-            assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
+            if (checkExtensionFields) {
+                // before field may be null
+                assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
+            }
 
             furtherAssertions.accept(valueJson);
         }
@@ -129,10 +152,14 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, boolean hasTransaction) {
-        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, "after", hasTransaction);
+        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, "after", hasTransaction, false);
     }
 
     public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction) {
+        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, fieldName, hasTransaction, false);
+    }
+
+    public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction, boolean recordValueWithoutMetaData) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "avro");
@@ -174,9 +201,17 @@ public class CloudEventsConverterTest {
                 assertThat(record.valueSchema()).isNotNull();
             }
 
+            Object valueToConvert;
+            if (recordValueWithoutMetaData) {
+                valueToConvert = record;
+            }
+            else {
+                valueToConvert = record.value();
+            }
+
             // Convert the value and inspect it ...
             msg = "converting value using CloudEvents JSON converter";
-            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), valueToConvert);
             msg = "deserializing value using JSON deserializer";
 
             try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
@@ -193,15 +228,19 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
-            msg = "inspecting required CloudEvents extension attributes for Debezium";
-            assertThat(valueJson.get("iodebeziumop")).isNotNull();
-            assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
-            if (hasTransaction) {
-                msg = "inspecting transaction metadata attributes";
-                assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
-                assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
-                assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+            boolean checkExtensionFields = !recordValueWithoutMetaData;
+            if (checkExtensionFields) {
+                msg = "inspecting required CloudEvents extension attributes for Debezium";
+                assertThat(valueJson.get("iodebeziumop")).isNotNull();
+                assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
+                if (hasTransaction) {
+                    msg = "inspecting transaction metadata attributes";
+                    assertThat(valueJson.get("iodebeziumtxid")).isNotNull();
+                    assertThat(valueJson.get("iodebeziumtxtotalorder")).isNotNull();
+                    assertThat(valueJson.get("iodebeziumtxdatacollectionorder")).isNotNull();
+                }
             }
+
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson).isNotNull();
@@ -227,6 +266,11 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInAvro(SourceRecord record, String connectorName, String serverName, boolean hasTransaction) {
+        shouldConvertToCloudEventsInAvro(record, connectorName, serverName, hasTransaction, false);
+    }
+
+    public static void shouldConvertToCloudEventsInAvro(SourceRecord record, String connectorName, String serverName, boolean hasTransaction,
+                                                        boolean recordValueWithoutMetaData) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "avro");
         config.put("data.serializer.type", "avro");
@@ -270,7 +314,16 @@ public class CloudEventsConverterTest {
 
             // Convert the value and inspect it ...
             msg = "converting value using CloudEvents Avro converter";
-            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+
+            Object valueToConvert;
+            if (recordValueWithoutMetaData) {
+                valueToConvert = record;
+            }
+            else {
+                valueToConvert = record.value();
+            }
+
+            byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), valueToConvert);
             msg = "deserializing value using Avro deserializer";
             avroSchemaAndValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
             msg = "inspecting all required CloudEvents fields in the value";
@@ -278,24 +331,35 @@ public class CloudEventsConverterTest {
             assertThat(avroValue.get(CloudEventsMaker.FieldName.ID)).isNotNull();
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
-            assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
+            if (recordValueWithoutMetaData) {
+                assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo(avroValue.get("type").toString());
+            }
+            else {
+                assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
+            }
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("application/avro");
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.DATASCHEMA)).startsWith("http://fake-url/schemas/ids/");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
-            msg = "inspecting required CloudEvents extension attributes in the value";
-            assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.OPERATION))).isNotNull();
-            assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.TIMESTAMP))).isNotNull();
-            if (hasTransaction) {
-                msg = "inspecting transaction metadata attributes";
-                assertThat(avroValue.get("iodebeziumtxid")).isNotNull();
-                assertThat(avroValue.get("iodebeziumtxtotalorder")).isNotNull();
-                assertThat(avroValue.get("iodebeziumtxdatacollectionorder")).isNotNull();
+            boolean checkExtensionFields = !recordValueWithoutMetaData;
+            if (checkExtensionFields) {
+                msg = "inspecting required CloudEvents extension attributes in the value";
+                assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.OPERATION))).isNotNull();
+                assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.TIMESTAMP))).isNotNull();
+                if (hasTransaction) {
+                    msg = "inspecting transaction metadata attributes";
+                    assertThat(avroValue.get("iodebeziumtxid")).isNotNull();
+                    assertThat(avroValue.get("iodebeziumtxtotalorder")).isNotNull();
+                    assertThat(avroValue.get("iodebeziumtxdatacollectionorder")).isNotNull();
+                }
             }
+
             msg = "inspecting the data field in the value";
             Struct avroDataField = avroValue.getStruct(CloudEventsMaker.FieldName.DATA);
-            // before field may be null
-            assertThat(avroDataField.schema().field(Envelope.FieldName.AFTER)).isNotNull();
+            if (!recordValueWithoutMetaData) {
+                // before field may be null
+                assertThat(avroDataField.schema().field(Envelope.FieldName.AFTER)).isNotNull();
+            }
         }
         catch (Throwable t) {
             Testing.Print.enable();

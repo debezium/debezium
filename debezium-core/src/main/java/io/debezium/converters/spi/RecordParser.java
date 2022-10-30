@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
@@ -38,6 +39,27 @@ public abstract class RecordParser {
             AbstractSourceInfo.TIMESTAMP_KEY,
             AbstractSourceInfo.SNAPSHOT_KEY,
             AbstractSourceInfo.DATABASE_NAME_KEY);
+
+    public RecordParser(Schema schema, SourceRecord record) {
+        this.record = (Struct) record.value();
+        Schema dummySourceSchema = SchemaBuilder.struct()
+                .field("name", Schema.STRING_SCHEMA)
+                .field("db", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .build();
+        this.source = new Struct(dummySourceSchema)
+                .put("name", "source_record")
+                .put("db", "no_db")
+                .put("ts_ms", record.timestamp());
+
+        this.transaction = null;
+        this.op = null;
+        this.opSchema = null;
+        this.ts_ms = null;
+        this.ts_msSchema = null;
+        this.connectorType = "source_record";
+        this.dataSchema = schema;
+    }
 
     protected RecordParser(Schema schema, Struct record, String... dataFields) {
         this.record = record;

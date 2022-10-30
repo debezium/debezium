@@ -31,6 +31,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.json.JsonDeserializer;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
 import org.apache.kafka.connect.storage.ConverterType;
@@ -50,6 +51,7 @@ import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
+import io.debezium.converters.spi.sourcerecord.SourceRecordCloudEventsProvider;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.SchemaNameAdjuster;
@@ -204,18 +206,37 @@ public class CloudEventsConverter implements Converter {
         if (schema == null || value == null) {
             return null;
         }
-        if (!Envelope.isEnvelopeSchema(schema)) {
-            // TODO Handling of non-data messages like schema change or transaction metadata
-            return null;
+
+        boolean isKafkaSourceRecord = value instanceof SourceRecord;
+        if (!isKafkaSourceRecord) {
+            if (!Envelope.isEnvelopeSchema(schema)) {
+                // TODO Handling of non-data messages like schema change or transaction metadata
+                return null;
+            }
         }
         if (schema.type() != STRUCT) {
             throw new DataException("Mismatching schema");
         }
 
-        Struct record = requireStruct(value, "CloudEvents converter");
-        CloudEventsProvider provider = lookupCloudEventsProvider(record);
+        Object valueToCheck;
+        if (isKafkaSourceRecord) {
+            valueToCheck = ((SourceRecord) value).value();
+        }
+        else {
+            valueToCheck = value;
+        }
+        Struct record = requireStruct(valueToCheck, "CloudEvents converter");
 
-        RecordParser parser = provider.createParser(schema, record);
+        CloudEventsProvider provider = lookupCloudEventsProvider(record, isKafkaSourceRecord);
+
+        RecordParser parser;
+        if (isKafkaSourceRecord) {
+            parser = provider.createParser(schema, (SourceRecord) value);
+        }
+        else {
+            parser = provider.createParser(schema, record);
+        }
+
         CloudEventsMaker maker = provider.createMaker(parser, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
@@ -224,7 +245,7 @@ public class CloudEventsConverter implements Converter {
                 // JSON - JSON (with schema in data)
                 if (enableJsonSchemas) {
                     SchemaBuilder dummy = SchemaBuilder.struct();
-                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, dummy, null, new Struct(dummy));
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, dummy, null, new Struct(dummy), !isKafkaSourceRecord);
 
                     // need to create a JSON node with schema + payload first
                     byte[] data = jsonDataConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
@@ -241,19 +262,20 @@ public class CloudEventsConverter implements Converter {
                 }
                 // JSON - JSON (without schema); can just use the regular JSON converter for the entire event
                 else {
-                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, maker.ceDataAttributeSchema(), null, maker.ceDataAttribute());
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, maker.ceDataAttributeSchema(), null, maker.ceDataAttribute(),
+                            !isKafkaSourceRecord);
                     return jsonCloudEventsConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
                 }
             }
             // JSON - Avro; need to convert "data" to Avro first
             else {
-                SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker);
+                SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker, !isKafkaSourceRecord);
                 return jsonCloudEventsConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
             }
         }
         // Avro - Avro; need to convert "data" to Avro first
         else {
-            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, parser, maker);
+            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, parser, maker, !isKafkaSourceRecord);
             return avroConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
         }
     }
@@ -261,7 +283,16 @@ public class CloudEventsConverter implements Converter {
     /**
      * Lookup the CloudEventsProvider implementation for the source connector.
      */
-    private static CloudEventsProvider lookupCloudEventsProvider(Struct record) {
+    private static CloudEventsProvider lookupCloudEventsProvider(Struct record, boolean forKafkaSourceRecord) {
+        if (forKafkaSourceRecord) {
+            for (CloudEventsProvider provider : providers.values()) {
+                if (provider instanceof SourceRecordCloudEventsProvider) {
+                    return provider;
+                }
+            }
+            throw new DataException("No usable CloudEvents converters for Kafka source record");
+        }
+
         String connectorType = record.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         CloudEventsProvider provider = providers.get(connectorType);
         if (provider != null) {
@@ -273,12 +304,12 @@ public class CloudEventsConverter implements Converter {
     /**
      * Creates a CloudEvents wrapper, converting the "data" to Avro.
      */
-    private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordParser parser, CloudEventsMaker maker) {
+    private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordParser parser, CloudEventsMaker maker, boolean includeDebeziumExtensionFields) {
         Schema dataSchemaType = Schema.BYTES_SCHEMA;
         byte[] serializedData = avroConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
         String dataSchemaUri = maker.ceDataschemaUri(getSchemaIdFromAvroMessage(serializedData));
 
-        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchemaUri, serializedData);
+        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchemaUri, serializedData, includeDebeziumExtensionFields);
     }
 
     /**
@@ -413,7 +444,8 @@ public class CloudEventsConverter implements Converter {
         }
     }
 
-    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData) {
+    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData,
+                                                      boolean includeDebeziumExtensionFields) {
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
         final Struct transaction = parser.transaction();
@@ -432,12 +464,14 @@ public class CloudEventsConverter implements Converter {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
-        ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
+        if (includeDebeziumExtensionFields) {
+            ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
 
-        ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
+            ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
 
-        // transaction attributes
-        ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+            // transaction attributes
+            ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
+        }
 
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
 
@@ -455,12 +489,14 @@ public class CloudEventsConverter implements Converter {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
         }
 
-        ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
+        if (includeDebeziumExtensionFields) {
+            ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
 
-        ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
+            ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
 
-        if (transaction != null) {
-            ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+            if (transaction != null) {
+                ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
+            }
         }
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATA, serializedData);
