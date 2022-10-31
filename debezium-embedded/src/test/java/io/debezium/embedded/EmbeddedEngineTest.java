@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -27,9 +28,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.WorkerConfig;
@@ -258,6 +261,54 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         firstLatch.await(5000, TimeUnit.MILLISECONDS);
         assertThat(firstLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void shouldRunSpecifiedTaskConfiguration() throws Exception {
+        var offset = 10_000;
+
+        Configuration config = Configuration.create()
+                .with(EmbeddedEngine.ENGINE_NAME, "debezium-engine")
+                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class.getName())
+                .with(EmbeddedEngine.MAX_TASKS, 3)
+                .with(EmbeddedEngine.TASK_ID, 1)
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(SimpleSourceConnector.BATCH_COUNT, 2)
+                .with(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, 5)
+                .with(SimpleSourceConnector.TASK_VALUE_OFFSET, offset)
+                .build();
+
+        CountDownLatch latch = new CountDownLatch(2 * 5);
+
+        var actual = new HashSet<Integer>();
+        var expected = IntStream.range(offset + 1, offset + 2 * 5 + 1).boxed().toArray();
+
+        DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> engineBuilder = DebeziumEngine.create(Connect.class, Connect.class)
+                .using(config.asProperties())
+                .notifying((events, committer) -> {
+                    for (var event : events) {
+                        SourceRecord record = event.value();
+                        Struct key = (Struct) record.key();
+                        int id = key.getInt32("id");
+                        actual.add(id);
+                        latch.countDown();
+                        committer.markProcessed(event);
+                    }
+                    committer.markBatchFinished();
+                })
+                .using(this.getClass().getClassLoader());
+
+        try (var engine = engineBuilder.build()) {
+            ExecutorService exec = Executors.newFixedThreadPool(1);
+            exec.execute(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+                engine.run();
+            });
+
+            var finished = latch.await(1000, TimeUnit.MILLISECONDS);
+            assertThat(finished).as("Latch reached 0").isTrue();
+            assertThat(actual).containsOnly(expected);
+        }
     }
 
     @Test
