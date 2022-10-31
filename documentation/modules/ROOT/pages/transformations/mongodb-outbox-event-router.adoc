@@ -221,7 +221,7 @@ value.converter=io.debezium.converters.ByteArrayConverter
 By default, the `payload` field value (the Avro data) is the only message value.
 Configuration of `ByteArrayConverter` as the value converter propagates the `payload` field value as-is into the Kafka message value.
 
-Note that this differs from the `ByteBufferConverter` suggested for other SMTs.
+Note that this differs from the `BinaryDataConverter` suggested for other SMTs.
 This is due to the different approach MongoDB takes to storing byte arrays internally.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
