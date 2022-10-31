@@ -32,7 +32,6 @@
         <dependency>
             <groupId>io.smallrye</groupId>
             <artifactId>jandex</artifactId>
-            <version>3.0.1</version>
         </dependency>
         <!-- Needed primarily for @Incubating annotation -->
         <dependency>
