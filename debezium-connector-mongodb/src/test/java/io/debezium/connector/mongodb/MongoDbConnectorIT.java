@@ -8,7 +8,7 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -1948,7 +1948,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", "mongo");
 
-        final Object[] expectedNames = { "Jon Snow", "Sally Hamm" };
+        final List<String> expectedNames = List.of("Jon Snow", "Sally Hamm");
         primary().execute("shouldAddMoreRecordsToContacts", mongo -> {
             MongoDatabase db = mongo.getDatabase("dbA");
             MongoCollection<Document> contacts = db.getCollection("contacts");
@@ -1967,7 +1967,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 }
             }
 
-            assertThat(foundNames).containsOnly(expectedNames);
+            assertThat(foundNames).containsOnlyElementsOf(expectedNames);
         });
 
         // Consume records
@@ -1986,7 +1986,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             assertThat(operation == Operation.READ || operation == Operation.CREATE).isTrue();
         });
         assertNoRecordsToConsume();
-        assertThat(foundNames).containsOnly(expectedNames);
+        assertThat(foundNames).containsOnlyElementsOf(expectedNames);
 
         // Stop connector
         stopConnector();
@@ -2060,8 +2060,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             assertThat(operation).isEqualTo(Operation.READ);
         });
 
-        final Object[] allExpectedNames = { "Sally Hamm" };
-        assertThat(foundNames).containsOnly(allExpectedNames);
+        final List<String> allExpectedNames = List.of("Sally Hamm");
+        assertThat(foundNames).containsOnlyElementsOf(allExpectedNames);
 
         waitForStreamingRunning("mongodb", "mongo");
         assertNoRecordsToConsume();

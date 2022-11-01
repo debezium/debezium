@@ -23,10 +23,9 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.bson.Document;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -343,7 +342,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -359,7 +358,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -393,7 +392,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -411,7 +410,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -430,7 +429,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
         }
     }
 
@@ -466,7 +465,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
         }
     }
 
@@ -485,7 +484,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
         }
     }
 
@@ -527,7 +526,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -569,7 +568,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -602,7 +601,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicName());
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -638,7 +637,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicNames.get(1));
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -672,7 +671,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
         for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 

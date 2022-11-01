@@ -15,11 +15,11 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Struct;
+import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
 import org.bson.types.ObjectId;
-import org.fest.assertions.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
