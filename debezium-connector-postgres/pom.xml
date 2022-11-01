@@ -30,11 +30,17 @@
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
+        <docker.dbs>debezium/postgres-server-test-database</docker.dbs>
+        <docker.filter>${docker.dbs}</docker.filter>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
         <!-- We're tracking the API changes of the SPI. -->
         <revapi.skip>false</revapi.skip>
+
+        <!-- Apicurion container properties -->
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
 
     <dependencies>
@@ -180,6 +186,24 @@
                                 <type>properties</type>
                                 <mode>override</mode>
                             </external>
+                        </image>
+                        <image>
+                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <ports>
+                                    <port>${apicurio.port}:8080</port>
+                                </ports>
+                                <log>
+                                    <prefix>apicurio</prefix>
+                                    <enabled>true</enabled>
+                                    <color>blue</color>
+                                </log>
+                                <wait>
+                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <time>${apicurio.init.timeout}</time>
+                                </wait>
+                            </run>
                         </image>
                     </images>
                 </configuration>
@@ -409,6 +433,18 @@
             <properties>
                 <postgres.system.lang>${cs_CZ.iso-8859-2}</postgres.system.lang>
                 <postgres.encoding>LATIN2</postgres.encoding>
+            </properties>
+        </profile>
+        <profile>
+            <id>apicurio</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>apicurio</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
