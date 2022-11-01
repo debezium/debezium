@@ -5,8 +5,8 @@
  */
 package io.debezium.util;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.Fail.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +19,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-import org.fest.assertions.Fail;
 import org.junit.Before;
 
 import io.debezium.util.Stopwatch.Statistics;
@@ -187,7 +186,7 @@ public interface Testing {
                 return IoUtil.read(stream);
             }
             catch (IOException e) {
-                Fail.fail("Unable to read '" + pathOnClasspath + "'", e);
+                fail("Unable to read '" + pathOnClasspath + "'", e);
                 return null;
             }
         }

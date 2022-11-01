@@ -5,7 +5,7 @@
  */
 package io.debezium.relational.history;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
 import java.time.Instant;
@@ -87,10 +87,10 @@ public class HistoryRecordTest {
         DocumentReader reader = DocumentReader.defaultReader();
         HistoryRecord deserialized = new HistoryRecord(reader.read(serialized));
 
-        assertThat(deserialized.source()).isNotNull();
+        assertThat((Comparable<Document>) deserialized.source()).isNotNull();
         assertThat(deserialized.source().get("server")).isEqualTo("abc");
 
-        assertThat(deserialized.position()).isNotNull();
+        assertThat((Comparable<Document>) deserialized.position()).isNotNull();
         assertThat(deserialized.position().get("file")).isEqualTo("x.log");
         assertThat(deserialized.position().get("positionInt")).isEqualTo(100);
         assertThat(deserialized.position().get("positionLong")).isEqualTo(Long.MAX_VALUE);
