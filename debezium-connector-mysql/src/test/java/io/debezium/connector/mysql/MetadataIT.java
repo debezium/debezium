@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 
 import java.sql.SQLException;

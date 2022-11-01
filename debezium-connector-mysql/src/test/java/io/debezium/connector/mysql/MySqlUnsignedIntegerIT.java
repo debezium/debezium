@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;

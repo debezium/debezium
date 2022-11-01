@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -106,7 +106,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c1SchemaParameters).includes(entry(TYPE_NAME_PARAMETER_KEY, "INT"));
+        assertThat(c1SchemaParameters).contains(entry(TYPE_NAME_PARAMETER_KEY, "INT"));
 
         // fixed width, name but no length info
         Map<String, String> c2SchemaParameters = before
@@ -115,7 +115,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c2SchemaParameters).includes(entry(TYPE_NAME_PARAMETER_KEY, "MEDIUMINT"));
+        assertThat(c2SchemaParameters).contains(entry(TYPE_NAME_PARAMETER_KEY, "MEDIUMINT"));
 
         // variable width, name and length info
         Map<String, String> c3aSchemaParameters = before
@@ -124,7 +124,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c3aSchemaParameters).includes(
+        assertThat(c3aSchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"), entry(TYPE_LENGTH_PARAMETER_KEY, "5"), entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
         // variable width, name and length info
@@ -134,7 +134,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c3bSchemaParameters).includes(
+        assertThat(c3bSchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"), entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
         // float info
@@ -144,7 +144,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(f1SchemaParameters).includes(
+        assertThat(f1SchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
 
         Map<String, String> f2SchemaParameters = before
@@ -153,7 +153,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(f2SchemaParameters).includes(
+        assertThat(f2SchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "8"), entry(TYPE_SCALE_PARAMETER_KEY, "4"));
     }
 
@@ -222,7 +222,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c3aSchemaParameters).excludes(entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"));
+        assertThat(c3aSchemaParameters).doesNotContain(entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"));
 
         // variable width, name and length info
         Map<String, String> c3bSchemaParameters = before
@@ -231,7 +231,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(c3bSchemaParameters).includes(
+        assertThat(c3bSchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"), entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
         // float info
@@ -241,7 +241,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(f1SchemaParameters).includes(
+        assertThat(f1SchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
 
         Map<String, String> f2SchemaParameters = before
@@ -250,7 +250,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(f2SchemaParameters).includes(
+        assertThat(f2SchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "8"), entry(TYPE_SCALE_PARAMETER_KEY, "4"));
     }
 }

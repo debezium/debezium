@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -123,7 +123,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
                 .field("name")
                 .schema()
                 .parameters();
-        assertThat(nameSchemaParameters).includes(entry(COLUMN_COMMENT_PARAMETER_KEY, "this is name column"));
+        assertThat(nameSchemaParameters).contains(entry(COLUMN_COMMENT_PARAMETER_KEY, "this is name column"));
 
         // Bigint info
         Map<String, String> valueSchemaParameters = before
@@ -131,7 +131,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
                 .field("value")
                 .schema()
                 .parameters();
-        assertThat(valueSchemaParameters).includes(entry(COLUMN_COMMENT_PARAMETER_KEY, "the value is bigint type"));
+        assertThat(valueSchemaParameters).contains(entry(COLUMN_COMMENT_PARAMETER_KEY, "the value is bigint type"));
 
         // Add a column with comment
         try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {

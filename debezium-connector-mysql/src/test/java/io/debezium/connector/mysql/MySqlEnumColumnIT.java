@@ -8,7 +8,7 @@ package io.debezium.connector.mysql;
 import static io.debezium.data.Enum.LOGICAL_NAME;
 import static io.debezium.data.Enum.VALUES_FIELD;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.util.Map;
