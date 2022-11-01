@@ -14,8 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -172,7 +171,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a4",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -194,7 +193,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a42",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -218,7 +217,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.anumeric",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
     }
 
@@ -272,11 +271,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
 
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
         }
         for (int i = 0; i < expectedPartRecordCount; i++) {
-            Assertions.assertThat(dbChangesPart1).includes(MapAssert.entry(i + 1, i));
-            Assertions.assertThat(dbChangesPart2).includes(MapAssert.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
+            Assertions.assertThat(dbChangesPart1).contains(Assertions.entry(i + 1, i));
+            Assertions.assertThat(dbChangesPart2).contains(Assertions.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
         }
     }
 

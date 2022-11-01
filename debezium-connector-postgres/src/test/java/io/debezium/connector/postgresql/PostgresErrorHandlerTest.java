@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;

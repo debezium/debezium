@@ -15,8 +15,8 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

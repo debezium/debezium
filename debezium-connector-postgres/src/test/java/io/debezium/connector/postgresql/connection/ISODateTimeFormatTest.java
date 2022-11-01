@@ -15,7 +15,7 @@ import java.time.chrono.IsoEra;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 public class ISODateTimeFormatTest {
