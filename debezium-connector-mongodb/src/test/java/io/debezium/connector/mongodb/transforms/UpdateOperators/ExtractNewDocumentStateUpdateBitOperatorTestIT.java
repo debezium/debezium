@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
