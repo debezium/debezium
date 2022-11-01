@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.entry;
+
 import java.io.File;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -22,9 +24,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -152,7 +153,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -187,7 +188,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
             final int expectedRecordCount = ROW_COUNT;
             final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
             for (int i = 0; i < expectedRecordCount; i++) {
-                Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+                Assertions.assertThat(dbChanges).contains(entry(i + 1, i));
             }
         }
         finally {
@@ -213,7 +214,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 DATABASE.topicForTable("a4"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -235,7 +236,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 DATABASE.topicForTable("a42"),
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -320,7 +321,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
 
         dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT - beforeResume);
         for (int i = beforeResume + 1; i < ROW_COUNT; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            Assertions.assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 

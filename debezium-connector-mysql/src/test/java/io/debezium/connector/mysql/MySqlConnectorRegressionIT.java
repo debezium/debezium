@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -28,7 +28,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Delta;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -288,7 +288,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
             else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -565,7 +565,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
         });
     }
@@ -744,7 +744,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
             else if (record.topic().endsWith("dbz_195_numvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -960,7 +960,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(Double.class);
                 Double doubleValue = (Double) decimalValue;
-                assertThat(doubleValue).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(doubleValue).isEqualTo(12345.67, Assertions.offset(0.01));
             }
         });
     }

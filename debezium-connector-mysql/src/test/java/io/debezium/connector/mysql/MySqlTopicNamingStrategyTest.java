@@ -9,7 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_TRANSACTION;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Properties;

@@ -6,6 +6,7 @@
 
 package io.debezium.connector.mysql;
 
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -23,8 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -297,7 +297,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
             LocalDate dt = dateTime.toLocalDate();
             LocalDate d = LocalDate.parse(String.format("%s-05-01", 2000 + i));
             LocalTime t = LocalTime.parse(String.format("0%s:00:00", i));
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, List.of(dt, d, t)));
+            Assertions.assertThat(dbChanges).contains(entry(i + 1, List.of(dt, d, t)));
         }
     }
 
@@ -332,7 +332,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 },
                 DATABASE.topicForTable("a_date"),
                 null);
-        Assertions.assertThat(dbChanges).includes(MapAssert.entry(1, Arrays.asList(0, null)));
+        Assertions.assertThat(dbChanges).contains(entry(1, Arrays.asList(0, null)));
         assertFalse(logInterceptor.containsWarnMessage("Invalid length when read MySQL DATE value. BIN_LEN_DATE is 0."));
     }
 }
