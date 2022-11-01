@@ -9,7 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Properties;

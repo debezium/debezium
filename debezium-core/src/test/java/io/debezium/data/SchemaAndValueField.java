@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 
 public class SchemaAndValueField {
     private final Schema schema;

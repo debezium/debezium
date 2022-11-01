@@ -5,7 +5,7 @@
  */
 package io.debezium.converters;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Base64;
