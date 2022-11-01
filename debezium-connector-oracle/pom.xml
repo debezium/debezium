@@ -146,7 +146,12 @@
         <oracle.infinispan.password>admin</oracle.infinispan.password>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+        <docker.dbs>quay.io/rh_integration/dbz-oracle:${version.oracle.server}</docker.dbs>
+        <docker.filter>${docker.dbs}</docker.filter>
         <connector.assembly.ref>connector-distribution</connector.assembly.ref>
+        <!-- Apicurion container properties -->
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
 
     <build>
@@ -439,6 +444,24 @@
                                         <mode>override</mode>
                                     </external>
                                 </image>
+                                <image>
+                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <run>
+                                        <namingStrategy>none</namingStrategy>
+                                        <ports>
+                                            <port>${apicurio.port}:8080</port>
+                                        </ports>
+                                        <log>
+                                            <prefix>apicurio</prefix>
+                                            <enabled>true</enabled>
+                                            <color>blue</color>
+                                        </log>
+                                        <wait>
+                                            <log>.*apicurio-registry-app.*started in.*</log>
+                                            <time>${apicurio.init.timeout}</time>
+                                        </wait>
+                                    </run>
+                                </image>
                             </images>
                         </configuration>
                         <!--
@@ -548,6 +571,18 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>apicurio</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>apicurio</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+            </properties>
         </profile>
     </profiles>
 </project>
