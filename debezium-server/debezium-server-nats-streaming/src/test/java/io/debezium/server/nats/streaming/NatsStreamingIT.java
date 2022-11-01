@@ -12,8 +12,8 @@ import java.util.List;
 
 import javax.enterprise.event.Observes;
 
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
