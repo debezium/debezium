@@ -6,7 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;

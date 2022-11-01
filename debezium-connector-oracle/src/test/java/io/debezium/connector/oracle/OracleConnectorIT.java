@@ -12,8 +12,8 @@ import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
@@ -944,36 +944,36 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         final Field before = recordsForTopic.get(0).valueSchema().field("before");
 
-        assertThat(before.schema().field("ID").schema().parameters()).includes(
+        assertThat(before.schema().field("ID").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "9"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C1").schema().parameters()).includes(
+        assertThat(before.schema().field("C1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C2").schema().parameters()).includes(
+        assertThat(before.schema().field("C2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C3A").schema().parameters()).includes(
+        assertThat(before.schema().field("C3A").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
-        assertThat(before.schema().field("C3B").schema().parameters()).includes(
+        assertThat(before.schema().field("C3B").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR2"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
-        assertThat(before.schema().field("F2").schema().parameters()).includes(
+        assertThat(before.schema().field("F2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "4"));
 
-        assertThat(before.schema().field("F1").schema().parameters()).includes(
+        assertThat(before.schema().field("F1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
     }
