@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;

@@ -11,7 +11,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_IN
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
 import static io.debezium.relational.history.SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Iterator;
 

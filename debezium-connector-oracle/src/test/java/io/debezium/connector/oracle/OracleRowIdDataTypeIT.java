@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
