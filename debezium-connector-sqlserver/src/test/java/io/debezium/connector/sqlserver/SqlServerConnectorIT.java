@@ -10,8 +10,8 @@ import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETE
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
@@ -37,8 +37,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -2304,21 +2304,21 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertThat(before.schema().field("c1").schema().parameters()).isNull();
         assertThat(before.schema().field("c2").schema().parameters()).isNull();
 
-        assertThat(before.schema().field("c3a").schema().parameters()).includes(
+        assertThat(before.schema().field("c3a").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
-        assertThat(before.schema().field("c3b").schema().parameters()).includes(
+        assertThat(before.schema().field("c3b").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
-        assertThat(before.schema().field("f2").schema().parameters()).includes(
+        assertThat(before.schema().field("f2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "4"));
 
-        assertThat(before.schema().field("f1").schema().parameters()).includes(
+        assertThat(before.schema().field("f1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "REAL"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "24"));
 

@@ -7,7 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
@@ -21,9 +21,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -140,9 +139,10 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).includes(
-                    MapAssert.entry("snapshot", true),
-                    MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));
+            assertThat(record1.sourceOffset())
+                    .extracting("snapshot").containsExactly(true);
+            assertThat(record1.sourceOffset())
+                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
@@ -278,9 +278,10 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).includes(
-                    MapAssert.entry("snapshot", true),
-                    MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));
+            assertThat(record1.sourceOffset())
+                    .extracting("snapshot").containsExactly(true);
+            assertThat(record1.sourceOffset())
+                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
