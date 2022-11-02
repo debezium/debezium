@@ -58,8 +58,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
+        // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
+        if (OracleConnectorConfig.SnapshotMode.ALWAYS == connectorConfig.getSnapshotMode()) {
+            LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
+            snapshotData = connectorConfig.getSnapshotMode().includeData();
+        }
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+        else if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("The previous offset has been found.");
             snapshotSchema = databaseSchema.isStorageInitializationExecuted();
             snapshotData = false;
@@ -134,7 +139,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             throws Exception {
         // Support the existence of the case when the previous offset.
         // e.g., schema_only_recovery snapshot mode
-        if (previousOffset != null) {
+        if (connectorConfig.getSnapshotMode() != OracleConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;

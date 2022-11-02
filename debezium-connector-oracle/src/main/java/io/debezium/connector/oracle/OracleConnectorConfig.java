@@ -729,6 +729,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always", true, true, false),
+
+        /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
         INITIAL("initial", true, true, false),

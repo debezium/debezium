@@ -4464,6 +4464,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5626")
+    public void shouldNotUseOffsetScnWhenSnapshotIsAlways() throws Exception {
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5626");
+            Configuration config = builder.build();
+
+            TestHelper.dropTable(connection, "DBZ5626");
+            connection.execute("CREATE TABLE DBZ5626 (ID number(9,0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ5626");
+            connection.execute("INSERT INTO DBZ5626 (ID, DATA) values (1, 'Test1')", "INSERT INTO DBZ5626 (ID, DATA) values (2, 'Test2')");
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(1, struct.get("ID"));
+            assertEquals("Test1", struct.get("DATA"));
+            stopConnector();
+
+            // To verify later on that we do snapshot from up-to-date SCN and not from one stored in the offset, delete one row.
+            connection.execute("DELETE FROM DBZ5626 WHERE ID=1");
+            connection.execute("INSERT INTO DBZ5626 (ID, DATA) values (3, 'Test3')");
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(2, struct.get("ID"));
+            assertEquals("Test2", struct.get("DATA"));
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ5626");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
