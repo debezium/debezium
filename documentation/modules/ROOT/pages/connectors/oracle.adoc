@@ -105,6 +105,10 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 |===
 |Setting |Description
 
+|`always`
+|Perform snapshot on each connector start.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
 |`initial`
 |The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
@@ -2594,8 +2598,12 @@ endif::community[]
 |Specifies the mode that the connector uses to take snapshots of a captured table.
 You can set the following values:
 
+`always`:: The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables on each connector start.
+
 `initial`:: The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables.
+If the snapshot completes successfully, upon next connector start snapshot is not executed again.
 
 `initial_only`:: The snapshot includes the structure and data of the captured tables.
 The connector performs an initial snapshot and then stops, without processing any subsequent changes.
