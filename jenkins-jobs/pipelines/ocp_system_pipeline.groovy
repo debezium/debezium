@@ -193,10 +193,12 @@ pipeline {
                         DBZ_GROUPS_ARG="${DBZ_GROUPS_ARG} & !avro"
                     fi
 
-                    JOB_DESC_FILE="testsuite-job.yml"
+                    POD_DESCRIPTION="testsuite.yml"
                     PULL_SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
 
-                    jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${JOB_DESC_FILE}" \
+                    LOG_LOCATION_IN_POD=/testsuite/testsuite_log
+
+                    jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${POD_DESCRIPTION}" \
                         --pull-secret-name "${PULL_SECRET_NAME}" \
                         --docker-tag "${DOCKER_TAG}" \
                         --project-name "${OCP_PROJECT_NAME}" \
@@ -208,14 +210,26 @@ pipeline {
                         --dbz-connect-image "${DBZ_CONNECT_IMAGE}" \
                         --artifact-server-image "${ARTIFACT_SERVER_IMAGE}" \
                         --dbz-git-repository "${DBZ_GIT_REPOSITORY}" \
-                        --dbz-git-branch "${DBZ_GIT_BRANCH}"
+                        --dbz-git-branch "${DBZ_GIT_BRANCH}" \
+                        --testsuite-log "${LOG_LOCATION_IN_POD}"
 
-                    oc create -f "${JOB_DESC_FILE}"
-
+                    oc create -f "${POD_DESCRIPTION}"
+                    pod_name=$(oc get pods | tail -1 | awk '{print $1;}')
+                    
+                    {
+                        oc wait --timeout=10h --for=condition=Ready pod/${pod_name}
+                        
+                        # copy log and test results                 
+                        mkdir ${WORKSPACE}/testsuite_artifacts
+                        oc rsync ${pod_name}:${LOG_LOCATION_IN_POD} ${WORKSPACE}/testsuite_artifacts
+                        oc rsync ${pod_name}:/testsuite/artifacts.zip ${WORKSPACE}/testsuite_artifacts || oc delete pod ${pod_name}
+                        oc delete pod ${pod_name}
+                    } & 
+                    
+                    # wait for container to start and print logs
                     for i in {1..100}; do
                         sleep 2
-                        pod_name=$(oc get pods | tail -1 | awk '{print $1;}')
-                        oc logs -f ${pod_name} && break
+                        oc logs -f ${pod_name}  && break
                     done
                     '''
                 }
@@ -228,6 +242,7 @@ pipeline {
             cd ${DEBEZIUM_LOCATION}
             ./jenkins-jobs/scripts/ocp-projects.sh --delete --testsuite --project ${OCP_PROJECT_NAME}
             '''
+            archiveArtifacts "**/testsuite_artifacts/*"
         }
     }
 }
