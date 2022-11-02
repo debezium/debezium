@@ -71,6 +71,7 @@ import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
@@ -2908,6 +2909,32 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("pk")).isEqualTo(2);
         assertThat(after.get("data")).isEqualTo(toastValue1);
         assertThat(after.get("data2")).isEqualTo(toastValue2);
+    }
+
+    @Test
+    @FixFor("DBZ-5783")
+    public void shouldSuppressLoggingOptionalOfExcludedColumns() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        TestHelper.execute("CREATE TABLE s1.dbz5783 (id SERIAL not null, data text, PRIMARY KEY(id));");
+
+        final LogInterceptor logInterceptor = new LogInterceptor(PgOutputMessageDecoder.class);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with("column.exclude.list", "s1.dbz5783.data")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.PGOUTPUT.getValue())
+                .build();
+        start(PostgresConnector.class, config);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("INSERT INTO s1.dbz5783 (data) values ('test');");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz5783"));
+
+        assertThat(recordsForTopic).hasSize(1);
+        assertThat(recordsForTopic.get(0).valueSchema().field("after").schema().field("data")).isNull();
+        assertThat(logInterceptor.containsMessage("Column 'data' optionality could not be determined, defaulting to true")).isFalse();
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
