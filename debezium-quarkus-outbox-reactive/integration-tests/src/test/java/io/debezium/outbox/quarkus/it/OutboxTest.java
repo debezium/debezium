@@ -44,7 +44,7 @@ public class OutboxTest extends AbstractOutboxTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
-        Uni<Void> wait = myService.doSomething().invoke(() -> Log.info("is this working?"));
+//        Uni<Void> wait = myService.doSomething().invoke(() -> Log.info("is this working?"));
         Log.info(Thread.currentThread().getName());
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())

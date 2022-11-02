@@ -5,15 +5,11 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
-import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
-
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
 
-import net.bytebuddy.ByteBuddy;
-import org.hibernate.Session;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,23 +49,24 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
 
     protected Uni<Void> persist(Map<String, Object> dataMap) {
         System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
-//        Session session = sessionFactory.
-//        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
-         return sessionFactory.withTransaction(session ->  session.persist(dataMap));
-        // return sessionFactory.withSession(
-        // session -> session.persist(dataMap));
+        // Session session = sessionFactory.
+        // session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+        // return sessionFactory.withTransaction(session -> session.persist(dataMap));
+        return sessionFactory.withSession(
+                session -> session.persist(dataMap)
+                        .chain(session::flush));
         // .invoke(() -> session.setReadOnly(dataMap, true)));
     }
 
-    protected Class<?> generatePojo(Map<String, Object> dataMap) {
-
-        Class<?> pojo = new ByteBuddy()
-                .subclass(Object.class)
-                .name(OUTBOX_ENTITY_FULLNAME)
-                .
-                 ;
-
-    }
+    // protected Class<?> generatePojo(Map<String, Object> dataMap) {
+    //
+    // Class<?> pojo = new ByteBuddy()
+    // .subclass(Object.class)
+    // .name(OUTBOX_ENTITY_FULLNAME)
+    //
+    // ;
+    //
+    // }
 
     /**
      * Persists the map of key/value pairs to the database.
@@ -96,6 +93,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         dataMap.put(TYPE, event.getType());
         dataMap.put(PAYLOAD, event.getPayload());
         dataMap.put(TIMESTAMP, event.getTimestamp());
+        // dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
 
         for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
             if (dataMap.containsKey(additionalFields.getKey())) {
