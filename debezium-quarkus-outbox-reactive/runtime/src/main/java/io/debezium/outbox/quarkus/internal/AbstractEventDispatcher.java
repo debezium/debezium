@@ -5,19 +5,21 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
+import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
 
+import net.bytebuddy.ByteBuddy;
+import org.hibernate.Session;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.smallrye.mutiny.Uni;
-
-import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
 
 /**
  * Abstract base class for the Debezium Outbox {@link EventDispatcher} contract.
@@ -50,11 +52,23 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     DebeziumOutboxRuntimeConfig config;
 
     protected Uni<Void> persist(Map<String, Object> dataMap) {
-        // Log.info("we are starting the persist method");
-        // Log.info(Thread.currentThread().getName());
-        return sessionFactory.withSession(
-                session -> session.persist(OUTBOX_ENTITY_FULLNAME,dataMap)
-                        .invoke(() -> session.setReadOnly(dataMap, true)));
+        System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
+//        Session session = sessionFactory.
+//        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+         return sessionFactory.withTransaction(session ->  session.persist(dataMap));
+        // return sessionFactory.withSession(
+        // session -> session.persist(dataMap));
+        // .invoke(() -> session.setReadOnly(dataMap, true)));
+    }
+
+    protected Class<?> generatePojo(Map<String, Object> dataMap) {
+
+        Class<?> pojo = new ByteBuddy()
+                .subclass(Object.class)
+                .name(OUTBOX_ENTITY_FULLNAME)
+                .
+                 ;
+
     }
 
     /**
@@ -63,11 +77,11 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
      * @param dataMap the data map, should never be {@code null}
      */
     // protected void persist(Map<String, Object> dataMap) {
-    // // Unwrap to Hibernate session and save
+    // Unwrap to Hibernate session and save
     // Session session = entityManager.unwrap(Session.class);
     // session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
     // session.setReadOnly(dataMap, true);
-    //
+
     // // Remove entity if the configuration deems doing so, leaving useful
     // // for debugging
     // if (config.removeAfterInsert) {
