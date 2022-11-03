@@ -25,6 +25,27 @@ import io.debezium.schema.DefaultTopicNamingStrategy;
 public class MySqlTopicNamingStrategyTest {
 
     @Test
+    public void testSanitizedTopicName() {
+        final String logicalName = "mysql-server-1";
+        final Properties props = new Properties();
+        props.put("topic.delimiter", ".");
+        props.put("topic.prefix", logicalName);
+        final DefaultTopicNamingStrategy defaultStrategy = new DefaultTopicNamingStrategy(props);
+
+        String dataChangeTopic = defaultStrategy.sanitizedTopicName(".");
+        assertThat(dataChangeTopic).isEqualTo("_");
+
+        dataChangeTopic = defaultStrategy.sanitizedTopicName("..");
+        assertThat(dataChangeTopic).isEqualTo("__");
+
+        String originTopicName = "test_avro_strategy.test.t_orders_all_shards_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String expectedTopicName = "test_avro_strategy.test.t_orders_all_shards_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        dataChangeTopic = defaultStrategy.sanitizedTopicName(originTopicName);
+        assertThat(dataChangeTopic.length()).isEqualTo(defaultStrategy.MAX_NAME_LENGTH);
+        assertThat(dataChangeTopic).isEqualTo(expectedTopicName);
+    }
+
+    @Test
     public void testDataChangeTopic() {
         final TableId tableId = TableId.parse("test_db.dbz_4180");
         final String logicalName = "mysql-server-1";
