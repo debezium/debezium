@@ -2164,7 +2164,7 @@ For {prodname} to create a PostgreSQL publication, it must run as a user that ha
 * `CREATE` privileges on the database to add publications.
 * `SELECT` privileges on the tables to copy the initial table data. Table owners automatically have `SELECT` permission for the table.
 
-To add tables to a publication, the user be an owner of the table.
+To add tables to a publication, the user must be an owner of the table.
 But because the source table already exists, you need a mechanism to share ownership with the original owner.
 To enable shared ownership, you create a PostgreSQL replication group, and then add the existing table owner and the replication user to the group.
 
