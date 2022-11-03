@@ -731,7 +731,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Performs a snapshot of data and schema upon each connector start.
          */
-        ALWAYS("always", true, true, false),
+        ALWAYS("always", true, true, true),
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
