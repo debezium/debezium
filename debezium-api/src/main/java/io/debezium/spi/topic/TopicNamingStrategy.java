@@ -25,6 +25,8 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
 
     String REPLACEMENT_CHAR = "_";
 
+    int MAX_NAME_LENGTH = 249;
+
     void configure(Properties props);
 
     String dataChangeTopic(I id);
@@ -56,8 +58,21 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
             }
         }
 
+        String sanitizedName = sanitizedNameBuilder.toString();
+        if (sanitizedName.length() > MAX_NAME_LENGTH) {
+            sanitizedName = sanitizedName.substring(0, MAX_NAME_LENGTH);
+            changed = true;
+        }
+        else if (sanitizedName.equals(".")) {
+            sanitizedName = "_";
+            changed = true;
+        }
+        else if (sanitizedName.equals("..")) {
+            sanitizedName = "__";
+            changed = true;
+        }
+
         if (changed) {
-            String sanitizedName = sanitizedNameBuilder.toString();
             LOGGER.warn("Topic '{}' name isn't a valid topic name, replacing it with '{}'.", topicName, sanitizedName);
 
             return sanitizedName;
