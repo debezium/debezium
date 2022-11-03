@@ -8,10 +8,7 @@ package io.debezium.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -1288,15 +1285,8 @@ public class VerifyRecord {
     }
 
     public static boolean isApucurioAvailable() {
-        try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(APICURIO_URL).openConnection();
-            conn.setRequestMethod("HEAD");
-            int respCode = conn.getResponseCode();
-            return respCode == 200;
-        }
-        catch (IOException e) {
-            return false;
-        }
+        String useApicurio = System.getProperty("use.apicurio");
+        return useApicurio != null && useApicurio.equalsIgnoreCase("true");
     }
 
 }
