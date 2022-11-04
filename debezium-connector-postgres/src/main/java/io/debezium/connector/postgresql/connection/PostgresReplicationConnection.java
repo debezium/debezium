@@ -147,7 +147,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
                 // Unless the autocommit is disabled the SELECT publication query will stay running
-                Connection conn = pgConnection();
+                Connection conn = connection(true);
                 conn.setAutoCommit(false);
 
                 String selectPublication = String.format("SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'", publicationName);

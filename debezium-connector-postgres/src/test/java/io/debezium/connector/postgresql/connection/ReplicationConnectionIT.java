@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -112,6 +113,32 @@ public class ReplicationConnectionIT {
                 assertTrue(e.getCause().getMessage().contains("ERROR: replication slot \"test1\" is active"));
                 throw e;
             }
+        }
+    }
+
+    @Test()
+    @FixFor("DBZ-5794")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publications are only created when using pgoutput decoder")
+    public void shouldRunDatabaseInitialStatementsAfterConnectingToCreatePublication() throws Exception {
+        String statement = "DROP PUBLICATION IF EXISTS test1;" +
+                "DROP TABLE IF EXISTS statements_after_connect;" +
+                "CREATE TABLE statements_after_connect (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a));";
+        TestHelper.execute(statement);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.ON_CONNECT_STATEMENTS, "INSERT INTO statements_after_connect (b, c) VALUES('database.initial.statements', now());")
+                .build());
+        PostgresReplicationConnection conn1 = (PostgresReplicationConnection) TestHelper.createForReplication("test1", true, config);
+
+        // initialize the publication which should also execute the on connect statements
+        conn1.initPublication();
+
+        final ResultSetMapper<Integer> queryMapper = rs -> {
+            rs.next();
+            return rs.getInt(1);
+        };
+        try (PostgresConnection conn2 = TestHelper.create()) {
+            int count = conn2.queryAndMap("SELECT count(*) from table_with_pk where b='database.initial.statements';", queryMapper);
+            assertEquals("On Connect statements should have run once", 1, count);
         }
     }
 
