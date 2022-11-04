@@ -25,7 +25,7 @@ The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  
 
 
 === Configure the Debezium UI
-The following table shows the environment variables for the https://hub.docker.com/r/debezium/debezium-ui[Debezium UI container image] and the related parameter names inside `application.properties` when running the Java application without the container.
+The following table shows the environment variables for the https://quay.io/repository/debezium/debezium-ui[Debezium UI container image] and the related parameter names inside `application.properties` when running the Java application without the container.
 
 [cols="1,2,2,2,6",options="header"]
 
@@ -55,7 +55,7 @@ For example, in some environments it might not be possible to reach the underlyi
 
 === Debezium UI container image
 
-The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
+The Debezium UI https://quay.io/repository/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
 
 ----
 $ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URIS=http://connect:8083 debezium/debezium-ui:{debezium-version}

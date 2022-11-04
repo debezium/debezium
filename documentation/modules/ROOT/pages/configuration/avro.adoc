@@ -110,7 +110,7 @@ ifdef::product[]
 endif::product[]
 
 ifdef::community[]
-. Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}.tar.gz[the installation package] into a plug-in directory. This is not needed when using the link:https://hub.docker.com/r/debezium/connect[Debezium Connect container image], see details in <<deploying-with-debezium-containers>>.
+. Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}.tar.gz[the installation package] into a plug-in directory. This is not needed when using the link:https://quay.io/repository/debezium/connect[Debezium Connect container image], see details in <<deploying-with-debezium-containers>>.
 endif::community[]
 ifdef::product[]
 . Install the Avro converter by downloading the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[Service Registry Kafka Connect] zip file and extracting it into the {prodname} connector's directory.
