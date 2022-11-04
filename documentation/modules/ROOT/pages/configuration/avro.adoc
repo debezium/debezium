@@ -49,10 +49,13 @@ To use Apache Avro serialization, you must deploy a schema registry that manages
 For information about setting up this registry, see the documentation for link:{LinkServiceRegistryInstall}[{NameServiceRegistryInstall}].
 endif::product[]
 
+[id="apicurio-registry"]
+== {registry-name-full}
+
 // Type: concept
 // Title: About the {registry}
 [id="about-the-registry"]
-== About the {registry-name-full}
+=== About the {registry-name-full}
 
 ifdef::community[]
 The link:https://github.com/Apicurio/apicurio-registry[{registry}] open-source project provides several components that work with Avro:
@@ -95,7 +98,7 @@ To use converters provided by {registry} you need to provide `apicurio.registry.
 // Type: concept
 // Title: Overview of deploying a {prodname} connector that uses Avro serialization
 [id="overview-of-deploying-a-debezium-connector-that-uses-avro-serialization"]
-== Deployment overview
+=== {registry} deployment overview
 
 To deploy a {prodname} connector that uses Avro serialization, you must complete three main tasks:
 
@@ -134,7 +137,7 @@ Internally, Kafka Connect always uses JSON key/value converters for storing conf
 // Title: Deploying connectors that use Avro in {prodname} containers
 // ModuleID: deploying-connectors-that-use-avro-in-debezium-containers
 [id="deploying-with-debezium-containers"]
-== Deploying with {prodname} containers
+=== Deploying {registry} with {prodname} containers
 ifdef::community[]
 In your environment, you might want to use a provided {prodname} container image to deploy {prodname} connectors that use Avro serialization. Follow the procedure here to do that. In this procedure, you enable Apicurio converters on the {prodname} Kafka Connect container image, and configure the {prodname} connector to use the Avro converter.
 endif::community[]
@@ -362,6 +365,37 @@ ifdef::community[]
 == Confluent Schema Registry
 
 There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation provided by Confluent.
+
+[id="overview-of-deploying-confluent-schema-registry"]
+=== Confluent Schema Registry deployment overview
+
+To install standalone Confluent Schema Registry, please see Confluent's https://docs.confluent.io/platform/current/installation/installing_cp/overview.html[official deployment guide].
+
+[NOTE]
+====
+There's also possibility to https://docs.confluent.io/platform/current/installation/docker/installation.html[install] it as a container.
+====
+
+[id="deploying-confluent-schema-registry-with-debezium-containers"]
+=== Deploying Confluent Schema Registry with {prodname} containers
+
+As of {prodname} 2.0.0, Confluent Schema Registry support is on part of the {prodname} containers.
+To make it working, you need to install into Connect plugin directory appropriate jar files which contain Confluent Avro converters.
+Namely, you would need following jar file:
+
+* `kafka-connect-avro-converter`
+* `kafka-connect-avro-data`
+* `kafka-avro-serializer`
+* `kafka-schema-serializer`
+* `kafka-schema-registry-client`
+* `common-config`
+* `common-utils`
+
+[NOTE]
+====
+You can download the required jar files https://packages.confluent.io/maven/[Confluent's Maven repository].
+====
+
 The configuration is slightly different.
 
 . In your {prodname} connector configuration, specify the following properties:
