@@ -87,7 +87,10 @@ rm -rf $RESULTS_PATH/failsafe-summary.xml
 
 docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
 
-./jenkins-jobs/scripts/report.sh --connector true --env-file env-file.env --results-folder $RESULTS_FOLDER --attributes "$ATTRIBUTES"
+curl -O https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/report.sh
+chmod +x ./report.sh
+
+./report.sh --connector true --env-file env-file.env --results-folder $RESULTS_FOLDER --attributes "$ATTRIBUTES"
 ''')
     }
 }
