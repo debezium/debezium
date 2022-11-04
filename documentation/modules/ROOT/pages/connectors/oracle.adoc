@@ -1801,6 +1801,30 @@ archive log list
 exit;
 ----
 
+Oracle AWS RDS does not allow you to execute the commands above nor does it allow you to log in as sysdba. AWS provides these alternative commands to configure LogMiner. Before executing these commands, ensure that your Oracle AWS RDS instance is enabled for backups.
+
+To confirm that Oracle has backups enabled, execute the command below first. The LOG_MODE should say ARCHIVELOG. If it does not, you may need to reboot your Oracle AWS RDS instance.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+SQL> SELECT LOG_MODE FROM V$DATABASE;
+
+LOG_MODE
+------------
+ARCHIVELOG
+----
+
+Once LOG_MODE is set to ARCHIVELOG, execute the commands to complete LogMiner configuration. The first command set the database to archivelogs and the second adds supplemental logging.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+exec rdsadmin.rdsadmin_util.set_configuration('archivelog retention hours',24);
+
+exec rdsadmin.rdsadmin_util.alter_supplemental_logging('ADD');
+----
+
 To enable {prodname} to capture the _before_ state of changed database rows, you must also enable supplemental logging for captured tables or for the entire database.
 The following example illustrates how to configure supplemental logging for all columns in a single `inventory.customers` table.
 
