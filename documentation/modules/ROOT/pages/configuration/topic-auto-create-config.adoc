@@ -93,7 +93,7 @@ ifdef::community[]
 ====
 If you don't want to allow automatic topic creation by Kafka Connect, set the value of `topic.creation.enable` to `false`
 in the Kafka Connect configuration (_connect-distributed.properties_ file or via environment variable
-_CONNECT_TOPIC_CREATION_ENABLE_ when using https://hub.docker.com/r/debezium/connect[{prodname}'s container image for Kafka Connect]).
+_CONNECT_TOPIC_CREATION_ENABLE_ when using https://quay.io/repository/debezium/connect[{prodname}'s container image for Kafka Connect]).
 ====
 endif::community[]
 

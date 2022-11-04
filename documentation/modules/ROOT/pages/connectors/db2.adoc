@@ -1641,7 +1641,7 @@ To enable the connector to access the database, you must add the driver to your 
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
