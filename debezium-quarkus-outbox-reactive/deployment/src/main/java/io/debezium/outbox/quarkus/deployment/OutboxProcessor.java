@@ -73,7 +73,7 @@ public final class OutboxProcessor {
 
         boolean parameterizedTypesDetected = false;
         for (ClassInfo classInfo : index.getIndex().getAllKnownImplementors(exportedEvent)) {
-            LOGGER.infof("Found ExportedEvent type: %s", classInfo.name());
+            LOGGER.infof("Found ExportedEvent (reactive?) type: %s", classInfo.name());
             for (Type interfaceType : classInfo.interfaceTypes()) {
                 if (interfaceType.name().equals(exportedEvent)) {
                     if (interfaceType.kind().equals(Type.Kind.PARAMETERIZED_TYPE)) {
