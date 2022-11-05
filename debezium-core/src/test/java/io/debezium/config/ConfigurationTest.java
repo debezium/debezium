@@ -5,6 +5,8 @@
  */
 package io.debezium.config;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
@@ -335,5 +337,21 @@ public class ConfigurationTest {
         assertThat(errorList.get(0))
                 .isEqualTo(
                         Field.validationOutput(TOPIC_PREFIX, "server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)"));
+    }
+
+    @Test
+    @FixFor("DBZ-5801")
+    public void testConfigurationMerge() {
+        config = Configuration.create()
+                .with("database.hostname", "server1")
+                .with("driver.user", "mysqluser")
+                .build();
+
+        Configuration dbConfig = config
+                .subset(DATABASE_CONFIG_PREFIX, true)
+                .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
+
+        assertThat(dbConfig.keys().size()).isEqualTo(2);
+        assertThat(dbConfig.getString("user")).isEqualTo("mysqluser");
     }
 }

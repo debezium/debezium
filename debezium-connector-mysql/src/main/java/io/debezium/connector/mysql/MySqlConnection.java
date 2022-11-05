@@ -499,7 +499,8 @@ public class MySqlConnection extends JdbcConnection {
                     .edit()
                     .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
                     .build()
-                    .subset(DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true));
+                    .subset(DATABASE_CONFIG_PREFIX, true)
+                    .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
 
             final Builder jdbcConfigBuilder = dbConfig
                     .edit()
