@@ -9,14 +9,12 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * Describes an event that should be exported via the "outbox" table.
  *
  * @author Chris Cranford
  */
-@Incubating
+
 public interface ExportedEvent<I, P> {
 
     /**

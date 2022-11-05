@@ -45,7 +45,7 @@ public abstract class AbstractOutboxTest {
         final MetamodelImplementor metadata = (MetamodelImplementor) sessionFactory.getMetamodel();
 
         // final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
-
+        System.out.println("executed abstract netanidek");
         final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
 
@@ -66,7 +66,8 @@ public abstract class AbstractOutboxTest {
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();
         final Map row = (Map) sessionFactory.withSession(
-                session -> session.createQuery("FROM OutboxEvent").getSingleResult());
+                session -> session.createQuery("FROM OutboxEvent").getSingleResult())
+                .await().indefinitely();
         // final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));

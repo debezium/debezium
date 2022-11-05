@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.smallrye.mutiny.Uni;
 
 /**
  * The default application-scoped {@link EventDispatcher} implementation that is responsible
@@ -27,8 +26,8 @@ public class DefaultEventDispatcher extends AbstractEventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventDispatcher.class);
 
     @Override
-    public Uni<Void> onExportedEvent(@Observes ExportedEvent<?, ?> event) {
+    public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
-        return persist(getDataMapFromEvent(event));
+        persist(getDataMapFromEvent(event));
     }
 }

@@ -8,7 +8,6 @@ package io.debezium.outbox.quarkus.internal;
 import javax.enterprise.event.Observes;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.smallrye.mutiny.Uni;
 
 /**
  * Contract for a Debezium Outbox event dispatcher.
@@ -23,5 +22,5 @@ public interface EventDispatcher {
      * @param event
      *            the exported event
      */
-    Uni<Void> onExportedEvent(@Observes ExportedEvent<?, ?> event);
+    void onExportedEvent(@Observes ExportedEvent<?, ?> event);
 }

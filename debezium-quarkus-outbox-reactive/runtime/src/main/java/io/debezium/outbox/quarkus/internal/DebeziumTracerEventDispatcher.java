@@ -20,7 +20,6 @@ import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
-import io.smallrye.mutiny.Uni;
 
 /**
  * An application-scoped {@link EventDispatcher} implementation that is responsible not only
@@ -42,7 +41,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    public Uni<Void> onExportedEvent(@Observes ExportedEvent<?, ?> event) {
+    public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
@@ -68,6 +67,6 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
             persist(dataMap);
         }
-        return null;
+        // return null;
     }
 }

@@ -5,17 +5,20 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
+import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
+import static org.hibernate.reactive.mutiny.Mutiny.SessionFactory;
+
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
+import org.hibernate.tuple.DynamicMapInstantiator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.smallrye.mutiny.Uni;
 
 /**
  * Abstract base class for the Debezium Outbox {@link EventDispatcher} contract.
@@ -32,11 +35,8 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     protected static final String AGGREGATE_ID = "aggregateId";
     protected static final String AGGREGATE_TYPE = "aggregateType";
 
-    // @Inject
-    // EntityManager entityManager;
-
     @Inject
-    Mutiny.SessionFactory sessionFactory;
+    Mutiny.SessionFactory factory;
 
     // @Inject
     // Uni<Mutiny.Session> session;
@@ -47,15 +47,50 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     @Inject
     DebeziumOutboxRuntimeConfig config;
 
-    protected Uni<Void> persist(Map<String, Object> dataMap) {
+    protected void persist(Map<String, Object> dataMap) {
+        // Mutiny.SessionFactory factory = createEntityManagerFactory("Debezium?")
+        // .unwrap(Mutiny.SessionFactory.class);
         System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
-        // Session session = sessionFactory.
-        // session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
-        // return sessionFactory.withTransaction(session -> session.persist(dataMap));
-        return sessionFactory.withSession(
-                session -> session.persist(dataMap)
-                        .chain(session::flush));
-        // .invoke(() -> session.setReadOnly(dataMap, true)));
+        try {
+            factory.withSession(
+                    session -> session.withTransaction(
+                            // persist the Authors with their Books in a transaction
+                            tx -> session.persist(dataMap)))
+                    .await().indefinitely();
+        }
+        finally {
+            LOGGER.debug("inserted}");
+
+        }
+        // finally {
+        // factory.close();
+        // }
+
+        /// THIS DOESN"T WORK --- says no entity type for map.
+        // try {
+        // factory.withStatelessSession(
+        // session -> session.withTransaction(
+        // // persist the Authors with their Books in a transaction
+        // tx -> session.insert(dataMap)))
+        // .await().indefinitely();
+        // }
+        // finally {
+        // factory.close();
+        // }
+
+        // return sessionFactory.withTransaction(session -> session.persist(dataMap)
+        // .chain(session::flush))
+        // .onFailure(PersistenceException.class).recoverWithItem(pe -> {
+        // System.out.println(pe);
+        // return null;
+        // });
+        // return sessionFactory.withSession(
+        // session -> session.persist(dataMap)
+        // .chain(session::flush))
+        // .onFailure(PersistenceException.class).recoverWithItem(pe -> {
+        // System.out.println(pe);
+        // return null;
+        // });
     }
 
     // protected Class<?> generatePojo(Map<String, Object> dataMap) {
@@ -93,8 +128,8 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         dataMap.put(TYPE, event.getType());
         dataMap.put(PAYLOAD, event.getPayload());
         dataMap.put(TIMESTAMP, event.getTimestamp());
-        // dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
-
+        dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
+        ;
         for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
             if (dataMap.containsKey(additionalFields.getKey())) {
                 LOGGER.error("Outbox entity already contains field with name '{}', additional field mapping skipped",
