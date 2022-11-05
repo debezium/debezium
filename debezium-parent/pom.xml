@@ -16,14 +16,9 @@
     <properties>
 
         <!-- Maven Plugins -->
-        <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.40.2</version.docker.maven.plugin>
-        <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.code.formatter>2.16.0</version.code.formatter>
         <version.impsort>1.6.2</version.impsort>
-        <version.revapi.plugin>0.11.5</version.revapi.plugin>
-        <version.jandex>1.0.8</version.jandex>
-        <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
