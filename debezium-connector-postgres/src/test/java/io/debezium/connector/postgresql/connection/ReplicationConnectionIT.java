@@ -419,8 +419,8 @@ public class ReplicationConnectionIT {
                 "INSERT INTO table_with_pk (b, c) VALUES('Tuning', now());" +
                 "DELETE FROM table_with_pk WHERE a < 3;" + // deletes 2 records
                 "INSERT INTO table_without_pk (b,c) VALUES (1, 'Foo');" +
-                "UPDATE table_without_pk SET c = 'Bar' WHERE c = 'Foo';" +
                 "ALTER TABLE table_without_pk REPLICA IDENTITY FULL;" +
+                "UPDATE table_without_pk SET c = 'Bar' WHERE c = 'Foo';" +
                 "UPDATE table_without_pk SET c = 'Baz' WHERE c = 'Bar';" +
                 "DELETE FROM table_without_pk WHERE c = 'Baz';";
 
