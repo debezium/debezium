@@ -83,4 +83,11 @@ public interface RedisClient {
      */
     long waitReplicas(int replicas, long timeout);
 
+    /**
+     * 
+     * @return
+     * @throws RedisClientConnectionException
+     */
+    String info(String section);
+
 }

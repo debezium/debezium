@@ -5,13 +5,11 @@
  */
 package io.debezium.server.redis;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.Duration;
 import java.util.List;
 
-import org.assertj.core.api.Assertions;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +20,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
-import io.debezium.server.TestConfigSource;
 import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -70,12 +67,10 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
     @FixFor("DBZ-4771")
     public void testSchemaHistoryIsSaved() {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength >= INIT_HISTORY_SIZE; // wait until all the DB schema history of the sample mysql DB has loaded
-        });
+        TestUtils.awaitStreamLengthGte(jedis, STREAM_NAME, INIT_HISTORY_SIZE + 1);
 
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
+        assertEquals(INIT_HISTORY_SIZE + 1, entries.size());
         assertTrue(entries.stream().anyMatch(item -> item.getFields().get("schema").contains("CREATE TABLE `customers`")));
     }
 
@@ -98,10 +93,7 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
 
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         // wait until the db schema history is written for the first time
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength > 0;
-        });
+        TestUtils.awaitStreamLengthGte(jedis, STREAM_NAME, 1);
 
         // pause container
         Testing.print("Pausing container");
@@ -119,14 +111,12 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
         RedisTestResourceLifecycleManager.unpause();
 
         // wait until the db schema history is written for the first time
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            final long streamLength = jedis.xlen(STREAM_NAME);
-            return streamLength >= INIT_HISTORY_SIZE;
-        });
+        TestUtils.awaitStreamLengthGte(jedis, STREAM_NAME, INIT_HISTORY_SIZE + 1);
+
         final List<StreamEntry> entries = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null);
-        Testing.print(entries);
-        Assertions.assertThat(entries.size() == INIT_HISTORY_SIZE + 1).isTrue();
-        Assertions.assertThat(entries.get(INIT_HISTORY_SIZE).getFields().get("schema")).contains("redis_test");
+
+        assertEquals(INIT_HISTORY_SIZE + 1, entries.size());
+        assertTrue(entries.get(INIT_HISTORY_SIZE).getFields().get("schema").contains("redis_test"));
     }
 
     private MySqlConnection getMySqlConnection() {

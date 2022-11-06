@@ -5,20 +5,13 @@
  */
 package io.debezium.server.redis;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import org.assertj.core.api.Assertions;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.server.TestConfigSource;
-import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
@@ -26,8 +19,6 @@ import io.quarkus.test.junit.TestProfile;
 
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.StreamEntryID;
-import redis.clients.jedis.resps.StreamEntry;
 
 /**
  * Integration test that verifies reading and writing offsets from Redis key value store
@@ -37,35 +28,21 @@ import redis.clients.jedis.resps.StreamEntry;
 @QuarkusIntegrationTest
 @TestProfile(RedisOffsetTestProfile.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
-
 public class RedisOffsetIT {
+
     private static final int MESSAGE_COUNT = 4;
     private static final String STREAM_NAME = "testc.inventory.customers";
+    private static final String OFFSETS_HASH_NAME = "metadata:debezium:offsets";
 
     protected static Jedis jedis;
-
-    private PostgresConnection getPostgresConnection() {
-        return new PostgresConnection(JdbcConfiguration.create()
-                .with("user", PostgresTestResourceLifecycleManager.POSTGRES_USER)
-                .with("password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD)
-                .with("dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME)
-                .with("hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST)
-                .with("port", PostgresTestResourceLifecycleManager.getContainer().getMappedPort(PostgresTestResourceLifecycleManager.POSTGRES_PORT))
-                .build(), "Debezium Redis Test");
-    }
 
     @Test
     @FixFor("DBZ-4509")
     public void testRedisStream() throws Exception {
         jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
-        final List<StreamEntry> entries = new ArrayList<>();
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            final List<StreamEntry> response = jedis.xrange(STREAM_NAME, (StreamEntryID) null, (StreamEntryID) null, MESSAGE_COUNT);
-            entries.addAll(response);
-            return entries.size() >= MESSAGE_COUNT;
-        });
+        TestUtils.awaitStreamLengthGte(jedis, STREAM_NAME, MESSAGE_COUNT);
 
-        Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+        Map<String, String> redisOffsets = jedis.hgetAll(OFFSETS_HASH_NAME);
         Assertions.assertThat(redisOffsets.size() > 0).isTrue();
     }
 
@@ -82,19 +59,16 @@ public class RedisOffsetIT {
 
         Jedis jedis = new Jedis(HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()));
         // wait until the offsets are written for the first time
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
-            Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
-            return redisOffsets.size() > 0;
-        });
+        TestUtils.awaitHashSizeGte(jedis, OFFSETS_HASH_NAME, 1);
 
         // clear the offsets key
-        jedis.del("metadata:debezium:offsets");
+        jedis.del(OFFSETS_HASH_NAME);
 
         // pause container
         Testing.print("Pausing container");
         RedisTestResourceLifecycleManager.pause();
 
-        final PostgresConnection connection = getPostgresConnection();
+        final PostgresConnection connection = TestUtils.getPostgresConnection();
         Testing.print("Creating new redis_test table and inserting 5 records to it");
         connection.execute(
                 "CREATE TABLE inventory.redis_test (id INT PRIMARY KEY)",
@@ -113,11 +87,9 @@ public class RedisOffsetIT {
         Testing.print("Sleeping for 2 seconds to reconnect to redis and write offset");
 
         // wait until the offsets are re-written
-        Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
-            Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
-            return redisOffsets.size() > 0;
-        });
-        Map<String, String> redisOffsets = jedis.hgetAll("metadata:debezium:offsets");
+        TestUtils.awaitHashSizeGte(jedis, OFFSETS_HASH_NAME, 1);
+
+        Map<String, String> redisOffsets = jedis.hgetAll(OFFSETS_HASH_NAME);
         jedis.close();
         Assertions.assertThat(redisOffsets.size() > 0).isTrue();
     }

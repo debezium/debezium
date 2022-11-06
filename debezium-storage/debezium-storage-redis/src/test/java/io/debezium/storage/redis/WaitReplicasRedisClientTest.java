@@ -160,6 +160,11 @@ public class WaitReplicasRedisClientTest {
             return "" + errorCount;
         }
 
+        @Override
+        public String info(String section) {
+            return "";
+        }
+
     }
 
 }
