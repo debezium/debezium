@@ -43,6 +43,7 @@ alter table add_test drop foreign key fk;
 alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
 alter table add_test wait 100 add column col1 int not null;
+alter table default.task add column xxxx varchar(200) comment 'cdc test';
 #end
 #begin
 -- Alter database
