@@ -20,7 +20,7 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Roman Kudryashov
  */
-public class SourceRecordCloudEventsProvider implements CloudEventsProvider {
+public class OutboxSmtRecordCloudEventsProvider implements CloudEventsProvider {
     @Override
     public String getName() {
         return "source_record";
@@ -33,11 +33,11 @@ public class SourceRecordCloudEventsProvider implements CloudEventsProvider {
 
     @Override
     public RecordParser createParser(Schema schema, SourceRecord record) {
-        return new SourceRecordParser(schema, record);
+        return new OutboxSmtRecordParser(schema, record);
     }
 
     @Override
     public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new SourceRecordCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+        return new OutboxSmtRecordCloudEventsMaker(parser, contentType, dataSchemaUriBase);
     }
 }

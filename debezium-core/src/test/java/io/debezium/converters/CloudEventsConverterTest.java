@@ -39,15 +39,15 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, Consumer<JsonNode> furtherAssertions) {
-        shouldConvertToCloudEventsInJson(record, hasTransaction, false, furtherAssertions);
+        shouldConvertToCloudEventsInJson(record, hasTransaction, false, null, furtherAssertions);
     }
 
-    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData) {
-        shouldConvertToCloudEventsInJson(record, hasTransaction, recordValueWithoutMetaData, valueJson -> {
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData, String eventId) {
+        shouldConvertToCloudEventsInJson(record, hasTransaction, recordValueWithoutMetaData, eventId, valueJson -> {
         });
     }
 
-    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData,
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, boolean recordValueWithoutMetaData, String eventId,
                                                         Consumer<JsonNode> furtherAssertions) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
@@ -107,6 +107,9 @@ public class CloudEventsConverterTest {
 
             msg = "inspecting all required CloudEvents fields in the value";
             assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
+            if (eventId != null) {
+                assertThat(valueJson.get(CloudEventsMaker.FieldName.ID).asText()).isEqualTo(eventId);
+            }
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
@@ -152,14 +155,15 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, boolean hasTransaction) {
-        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, "after", hasTransaction, false);
+        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, "after", hasTransaction, false, null);
     }
 
     public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction) {
-        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, fieldName, hasTransaction, false);
+        shouldConvertToCloudEventsInJsonWithDataAsAvro(record, fieldName, hasTransaction, false, null);
     }
 
-    public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction, boolean recordValueWithoutMetaData) {
+    public static void shouldConvertToCloudEventsInJsonWithDataAsAvro(SourceRecord record, String fieldName, boolean hasTransaction, boolean recordValueWithoutMetaData,
+                                                                      String eventId) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "avro");
@@ -221,6 +225,9 @@ public class CloudEventsConverterTest {
 
             msg = "inspecting all required CloudEvents fields in the value";
             assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
+            if (eventId != null) {
+                assertThat(valueJson.get(CloudEventsMaker.FieldName.ID).asText()).isEqualTo(eventId);
+            }
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/avro");
@@ -266,11 +273,11 @@ public class CloudEventsConverterTest {
     }
 
     public static void shouldConvertToCloudEventsInAvro(SourceRecord record, String connectorName, String serverName, boolean hasTransaction) {
-        shouldConvertToCloudEventsInAvro(record, connectorName, serverName, hasTransaction, false);
+        shouldConvertToCloudEventsInAvro(record, connectorName, serverName, hasTransaction, false, null);
     }
 
     public static void shouldConvertToCloudEventsInAvro(SourceRecord record, String connectorName, String serverName, boolean hasTransaction,
-                                                        boolean recordValueWithoutMetaData) {
+                                                        boolean recordValueWithoutMetaData, String eventId) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "avro");
         config.put("data.serializer.type", "avro");
@@ -329,6 +336,9 @@ public class CloudEventsConverterTest {
             msg = "inspecting all required CloudEvents fields in the value";
             avroValue = (Struct) avroSchemaAndValue.value();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.ID)).isNotNull();
+            if (eventId != null) {
+                assertThat(avroValue.get(CloudEventsMaker.FieldName.ID).toString()).isEqualTo(eventId);
+            }
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
             if (recordValueWithoutMetaData) {

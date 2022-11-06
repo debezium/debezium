@@ -1,2 +1,2 @@
 io.debezium.connector.postgresql.converters.PostgresCloudEventsProvider
-io.debezium.converters.spi.sourcerecord.SourceRecordCloudEventsProvider
+io.debezium.converters.spi.sourcerecord.OutboxSmtRecordCloudEventsProvider

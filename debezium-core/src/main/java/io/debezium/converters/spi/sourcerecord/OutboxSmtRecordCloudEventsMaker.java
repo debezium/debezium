@@ -5,8 +5,6 @@
  */
 package io.debezium.converters.spi.sourcerecord;
 
-import java.util.UUID;
-
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
@@ -16,19 +14,19 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Roman Kudryashov
  */
-public class SourceRecordCloudEventsMaker extends CloudEventsMaker {
+public class OutboxSmtRecordCloudEventsMaker extends CloudEventsMaker {
 
-    public SourceRecordCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
+    public OutboxSmtRecordCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
         super(parser, contentType, dataSchemaUriBase);
     }
 
     @Override
     public String ceId() {
-        return UUID.randomUUID().toString();
+        return this.recordParser.getMetadata(FieldName.ID).toString();
     }
 
     @Override
     public String ceType() {
-        return ceDataAttribute().get("type").toString();
+        return ceDataAttribute().get(FieldName.TYPE).toString();
     }
 }

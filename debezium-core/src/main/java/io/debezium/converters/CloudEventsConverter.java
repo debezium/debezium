@@ -51,7 +51,7 @@ import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
-import io.debezium.converters.spi.sourcerecord.SourceRecordCloudEventsProvider;
+import io.debezium.converters.spi.sourcerecord.OutboxSmtRecordCloudEventsProvider;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.SchemaNameAdjuster;
@@ -286,7 +286,7 @@ public class CloudEventsConverter implements Converter {
     private static CloudEventsProvider lookupCloudEventsProvider(Struct record, boolean forKafkaSourceRecord) {
         if (forKafkaSourceRecord) {
             for (CloudEventsProvider provider : providers.values()) {
-                if (provider instanceof SourceRecordCloudEventsProvider) {
+                if (provider instanceof OutboxSmtRecordCloudEventsProvider) {
                     return provider;
                 }
             }

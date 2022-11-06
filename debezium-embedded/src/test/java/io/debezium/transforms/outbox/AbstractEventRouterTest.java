@@ -503,9 +503,9 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
         assertThat(valueStruct.getString("email")).isEqualTo("gh@mefi.in");
         assertThat(valueStruct.getString("type")).isEqualTo("SomeType");
 
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJson(routedEvent, false, true);
-        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(routedEvent, "email", false, true);
-        CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(routedEvent, "source_record", "source_record", false, true);
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJson(routedEvent, false, true, "f9171eb6-19f3-4579-9206-0e179d2ebad7");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(routedEvent, "email", false, true, "f9171eb6-19f3-4579-9206-0e179d2ebad7");
+        CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(routedEvent, "source_record", "source_record", false, true, "f9171eb6-19f3-4579-9206-0e179d2ebad7");
     }
 
     protected String getFieldEventType() {
