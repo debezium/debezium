@@ -7,12 +7,12 @@ package io.debezium.server.redis;
 
 import java.util.Map;
 
-public class RedisStreamMessageTestProfile extends RedisStreamTestProfile {
+public class RedisStreamMemoryThresholdTestProfile extends RedisStreamTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = super.getConfigOverrides();
-        config.put("debezium.sink.redis.message.format", "extended");
+        config.put("debezium.sink.redis.memory.threshold", "75");
         return config;
     }
 

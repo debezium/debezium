@@ -112,4 +112,9 @@ public class WaitReplicasRedisClient implements RedisClient {
         return result;
     }
 
+    @Override
+    public String info(String section) {
+        return delegate.info(section);
+    }
+
 }

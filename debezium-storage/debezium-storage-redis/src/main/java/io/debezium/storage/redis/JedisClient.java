@@ -120,4 +120,9 @@ public class JedisClient implements RedisClient {
         }
     }
 
+    @Override
+    public String info(String section) {
+        return tryErrors(() -> jedis.info("memory"));
+    }
+
 }
