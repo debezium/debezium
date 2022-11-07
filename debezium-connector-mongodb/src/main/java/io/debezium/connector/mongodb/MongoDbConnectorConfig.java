@@ -558,6 +558,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("If we populate raw_oplog field in the output. Should only use with capture.mode=oplog.");
 
+    public static final Field STRIPE_AUDIT_FILTER_PATTERN = Field.create("mongodb.stripe_audit_filter_pattern")
+            .withDisplayName("Regex pattern to do filtering on the stripeAudit field")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Optional regex pattern to add filtering logic against the stripeAudit field");
+
     public static final Field ENABLE_BSON = Field.create("mongodb.enable_bson")
             .withDisplayName("Populate raw BSON for MongoDB")
             .withType(Type.BOOLEAN)
@@ -695,6 +704,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final boolean allowCmdCollection;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    private final String stripeAuditFilterPattern;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -707,6 +717,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.enableRawOplog = config.getBoolean(MongoDbConnectorConfig.RAW_OPLOG_ENABLED, false);
         this.enableBson = config.getBoolean(MongoDbConnectorConfig.ENABLE_BSON, false);
         this.allowCmdCollection = config.getBoolean(MongoDbConnectorConfig.ALLOW_CMD_COLLECTION, false);
+        this.stripeAuditFilterPattern = config.getString(MongoDbConnectorConfig.STRIPE_AUDIT_FILTER_PATTERN, "");
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
@@ -814,6 +825,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public boolean getEnableRawOplog() {
         return enableRawOplog;
+    }
+
+    public String getStripeAuditFilterPattern() {
+        return stripeAuditFilterPattern;
     }
 
     public boolean getEnableBson() {

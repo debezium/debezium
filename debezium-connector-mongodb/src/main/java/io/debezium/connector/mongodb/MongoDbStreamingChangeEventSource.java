@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
@@ -69,6 +70,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static final String OPERATION_CONTROL = "c";
     private static final String TX_OPS = "applyOps";
 
+    private static final String STRIPE_AUDIT_FIELD = "stripeAudit";
+    private final Pattern pattern;
+
     private final MongoDbConnectorConfig connectorConfig;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -88,6 +92,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
+        if (!connectorConfig.getStripeAuditFilterPattern().isEmpty()) {
+            this.pattern = Pattern.compile(connectorConfig.getStripeAuditFilterPattern());
+        } else {
+            this.pattern = null;
+        }
     }
 
     @Override
@@ -477,6 +486,14 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 LOGGER.debug("Skipping event with no namespace: {}", event.toJson());
             }
             return true;
+        }
+
+        if (pattern != null) {
+            String stripeAudit = event.getString(STRIPE_AUDIT_FIELD).getValue();
+            if (stripeAudit != null && pattern.matcher(stripeAudit).matches()) {
+                LOGGER.debug("Skipping event due to stripeAudit filtering: {}", event.toJson());
+                return true;
+            }
         }
 
         final List<BsonValue> txChanges = transactionChanges(event);
