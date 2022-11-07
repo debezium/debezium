@@ -12,7 +12,7 @@ public class RedisStreamMemoryThresholdTestProfile extends RedisStreamTestProfil
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> config = super.getConfigOverrides();
-        config.put("debezium.sink.redis.memory.threshold", "75");
+        config.put("debezium.sink.redis.memory.threshold.percentage", "75");
         return config;
     }
 

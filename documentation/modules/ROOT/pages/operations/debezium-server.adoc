@@ -910,7 +910,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format). 
 Read more about the message format xref:#p-redis-message-format[below].
 
-|[[redis-memory-threshold]]<<redis-memory-threshold, `debezium.sink.redis.memory.threshold`>>
+|[[redis-memory-threshold-percentage]]<<redis-memory-threshold-percentage, `debezium.sink.redis.memory.threshold.percentage`>>
 |`85`
 |The sink will stop consuming records if the used memory percentage (out of Redis configured maxmemory) is higher than this threshold.
 If Redis configured maxmemory is `0` (unlimited) then this threshold is disabled (same as if configuring it with `0`)

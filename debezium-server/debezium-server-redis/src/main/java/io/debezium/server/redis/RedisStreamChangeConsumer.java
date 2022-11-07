@@ -70,7 +70,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_WAIT_TIMEOUT = PROP_PREFIX + "wait.timeout.ms";
     private static final String PROP_WAIT_RETRY_ENABLED = PROP_PREFIX + "wait.retry.enabled";
     private static final String PROP_WAIT_RETRY_DELAY = PROP_PREFIX + "wait.retry.delay.ms";
-    private static final String PROP_MEMORY_THRESHOLD = PROP_PREFIX + "memory.threshold";
+    private static final String PROP_MEMORY_THRESHOLD_PERCENTAGE = PROP_PREFIX + "memory.threshold.percentage";
 
     private static final String MESSAGE_FORMAT_COMPACT = "compact";
     private static final String MESSAGE_FORMAT_EXTENDED = "extended";
@@ -134,7 +134,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
         }
 
-        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD, Integer.class).orElse(85);
+        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD_PERCENTAGE, Integer.class).orElse(85);
+        if (memoryThreshold < 0 || memoryThreshold > 100) {
+            throw new DebeziumException(String.format("Property %s should be between 0 and 100", PROP_MEMORY_THRESHOLD_PERCENTAGE));
+        }
         isMemoryOk = memoryThreshold > 0 ? () -> isMemoryOk(memoryThreshold) : () -> true;
 
         boolean waitEnabled = config.getOptionalValue(PROP_WAIT_ENABLED, Boolean.class).orElse(false);
@@ -293,7 +296,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             long usedMemory = Long.parseLong(infoMemory.get("used_memory"));
             long percentage = 100 * usedMemory / maxMemory;
             if (percentage >= memoryThreshold) {
-                LOGGER.warn("Used memory percentage of {}% is higher then configured threshold of {}%", percentage, memoryThreshold);
+                LOGGER.warn("Used memory percentage of {}% is higher than configured threshold of {}%", percentage, memoryThreshold);
                 return false;
             }
         }
