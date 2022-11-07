@@ -105,6 +105,10 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 |===
 |Setting |Description
 
+|`always`
+|Perform snapshot on each connector start.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
 |`initial`
 |The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
@@ -1761,6 +1765,19 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 
 To enable the connector to capture changes from a table, the table must use a schema that is not named in the preceding list.
 
+// Type: concept
+// Title: Tables that the {prodname} Oracle connector excludes when capturing change events
+[id="tables-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
+=== Tables excluded from capture
+
+When the {prodname} Oracle connector captures tables, it automatically excludes tables that match the following rules:
+
+* Compression Advisor tables matching the pattern `CMP[3|4]$[0-9]+`.
+* Index-organized tables matching the pattern `SYS_IOT_OVER_%`.
+* Spatial tables matching the patterns `MDRT_%`, `MDRS_%`, or `MDXT_%`.
+
+To enable the connector to capture a table with a name that matches any of the preceding rules, you must rename the table.
+
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
 // Title: Preparing Oracle databases for use with {prodname}
@@ -1782,6 +1799,30 @@ alter database open;
 archive log list
 
 exit;
+----
+
+Oracle AWS RDS does not allow you to execute the commands above nor does it allow you to log in as sysdba. AWS provides these alternative commands to configure LogMiner. Before executing these commands, ensure that your Oracle AWS RDS instance is enabled for backups.
+
+To confirm that Oracle has backups enabled, execute the command below first. The LOG_MODE should say ARCHIVELOG. If it does not, you may need to reboot your Oracle AWS RDS instance.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+SQL> SELECT LOG_MODE FROM V$DATABASE;
+
+LOG_MODE
+------------
+ARCHIVELOG
+----
+
+Once LOG_MODE is set to ARCHIVELOG, execute the commands to complete LogMiner configuration. The first command set the database to archivelogs and the second adds supplemental logging.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+exec rdsadmin.rdsadmin_util.set_configuration('archivelog retention hours',24);
+
+exec rdsadmin.rdsadmin_util.alter_supplemental_logging('ADD');
 ----
 
 To enable {prodname} to capture the _before_ state of changed database rows, you must also enable supplemental logging for captured tables or for the entire database.
@@ -2105,19 +2146,37 @@ For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
 +
+=====================================================================
+
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-oracle.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
-RUN curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/21.1.0.0/ojdbc8-21.1.0.0.jar
 USER 1001
 EOF
 ----
-<1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-oracle.yaml` in the current directory.
 
@@ -2152,6 +2211,7 @@ docker push _<myregistry.io>_/debezium-container-for-oracle:latest
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
 For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -2161,12 +2221,22 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true" // <1>
 spec:
-  #...
-  image: debezium-container-for-oracle  // <2>
+  image: debezium-container-for-oracle // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
-<2>  `spec.image` specifies the name of the image that you created to run your {prodname} connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
@@ -2552,8 +2622,12 @@ endif::community[]
 |Specifies the mode that the connector uses to take snapshots of a captured table.
 You can set the following values:
 
+`always`:: The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables on each connector start.
+
 `initial`:: The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables.
+If the snapshot completes successfully, upon next connector start snapshot is not executed again.
 
 `initial_only`:: The snapshot includes the structure and data of the captured tables.
 The connector performs an initial snapshot and then stops, without processing any subsequent changes.

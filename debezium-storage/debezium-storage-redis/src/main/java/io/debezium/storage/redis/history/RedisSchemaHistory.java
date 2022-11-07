@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -29,15 +30,12 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.storage.redis.RedisClient;
+import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.Collect;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.Throwables;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.StreamEntryID;
-import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.jedis.resps.StreamEntry;
+import io.debezium.util.Loggings;
 
 /**
  * A {@link SchemaHistory} implementation that stores the schema history in Redis.
@@ -51,20 +49,20 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisSchemaHistory.class);
 
     public static final Field PROP_ADDRESS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "address")
-            .withDescription("The redis url that will be used to access the database schema history");
+            .withDescription("The Redis url that will be used to access the database schema history");
 
     public static final Field PROP_SSL_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.enabled")
             .withDescription("Use SSL for Redis connection")
             .withDefault("false");
 
     public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
-            .withDescription("The redis url that will be used to access the database schema history");
+            .withDescription("The Redis url that will be used to access the database schema history");
 
     public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
-            .withDescription("The redis url that will be used to access the database schema history");
+            .withDescription("The Redis url that will be used to access the database schema history");
 
     public static final Field PROP_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "key")
-            .withDescription("The redis key that will be used to store the database schema history")
+            .withDescription("The Redis key that will be used to store the database schema history")
             .withDefault("metadata:debezium:schema_history");
 
     public static final Integer DEFAULT_RETRY_INITIAL_DELAY = 300;
@@ -87,6 +85,20 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
             .withDescription("Socket timeout (in ms)")
             .withDefault(DEFAULT_SOCKET_TIMEOUT);
 
+    private static final Field PROP_WAIT_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.enabled")
+            .withDescription(
+                    "Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.")
+            .withDefault(false);
+    private static final Field PROP_WAIT_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.timeout.ms")
+            .withDescription("Timeout when wait for replica")
+            .withDefault(1000L);
+    private static final Field PROP_WAIT_RETRY_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.retry.enabled")
+            .withDescription("Enables retry on wait for replica failure")
+            .withDefault(false);
+    private static final Field PROP_WAIT_RETRY_DELAY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "wait.retry.delay.ms")
+            .withDescription("Delay of retry on wait for replica failure")
+            .withDefault(1000L);
+
     Duration initialRetryDelay;
     Duration maxRetryDelay;
 
@@ -104,11 +116,16 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     private Integer connectionTimeout;
     private Integer socketTimeout;
 
-    private Jedis client = null;
+    private boolean waitEnabled;
+    private long waitTimeout;
+    private boolean waitRetryEnabled;
+    private long waitRetryDelay;
+
+    private RedisClient client;
 
     void connect() {
         RedisConnection redisConnection = new RedisConnection(this.address, this.user, this.password, this.connectionTimeout, this.socketTimeout, this.sslEnabled);
-        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_SCHEMA_HISTORY);
+        client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_SCHEMA_HISTORY, waitEnabled, waitTimeout, waitRetryEnabled, waitRetryDelay);
     }
 
     @Override
@@ -132,6 +149,11 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
         this.connectionTimeout = this.config.getInteger(PROP_CONNECTION_TIMEOUT);
         this.socketTimeout = this.config.getInteger(PROP_SOCKET_TIMEOUT);
 
+        this.waitEnabled = this.config.getBoolean(PROP_WAIT_ENABLED);
+        this.waitTimeout = this.config.getLong(PROP_WAIT_TIMEOUT);
+        this.waitRetryEnabled = this.config.getBoolean(PROP_WAIT_RETRY_ENABLED);
+        this.waitRetryDelay = this.config.getLong(PROP_WAIT_RETRY_DELAY);
+
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
     }
 
@@ -152,7 +174,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
             line = writer.write(record.document());
         }
         catch (IOException e) {
-            Throwables.logErrorAndTraceRecord(LOGGER, record, "Failed to convert record to string", e);
+            Loggings.logErrorAndTraceRecord(LOGGER, record, "Failed to convert record to string", e);
             throw new SchemaHistoryException("Unable to write database schema history record");
         }
 
@@ -167,12 +189,12 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 }
 
                 // write the entry to Redis
-                client.xadd(this.redisKeyName, (StreamEntryID) null, Collections.singletonMap("schema", line));
-                LOGGER.trace("Record written to database schema history in redis: " + line);
+                client.xadd(this.redisKeyName, Collections.singletonMap("schema", line));
+                LOGGER.trace("Record written to database schema history in Redis: " + line);
                 completedSuccessfully = true;
             }
-            catch (JedisConnectionException jce) {
-                LOGGER.warn("Attempting to reconnect to redis ");
+            catch (RedisClientConnectionException e) {
+                LOGGER.warn("Attempting to reconnect to Redis");
                 this.connect();
             }
             catch (Exception e) {
@@ -200,7 +222,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
         DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
         boolean completedSuccessfully = false;
-        List<StreamEntry> entries = new ArrayList<StreamEntry>();
+        List<Map<String, String>> entries = new ArrayList<>();
 
         // loop and retry until successful
         while (!completedSuccessfully) {
@@ -210,12 +232,11 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 }
 
                 // read the entries from Redis
-                entries = client.xrange(
-                        this.redisKeyName, (StreamEntryID) null, (StreamEntryID) null);
+                entries = client.xrange(this.redisKeyName);
                 completedSuccessfully = true;
             }
-            catch (JedisConnectionException jce) {
-                LOGGER.warn("Attempting to reconnect to redis ");
+            catch (RedisClientConnectionException e) {
+                LOGGER.warn("Attempting to reconnect to Redis");
                 this.connect();
             }
             catch (Exception e) {
@@ -229,9 +250,9 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
 
         }
 
-        for (StreamEntry item : entries) {
+        for (Map<String, String> item : entries) {
             try {
-                records.accept(new HistoryRecord(reader.read(item.getFields().get("schema"))));
+                records.accept(new HistoryRecord(reader.read(item.get("schema"))));
             }
             catch (IOException e) {
                 LOGGER.error("Failed to convert record to string: {}", item, e);

@@ -5,7 +5,7 @@
  */
 package io.debezium.embedded;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +40,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -8,7 +8,7 @@ package io.debezium.connector.mysql;
 import static io.debezium.connector.mysql.MySqlConnectorConfig.isBuiltInDatabase;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
@@ -30,7 +30,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

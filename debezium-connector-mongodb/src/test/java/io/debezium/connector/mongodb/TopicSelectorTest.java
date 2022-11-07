@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.fest.assertions.StringAssert;
+import org.assertj.core.api.AbstractStringAssert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +43,7 @@ public class TopicSelectorTest {
         assertTopic(withPrefix, dbAndCollection("db", "my@collection")).isEqualTo("prefix.db.my_collection");
     }
 
-    protected StringAssert assertTopic(TopicSelector<CollectionId> selector, CollectionId collectionId) {
+    protected AbstractStringAssert<?> assertTopic(TopicSelector<CollectionId> selector, CollectionId collectionId) {
         return assertThat(selector.topicNameFor(collectionId));
     }
 

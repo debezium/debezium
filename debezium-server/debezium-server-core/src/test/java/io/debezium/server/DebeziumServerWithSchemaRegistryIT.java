@@ -5,15 +5,15 @@
  */
 package io.debezium.server;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 

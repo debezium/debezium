@@ -14,9 +14,9 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.Fail.fail;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Assertions.fail;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
@@ -48,9 +48,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -2757,22 +2757,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(before.schema().field("c1").schema().parameters()).isNull();
         assertThat(before.schema().field("c2").schema().parameters()).isNull();
 
-        assertThat(before.schema().field("c3a").schema().parameters()).includes(
+        assertThat(before.schema().field("c3a").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
         // variable width, name and length info
-        assertThat(before.schema().field("c3b").schema().parameters()).includes(
+        assertThat(before.schema().field("c3b").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
-        assertThat(before.schema().field("f2").schema().parameters()).includes(
+        assertThat(before.schema().field("f2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "4"));
 
-        assertThat(before.schema().field("f1").schema().parameters()).includes(
+        assertThat(before.schema().field("f1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT4"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "8"));

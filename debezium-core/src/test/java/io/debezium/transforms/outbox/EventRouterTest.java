@@ -6,7 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

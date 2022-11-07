@@ -9,7 +9,7 @@ package io.debezium.connector.postgresql;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -31,7 +31,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -436,7 +436,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
-                Assertions.assertThat(ids).excludes(id);
+                Assertions.assertThat(ids).doesNotContain(id);
                 ids.add(id);
             }
 

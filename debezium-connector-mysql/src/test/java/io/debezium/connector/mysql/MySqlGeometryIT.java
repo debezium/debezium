@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import javax.xml.bind.DatatypeConverter;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Delta;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -235,8 +235,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                 @Override
                 public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
                                                  Double actualY) {
-                    assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
-                    assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+                    assertThat(actualX).isEqualTo(expectedX, Assertions.offset(0.01));
+                    assertThat(actualY).isEqualTo(expectedY, Assertions.offset(0.01));
                 }
             };
         }
@@ -262,8 +262,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                 @Override
                 public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
                                                  Double actualY) {
-                    assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
-                    assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
+                    assertThat(actualX).isEqualTo(expectedY, Assertions.offset(0.01));
+                    assertThat(actualY).isEqualTo(expectedX, Assertions.offset(0.01));
                 }
             };
         }

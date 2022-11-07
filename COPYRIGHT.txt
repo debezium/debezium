@@ -122,6 +122,7 @@ Elan Hasson
 Eliran Agranovich
 Emmanuel Brard
 Emrul Islam
+Enzo Cappa
 Eric Slep
 Eric Weaver
 Eric S. Kreiseir
@@ -168,12 +169,14 @@ Hady Willi
 Hang Ruan
 Hans-Peter Grahsl
 Harvey Yue
+Helong Zhang
 Henry Cai
 Henryk Konsek
 Himanshu Mishra
 Hoa Le
 Horia Chiorean
 Hossein Torabi
+Hubert Dulay
 Hussain Ansari
 Hyunjin Oh
 Ian Axelrod
@@ -387,6 +390,7 @@ Tapani Moilanen
 Tautvydas Januskevicius
 Taylor Rolison
 Teo Stocco
+Théophile Helleboid
 Thiago Avancini
 Thiago Dantas
 Theofanis Despoudis

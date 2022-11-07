@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

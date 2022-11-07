@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -92,7 +92,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(rating1SchemaParameters).includes(
+        assertThat(rating1SchemaParameters).contains(
                 entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "10"));
 
         Map<String, String> rating2SchemaParameters = insert.valueSchema()
@@ -102,7 +102,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(rating2SchemaParameters).includes(
+        assertThat(rating2SchemaParameters).contains(
                 entry("scale", "4"), entry(PRECISION_PARAMETER_KEY, "8"));
 
         Map<String, String> rating3SchemaParameters = insert.valueSchema()
@@ -112,7 +112,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(rating3SchemaParameters).includes(
+        assertThat(rating3SchemaParameters).contains(
                 entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "7"));
 
         Map<String, String> rating4SchemaParameters = insert.valueSchema()
@@ -122,7 +122,7 @@ public class MySqlNumericColumnIT extends AbstractConnectorTest {
                 .schema()
                 .parameters();
 
-        assertThat(rating4SchemaParameters).includes(
+        assertThat(rating4SchemaParameters).contains(
                 entry("scale", "0"), entry(PRECISION_PARAMETER_KEY, "6"));
     }
 }

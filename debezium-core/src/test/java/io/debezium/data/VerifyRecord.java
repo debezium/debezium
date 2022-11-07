@@ -5,7 +5,7 @@
  */
 package io.debezium.data;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -34,7 +34,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Delta;
+import org.assertj.core.api.Assertions;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -378,7 +378,7 @@ public class VerifyRecord {
             // Value should be within 1%
             double expectedNumericValue = ((Number) expected).doubleValue();
             double actualNumericValue = ((Number) actual).doubleValue();
-            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Assertions.offset(0.01d * expectedNumericValue));
         }
         else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
             long expectedNumericValue = ((Number) expected).longValue();
@@ -673,7 +673,7 @@ public class VerifyRecord {
             double expectedNumericValue = ((Number) o2).doubleValue();
             double actualNumericValue = ((Number) o1).doubleValue();
             String desc = "found " + nameOf(keyOrValue, field) + " is " + o1 + " but expected " + o2;
-            assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
+            assertThat(actualNumericValue).as(desc).isEqualTo(expectedNumericValue, Assertions.offset(0.01d * expectedNumericValue));
         }
         else if (o2 instanceof Integer || o2 instanceof Long || o2 instanceof Short) {
             long expectedNumericValue = ((Number) o2).longValue();

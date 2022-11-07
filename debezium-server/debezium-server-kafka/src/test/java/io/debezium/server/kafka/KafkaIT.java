@@ -19,8 +19,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 

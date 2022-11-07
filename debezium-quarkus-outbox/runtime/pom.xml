@@ -30,9 +30,8 @@
         </dependency>
         <!-- Needed specifically for AdditionalJaxbMappingProducerImpl usage -->
         <dependency>
-            <groupId>org.jboss</groupId>
+            <groupId>io.smallrye</groupId>
             <artifactId>jandex</artifactId>
-            <version>2.4.0.Final</version>
         </dependency>
         <!-- Needed primarily for @Incubating annotation -->
         <dependency>

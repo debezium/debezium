@@ -7,7 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.util.Optional;
 
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;

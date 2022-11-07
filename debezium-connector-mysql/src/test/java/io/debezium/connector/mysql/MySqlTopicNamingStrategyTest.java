@@ -9,7 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_TRANSACTION;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Properties;
@@ -23,6 +23,27 @@ import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 
 public class MySqlTopicNamingStrategyTest {
+
+    @Test
+    public void testSanitizedTopicName() {
+        final String logicalName = "mysql-server-1";
+        final Properties props = new Properties();
+        props.put("topic.delimiter", ".");
+        props.put("topic.prefix", logicalName);
+        final DefaultTopicNamingStrategy defaultStrategy = new DefaultTopicNamingStrategy(props);
+
+        String dataChangeTopic = defaultStrategy.sanitizedTopicName(".");
+        assertThat(dataChangeTopic).isEqualTo("_");
+
+        dataChangeTopic = defaultStrategy.sanitizedTopicName("..");
+        assertThat(dataChangeTopic).isEqualTo("__");
+
+        String originTopicName = "test_avro_strategy.test.t_orders_all_shards_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String expectedTopicName = "test_avro_strategy.test.t_orders_all_shards_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        dataChangeTopic = defaultStrategy.sanitizedTopicName(originTopicName);
+        assertThat(dataChangeTopic.length()).isEqualTo(defaultStrategy.MAX_NAME_LENGTH);
+        assertThat(dataChangeTopic).isEqualTo(expectedTopicName);
+    }
 
     @Test
     public void testDataChangeTopic() {

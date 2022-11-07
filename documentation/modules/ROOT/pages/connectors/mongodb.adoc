@@ -1056,18 +1056,36 @@ You then create two custom resources (CRs):
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
 +
+=====================================================================
+
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-mongodb.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/
 USER 1001
 EOF
 ----
-<1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-mongodb.yaml` in the current directory.
 
@@ -1102,6 +1120,7 @@ docker push _<myregistry.io>_/debezium-container-for-mongodb:latest
 .. Create a new {prodname} MongoDB `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -1114,9 +1133,20 @@ spec:
   #...
   image: debezium-container-for-mongodb  // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +

@@ -10,7 +10,7 @@ import java.time.Duration;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -12,8 +12,8 @@ import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
@@ -944,36 +944,36 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         final Field before = recordsForTopic.get(0).valueSchema().field("before");
 
-        assertThat(before.schema().field("ID").schema().parameters()).includes(
+        assertThat(before.schema().field("ID").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "9"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C1").schema().parameters()).includes(
+        assertThat(before.schema().field("C1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C2").schema().parameters()).includes(
+        assertThat(before.schema().field("C2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "0"));
 
-        assertThat(before.schema().field("C3A").schema().parameters()).includes(
+        assertThat(before.schema().field("C3A").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
-        assertThat(before.schema().field("C3B").schema().parameters()).includes(
+        assertThat(before.schema().field("C3B").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR2"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
 
-        assertThat(before.schema().field("F2").schema().parameters()).includes(
+        assertThat(before.schema().field("F2").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "4"));
 
-        assertThat(before.schema().field("F1").schema().parameters()).includes(
+        assertThat(before.schema().field("F1").schema().parameters()).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
     }
@@ -2777,6 +2777,78 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     }
 
+    @Test
+    @FixFor("DBZ-5756")
+    public void testShouldIgnoreCompressionAdvisorTablesDuringSnapshotAndStreaming() throws Exception {
+        // This test creates a dummy table to mimic the creation of a compression advisor table.
+        TestHelper.dropTable(connection, "CMP3$12345");
+        try {
+
+            // Create the advisor table prior to the connector starting
+            connection.execute("CREATE TABLE CMP3$12345 (id numeric(9,0), id2 numeric(9,0), data varchar2(50), primary key(id, id2))");
+            TestHelper.streamTable(connection, "CMP3$12345");
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (1, 1, 'data')");
+
+            Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CMP.*").build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (2, 2, 'data')");
+
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+                    assertNoRecordsToConsume();
+                    return false;
+                });
+            }
+            catch (ConditionTimeoutException e) {
+                // expected
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "CMP3$12345");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5756")
+    public void testShouldIgnoreCompressionAdvisorTablesDuringStreaming() throws Exception {
+        // This test creates a dummy table to mimic the creation of a compression advisor table.
+        TestHelper.dropTable(connection, "CMP3$12345");
+        try {
+            Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CMP.*").build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Create the advisor table while the connector is running
+            connection.execute("CREATE TABLE CMP3$12345 (id numeric(9,0), id2 numeric(9,0), data varchar2(50), primary key(id, id2))");
+            TestHelper.streamTable(connection, "CMP3$12345");
+
+            // insert some data
+            connection.execute("INSERT INTO CMP3$12345 (id,id2,data) values (1, 1, 'data')");
+
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> {
+                    assertNoRecordsToConsume();
+                    return false;
+                });
+            }
+            catch (ConditionTimeoutException e) {
+                // expected
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "CMP3$12345");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private <T> T getStreamingMetric(String metricName) throws JMException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -4389,6 +4461,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz5682");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5626")
+    public void shouldNotUseOffsetScnWhenSnapshotIsAlways() throws Exception {
+        try {
+            Configuration.Builder builder = defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5626");
+            Configuration config = builder.build();
+
+            TestHelper.dropTable(connection, "DBZ5626");
+            connection.execute("CREATE TABLE DBZ5626 (ID number(9,0), DATA varchar2(50))");
+            TestHelper.streamTable(connection, "DBZ5626");
+            connection.execute("INSERT INTO DBZ5626 (ID, DATA) values (1, 'Test1')", "INSERT INTO DBZ5626 (ID, DATA) values (2, 'Test2')");
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            int expectedRecordCount = 2;
+            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(expectedRecordCount);
+            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(1, struct.get("ID"));
+            assertEquals("Test1", struct.get("DATA"));
+            stopConnector();
+
+            // To verify later on that we do snapshot from up-to-date SCN and not from one stored in the offset, delete one row.
+            connection.execute("DELETE FROM DBZ5626 WHERE ID=1");
+            connection.execute("INSERT INTO DBZ5626 (ID, DATA) values (3, 'Test3')");
+
+            start(OracleConnector.class, config);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+            // Check we get up-to-date data in the snapshot.
+            assertThat(sourceRecords.allRecordsInOrder()).hasSize(expectedRecordCount);
+            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+            assertEquals(2, struct.get("ID"));
+            assertEquals("Test2", struct.get("DATA"));
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ5626");
         }
     }
 

@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Fail;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -1902,7 +1902,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
             return IoUtil.readBytes(stream);
         }
         catch (IOException e) {
-            Fail.fail("Unable to read '" + pathOnClasspath + "'", e);
+            fail("Unable to read '" + pathOnClasspath + "'", e);
             return null;
         }
     }

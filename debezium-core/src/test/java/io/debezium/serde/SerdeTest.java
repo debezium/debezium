@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.common.serialization.Serde;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import com.fasterxml.jackson.annotation.JsonProperty;

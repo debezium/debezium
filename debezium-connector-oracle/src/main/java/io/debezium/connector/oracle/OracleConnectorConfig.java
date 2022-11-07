@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -728,6 +729,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always", true, true, true),
+
+        /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
         INITIAL("initial", true, true, false),
@@ -1208,6 +1214,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     private static class SystemTablesPredicate implements TableFilter {
 
+        /**
+         * Pattern that matches temporary analysis tables created by the Compression Advisor subsystem.
+         * These tables will be ignored by the connector.
+         */
+        private final Pattern COMPRESSION_ADVISOR = Pattern.compile("^CMP[3|4]\\$[0-9]+$");
+
         private final Configuration config;
 
         SystemTablesPredicate(Configuration config) {
@@ -1216,7 +1228,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !isExcludedSchema(t) && !isFlushTable(t);
+            return !isExcludedSchema(t) && !isFlushTable(t) && !isCompressionAdvisorTable(t);
         }
 
         private boolean isExcludedSchema(TableId id) {
@@ -1225,6 +1237,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private boolean isFlushTable(TableId id) {
             return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER));
+        }
+
+        private boolean isCompressionAdvisorTable(TableId id) {
+            return COMPRESSION_ADVISOR.matcher(id.table()).matches();
         }
     }
 

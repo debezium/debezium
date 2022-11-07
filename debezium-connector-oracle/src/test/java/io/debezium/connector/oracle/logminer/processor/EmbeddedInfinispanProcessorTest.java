@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.processor;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

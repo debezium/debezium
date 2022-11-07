@@ -276,6 +276,29 @@ pipeline {
             mail to: MAIL_TO, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
 OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
+            withCredentials([
+                    usernamePassword(credentialsId: "rh-integration-quay-creds", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+                    string(credentialsId: "report-portal-token", variable: 'RP_TOKEN'),
+            ]) {
+                sh '''
+                if [ "$PRODUCT_BUILD" == true ] ; then
+                    export ATTRIBUTES="downstream"
+                else
+                    export ATTRIBUTES="upstream"
+                fi
+
+                RESULTS_FOLDER=final-results
+                RESULTS_PATH=$RESULTS_FOLDER/results
+                
+                mkdir -p $RESULTS_PATH
+                cp debezium/debezium-testing/debezium-testing-system/target/failsafe-reports/*.xml $RESULTS_PATH
+                rm -rf $RESULTS_PATH/failsafe-summary.xml
+                
+                docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+
+                ./debezium/jenkins-jobs/scripts/report.sh --connector false --env-file env-file.env --results-folder $RESULTS_FOLDER --attributes $ATTRIBUTES
+                '''
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

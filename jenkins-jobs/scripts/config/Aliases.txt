@@ -165,3 +165,6 @@ rajdangwal,Rajendra Dangwal
 Sage-Pierce,Sage Pierce
 joschi,Jochen Schalanda
 janjwerner-confluent,Jan Werner
+enzo-cappa,Enzo Cappa
+zhanghelong,Helong Zhang
+Théophile Helleboid - chtitux,Théophile Helleboid

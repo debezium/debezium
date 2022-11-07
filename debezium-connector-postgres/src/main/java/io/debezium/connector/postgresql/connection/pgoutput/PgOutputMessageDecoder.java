@@ -312,7 +312,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
             Boolean optional = columnOptionality.get(columnName);
             if (optional == null) {
-                LOGGER.warn("Column '{}' optionality could not be determined, defaulting to true", columnName);
+                if (decoderContext.getConfig().getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
+                    LOGGER.warn("Column '{}' optionality could not be determined, defaulting to true", columnName);
+                }
                 optional = true;
             }
 

@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;

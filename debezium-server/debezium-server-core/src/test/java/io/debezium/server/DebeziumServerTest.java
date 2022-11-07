@@ -14,8 +14,8 @@ import java.util.Properties;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;

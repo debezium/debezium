@@ -8,7 +8,7 @@ package io.debezium.spi;
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
