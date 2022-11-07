@@ -15,8 +15,7 @@ import javax.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.tuple.DynamicMapInstantiator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 
@@ -27,7 +26,7 @@ import io.debezium.outbox.quarkus.ExportedEvent;
  */
 public abstract class AbstractEventDispatcher implements EventDispatcher {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEventDispatcher.class);
+    private static final Logger LOGGER = Logger.getLogger(AbstractEventDispatcher.class);
 
     protected static final String TIMESTAMP = "timestamp";
     protected static final String PAYLOAD = "payload";
@@ -51,6 +50,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         // Mutiny.SessionFactory factory = createEntityManagerFactory("Debezium?")
         // .unwrap(Mutiny.SessionFactory.class);
         System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
+        LOGGER.infof("i am become persist");
         try {
             factory.withSession(
                     session -> session.withTransaction(
@@ -59,7 +59,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
                     .await().indefinitely();
         }
         finally {
-            LOGGER.debug("inserted}");
+            LOGGER.infof("i am finish persist");
 
         }
         // finally {
@@ -132,7 +132,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         ;
         for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
             if (dataMap.containsKey(additionalFields.getKey())) {
-                LOGGER.error("Outbox entity already contains field with name '{}', additional field mapping skipped",
+                LOGGER.error(
                         additionalFields.getKey());
                 continue;
             }
