@@ -130,6 +130,17 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         try {
             MessageType type = MessageType.forType((char) buffer.get());
             LOGGER.trace("Message Type: {}", type);
+            switch (type) {
+                case TYPE:
+                case ORIGIN:
+                case TRUNCATE:
+                    // TYPE/ORIGIN/TRUNCATE
+                    // These should be skipped without calling shouldMessageBeSkipped. DBZ-5792
+                    LOGGER.trace("{} messages are always skipped without calling shouldMessageBeSkipped", type);
+                    return true;
+                default:
+                    // call super.shouldMessageBeSkipped for rest of the types
+            }
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
                 case COMMIT:
@@ -147,7 +158,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN/LOGICAL_DECODING_MESSAGE
+                    // INSERT/UPDATE/DELETE/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
