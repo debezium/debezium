@@ -1732,6 +1732,7 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 * Compression Advisor tables matching the pattern `CMP[3|4]$[0-9]+`.
 * Index-organized tables matching the pattern `SYS_IOT_OVER_%`.
 * Spatial tables matching the patterns `MDRT_%`, `MDRS_%`, or `MDXT_%`.
+* Nested tables
 
 To enable the connector to capture a table with a name that matches any of the preceding rules, you must rename the table.
 
