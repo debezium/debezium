@@ -133,11 +133,17 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             switch (type) {
                 case TYPE:
                 case ORIGIN:
-                case TRUNCATE:
-                    // TYPE/ORIGIN/TRUNCATE
+                    // TYPE/ORIGIN
                     // These should be skipped without calling shouldMessageBeSkipped. DBZ-5792
                     LOGGER.trace("{} messages are always skipped without calling shouldMessageBeSkipped", type);
                     return true;
+                case TRUNCATE:
+                    if (!isTruncateEventsIncluded()) {
+                        LOGGER.trace("{} messages are being skipped without calling shouldMessageBeSkipped", type);
+                        return true;
+                    }
+                    // else delegate to super.shouldMessageBeSkipped
+                    break;
                 default:
                     // call super.shouldMessageBeSkipped for rest of the types
             }
