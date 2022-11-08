@@ -4464,6 +4464,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5738")
+    public void shouldSkipSnapshotOfNestedTable() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
+
+        TestHelper.dropTable(connection, "DBZ5738");
+        TestHelper.grantRole("CREATE ANY TYPE");
+
+        try {
+            String myTableTypeDll = "CREATE OR REPLACE TYPE my_tab_t AS TABLE OF VARCHAR2(128);";
+            connection.execute(myTableTypeDll);
+
+            String nestedTableDdl = "create table DBZ5738 (" +
+                    " id numeric(9,0) not null, " +
+                    " c1 int, " +
+                    " c2 my_tab_t, " +
+                    " primary key (id)) " +
+                    " nested table c2 store as nested_table";
+            connection.execute(nestedTableDdl);
+
+            TestHelper.streamTable(connection, "DBZ5738");
+            connection.execute("INSERT INTO DBZ5738 VALUES (1, 25, my_tab_t('test1'))");
+            connection.execute("INSERT INTO DBZ5738 VALUES (2, 50, my_tab_t('test2'))");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5738")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify that the table is not snapshotted and list of the tables is empty.
+            assertNoRecordsToConsume();
+            assertThat(logInterceptor.containsMessage("Locking captured tables []")).isTrue();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ5738");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
