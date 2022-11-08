@@ -178,7 +178,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
     private void validateAndLoadSchemaHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema) {
         if (offset == null) {
-            if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
+            if (config.getSnapshotMode().shouldSnapshotOnSchemaError() && config.getSnapshotMode() != OracleConnectorConfig.SnapshotMode.ALWAYS) {
                 // We are in schema only recovery mode, use the existing redo log position
                 // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
                 throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
