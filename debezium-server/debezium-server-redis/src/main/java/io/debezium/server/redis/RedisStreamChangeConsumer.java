@@ -70,7 +70,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_WAIT_TIMEOUT = PROP_PREFIX + "wait.timeout.ms";
     private static final String PROP_WAIT_RETRY_ENABLED = PROP_PREFIX + "wait.retry.enabled";
     private static final String PROP_WAIT_RETRY_DELAY = PROP_PREFIX + "wait.retry.delay.ms";
+
+    private static final int DEFAULT_MEMORY_THRESHOLD_PERCENTAGE = 85;
     private static final String PROP_MEMORY_THRESHOLD_PERCENTAGE = PROP_PREFIX + "memory.threshold.percentage";
+    private static final String INFO_MEMORY = "memory";
+    private static final String INFO_MEMORY_SECTION_MAXMEMORY = "maxmemory";
+    private static final String INFO_MEMORY_SECTION_USEDMEMORY = "used_memory";
 
     private static final String MESSAGE_FORMAT_COMPACT = "compact";
     private static final String MESSAGE_FORMAT_EXTENDED = "extended";
@@ -134,7 +139,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                     String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
         }
 
-        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD_PERCENTAGE, Integer.class).orElse(85);
+        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD_PERCENTAGE, Integer.class).orElse(DEFAULT_MEMORY_THRESHOLD_PERCENTAGE);
         if (memoryThreshold < 0 || memoryThreshold > 100) {
             throw new DebeziumException(String.format("Property %s should be between 0 and 100", PROP_MEMORY_THRESHOLD_PERCENTAGE));
         }
@@ -277,7 +282,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     }
 
     private boolean isMemoryOk(int memoryThreshold) {
-        String memory = client.info("memory");
+        String memory = client.info(INFO_MEMORY);
         Map<String, String> infoMemory = new HashMap<>();
         try {
             IoUtil.readLines(new ByteArrayInputStream(memory.getBytes(StandardCharsets.UTF_8)), line -> {
@@ -291,9 +296,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             LOGGER.error("Cannot parse Redis info memory {}", memory, e);
             return true;
         }
-        long maxMemory = Long.parseLong(infoMemory.get("maxmemory"));
+        long maxMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_MAXMEMORY));
         if (maxMemory > 0) {
-            long usedMemory = Long.parseLong(infoMemory.get("used_memory"));
+            long usedMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_USEDMEMORY));
             long percentage = 100 * usedMemory / maxMemory;
             if (percentage >= memoryThreshold) {
                 LOGGER.warn("Used memory percentage of {}% is higher than configured threshold of {}%", percentage, memoryThreshold);
