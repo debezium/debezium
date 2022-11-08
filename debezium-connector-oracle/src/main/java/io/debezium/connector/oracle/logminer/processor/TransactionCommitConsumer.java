@@ -167,6 +167,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         if (EventType.LOB_WRITE != event.getEventType()) {
             LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentLobColumnName);
             LOGGER.trace("All LOB manipulation events apart from LOB_WRITE are currently ignored; ignoring {} {}.", event.getEventType(), event);
+            discardCurrentMergeState();
             return;
         }
 
@@ -286,6 +287,16 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private Object[] oldValues(DmlEvent event) {
         return event.getDmlEntry().getOldValues();
+    }
+
+    private void discardCurrentMergeState() {
+        final RowState state = rows.get(currentLobRowId);
+        if (state != null) {
+            LOGGER.trace("Discarding merge state for row id {}", currentLobRowId);
+            rows.remove(currentLobRowId);
+            currentLobRowId = null;
+            currentLobColumnName = null;
+        }
     }
 
     static class LobFragment {

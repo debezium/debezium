@@ -1072,7 +1072,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-2948")
+    @FixFor({ "DBZ-2948", "DBZ-5773" })
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
