@@ -206,7 +206,11 @@ public class OracleConnection extends JdbcConnection {
                 "and table_name NOT LIKE 'MDRS_%' " +
                 "and table_name NOT LIKE 'MDXT_%' " +
                 // filter index-organized-tables
-                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) ";
+                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) " +
+                // filter nested tables
+                "and nested = 'NO'" +
+                // filter parent tables of nested tables
+                "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)";
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {
