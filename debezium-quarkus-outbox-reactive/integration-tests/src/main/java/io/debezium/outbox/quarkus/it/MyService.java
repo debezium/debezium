@@ -11,9 +11,9 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
-import javax.transaction.Transactional;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.smallrye.mutiny.Uni;
 
 @ApplicationScoped
 public class MyService {
@@ -21,14 +21,16 @@ public class MyService {
     @Inject
     Event<ExportedEvent<?, ?>> event;
 
-    @Transactional
-    public void doSomething() {
+    public Uni<MyOutboxEvent> doSomething() {
         final Map<String, Object> values = new HashMap<>();
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
         System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
-        event.fire(new MyOutboxEvent(values));
+        // event.fire(new MyOutboxEvent(values));
+        // var name = event.fireAsync(new MyOutboxEvent(values));
+        return Uni.createFrom().completionStage(
+                event.fireAsync(new MyOutboxEvent(values)));
         // return Uni.createFrom().voidItem();
     }
 }

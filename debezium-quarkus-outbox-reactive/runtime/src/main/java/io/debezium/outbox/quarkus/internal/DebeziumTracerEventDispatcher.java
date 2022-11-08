@@ -8,7 +8,7 @@ package io.debezium.outbox.quarkus.internal;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
+import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
 
 import org.slf4j.Logger;
@@ -20,6 +20,7 @@ import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
+import io.smallrye.mutiny.Uni;
 
 /**
  * An application-scoped {@link EventDispatcher} implementation that is responsible not only
@@ -41,7 +42,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
+    public Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
@@ -65,7 +66,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             // Define the entity map-mode object using property names and values
             final Map<String, Object> dataMap = getDataMapFromEvent(event);
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
-            persist(dataMap);
+            return persist(dataMap);
         }
         // return null;
     }

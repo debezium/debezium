@@ -6,7 +6,6 @@
 package io.debezium.outbox.quarkus.internal;
 
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
-import static org.hibernate.reactive.mutiny.Mutiny.SessionFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,6 +17,7 @@ import org.hibernate.tuple.DynamicMapInstantiator;
 import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.smallrye.mutiny.Uni;
 
 /**
  * Abstract base class for the Debezium Outbox {@link EventDispatcher} contract.
@@ -46,20 +46,18 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     @Inject
     DebeziumOutboxRuntimeConfig config;
 
-    protected void persist(Map<String, Object> dataMap) {
-        // Mutiny.SessionFactory factory = createEntityManagerFactory("Debezium?")
-        // .unwrap(Mutiny.SessionFactory.class);
+    protected Uni<Void> persist(Map<String, Object> dataMap) {
         System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
         LOGGER.infof("i am become persist");
         try {
             factory.withSession(
                     session -> session.withTransaction(
-                            // persist the Authors with their Books in a transaction
                             tx -> session.persist(dataMap)))
                     .await().indefinitely();
         }
         finally {
             LOGGER.infof("i am finish persist");
+            return Uni.createFrom().nullItem();
 
         }
         // finally {
