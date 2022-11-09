@@ -164,7 +164,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/LOGICAL_DECODING_MESSAGE
+                    // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
