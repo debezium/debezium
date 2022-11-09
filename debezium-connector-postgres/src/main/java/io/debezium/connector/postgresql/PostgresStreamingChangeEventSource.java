@@ -449,7 +449,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @FunctionalInterface
-    public static interface PgConnectionSupplier {
+    public interface PgConnectionSupplier {
         BaseConnection get() throws SQLException;
     }
 }

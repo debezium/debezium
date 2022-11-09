@@ -28,10 +28,10 @@ public class SerdeTest implements Testing {
         public int a;
         public int b;
 
-        public CompositeKey() {
+        CompositeKey() {
         }
 
-        public CompositeKey(int a, int b) {
+        CompositeKey(int a, int b) {
             super();
             this.a = a;
             this.b = b;
@@ -69,10 +69,10 @@ public class SerdeTest implements Testing {
 
         public String email;
 
-        public Customer() {
+        Customer() {
         }
 
-        public Customer(int id, String firstName, String lastName, String email) {
+        Customer(int id, String firstName, String lastName, String email) {
             super();
             this.id = id;
             this.firstName = firstName;

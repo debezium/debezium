@@ -1344,7 +1344,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertNoRecordsToConsume();
 
         final Set<String> flushLsn = new HashSet<>();
-        try (final PostgresConnection connection = TestHelper.create()) {
+        try (PostgresConnection connection = TestHelper.create()) {
             flushLsn.add(getConfirmedFlushLsn(connection));
             for (int i = 2; i <= recordCount + 2; i++) {
                 TestHelper.execute(INSERT_STMT);
@@ -1400,7 +1400,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertOnlyTransactionRecordsToConsume();
 
         final Set<String> flushLsn = new HashSet<>();
-        try (final PostgresConnection connection = TestHelper.create()) {
+        try (PostgresConnection connection = TestHelper.create()) {
             flushLsn.add(getConfirmedFlushLsn(connection));
             for (int i = 2; i <= recordCount + 2; i++) {
                 TestHelper.execute(INSERT_STMT);

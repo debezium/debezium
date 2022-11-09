@@ -33,9 +33,9 @@ import io.debezium.relational.ddl.DdlParser;
  */
 public interface SchemaHistory {
 
-    public static final String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.internal.";
+    String CONFIGURATION_FIELD_PREFIX_STRING = "schema.history.internal.";
 
-    public static final Field NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "name")
+    Field NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "name")
             .withDisplayName("Logical name for the database schema history")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
@@ -43,7 +43,7 @@ public interface SchemaHistory {
             .withDescription("The name used for the database schema history, perhaps differently by each implementation.")
             .withValidation(Field::isOptional);
 
-    public static final Field SKIP_UNPARSEABLE_DDL_STATEMENTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "skip.unparseable.ddl")
+    Field SKIP_UNPARSEABLE_DDL_STATEMENTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "skip.unparseable.ddl")
             .withDisplayName("Skip DDL statements that cannot be parsed")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
@@ -53,7 +53,7 @@ public interface SchemaHistory {
                     + "which it cannot parse. If skipping is enabled then Debezium can miss metadata changes.")
             .withDefault(false);
 
-    public static final Field STORE_ONLY_CAPTURED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.captured.tables.ddl")
+    Field STORE_ONLY_CAPTURED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.captured.tables.ddl")
             .withDisplayName("Store only DDL that modifies tables that are captured based on include/exclude lists")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
@@ -63,7 +63,7 @@ public interface SchemaHistory {
                     + "then only DDL that manipulates a captured table will be stored.")
             .withDefault(false);
 
-    public static final Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
+    Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
             .withDisplayName("DDL filter")
             .withType(Type.STRING)
             .withDefault(

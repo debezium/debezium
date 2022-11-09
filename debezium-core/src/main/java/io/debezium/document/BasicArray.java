@@ -53,11 +53,11 @@ final class BasicArray implements Array {
         }
     }
 
-    protected final int indexFrom(CharSequence name) {
+    protected int indexFrom(CharSequence name) {
         return Integer.parseInt(name.toString());
     }
 
-    protected final boolean isValidIndex(int index) {
+    protected boolean isValidIndex(int index) {
         return index >= 0 && index < size();
     }
 

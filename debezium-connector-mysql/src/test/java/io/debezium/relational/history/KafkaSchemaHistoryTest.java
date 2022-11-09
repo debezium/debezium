@@ -258,7 +258,7 @@ public class KafkaSchemaHistoryTest {
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .build();
-        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
             producer.send(nullRecord).get();
             producer.send(emptyRecord).get();
             producer.send(noSourceRecord).get();
@@ -289,7 +289,7 @@ public class KafkaSchemaHistoryTest {
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .build();
-        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
             producer.send(invalidSQL).get();
         }
 

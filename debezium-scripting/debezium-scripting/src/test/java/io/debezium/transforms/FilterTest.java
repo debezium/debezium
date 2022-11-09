@@ -49,7 +49,7 @@ public class FilterTest {
 
     @Test(expected = DebeziumException.class)
     public void testLanguageRequired() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "operation != 'd'");
             transform.configure(props);
@@ -58,7 +58,7 @@ public class FilterTest {
 
     @Test(expected = DebeziumException.class)
     public void testExpressionRequired() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
@@ -67,7 +67,7 @@ public class FilterTest {
 
     @Test(expected = DebeziumException.class)
     public void shouldFailOnUnkownLanguage() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "operation != 'd'");
             props.put(LANGUAGE, "jsr223.jython");
@@ -77,7 +77,7 @@ public class FilterTest {
 
     @Test(expected = DebeziumException.class)
     public void shouldFailToParseCondition() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "operation != 'd");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -87,7 +87,7 @@ public class FilterTest {
 
     @Test
     public void shouldProcessCondition() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -101,7 +101,7 @@ public class FilterTest {
     @Test
     @FixFor("DBZ-2074")
     public void shouldProcessTopic() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "topic == 'dummy1'");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -115,7 +115,7 @@ public class FilterTest {
     @Test
     @FixFor("DBZ-2074")
     public void shouldProcessHeader() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "header.idh.value == 1");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -129,7 +129,7 @@ public class FilterTest {
     @Test
     @FixFor("DBZ-2024")
     public void shouldApplyTopicRegex() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(TOPIC_REGEX, "dum.*");
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
@@ -143,7 +143,7 @@ public class FilterTest {
 
     @Test
     public void shouldKeepNulls() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -155,7 +155,7 @@ public class FilterTest {
 
     @Test
     public void shouldDropNulls() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -168,7 +168,7 @@ public class FilterTest {
 
     @Test(expected = DebeziumException.class)
     public void shouldEvaluateNulls() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -237,7 +237,7 @@ public class FilterTest {
 
     @Test
     public void shouldRunJavaScript() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.graal.js");
@@ -251,7 +251,7 @@ public class FilterTest {
     @Test
     @FixFor("DBZ-2074")
     public void shouldRunJavaScriptWithHeaderAndTopic() {
-        try (final Filter<SourceRecord> transform = new Filter<>()) {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "header.idh.value == 1 && topic.startsWith('dummy')");
             props.put(LANGUAGE, "jsr223.graal.js");

@@ -69,7 +69,7 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
     private static final String PROP_PREFIX = "debezium.sink.pubsub.";
     private static final String PROP_PROJECT_ID = PROP_PREFIX + "project.id";
 
-    public static interface PublisherBuilder {
+    public interface PublisherBuilder {
         Publisher get(ProjectTopicName topicName);
     }
 
