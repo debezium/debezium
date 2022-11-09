@@ -39,7 +39,7 @@ public interface DelayStrategy {
      *
      * @return the strategy; never null
      */
-    public static DelayStrategy none() {
+    static DelayStrategy none() {
         return (criteria) -> false;
     }
 
@@ -50,7 +50,7 @@ public interface DelayStrategy {
      * @param delay the initial delay; must be positive
      * @return the strategy; never null
      */
-    public static DelayStrategy constant(Duration delay) {
+    static DelayStrategy constant(Duration delay) {
         long delayInMilliseconds = delay.toMillis();
 
         return (criteria) -> {
@@ -74,7 +74,7 @@ public interface DelayStrategy {
      * @param delay the initial delay; must be positive
      * @return the strategy; never null
      */
-    public static DelayStrategy linear(Duration delay) {
+    static DelayStrategy linear(Duration delay) {
         long delayInMilliseconds = delay.toMillis();
         if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
@@ -110,7 +110,7 @@ public interface DelayStrategy {
      * @param maxDelay the maximum delay; must be greater than the initial delay
      * @return the strategy; never null
      */
-    public static DelayStrategy exponential(Duration initialDelay, Duration maxDelay) {
+    static DelayStrategy exponential(Duration initialDelay, Duration maxDelay) {
         return exponential(initialDelay, maxDelay, 2.0);
     }
 
@@ -123,7 +123,7 @@ public interface DelayStrategy {
      * @param backOffMultiplier the factor by which the delay increases each pass
      * @return the strategy
      */
-    public static DelayStrategy exponential(Duration initialDelay, Duration maxDelay, double backOffMultiplier) {
+    static DelayStrategy exponential(Duration initialDelay, Duration maxDelay, double backOffMultiplier) {
         final long initialDelayInMilliseconds = initialDelay.toMillis();
         final long maxDelayInMilliseconds = maxDelay.toMillis();
         if (backOffMultiplier <= 1.0) {

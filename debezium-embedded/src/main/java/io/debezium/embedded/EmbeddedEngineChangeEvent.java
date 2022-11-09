@@ -16,7 +16,7 @@ class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V>, RecordChange
     private final V value;
     private final SourceRecord sourceRecord;
 
-    public EmbeddedEngineChangeEvent(K key, V value, SourceRecord sourceRecord) {
+    EmbeddedEngineChangeEvent(K key, V value, SourceRecord sourceRecord) {
         this.key = key;
         this.value = value;
         this.sourceRecord = sourceRecord;

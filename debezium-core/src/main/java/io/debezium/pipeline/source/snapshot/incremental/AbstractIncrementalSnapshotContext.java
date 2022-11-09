@@ -153,7 +153,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     private String arrayToSerializedString(Object[] array) {
-        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(array);
             return HexConverter.convertToHexString(bos.toByteArray());
@@ -164,7 +164,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     private Object[] serializedStringToArray(String field, String serialized) {
-        try (final ByteArrayInputStream bis = new ByteArrayInputStream(HexConverter.convertFromHex(serialized));
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(HexConverter.convertFromHex(serialized));
                 ObjectInputStream ois = new ObjectInputStream(bis)) {
             return (Object[]) ois.readObject();
         }

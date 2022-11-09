@@ -12,5 +12,5 @@ package io.debezium.server;
  *
  */
 public interface StreamNameMapper {
-    public String map(String topic);
+    String map(String topic);
 }

@@ -17,7 +17,7 @@ public interface SchemaChangeEventEmitter {
 
     void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException;
 
-    public interface Receiver {
+    interface Receiver {
         void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException;
     }
 }

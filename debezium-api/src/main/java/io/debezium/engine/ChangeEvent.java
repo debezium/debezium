@@ -16,12 +16,12 @@ import io.debezium.common.annotation.Incubating;
 @Incubating
 public interface ChangeEvent<K, V> {
 
-    public K key();
+    K key();
 
-    public V value();
+    V value();
 
     /**
      * @return A name of the logical destination for which the event is intended
      */
-    public String destination();
+    String destination();
 }

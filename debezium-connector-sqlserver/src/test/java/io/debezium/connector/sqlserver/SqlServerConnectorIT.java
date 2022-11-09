@@ -239,7 +239,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsMessage("Schema locking was disabled in connector configuration")).isTrue();
 
         // Verify that multiple subsequent transactions are used in streaming phase with read-only intent
-        try (final SqlServerConnection admin = TestHelper.adminConnection()) {
+        try (SqlServerConnection admin = TestHelper.adminConnection()) {
             final Set<Long> txIds = new HashSet<>();
             Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
                 admin.query(

@@ -25,11 +25,11 @@ import io.debezium.spi.schema.DataCollectionId;
 public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends DatabaseSchema<I> {
 
     @FunctionalInterface
-    public static interface SchemaChangeEventConsumer {
+    interface SchemaChangeEventConsumer {
 
         void consume(SchemaChangeEvent event, Collection<TableId> tableIds);
 
-        static SchemaChangeEventConsumer NOOP = (x, y) -> {
+        SchemaChangeEventConsumer NOOP = (x, y) -> {
         };
     }
 

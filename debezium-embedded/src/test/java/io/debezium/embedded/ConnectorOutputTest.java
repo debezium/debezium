@@ -170,7 +170,7 @@ public abstract class ConnectorOutputTest {
     public static final String CONTROL_STOP = "stop";
     public static final String CONTROL_END = "end";
 
-    private static enum ExecutionResult {
+    private enum ExecutionResult {
         /**
          * The connector stopped after actual records did not match expected records.
          */
@@ -190,7 +190,7 @@ public abstract class ConnectorOutputTest {
     }
 
     @FunctionalInterface
-    public static interface TestData extends AutoCloseable {
+    public interface TestData extends AutoCloseable {
         /**
          * Read the records that are expected by the test.
          *
@@ -574,17 +574,17 @@ public abstract class ConnectorOutputTest {
     }
 
     @FunctionalInterface
-    protected static interface VariableSupplier {
+    protected interface VariableSupplier {
         Map<String, String> get(Configuration config) throws Exception;
     }
 
     @FunctionalInterface
-    protected static interface InputStreamSupplier {
+    protected interface InputStreamSupplier {
         InputStream get() throws IOException;
     }
 
     @FunctionalInterface
-    protected static interface OutputStreamSupplier {
+    protected interface OutputStreamSupplier {
         OutputStream get() throws IOException;
     }
 
@@ -1169,7 +1169,7 @@ public abstract class ConnectorOutputTest {
         private final ObjectMapper mapper = new ObjectMapper();
         private final DocumentReader jsonReader = DocumentReader.defaultReader();
 
-        public SchemaAndValueConverter(Configuration config, boolean isKey) {
+        SchemaAndValueConverter(Configuration config, boolean isKey) {
             jsonConverter.configure(config.asMap(), isKey);
             jsonSerializer.configure(config.asMap(), isKey);
             jsonDeserializer.configure(config.asMap(), isKey);

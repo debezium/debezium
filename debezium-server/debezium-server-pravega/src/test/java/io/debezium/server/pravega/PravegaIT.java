@@ -71,7 +71,7 @@ public class PravegaIT {
                 .disableAutomaticCheckpoints()
                 .build();
 
-        try (final ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(STREAM_NAME, clientConfig)) {
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(STREAM_NAME, clientConfig)) {
             readerGroupManager.createReaderGroup(STREAM_NAME, readerGroupConfig);
         }
 

@@ -38,7 +38,7 @@ import io.debezium.annotation.ThreadSafe;
 @ThreadSafe
 public interface SchemaNameAdjuster {
 
-    public static final Logger LOGGER = LoggerFactory.getLogger(SchemaNameAdjuster.class);
+    Logger LOGGER = LoggerFactory.getLogger(SchemaNameAdjuster.class);
 
     /**
      * Convert the proposed string to a valid Avro fullname, replacing all invalid characters with the underscore ('_')
@@ -54,7 +54,7 @@ public interface SchemaNameAdjuster {
      */
     @FunctionalInterface
     @ThreadSafe
-    public static interface ReplacementFunction {
+    interface ReplacementFunction {
         /**
          * Determine the replacement string for the invalid character.
          *
@@ -69,7 +69,7 @@ public interface SchemaNameAdjuster {
      */
     @FunctionalInterface
     @ThreadSafe
-    public static interface ReplacementOccurred {
+    interface ReplacementOccurred {
         /**
          * Accept that the original value was not Avro-compatible and was replaced.
          *
@@ -134,7 +134,7 @@ public interface SchemaNameAdjuster {
      *
      * @return the validator; never null
      */
-    public static SchemaNameAdjuster avroAdjuster() {
+    static SchemaNameAdjuster avroAdjuster() {
         return AVRO;
     }
 
@@ -143,7 +143,7 @@ public interface SchemaNameAdjuster {
      * with a valid fullname, and throws an error if the replacement conflicts with that of a different original. This method
      * replaces all invalid characters with the underscore character ('_').
      */
-    public static SchemaNameAdjuster create() {
+    static SchemaNameAdjuster create() {
         return create((original, replacement, conflict) -> {
             String msg = "The Kafka Connect schema name '" + original +
                     "' is not a valid Avro schema name and its replacement '" + replacement +
@@ -159,7 +159,7 @@ public interface SchemaNameAdjuster {
      * @param uponConflict the function to be called when there is a conflict and after that conflict is logged; may be null
      * @return the validator; never null
      */
-    public static SchemaNameAdjuster create(ReplacementOccurred uponConflict) {
+    static SchemaNameAdjuster create(ReplacementOccurred uponConflict) {
         ReplacementOccurred handler = (original, replacement, conflictsWith) -> {
             if (conflictsWith != null) {
                 LOGGER.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
@@ -184,7 +184,7 @@ public interface SchemaNameAdjuster {
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
      * @return the adjuster; never null
      */
-    public static SchemaNameAdjuster create(char replacement, ReplacementOccurred uponReplacement) {
+    static SchemaNameAdjuster create(char replacement, ReplacementOccurred uponReplacement) {
         String replacementStr = "" + replacement;
         return (original) -> validFullname(original, c -> replacementStr, uponReplacement);
     }
@@ -197,7 +197,7 @@ public interface SchemaNameAdjuster {
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
      * @return the adjuster; never null
      */
-    public static SchemaNameAdjuster create(String replacement, ReplacementOccurred uponReplacement) {
+    static SchemaNameAdjuster create(String replacement, ReplacementOccurred uponReplacement) {
         return (original) -> validFullname(original, c -> replacement, uponReplacement);
     }
 
@@ -209,7 +209,7 @@ public interface SchemaNameAdjuster {
      * @param uponReplacement the function called each time the original fullname is replaced; may be null
      * @return the adjuster; never null
      */
-    public static SchemaNameAdjuster create(ReplacementFunction function, ReplacementOccurred uponReplacement) {
+    static SchemaNameAdjuster create(ReplacementFunction function, ReplacementOccurred uponReplacement) {
         return (original) -> validFullname(original, function, uponReplacement);
     }
 
@@ -219,7 +219,7 @@ public interface SchemaNameAdjuster {
      * @param fullname the name to be used as an Avro fullname; may not be null
      * @return {@code true} if the fullname satisfies Avro rules, or {@code false} otherwise
      */
-    public static boolean isValidFullname(String fullname) {
+    static boolean isValidFullname(String fullname) {
         if (fullname.length() == 0) {
             return true;
         }
@@ -243,7 +243,7 @@ public interface SchemaNameAdjuster {
      * @return {@code true} if the character is a valid first character of an Avro fullname, or {@code false} otherwise
      * @see #isValidFullname(String)
      */
-    public static boolean isValidFullnameFirstCharacter(char c) {
+    static boolean isValidFullnameFirstCharacter(char c) {
         return c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
@@ -254,7 +254,7 @@ public interface SchemaNameAdjuster {
      * @return {@code true} if the character is a valid non-first character of an Avro fullname, or {@code false} otherwise
      * @see #isValidFullname(String)
      */
-    public static boolean isValidFullnameNonFirstCharacter(char c) {
+    static boolean isValidFullnameNonFirstCharacter(char c) {
         return c == '.' || isValidFullnameFirstCharacter(c) || (c >= '0' && c <= '9');
     }
 
@@ -264,7 +264,7 @@ public interface SchemaNameAdjuster {
      * @param proposedName the proposed fullname; may not be null
      * @return the valid fullname for Avro; never null
      */
-    public static String validFullname(String proposedName) {
+    static String validFullname(String proposedName) {
         return validFullname(proposedName, "_");
     }
 
@@ -275,7 +275,7 @@ public interface SchemaNameAdjuster {
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @return the valid fullname for Avro; never null
      */
-    public static String validFullname(String proposedName, String replacement) {
+    static String validFullname(String proposedName, String replacement) {
         return validFullname(proposedName, c -> replacement);
     }
 
@@ -286,7 +286,7 @@ public interface SchemaNameAdjuster {
      * @param replacement the character sequence that should be used to replace all invalid characters
      * @return the valid fullname for Avro; never null
      */
-    public static String validFullname(String proposedName, ReplacementFunction replacement) {
+    static String validFullname(String proposedName, ReplacementFunction replacement) {
         return validFullname(proposedName, replacement, null);
     }
 
@@ -298,7 +298,7 @@ public interface SchemaNameAdjuster {
      * @param uponReplacement the function to be called every time the proposed name is invalid and replaced; may be null
      * @return the valid fullname for Avro; never null
      */
-    public static String validFullname(String proposedName, ReplacementFunction replacement, ReplacementOccurred uponReplacement) {
+    static String validFullname(String proposedName, ReplacementFunction replacement, ReplacementOccurred uponReplacement) {
         if (proposedName.length() == 0) {
             return proposedName;
         }

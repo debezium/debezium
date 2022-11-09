@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 public interface KafkaAssertions<K, V> {
 
-    static final Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
+    Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
 
     static void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
         await()

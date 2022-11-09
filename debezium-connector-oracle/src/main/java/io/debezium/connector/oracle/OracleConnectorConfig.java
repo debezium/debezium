@@ -773,7 +773,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         private final boolean shouldStream;
         private final boolean shouldSnapshotOnSchemaError;
 
-        private SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
+        SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
             this.value = value;
             this.includeData = includeData;
             this.shouldStream = shouldStream;
@@ -861,7 +861,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private final String value;
 
-        private SnapshotLockingMode(String value) {
+        SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -939,7 +939,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private final String value;
 
-        private TransactionSnapshotBoundaryMode(String value) {
+        TransactionSnapshotBoundaryMode(String value) {
             this.value = value;
         }
 

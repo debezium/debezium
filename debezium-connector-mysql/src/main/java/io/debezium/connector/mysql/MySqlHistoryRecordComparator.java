@@ -14,7 +14,7 @@ final class MySqlHistoryRecordComparator extends HistoryRecordComparator {
 
     private final Predicate<String> gtidSourceFilter;
 
-    public MySqlHistoryRecordComparator(Predicate<String> gtidSourceFilter) {
+    MySqlHistoryRecordComparator(Predicate<String> gtidSourceFilter) {
         super();
         this.gtidSourceFilter = gtidSourceFilter;
     }

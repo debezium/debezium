@@ -81,7 +81,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
         assertThat(schemaChangeEvents.size()).isEqualTo(10);
 
         // insert data
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO dbz4180(a, b, c, d) VALUE (10.1, 10.2, 'strategy 1', 1290)");
         }
 

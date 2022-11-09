@@ -69,7 +69,7 @@ import io.debezium.util.Strings;
 public class MySqlValueConverters extends JdbcValueConverters {
 
     @FunctionalInterface
-    public static interface ParsingErrorHandler {
+    public interface ParsingErrorHandler {
         void error(String message, Exception exception);
     }
 

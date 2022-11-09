@@ -39,7 +39,7 @@ public class SnapshotResult<O extends OffsetContext> {
         return offset;
     }
 
-    public static enum SnapshotResultStatus {
+    public enum SnapshotResultStatus {
         COMPLETED,
         ABORTED,
         SKIPPED

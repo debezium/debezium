@@ -180,7 +180,7 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         final Span txLogSpan = txLogSpanBuilder.start();
         debeziumSpanBuilder.asChildOf(txLogSpan);
         final Span debeziumSpan = debeziumSpanBuilder.start();
-        try (final Scope debeziumScope = tracer.scopeManager().activate(debeziumSpan)) {
+        try (Scope debeziumScope = tracer.scopeManager().activate(debeziumSpan)) {
             Tags.COMPONENT.set(txLogSpan, TRACING_COMPONENT);
             Tags.COMPONENT.set(debeziumSpan, TRACING_COMPONENT);
             if (eventTimestamp != null) {
