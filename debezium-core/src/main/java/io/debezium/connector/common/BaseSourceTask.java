@@ -172,7 +172,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
     }
 
-    void logStatistics(final List<SourceRecord> records) {
+    protected void logStatistics(final List<SourceRecord> records) {
         if (records == null || !LOGGER.isInfoEnabled()) {
             return;
         }
