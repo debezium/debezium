@@ -509,7 +509,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      */
     private static class MySqlSnapshotContext extends RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> {
 
-        public MySqlSnapshotContext(MySqlPartition partition) throws SQLException {
+        MySqlSnapshotContext(MySqlPartition partition) throws SQLException {
             super(partition, "");
         }
     }

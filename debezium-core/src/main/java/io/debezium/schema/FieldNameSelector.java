@@ -46,7 +46,7 @@ public class FieldNameSelector {
 
         private final FieldNamer<T> delegate;
 
-        public FieldNameSanitizer(FieldNamer<T> delegate) {
+        FieldNameSanitizer(FieldNamer<T> delegate) {
             this.delegate = delegate;
         }
 
@@ -101,7 +101,7 @@ public class FieldNameSelector {
         private final BoundedConcurrentHashMap<T, String> fieldNames;
         private final FieldNamer<T> delegate;
 
-        public FieldNameCache(FieldNamer<T> delegate) {
+        FieldNameCache(FieldNamer<T> delegate) {
             this.fieldNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LRU);
             this.delegate = delegate;
         }

@@ -46,7 +46,7 @@ public class PravegaTestResource implements QuarkusTestResourceLifecycleManager 
         container.start();
 
         String scope = ConfigProvider.getConfig().getValue("debezium.sink.pravega.scope", String.class);
-        try (final StreamManager streamManager = StreamManager.create(URI.create(getControllerUri()))) {
+        try (StreamManager streamManager = StreamManager.create(URI.create(getControllerUri()))) {
             streamManager.createScope(scope);
             StreamConfiguration streamConfig = StreamConfiguration.builder()
                     .scalingPolicy(ScalingPolicy.fixed(1))

@@ -90,7 +90,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
+        try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {
@@ -138,7 +138,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+        try (DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
                     Assert.fail("Should not be invoked due to serialization error");
                 })
@@ -177,7 +177,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
+        try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {

@@ -385,7 +385,7 @@ public class ReadBinLogIT implements Testing {
 
     }
 
-    public static interface UpdateBuilder {
+    public interface UpdateBuilder {
         RowBuilder to(Serializable... values);
     }
 

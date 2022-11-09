@@ -496,7 +496,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         public final DataChangeEventListener<P> dataListener;
 
-        public IncrementalSnapshotChangeRecordReceiver(DataChangeEventListener<P> dataListener) {
+        IncrementalSnapshotChangeRecordReceiver(DataChangeEventListener<P> dataListener) {
             this.dataListener = dataListener;
         }
 

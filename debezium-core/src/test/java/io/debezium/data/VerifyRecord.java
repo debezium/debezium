@@ -58,7 +58,7 @@ import io.debezium.util.Testing;
 public class VerifyRecord {
 
     @FunctionalInterface
-    public static interface RecordValueComparator {
+    public interface RecordValueComparator {
         /**
          * Assert that the actual and expected values are equal. By the time this method is called, the actual value
          * and expected values are both determined to be non-null.

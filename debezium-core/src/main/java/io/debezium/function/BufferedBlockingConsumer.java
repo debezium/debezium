@@ -28,7 +28,7 @@ public interface BufferedBlockingConsumer<T> extends BlockingConsumer<T> {
      * @param function the function to apply to the values that are flushed
      * @throws InterruptedException if the thread is interrupted while this consumer is blocked
      */
-    public void close(Function<T, T> function) throws InterruptedException;
+    void close(Function<T, T> function) throws InterruptedException;
 
     /**
      * Get a {@link BufferedBlockingConsumer} that buffers just the last value seen by the consumer.
@@ -40,7 +40,7 @@ public interface BufferedBlockingConsumer<T> extends BlockingConsumer<T> {
      * @param delegate the delegate to which values should be flushed; may not be null
      * @return the blocking consumer that buffers a single value at a time; never null
      */
-    public static <T> BufferedBlockingConsumer<T> bufferLast(BlockingConsumer<T> delegate) {
+    static <T> BufferedBlockingConsumer<T> bufferLast(BlockingConsumer<T> delegate) {
         return new BufferedBlockingConsumer<T>() {
 
             private final AtomicReference<T> last = new AtomicReference<>();

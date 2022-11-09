@@ -17,7 +17,7 @@ public interface DatabaseVersionResolver {
      */
     DatabaseVersion getVersion();
 
-    public class DatabaseVersion {
+    class DatabaseVersion {
         private final int dbVersionMajor;
         private final int dbVersionMinor;
         private final int dbVersionPatch;

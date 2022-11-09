@@ -18,20 +18,20 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public interface Path extends Iterable<String> {
 
-    public static interface Segments {
-        public static boolean isAfterLastIndex(String segment) {
+    interface Segments {
+        static boolean isAfterLastIndex(String segment) {
             return "-".equals(segment);
         }
 
-        public static boolean isArrayIndex(String segment) {
+        static boolean isArrayIndex(String segment) {
             return isAfterLastIndex(segment) || asInteger(segment).isPresent();
         }
 
-        public static boolean isFieldName(String segment) {
+        static boolean isFieldName(String segment) {
             return !isArrayIndex(segment);
         }
 
-        public static Optional<Integer> asInteger(String segment) {
+        static Optional<Integer> asInteger(String segment) {
             try {
                 return Optional.of(Integer.valueOf(segment));
             }
@@ -40,7 +40,7 @@ public interface Path extends Iterable<String> {
             }
         }
 
-        public static Optional<Integer> asInteger(Optional<String> segment) {
+        static Optional<Integer> asInteger(Optional<String> segment) {
             return segment.isPresent() ? asInteger(segment.get()) : Optional.empty();
         }
     }
@@ -50,7 +50,7 @@ public interface Path extends Iterable<String> {
      *
      * @return the shared root path; never null
      */
-    public static Path root() {
+    static Path root() {
         return Paths.RootPath.INSTANCE;
     }
 

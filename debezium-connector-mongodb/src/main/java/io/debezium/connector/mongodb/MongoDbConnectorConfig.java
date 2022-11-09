@@ -57,7 +57,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Always perform an initial snapshot when starting.
@@ -72,7 +72,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         private final String value;
         private final boolean includeData;
 
-        private SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value, boolean includeData) {
             this.value = value;
             this.includeData = includeData;
         }
@@ -124,7 +124,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The set off different ways how connector can capture changes.
      */
-    public static enum CaptureMode implements EnumeratedValue {
+    public enum CaptureMode implements EnumeratedValue {
 
         /**
          * Change capture based on MongoDB Change Streams support.
@@ -155,7 +155,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         private final boolean fullUpdate;
         private final boolean includePreImage;
 
-        private CaptureMode(String value, boolean changeStreams, boolean fullUpdate, boolean includePreImage) {
+        CaptureMode(String value, boolean changeStreams, boolean fullUpdate, boolean includePreImage) {
             this.value = value;
             this.changeStreams = changeStreams;
             this.fullUpdate = fullUpdate;

@@ -136,7 +136,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .build();
-        try (final KafkaProducer<String, String> producer = new KafkaProducer<>(signalProducerConfig.asProperties())) {
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(signalProducerConfig.asProperties())) {
             producer.send(executeSnapshotSignal).get();
         }
     }
@@ -326,13 +326,13 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     protected void populate4PkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "a4");
         }
     }
 
     protected void populate4WithoutPkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "a42");
         }
     }

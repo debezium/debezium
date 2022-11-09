@@ -3435,19 +3435,19 @@ public class MySqlAntlrDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
             this(changesListener, false, false, tableFilter);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
             this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 

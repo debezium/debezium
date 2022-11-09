@@ -54,7 +54,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testTombstoneDroppedByDefault() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -65,7 +65,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testTombstoneDroppedConfigured() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_TOMBSTONES, "true");
             transform.configure(props);
@@ -77,7 +77,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testTombstoneForwardConfigured() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_TOMBSTONES, "false");
             transform.configure(props);
@@ -220,7 +220,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testDeleteDroppedByDefault() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -231,7 +231,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteDrop() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "drop");
             transform.configure(props);
@@ -243,7 +243,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteNone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "none");
             transform.configure(props);
@@ -256,7 +256,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             transform.configure(props);
@@ -269,7 +269,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleCreateRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_HEADERS, "op");
@@ -286,7 +286,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testUnwrapCreateRecord() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -300,7 +300,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-5166")
     public void testUnwrapCreateRecordWithOptionalDefaultValue() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -313,7 +313,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testIgnoreUnknownRecord() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -328,7 +328,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-971")
     public void testUnwrapPropagatesRecordHeaders() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -348,7 +348,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op");
             transform.configure(props);
@@ -362,7 +362,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-2984")
     public void testAddTimestamp() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props1 = new HashMap<>();
             props1.put(ADD_FIELDS, "ts_ms");
             transform.configure(props1);
@@ -384,7 +384,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-1452", "DBZ-2504" })
     public void testAddFields() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op , lsn,id");
             props.put(ADD_FIELDS_PREFIX, "prefix.");
@@ -401,7 +401,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-2606" })
     public void testNewFieldAndHeaderMapping() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             String fieldPrefix = "";
             String headerPrefix = "prefix.";
@@ -434,7 +434,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsForMissingOptionalField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,lsn,id");
             transform.configure(props);
@@ -450,7 +450,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStruct() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,source.lsn,transaction.id,transaction.total_order");
             transform.configure(props);
@@ -467,7 +467,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeader() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op");
             transform.configure(props);
@@ -483,7 +483,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeaders() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op , lsn,id");
             transform.configure(props);
@@ -503,7 +503,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeadersForMissingOptionalField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,lsn,id");
             transform.configure(props);
@@ -523,7 +523,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-1452", "DBZ-2504" })
     public void testAddHeadersSpecifyStruct() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,source.lsn,transaction.id,transaction.total_order");
             props.put(ADD_HEADERS_PREFIX, "prefix.");
@@ -545,7 +545,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testAddTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             transform.configure(props);
@@ -558,7 +558,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testUpdateTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             transform.configure(props);
@@ -571,7 +571,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testDeleteTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             props.put(HANDLE_DELETES, "none");
@@ -586,7 +586,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1876")
     public void testAddHeadersHandleDeleteRewriteAndTombstone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_HEADERS, "op,source.lsn");
@@ -609,7 +609,7 @@ public class ExtractNewRecordStateTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAddFieldNonExistantField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "nope");
             transform.configure(props);
@@ -624,7 +624,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op");
@@ -640,7 +640,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,lsn");
@@ -657,7 +657,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1876")
     public void testAddFieldsHandleDeleteRewriteAndTombstone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,lsn");
@@ -678,7 +678,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStructHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,source.lsn");
@@ -695,7 +695,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1517")
     public void testSchemaChangeEventWithOperationHeader() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op");
             transform.configure(props);

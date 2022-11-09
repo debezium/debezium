@@ -289,7 +289,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
+        SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
             super(partition, partition.getDatabaseName());
         }
     }

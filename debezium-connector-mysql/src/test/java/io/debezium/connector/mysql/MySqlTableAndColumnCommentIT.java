@@ -134,7 +134,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
         assertThat(valueSchemaParameters).contains(entry(COLUMN_COMMENT_PARAMETER_KEY, "the value is bigint type"));
 
         // Add a column with comment
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("ALTER TABLE dbz_4000_comment_test ADD COLUMN remark TEXT COMMENT 'description'");
         }
         records = consumeRecordsByTopic(1);

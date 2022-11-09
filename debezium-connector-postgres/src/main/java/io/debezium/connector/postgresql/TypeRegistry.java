@@ -314,8 +314,8 @@ public class TypeRegistry {
      * Prime the {@link TypeRegistry} with all existing database types
      */
     private void prime() throws SQLException {
-        try (final Statement statement = connection.connection().createStatement();
-                final ResultSet rs = statement.executeQuery(SQL_TYPES)) {
+        try (Statement statement = connection.connection().createStatement();
+                ResultSet rs = statement.executeQuery(SQL_TYPES)) {
             final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
             while (rs.next()) {
                 PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
@@ -368,7 +368,7 @@ public class TypeRegistry {
         try {
             LOGGER.trace("Type '{}' not cached, attempting to lookup from database.", name);
 
-            try (final PreparedStatement statement = connection.connection().prepareStatement(SQL_NAME_LOOKUP)) {
+            try (PreparedStatement statement = connection.connection().prepareStatement(SQL_NAME_LOOKUP)) {
                 statement.setString(1, name);
                 return loadType(statement);
             }
@@ -382,7 +382,7 @@ public class TypeRegistry {
         try {
             LOGGER.trace("Type OID '{}' not cached, attempting to lookup from database.", lookupOid);
 
-            try (final PreparedStatement statement = connection.connection().prepareStatement(SQL_OID_LOOKUP)) {
+            try (PreparedStatement statement = connection.connection().prepareStatement(SQL_OID_LOOKUP)) {
                 statement.setInt(1, lookupOid);
                 return loadType(statement);
             }
@@ -393,7 +393,7 @@ public class TypeRegistry {
     }
 
     private PostgresType loadType(PreparedStatement statement) throws SQLException {
-        try (final ResultSet rs = statement.executeQuery()) {
+        try (ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 PostgresType result = createTypeBuilderFromResultSet(rs).build();
                 addType(result);
@@ -479,8 +479,8 @@ public class TypeRegistry {
         private static Map<String, Integer> getSqlTypes(PostgresConnection connection) throws SQLException {
             Map<String, Integer> sqlTypesByPgTypeNames = new HashMap<>();
 
-            try (final Statement statement = connection.connection().createStatement()) {
-                try (final ResultSet rs = statement.executeQuery(SQL_TYPE_DETAILS)) {
+            try (Statement statement = connection.connection().createStatement()) {
+                try (ResultSet rs = statement.executeQuery(SQL_TYPE_DETAILS)) {
                     while (rs.next()) {
                         int type;
                         boolean isArray = rs.getBoolean(2);

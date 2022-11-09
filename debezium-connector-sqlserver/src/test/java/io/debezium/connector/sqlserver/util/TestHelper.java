@@ -654,7 +654,7 @@ public class TestHelper {
         private final CdcRecordHandler handler;
         private boolean found;
 
-        public CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
+        CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
             this.handler = handler;
         }
 

@@ -30,7 +30,7 @@ public class DebeziumTextMap implements TextMap {
     }
 
     public String export() {
-        try (final Writer sw = new StringWriter()) {
+        try (Writer sw = new StringWriter()) {
             props.store(sw, null);
             return sw.toString();
         }

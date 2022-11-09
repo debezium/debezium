@@ -76,7 +76,7 @@ public class MySqlDateTimeInKeyIT extends AbstractConnectorTest {
 
         assertKey(changes);
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("SET sql_mode='';");
             conn.createStatement().execute("INSERT INTO dbz_1194_datetime_key_test VALUES (default, '0000-00-00 00:00:00', '0000-00-00', '00:00:00')");
         }

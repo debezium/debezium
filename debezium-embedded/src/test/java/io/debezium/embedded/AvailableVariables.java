@@ -23,7 +23,7 @@ public interface AvailableVariables {
      * @return the available variables function that returns the configuration property value for the given property name; never
      *         null
      */
-    public static AvailableVariables configVariables(Configuration config) {
+    static AvailableVariables configVariables(Configuration config) {
         return config::getString;
     }
 
@@ -36,7 +36,7 @@ public interface AvailableVariables {
      * @param config the configuration
      * @return the available variables function that returns System properties; never null
      */
-    public static AvailableVariables systemVariables(Configuration config) {
+    static AvailableVariables systemVariables(Configuration config) {
         return System::getProperty;
     }
 
@@ -49,7 +49,7 @@ public interface AvailableVariables {
      * @param config the configuration
      * @return the available variables function that returns System properties; never null
      */
-    public static AvailableVariables environmentVariables(Configuration config) {
+    static AvailableVariables environmentVariables(Configuration config) {
         return System::getenv;
     }
 
@@ -58,7 +58,7 @@ public interface AvailableVariables {
      *
      * @return the empty available variables function that always return null.
      */
-    public static AvailableVariables empty() {
+    static AvailableVariables empty() {
         return (varName) -> null;
     }
 

@@ -112,13 +112,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void populateTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
         }
     }
 
     protected void populateTableWithSpecificValue(int startRow, int count, int value) throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTableWithSpecificValue(connection, tableName(), startRow, count, value);
         }
     }
@@ -135,7 +135,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void populateTables() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTables(connection);
         }
     }
@@ -254,7 +254,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
                 .map(x -> '"' + x + '"')
                 .collect(Collectors.joining(", "));
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query;
             if (additionalCondition.isPresent()) {
                 query = String.format(
@@ -283,7 +283,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             collections = ",\"data-collections\": [" + dataCollectionIdsList + "]";
         }
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format(
                     "INSERT INTO %s VALUES('ad-hoc', 'stop-snapshot', '{\"type\": \"INCREMENTAL\"" + collections + "}')",
                     signalTableName());
@@ -300,7 +300,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void sendPauseSignal() {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", signalTableName());
             logger.info("Sending pause signal with query {}", query);
             connection.execute(query);
@@ -311,7 +311,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void sendResumeSignal() {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format("INSERT INTO %s VALUES('test-resume', 'resume-snapshot', '')", signalTableName());
             logger.info("Sending resume signal with query {}", query);
             connection.execute(query);

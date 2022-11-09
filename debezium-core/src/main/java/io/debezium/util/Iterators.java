@@ -353,7 +353,7 @@ public class Iterators {
      * @param <F> the source transform type
      * @param <T> the destination transform type
      */
-    public static interface TransformedIterator<F, T> extends Iterator<T> {
+    public interface TransformedIterator<F, T> extends Iterator<T> {
         T transform(F from);
     }
 
@@ -398,7 +398,7 @@ public class Iterators {
      *
      * @param <T> the type of value
      */
-    public static interface PreviewIterator<T> extends Iterator<T> {
+    public interface PreviewIterator<T> extends Iterator<T> {
         /**
          * Peek at the next value without consuming or using it. This method returns the same value if called multiple times
          * between {@link Iterator#next}.

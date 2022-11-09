@@ -73,7 +73,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertIntChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
         }
         assertIntChangeRecord();
@@ -100,7 +100,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
         }
         assertBooleanChangeRecord();
@@ -127,7 +127,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertDefaultValueBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ2085 VALUES (DEFAULT, true)");
         }
         assertDefaultValueBooleanChangeRecord();
@@ -154,7 +154,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertUnsignedBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
         }
         assertUnsignedBooleanChangeRecord();
@@ -183,7 +183,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         assertUnsignedBooleanChangeRecord();
 
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO DBZ5236 VALUES (DEFAULT, 1, 1, 0)");
         }
         assertUnsignedBooleanChangeRecord();

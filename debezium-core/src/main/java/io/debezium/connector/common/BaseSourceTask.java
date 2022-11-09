@@ -51,7 +51,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration INITIAL_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.SECONDS.toMillis(5));
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
 
-    protected static enum State {
+    protected enum State {
         RUNNING,
         STOPPED;
     }

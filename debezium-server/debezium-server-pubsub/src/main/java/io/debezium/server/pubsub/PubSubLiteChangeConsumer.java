@@ -56,7 +56,7 @@ public class PubSubLiteChangeConsumer extends BaseChangeConsumer implements Debe
     private static final String PROP_PROJECT_ID = PROP_PREFIX + "project.id";
     private static final String PROP_REGION = PROP_PREFIX + "region";
 
-    public static interface PublisherBuilder {
+    public interface PublisherBuilder {
         Publisher get(String topicName);
     }
 

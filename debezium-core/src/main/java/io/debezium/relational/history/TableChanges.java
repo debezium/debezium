@@ -186,7 +186,7 @@ public class TableChanges implements Iterable<TableChange> {
      *
      * @param <T> target type
      */
-    public static interface TableChangesSerializer<T> {
+    public interface TableChangesSerializer<T> {
 
         T serialize(TableChanges tableChanges);
 

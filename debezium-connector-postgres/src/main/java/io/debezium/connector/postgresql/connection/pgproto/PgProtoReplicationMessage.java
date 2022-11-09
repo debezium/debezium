@@ -35,7 +35,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     private final PgProto.RowMessage rawMessage;
     private final TypeRegistry typeRegistry;
 
-    public PgProtoReplicationMessage(PgProto.RowMessage rawMessage, TypeRegistry typeRegistry) {
+    PgProtoReplicationMessage(PgProto.RowMessage rawMessage, TypeRegistry typeRegistry) {
         this.rawMessage = rawMessage;
         this.typeRegistry = typeRegistry;
 

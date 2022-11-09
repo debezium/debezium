@@ -48,7 +48,7 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
     private static final String PROP_CLIENT_PREFIX = PROP_PREFIX + "client.";
     private static final String PROP_PRODUCER_PREFIX = PROP_PREFIX + "producer.";
 
-    public static interface ProducerBuilder {
+    public interface ProducerBuilder {
         Producer<Object> get(String topicName, Object value);
     }
 

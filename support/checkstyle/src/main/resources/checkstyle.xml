@@ -30,6 +30,9 @@
             <property name="processJavadoc" value="true"/>
         </module>
 
+        <!-- Modifiers -->
+        <module name="RedundantModifier"/>
+
         <!-- Checks for common coding problems -->
         <module name="EqualsHashCode" />
         <module name="IllegalInstantiation" />

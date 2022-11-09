@@ -48,7 +48,7 @@ public class RouterTest {
 
     @Test(expected = DebeziumException.class)
     public void testExpressionRequired() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
@@ -57,7 +57,7 @@ public class RouterTest {
 
     @Test(expected = DebeziumException.class)
     public void shouldFailOnInvalidReturnValue() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "1");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -68,7 +68,7 @@ public class RouterTest {
 
     @Test
     public void shouldRoute() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -80,7 +80,7 @@ public class RouterTest {
 
     @Test
     public void shouldRouteMongoDbFormat() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : ((new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar' ? 'kretchmar' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -92,7 +92,7 @@ public class RouterTest {
     @Test
     @FixFor("DBZ-2024")
     public void shouldApplyTopicRegex() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(TOPIC_REGEX, "orig.*");
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
@@ -105,7 +105,7 @@ public class RouterTest {
 
     @Test
     public void shouldKeepNulls() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -117,7 +117,7 @@ public class RouterTest {
 
     @Test
     public void shouldDropNulls() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
@@ -130,7 +130,7 @@ public class RouterTest {
 
     @Test
     public void shouldEvaluateNulls() {
-        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+        try (ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");

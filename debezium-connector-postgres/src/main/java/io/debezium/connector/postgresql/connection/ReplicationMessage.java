@@ -40,7 +40,7 @@ public interface ReplicationMessage {
      * Data modification operation executed
      *
      */
-    public enum Operation {
+    enum Operation {
         INSERT,
         UPDATE,
         DELETE,
@@ -54,7 +54,7 @@ public interface ReplicationMessage {
     /**
      * A representation of column value delivered as a part of replication message
      */
-    public interface Column {
+    interface Column {
         String getName();
 
         PostgresType getType();
@@ -65,7 +65,7 @@ public interface ReplicationMessage {
          */
         ColumnTypeMetadata getTypeMetadata();
 
-        Object getValue(final PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
 
         boolean isOptional();
 
@@ -74,13 +74,13 @@ public interface ReplicationMessage {
         }
     }
 
-    public interface ColumnTypeMetadata {
+    interface ColumnTypeMetadata {
         int getLength();
 
         int getScale();
     }
 
-    public interface ColumnValue<T> {
+    interface ColumnValue<T> {
         T getRawValue();
 
         boolean isNull();
@@ -141,33 +141,33 @@ public interface ReplicationMessage {
     /**
      * @return A data operation executed
      */
-    public Operation getOperation();
+    Operation getOperation();
 
     /**
      * @return Transaction commit time for this change
      */
-    public Instant getCommitTime();
+    Instant getCommitTime();
 
     /**
      * @return An id of transaction to which this change belongs; will not be
      *         present for non-transactional logical decoding messages for instance
      */
-    public OptionalLong getTransactionId();
+    OptionalLong getTransactionId();
 
     /**
      * @return Table changed
      */
-    public String getTable();
+    String getTable();
 
     /**
      * @return Set of original values of table columns, null for INSERT
      */
-    public List<Column> getOldTupleList();
+    List<Column> getOldTupleList();
 
     /**
      * @return Set of new values of table columns, null for DELETE
      */
-    public List<Column> getNewTupleList();
+    List<Column> getNewTupleList();
 
     /**
      * @return true if this is the last message in the batch of messages with same LSN
@@ -192,7 +192,7 @@ public interface ReplicationMessage {
      * A special message type that is used to replace event filtered already at {@link MessageDecoder}.
      * Enables {@link PostgresStreamingChangeEventSource} to advance LSN forward even in case of such messages.
      */
-    public class NoopMessage implements ReplicationMessage {
+    class NoopMessage implements ReplicationMessage {
 
         private final Long transactionId;
         private final Instant commitTime;

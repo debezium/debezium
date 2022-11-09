@@ -73,7 +73,7 @@ public interface Configuration {
      * @param <C> the type of configuration
      * @param <B> the type of builder
      */
-    public static interface ConfigBuilder<C extends Configuration, B extends ConfigBuilder<C, B>> {
+    interface ConfigBuilder<C extends Configuration, B extends ConfigBuilder<C, B>> {
         /**
          * Associate the given value with the specified key.
          *
@@ -667,7 +667,7 @@ public interface Configuration {
     /**
      * A builder of Configuration objects.
      */
-    public static class Builder implements ConfigBuilder<Configuration, Builder> {
+    class Builder implements ConfigBuilder<Configuration, Builder> {
         private final Properties props = new Properties();
 
         protected Builder() {
@@ -727,7 +727,7 @@ public interface Configuration {
      *
      * @return the configuration builder
      */
-    public static Builder create() {
+    static Builder create() {
         return new Builder();
     }
 
@@ -737,7 +737,7 @@ public interface Configuration {
      * @param config the configuration to copy; may be null
      * @return the configuration builder
      */
-    public static Builder copy(Configuration config) {
+    static Builder copy(Configuration config) {
         return config != null ? new Builder(config.asProperties()) : new Builder();
     }
 
@@ -747,7 +747,7 @@ public interface Configuration {
      * @param prefix the required prefix for the system properties; may not be null but may be empty
      * @return the configuration
      */
-    public static Configuration fromSystemProperties(String prefix) {
+    static Configuration fromSystemProperties(String prefix) {
         return empty().withSystemProperties(prefix);
     }
 
@@ -756,7 +756,7 @@ public interface Configuration {
      *
      * @return an empty configuration; never null
      */
-    public static Configuration empty() {
+    static Configuration empty() {
         return new Configuration() {
             @Override
             public Set<String> keys() {
@@ -782,7 +782,7 @@ public interface Configuration {
      * @param properties the properties; may be null or empty
      * @return the configuration; never null
      */
-    public static Configuration from(Properties properties) {
+    static Configuration from(Properties properties) {
         Properties props = new Properties();
         if (properties != null) {
             props.putAll(properties);
@@ -812,7 +812,7 @@ public interface Configuration {
      * @param properties the properties; may be null or empty
      * @return the configuration; never null
      */
-    public static Configuration from(Map<String, ?> properties) {
+    static Configuration from(Map<String, ?> properties) {
         return from(properties, value -> {
             if (value == null) {
                 return null;
@@ -833,7 +833,7 @@ public interface Configuration {
      *            is to be excluded
      * @return the configuration; never null
      */
-    public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
+    static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
         Map<String, T> props = new HashMap<>();
         if (properties != null) {
             props.putAll(properties);
@@ -863,7 +863,7 @@ public interface Configuration {
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(URL url) throws IOException {
+    static Configuration load(URL url) throws IOException {
         try (InputStream stream = url.openStream()) {
             return load(stream);
         }
@@ -876,7 +876,7 @@ public interface Configuration {
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(File file) throws IOException {
+    static Configuration load(File file) throws IOException {
         try (InputStream stream = new FileInputStream(file)) {
             return load(stream);
         }
@@ -889,7 +889,7 @@ public interface Configuration {
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(InputStream stream) throws IOException {
+    static Configuration load(InputStream stream) throws IOException {
         try {
             Properties properties = new Properties();
             properties.load(stream);
@@ -907,7 +907,7 @@ public interface Configuration {
      * @return the configuration; never null
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(Reader reader) throws IOException {
+    static Configuration load(Reader reader) throws IOException {
         try {
             Properties properties = new Properties();
             properties.load(reader);
@@ -927,7 +927,7 @@ public interface Configuration {
      * @return the configuration; never null but possibly empty
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(String path, Class<?> clazz) throws IOException {
+    static Configuration load(String path, Class<?> clazz) throws IOException {
         return load(path, clazz.getClassLoader());
     }
 
@@ -940,7 +940,7 @@ public interface Configuration {
      * @return the configuration; never null but possibly empty
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(String path, ClassLoader classLoader) throws IOException {
+    static Configuration load(String path, ClassLoader classLoader) throws IOException {
         Logger logger = LoggerFactory.getLogger(Configuration.class);
         return load(path, classLoader, logger::debug);
     }
@@ -955,7 +955,7 @@ public interface Configuration {
      * @return the configuration; never null but possibly empty
      * @throws IOException if there is an error reading the stream
      */
-    public static Configuration load(String path, ClassLoader classLoader, Consumer<String> logger) throws IOException {
+    static Configuration load(String path, ClassLoader classLoader, Consumer<String> logger) throws IOException {
         try (InputStream stream = IoUtil.getResourceAsStream(path, classLoader, null, null, logger)) {
             Properties props = new Properties();
             if (stream != null) {
@@ -1000,7 +1000,7 @@ public interface Configuration {
      *
      * @return the set of keys; never null but possibly empty
      */
-    public Set<String> keys();
+    Set<String> keys();
 
     /**
      * Get the string value associated with the given key.
@@ -1008,7 +1008,7 @@ public interface Configuration {
      * @param key the key for the configuration property
      * @return the value, or null if the key is null or there is no such key-value pair in the configuration
      */
-    public String getString(String key);
+    String getString(String key);
 
     /**
      * Get the string value associated with the given key, returning the default value if there is no such key-value pair.

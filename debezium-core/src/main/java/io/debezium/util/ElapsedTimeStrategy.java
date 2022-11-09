@@ -28,7 +28,7 @@ public interface ElapsedTimeStrategy {
      *
      * @return the strategy; never null
      */
-    public static ElapsedTimeStrategy none() {
+    static ElapsedTimeStrategy none() {
         return () -> true;
     }
 
@@ -39,7 +39,7 @@ public interface ElapsedTimeStrategy {
      * @param delayInMilliseconds the time period; must be positive
      * @return the strategy; never null
      */
-    public static ElapsedTimeStrategy constant(Clock clock, long delayInMilliseconds) {
+    static ElapsedTimeStrategy constant(Clock clock, long delayInMilliseconds) {
         if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
@@ -83,10 +83,10 @@ public interface ElapsedTimeStrategy {
      * @param postStepDelay the time period before the step has occurred; must be positive
      * @return the strategy; never null
      */
-    public static ElapsedTimeStrategy step(Clock clock,
-                                           Duration preStepDelay,
-                                           BooleanSupplier stepFunction,
-                                           Duration postStepDelay) {
+    static ElapsedTimeStrategy step(Clock clock,
+                                    Duration preStepDelay,
+                                    BooleanSupplier stepFunction,
+                                    Duration postStepDelay) {
         long preStepDelayinMillis = preStepDelay.toMillis();
         long postStepDelayinMillis = postStepDelay.toMillis();
         if (preStepDelayinMillis <= 0) {
@@ -136,7 +136,7 @@ public interface ElapsedTimeStrategy {
      * @param delay the initial delay; must be positive
      * @return the strategy; never null
      */
-    public static ElapsedTimeStrategy linear(Clock clock, Duration delay) {
+    static ElapsedTimeStrategy linear(Clock clock, Duration delay) {
         long delayInMilliseconds = delay.toMillis();
         if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
@@ -176,9 +176,9 @@ public interface ElapsedTimeStrategy {
      * @param maxDelay the maximum delay; must be greater than the initial delay
      * @return the strategy; never null
      */
-    public static ElapsedTimeStrategy exponential(Clock clock,
-                                                  Duration initialDelay,
-                                                  Duration maxDelay) {
+    static ElapsedTimeStrategy exponential(Clock clock,
+                                           Duration initialDelay,
+                                           Duration maxDelay) {
         return exponential(clock, initialDelay.toMillis(), maxDelay.toMillis(), 2.0);
     }
 
@@ -191,10 +191,10 @@ public interface ElapsedTimeStrategy {
      * @param multiplier the factor by which the delay increases each pass
      * @return the strategy
      */
-    public static ElapsedTimeStrategy exponential(Clock clock,
-                                                  long initialDelayInMilliseconds,
-                                                  long maxDelayInMilliseconds,
-                                                  double multiplier) {
+    static ElapsedTimeStrategy exponential(Clock clock,
+                                           long initialDelayInMilliseconds,
+                                           long maxDelayInMilliseconds,
+                                           double multiplier) {
         if (multiplier <= 1.0) {
             throw new IllegalArgumentException("Multiplier must be greater than 1");
         }

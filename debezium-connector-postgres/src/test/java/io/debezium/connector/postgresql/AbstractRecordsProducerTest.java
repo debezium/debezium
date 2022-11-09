@@ -1151,7 +1151,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected static class SchemaAndValueField {
         @FunctionalInterface
-        protected static interface Condition {
+        protected interface Condition {
             void assertField(String fieldName, Object expectedValue, Object actualValue);
         }
 

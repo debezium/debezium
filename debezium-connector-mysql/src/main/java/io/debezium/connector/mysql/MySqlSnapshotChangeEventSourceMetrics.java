@@ -19,8 +19,8 @@ class MySqlSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSo
 
     private final AtomicBoolean holdingGlobalLock = new AtomicBoolean();
 
-    public MySqlSnapshotChangeEventSourceMetrics(MySqlTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                 EventMetadataProvider eventMetadataProvider) {
+    MySqlSnapshotChangeEventSourceMetrics(MySqlTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                          EventMetadataProvider eventMetadataProvider) {
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider);
     }
 

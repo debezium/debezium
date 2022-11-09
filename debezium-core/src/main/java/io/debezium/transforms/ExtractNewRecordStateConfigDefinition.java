@@ -16,14 +16,14 @@ public class ExtractNewRecordStateConfigDefinition {
     public static final String DELETED_FIELD = "__deleted";
     public static final String METADATA_FIELD_PREFIX = "__";
 
-    public static enum DeleteHandling implements EnumeratedValue {
+    public enum DeleteHandling implements EnumeratedValue {
         DROP("drop"),
         REWRITE("rewrite"),
         NONE("none");
 
         private final String value;
 
-        private DeleteHandling(String value) {
+        DeleteHandling(String value) {
             this.value = value;
         }
 

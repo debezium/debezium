@@ -67,7 +67,7 @@ public class Key {
      * Provides the column(s) that should be used within the message key for a given table.
      */
     @FunctionalInterface
-    public static interface KeyMapper {
+    public interface KeyMapper {
 
         /**
          * @param table {@code Table}

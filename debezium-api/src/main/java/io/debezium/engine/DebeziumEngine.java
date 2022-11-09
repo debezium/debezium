@@ -45,12 +45,12 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 @Incubating
 public interface DebeziumEngine<R> extends Runnable, Closeable {
 
-    public static final String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
+    String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
 
     /**
      * A callback function to be notified when the connector completes.
      */
-    public interface CompletionCallback {
+    interface CompletionCallback {
         /**
          * Handle the completion of the embedded connector engine.
          *
@@ -65,7 +65,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     /**
      * Callback function which informs users about the various stages a connector goes through during startup
      */
-    public interface ConnectorCallback {
+    interface ConnectorCallback {
 
         /**
          * Called after a connector has been successfully started by the engine; i.e. {@link SourceConnector#start(Map)} has
@@ -104,7 +104,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Contract passed to {@link ChangeConsumer}s, allowing them to commit single records as they have been processed
      * and to signal that offsets may be flushed eventually.
      */
-    public static interface RecordCommitter<R> {
+    interface RecordCommitter<R> {
 
         /**
          * Marks a single record as processed, must be called for each
@@ -142,7 +142,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Contract that should be passed to {@link RecordCommitter#markProcessed(Object, Offsets)} for marking a record
      * as processed with updated offsets.
      */
-    public interface Offsets {
+    interface Offsets {
 
         /**
          * Associates a key with a specific value, overwrites the value if the key is already present.
@@ -157,7 +157,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
      * to process multiple records in one go, acknowledging their processing once that's done.
      */
-    public static interface ChangeConsumer<R> {
+    interface ChangeConsumer<R> {
 
         /**
          * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(Object)}
@@ -180,7 +180,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     /**
      * A builder to set up and create {@link DebeziumEngine} instances.
      */
-    public static interface Builder<R> {
+    interface Builder<R> {
 
         /**
          * Call the specified function for every {@link SourceRecord data change event} read from the source database.
@@ -269,7 +269,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <T> Builder<ChangeEvent<T, T>> create(Class<? extends SerializationFormat<T>> format) {
+    static <T> Builder<ChangeEvent<T, T>> create(Class<? extends SerializationFormat<T>> format) {
         return create(format, format);
     }
 
@@ -281,13 +281,13 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <K, V> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
-                                                           Class<? extends SerializationFormat<V>> valueFormat) {
+    static <K, V> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                    Class<? extends SerializationFormat<V>> valueFormat) {
 
         return create(KeyValueChangeEventFormat.of(keyFormat, valueFormat));
     }
 
-    public static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
+    static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
         final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
         final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
@@ -306,7 +306,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
+    static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
         final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
         final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
@@ -323,7 +323,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Internal contract between the API and implementation, for bootstrapping the latter.
      * Not intended for direct usage by application code.
      */
-    public static interface BuilderFactory {
+    interface BuilderFactory {
 
         /**
          * Prescribe the output format used by the {@link DebeziumEngine}.

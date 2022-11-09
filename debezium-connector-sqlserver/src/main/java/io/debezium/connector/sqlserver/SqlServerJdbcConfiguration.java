@@ -26,7 +26,7 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
     /**
      * A field for the named instance of the database server. This field has no default value.
      */
-    public static final Field INSTANCE = Field.create("instance",
+    Field INSTANCE = Field.create("instance",
             "Named instance of the database server");
 
     /**
@@ -35,7 +35,7 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
      * @param config the configuration; may not be null
      * @return the SqlServerJdbcConfiguration; never null
      */
-    public static SqlServerJdbcConfiguration adapt(Configuration config) {
+    static SqlServerJdbcConfiguration adapt(Configuration config) {
         if (config instanceof SqlServerJdbcConfiguration) {
             return (SqlServerJdbcConfiguration) config;
         }
@@ -63,7 +63,7 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
      * @see SqlServerJdbcConfiguration#copy(Configuration)
      * @see SqlServerJdbcConfiguration#create()
      */
-    public static interface Builder extends Configuration.ConfigBuilder<SqlServerJdbcConfiguration, Builder> {
+    interface Builder extends Configuration.ConfigBuilder<SqlServerJdbcConfiguration, Builder> {
         /**
          * Use the given named instance in the resulting configuration.
          *
@@ -81,7 +81,7 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
      * @param config the configuration to copy
      * @return the configuration builder
      */
-    public static Builder copy(Configuration config) {
+    static Builder copy(Configuration config) {
         return new Builder() {
             private Configuration.Builder builder = Configuration.copy(config);
 
@@ -132,7 +132,7 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
      *
      * @return the configuration builder
      */
-    public static Builder create() {
+    static Builder create() {
         return new Builder() {
             private Configuration.Builder builder = Configuration.create();
 

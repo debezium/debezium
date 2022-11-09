@@ -818,8 +818,8 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         public final AssertionType assertionType;
         public final boolean temporalType;
 
-        public ColumnDefinition(String name, String definition, String addDefaultValue, String modifyDefaultValue,
-                                Object expectedAddDefaultValue, Object expectedModifyDefaultValue, AssertionType assertionType) {
+        ColumnDefinition(String name, String definition, String addDefaultValue, String modifyDefaultValue,
+                         Object expectedAddDefaultValue, Object expectedModifyDefaultValue, AssertionType assertionType) {
             this.name = name;
             this.definition = definition;
             this.addDefaultValue = addDefaultValue;

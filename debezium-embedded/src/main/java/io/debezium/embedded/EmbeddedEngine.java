@@ -486,7 +486,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     @ThreadSafe
     @Deprecated
-    public static interface RecordCommitter extends DebeziumEngine.RecordCommitter<SourceRecord> {
+    public interface RecordCommitter extends DebeziumEngine.RecordCommitter<SourceRecord> {
     }
 
     /**
@@ -494,7 +494,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * to process multiple records in one go, acknowledging their processing once that's done.
      */
     @Deprecated
-    public static interface ChangeConsumer extends DebeziumEngine.ChangeConsumer<SourceRecord> {
+    public interface ChangeConsumer extends DebeziumEngine.ChangeConsumer<SourceRecord> {
     }
 
     private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
@@ -534,7 +534,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * A builder to set up and create {@link EmbeddedEngine} instances.
      */
     @Deprecated
-    public static interface Builder extends DebeziumEngine.Builder<SourceRecord> {
+    public interface Builder extends DebeziumEngine.Builder<SourceRecord> {
 
         /**
          * Use the specified configuration for the connector. The configuration is assumed to already be valid.

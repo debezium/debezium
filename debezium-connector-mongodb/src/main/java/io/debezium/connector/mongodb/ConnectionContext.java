@@ -296,7 +296,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     @FunctionalInterface
-    public static interface PreferredConnectFailed {
+    public interface PreferredConnectFailed {
         void failed(int attemptNumber, int attemptsRemaining, Throwable error);
     }
 

@@ -55,7 +55,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
      */
-    public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
+    public enum BigIntUnsignedHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code BIGINT UNSIGNED} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -70,7 +70,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private BigIntUnsignedHandlingMode(String value) {
+        BigIntUnsignedHandlingMode(String value) {
             this.value = value;
         }
 
@@ -127,7 +127,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot when it is needed.
@@ -172,8 +172,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         private final boolean shouldSnapshotOnSchemaError;
         private final boolean shouldSnapshotOnDataError;
 
-        private SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
-                             boolean shouldSnapshotOnDataError) {
+        SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
+                     boolean shouldSnapshotOnDataError) {
             this.value = value;
             this.includeSchema = includeSchema;
             this.includeData = includeData;
@@ -265,7 +265,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
     }
 
-    public static enum SnapshotNewTables implements EnumeratedValue {
+    public enum SnapshotNewTables implements EnumeratedValue {
         /**
          * Do not snapshot new tables
          */
@@ -278,7 +278,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotNewTables(String value) {
+        SnapshotNewTables(String value) {
             this.value = value;
         }
 
@@ -325,7 +325,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined Snapshot Locking Mode options.
      */
-    public static enum SnapshotLockingMode implements EnumeratedValue {
+    public enum SnapshotLockingMode implements EnumeratedValue {
 
         /**
          * This mode will block all writes for the entire duration of the snapshot.
@@ -361,7 +361,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotLockingMode(String value) {
+        SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -434,7 +434,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public static enum SecureConnectionMode implements EnumeratedValue {
+    public enum SecureConnectionMode implements EnumeratedValue {
         /**
          * Establish an unencrypted connection.
          */
@@ -463,7 +463,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SecureConnectionMode(String value) {
+        SecureConnectionMode(String value) {
             this.value = value;
         }
 

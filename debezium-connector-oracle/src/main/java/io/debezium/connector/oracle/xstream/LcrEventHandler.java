@@ -64,11 +64,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
-    public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
-                           EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
-                           OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
-                           boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler,
+                    EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
+                    OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
+                    boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
+                    OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;

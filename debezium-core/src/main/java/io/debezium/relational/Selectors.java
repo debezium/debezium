@@ -46,7 +46,7 @@ public class Selectors {
      * purpose of table filtering.
      */
     @FunctionalInterface
-    public static interface TableIdToStringMapper {
+    public interface TableIdToStringMapper {
         String toString(TableId tableId);
     }
 

@@ -70,7 +70,7 @@ public interface ValueConverter {
      *
      * @return the pass-through {@link ValueConverter}; never null
      */
-    public static ValueConverter passthrough() {
+    static ValueConverter passthrough() {
         return (data) -> data;
     }
 }

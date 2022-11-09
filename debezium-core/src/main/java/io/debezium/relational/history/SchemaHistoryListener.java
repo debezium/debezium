@@ -12,29 +12,29 @@ package io.debezium.relational.history;
  *
  */
 public interface SchemaHistoryListener {
-    public void started();
+    void started();
 
-    public void stopped();
+    void stopped();
 
-    public void recoveryStarted();
+    void recoveryStarted();
 
-    public void recoveryStopped();
+    void recoveryStopped();
 
     /**
      * Invoked for every change read from the history during recovery.
      *
      * @param record
      */
-    public void onChangeFromHistory(HistoryRecord record);
+    void onChangeFromHistory(HistoryRecord record);
 
     /**
      * Invoked for every change applied and not filtered.
      *
      * @param record
      */
-    public void onChangeApplied(HistoryRecord record);
+    void onChangeApplied(HistoryRecord record);
 
-    static SchemaHistoryListener NOOP = new SchemaHistoryListener() {
+    SchemaHistoryListener NOOP = new SchemaHistoryListener() {
         @Override
         public void stopped() {
         }
