@@ -39,13 +39,13 @@
                       -Dgroups="${DBZ_GROUPS_ARG}" \
                       "${OPTIONAL_ARGS[@]}"
 
-  pushd debezium-testing/debezium-testing-system/target || exit 1
-  zip artifacts failsafe-reports/*.xml
+  pushd debezium-testing/debezium-testing-system/target/failsafe-reports || exit 1
+  zip artifacts ./*.xml
   mv  artifacts.zip /testsuite
   popd || exit 1
 } 2>&1 | tee /tmp/testsuite_log
 
-# move from tmp to expected readiness file
+# move to a location checked by a readiness probe to signal jenkins artefacts are ready
 cp /tmp/testsuite_log "${TESTSUITE_LOG}"
 
 # keep alive until test results and logs are copied and pod is killed by jenkins job.

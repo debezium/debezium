@@ -243,6 +243,29 @@ pipeline {
             ./jenkins-jobs/scripts/ocp-projects.sh --delete --testsuite --project ${OCP_PROJECT_NAME}
             '''
             archiveArtifacts "**/testsuite_artifacts/*"
+            withCredentials([
+                    usernamePassword(credentialsId: "rh-integration-quay-creds", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
+                    string(credentialsId: "report-portal-token", variable: 'RP_TOKEN'),
+            ]) {
+                sh '''
+                if [ "${PRODUCT_BUILD}" == true ] ; then
+                    export ATTRIBUTES="downstream ocp"
+                else
+                    export ATTRIBUTES="upstream ocp"
+                fi
+
+                cd ${WORKSPACE}/testsuite_artifacts
+                mkdir results    
+                unzip artifacts.zip -d results
+                
+                RESULTS_FOLDER="."
+                rm -rf ${RESULTS_FOLDER}/failsafe-summary.xml            
+                
+                docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+
+                ${DEBEZIUM_LOCATION}/jenkins-jobs/scripts/report.sh --connector false --env-file env-file.env --results-folder ${RESULTS_FOLDER} --attributes "${ATTRIBUTES}"
+                '''
+            }
         }
     }
 }
