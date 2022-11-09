@@ -106,7 +106,7 @@ public class TopicSelector<I extends DataCollectionId> {
 
         private final DataCollectionTopicNamer<I> delegate;
 
-        public TopicNameSanitizer(DataCollectionTopicNamer<I> delegate) {
+        TopicNameSanitizer(DataCollectionTopicNamer<I> delegate) {
             this.delegate = delegate;
         }
 
@@ -159,7 +159,7 @@ public class TopicSelector<I extends DataCollectionId> {
         private final BoundedConcurrentHashMap<I, String> topicNames;
         private final DataCollectionTopicNamer<I> delegate;
 
-        public TopicNameCache(DataCollectionTopicNamer<I> delegate) {
+        TopicNameCache(DataCollectionTopicNamer<I> delegate) {
             this.topicNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LRU);
             this.delegate = delegate;
         }

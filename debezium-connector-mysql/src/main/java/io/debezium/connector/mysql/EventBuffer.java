@@ -63,7 +63,7 @@ class EventBuffer {
      */
     private BinlogPosition forwardTillPosition;
 
-    public EventBuffer(int capacity, MySqlStreamingChangeEventSource streamingChangeEventSource, ChangeEventSourceContext changeEventSourceContext) {
+    EventBuffer(int capacity, MySqlStreamingChangeEventSource streamingChangeEventSource, ChangeEventSourceContext changeEventSourceContext) {
         this.capacity = capacity;
         this.buffer = new ArrayBlockingQueue<>(capacity);
         this.streamingChangeEventSource = streamingChangeEventSource;

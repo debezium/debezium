@@ -423,7 +423,7 @@ public class KafkaCluster {
      * @param <K> the type of key
      * @param <V> the type of value
      */
-    public static interface InteractiveProducer<K, V> extends Closeable {
+    public interface InteractiveProducer<K, V> extends Closeable {
         /**
          * Write to the topic with the given name a record with the specified key and value. The message is flushed immediately.
          *
@@ -448,7 +448,7 @@ public class KafkaCluster {
          * Close this producer's connection to Kafka and clean up all resources.
          */
         @Override
-        public void close();
+        void close();
     }
 
     /**
@@ -457,7 +457,7 @@ public class KafkaCluster {
      * @param <K> the type of key
      * @param <V> the type of value
      */
-    public static interface InteractiveConsumer<K, V> extends Closeable {
+    public interface InteractiveConsumer<K, V> extends Closeable {
         /**
          * Block until a record can be read from this consumer's topic, and return the value in that record.
          *
@@ -523,7 +523,7 @@ public class KafkaCluster {
          * Asynchronously close this consumer's connection to Kafka and begin to clean up all resources.
          */
         @Override
-        public void close();
+        void close();
     }
 
     /**

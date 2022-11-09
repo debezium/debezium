@@ -38,7 +38,7 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
     /**
      * Special values for floating-point and numeric types
      */
-    private static enum SpecialValue {
+    private enum SpecialValue {
         NAN,
         POSITIVE_INFINITY,
         NEGATIVE_INFINITY;

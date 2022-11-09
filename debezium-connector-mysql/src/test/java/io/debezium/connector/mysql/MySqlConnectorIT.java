@@ -2541,7 +2541,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private static class NoTombStonesHandler implements DebeziumEngine.ChangeConsumer<SourceRecord> {
         protected BlockingQueue<SourceRecord> recordQueue;
 
-        public NoTombStonesHandler(BlockingQueue<SourceRecord> recordQueue) {
+        NoTombStonesHandler(BlockingQueue<SourceRecord> recordQueue) {
             this.recordQueue = recordQueue;
         }
 

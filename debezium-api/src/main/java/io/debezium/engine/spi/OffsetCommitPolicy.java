@@ -24,7 +24,7 @@ public interface OffsetCommitPolicy {
      * An {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
      * performance, but it has the least potential for seeing source records more than once upon restart.
      */
-    public static class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
+    class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
 
         @Override
         public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
@@ -37,7 +37,7 @@ public interface OffsetCommitPolicy {
      * time is less than {@code 0} then the policy will behave as {@link AlwaysCommitOffsetPolicy}.
      * @see io.debezium.engine.DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS
      */
-    public static class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
+    class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 
         private final Duration minimumTime;
 

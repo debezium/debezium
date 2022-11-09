@@ -41,7 +41,7 @@ public class DebeziumTextMap implements TextMap {
     }
 
     public String export() {
-        try (final Writer sw = new StringWriter()) {
+        try (Writer sw = new StringWriter()) {
             props.store(sw, null);
             return sw.toString();
         }
@@ -51,7 +51,7 @@ public class DebeziumTextMap implements TextMap {
     }
 
     public void load(String span) {
-        try (final Reader sr = new StringReader(span)) {
+        try (Reader sr = new StringReader(span)) {
             props.load(sr);
         }
         catch (IOException e) {

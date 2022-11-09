@@ -177,7 +177,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     @FunctionalInterface
-    private static interface BinlogChangeEmitter<T> {
+    private interface BinlogChangeEmitter<T> {
         void emit(TableId tableId, T data) throws InterruptedException;
     }
 

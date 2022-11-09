@@ -19,7 +19,7 @@ final class AttributeImpl implements Attribute {
     private final String name;
     private final String value;
 
-    public AttributeImpl(String name, String value) {
+    AttributeImpl(String name, String value) {
         this.name = name;
         this.value = value;
     }

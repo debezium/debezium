@@ -18,7 +18,7 @@ public interface Clock {
     /**
      * The {@link Clock} instance that uses the {@link System} methods.
      */
-    static final Clock SYSTEM = new Clock() {
+    Clock SYSTEM = new Clock() {
         @Override
         public long currentTimeInMillis() {
             return System.currentTimeMillis();
@@ -76,6 +76,6 @@ public interface Clock {
      * Get the current time in milliseconds.
      * @return the current time in milliseconds.
      */
-    public long currentTimeInMillis();
+    long currentTimeInMillis();
 
 }

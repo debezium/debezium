@@ -254,7 +254,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         Testing.Print.enable();
         final int ROWS = 10;
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             for (int i = 0; i < ROWS; i++) {
                 connection.executeWithoutCommitting(String.format(
@@ -307,7 +307,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
         Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(MySqlBinaryProtocolFieldReader.class);
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             connection.executeWithoutCommitting("INSERT INTO a_date (pk) VALUES (1)");
             connection.commit();

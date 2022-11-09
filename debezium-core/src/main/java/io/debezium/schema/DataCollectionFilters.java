@@ -14,10 +14,10 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 public interface DataCollectionFilters {
 
-    public DataCollectionFilter<?> dataCollectionFilter();
+    DataCollectionFilter<?> dataCollectionFilter();
 
     @FunctionalInterface
-    public interface DataCollectionFilter<T extends DataCollectionId> {
+    interface DataCollectionFilter<T extends DataCollectionId> {
         boolean isIncluded(T id);
     }
 }
