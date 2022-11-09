@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -179,6 +180,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         int batchSize = records.size();
 
         if (batchSize > 0) {
+            // We want to log the number of records per topic...
+            if (LOGGER.isDebugEnabled()) {
+                final Map<String, Integer> topicCounts = new LinkedHashMap<>();
+                records.forEach(r -> topicCounts.merge(r.topic(), 1, Integer::sum));
+                for (Map.Entry<String, Integer> topicCount : topicCounts.entrySet()) {
+                    LOGGER.debug("Sending {} records to topic {}", topicCount.getValue(), topicCount.getKey());
+                }
+            }
+
             SourceRecord lastRecord = records.get(batchSize - 1);
             updateLastOffset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
             previousOutputBatchSize += batchSize;
