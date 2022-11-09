@@ -1011,6 +1011,39 @@ By default the same name is used.
 
 |===
 
+==== NATS JetStream
+NATS has a built-in distributed persistence system called https://docs.nats.io/nats-concepts/jetstream[JetStream] which enables new functionalities and higher qualities of service on top of the base 'Core NATS' functionalities and qualities of service.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[nats-jetstream-type]]<<nats-jetstream-type, `debezium.sink.type`>>
+|
+|Must be set to `nats-jetstream`.
+
+|[[nats-jetstream-url]]<<nats-jetstream-url, `debezium.sink.nats-jetstream.url`>>
+|
+| URL (or comma separated list of URLs) to a node or nodes in the cluster formatted as `nats://host:port`.
+
+|[[nats-jetstream-create-stream]]<<nats-jetstream-create-stream, `debezium.sink.nats-jetstream.create-stream`>>
+|
+|If true, a basic stream will be created.
+
+|[[nats-jetstream-subjects]]<<nats-jetstream-subjects, `debezium.sink.nats-jetstream.subjects`>>
+| \*.*.*
+|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.*
+
+|[[nats-jetstream-storage]]<<nats-jetstream-storage, `debezium.sink.nats-jetstream.storage`>>
+| memory
+| Controls how the messages are saved in the stream. Can be memory or file.
+
+|===
+
+If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
+
 ==== Apache Kafka
 
 https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. Debezium server supports publishing captured change events to a configured Kafka message broker.
