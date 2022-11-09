@@ -4023,104 +4023,86 @@ This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[
 
 endif::community[]
 
-// Type: concept
-// ModuleID: how-debezium-oracle-connectors-handle-faults-and-problems
-// Title: How {prodname} Oracle connectors handle faults and problems
-[[oracle-when-things-go-wrong]]
-== Behavior when things go wrong
+[[oracle-frequently-asked-questions]]
+== Frequently Asked Questions
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
-When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+*Is Oracle 11g supported?*::
+Oracle 11g is not supported; however, we do aim to be backward compatible with Oracle 11g on a best-effort basis.
+We rely on the community to communicate compatibility concerns with Oracle 11g as well as provide bug fixes when a regression is identified.
 
-If a fault occurs, {prodname} does not lose any events.
-However, while it is recovering from the fault, it might repeat some change events.
-In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+*Isn't Oracle LogMiner deprecated?*::
+No, Oracle only deprecated the continuous mining option with Oracle LogMiner in Oracle 12c and removed that option starting with Oracle 19c.
+The {prodname} Oracle connector does not rely on this option to function, and therefore can safely be used with newer versions of Oracle without any impact.
 
-The rest of this section describes how {prodname} handles various kinds of faults and problems.
+*How do I change the position in the offsets?*::
+The {prodname} Oracle connector maintains two critical values in the offsets, a field named `scn` and another named `commit_scn`.
+The `scn` field is a string that represents the low-watermark starting position the connector used when capturing changes.
 
-[id="oracle-logs-do-not-contain-offset-perform-new-snapshot"]
-=== Logs do not contain offset, perform a new snapshot
+. Find out the name of the topic that contains the connector offsets.
+This is configured based on the value set as the  `offset.storage.topic` configuration property.
 
-In some cases, after the {prodname} Oracle connector restarts, it reports the following error:
-
-[source]
+. Find out the last offset for the connector, the key under which it is stored and identify the partition used to store the offset.
+This can be done using the `kafkacat` utility script provided by the Kafka broker installation.
+An example might look like this:
++
+[source,shell]
 ----
-Online REDO LOG files or archive logs do not contain the offset scn xxxxxxx. Please perform a new snapshot.
+kafkacat -b localhost -C -t my_connect_offsets -f 'Partition(%p) %k %s\n'
+Partition(11) ["inventory-connector",{"server":"server1"}] {"scn":"324567897", "commit_scn":"324567897: 0x2832343233323:1"}
 ----
-
-After the connector examines the redo and archive logs, if it cannot find the SCN that is recorded in the connector offsets, it returns the preceding error.
-Because the connector uses the SCN to determine where to resume processing, if the expected SCN if not found, a new snapshot must be completed.
-
-You might find that the `V$ARCHIVED_LOG` table contains a record with an SCN that matches the expected range.
-However, the record might not be available for mining.
-To be available for mining, a record must include a filename in the `NAME` column, a value of `NO` in the `DELETED` column, and a value of `A` (available) in the `STATUS` column.
-If a record does not match any of these criteria, it is considered incomplete and cannot be mined.
-
-At a minimum, archive logs must be retained for as long as the longest downtime window of the connector.
-
-[NOTE]
-====
-Records that have no value in the `NAME` column no longer exist in the file system.
-In such records, the value of the `DELETED` field is set to `YES`, and the `STATUS` field is set to `D` to indicate that the log is deleted.
-====
-
-[id="oracle-cannot-reference-overflow-table"]
-=== ORA-25191 - Cannot reference overflow table of an index-organized table
-
-Oracle might issue this error during the snapshot phase when encountering an index-organized table (IOT).
-This error means that the connector has attempted to execute an operation that must be executed against the parent index-organized table that contains the specified overflow table.
-
-To resolve this, the IOT name used in the SQL operation should be replaced with the parent index-organized table name.
-To determine the parent index-organized table name, use the following SQL:
-
-[source,sql]
++
+The key for `inventory-connector` is `["inventory-connector",{"server":"server1"}]`, the partition is `11` and the last offset is the contents that follows the key.
+. To move back to a previous offset the connector should be stopped and the following command has to be issued:
++
+[source,shell]
 ----
-SELECT IOT_NAME
-  FROM DBA_TABLES
- WHERE OWNER='<tablespace-owner>'
-   AND TABLE_NAME='<iot-table-name-that-failed>'
+echo '["inventory-connector",{"server":"server1"}]|{"scn":"3245675000","commit_scn":"324567500"}' | \
+kafkacat -P -b localhost -t my_connect_offsets -K \| -p 11
 ----
++
+This writes to partition `11` of the `my_connect_offsets` topic the given key and offset value.
+In this example, we are reversing the connector back to SCN `3245675000` rather than `324567897`.
 
-The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
+*What happens if the connector cannot find logs with a given offset SCN?*::
+The {prodname} connector maintains a low and high -watermark SCN value in the connector offsets.
+The low-watermark SCN represents the starting position and must exist in the available online redo or archive logs in order for the connector to start successfully.
+When the connector reports it cannot find this offset SCN, this indicates that the logs that are still available do not contain the SCN and therefore the connector cannot mine changes from where it left off.
++
+When this happens, there are two options.
+The first is to remove the history topic and offsets for the connector and restart the connector, taking a new snapshot as suggested.
+This will guarantee that no data loss will occur for any topic consumers.
+The second is to manually manipulate the offsets, advancing the SCN to a position that is available in the redo or archive logs.
+This will cause changes that occurred between the old SCN value and the newly provided SCN value to be lost and not written to the topics.
+This is not recommended.
 
-[id="oracle-pga-aggregate-limit"]
-=== ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
+*What's the difference between the various mining strategies?*::
+The {prodname} Oracle connector provides two options for `log.mining.strategy`.
++
+The default is `redo_in_catalog`, and this instructs the connector to write the Oracle data dictionary to the redo logs everytime a log switch is detected.
+This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
+This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
+This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
++
+The alternative option, `online_catalog`, does not write the data dictionary to the redo logs.
+Instead, Oracle LogMiner will always use the online data dictionary that contains the current state of the table's structure.
+This also means that if a table's structure changes and no longer matches the online data dictionary, Oracle LogMiner will be unable to resolve table or column names if the table's structure is changed.
+This mining strategy option should not be used if the tables being captured are subject to frequent schema changes.
+It's important that all data changes be lock-stepped with the schema change such that all changes have been captured from the logs for the table, stop the connector, apply the schema change, and restart the connector and resume data changes on the table.
+This option requires less Oracle database memory and Oracle LogMiner sessions generally start substantially faster since the data dictionary does not need to be loaded or primed by the LogMiner process.
 
-Oracle might report this error when {prodname} connects to a database in which changes occur infrequently.
-The {prodname} connector starts an Oracle LogMiner session and reuses this session until a log switch is detected.
-The reuse is both a performance and resource utilization optimization; however, a long-running mining session can cause high Program Global Area (PGA) memory usage.
+*Why are changes made by SYS or SYSTEM users not captured?*::
+The Oracle database uses the `SYS` and `SYSTEM` user accounts to perform a multitude of internal operations in the redo logs that are not important for change data capture.
+When the {prodname} Oracle connector reads changes from Oracle LogMiner, changes made by these two user accounts are filtered out automatically.
+So if you are using either of these two user accounts and not seeing change events, this is why changes made by those users are not captured.
+You should use a designated non-system user account to perform all changes you wish to be captured.
 
-If your redo log switches infrequently, you can avoid the ORA-04036 error by specifying how frequently Oracle switches logs.
-A log switch causes the connector to restart the mining session, thereby avoiding high PGA memory usage.
-The following configuration forces Oracle to switch log files every 20 minutes if a log switch does not occur during that interval:
-
-[source,sql]
-----
-ALTER SYSTEM SET archive_lag_target=1200 scope=both;
-----
-
-Running the preceding query requires specific administrative privileges.
-Coordinate with your database administrator to implement the change.
-
-As alternative to adjusting the Oracle `ARCHIVE_LAG_TARGET` parameter, you can limit the duration of an Oracle LogMiner session by setting the connector configuration option xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`].
-The `log.mining.session.max.ms` option causes the LogMiner session to restart regularly, whether or not the switch to a new database log occurs.
-
-[id="oracle-sys-system-change-not-emitted"]
-=== LogMiner adapter does not capture changes made by SYS or SYSTEM
-
-Oracle uses the `SYS` and `SYSTEM` accounts to carry out many internal changes.
-When the {prodname} Oracle connector fetches changes from LogMiner, it automatically filters changes that originate from these administrator accounts.
-To ensure that the connector emit event records when you change a table, never use the `SYS` or `SYSTEM` user accounts to modify the table.
-
-[id="oracle-stops-capturing-changes-aws"]
-=== Connector stops capturing changes from Oracle on AWS
-
+*Why does the connector appear to stop capturing changes on AWS?*::
 Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
 JDBC calls that require more than 350 seconds to complete can hang indefinitely.
-
++
 In situations where calls to the Oracle LogMiner API take more than 350 seconds to complete, a timeout can be triggered, causing the AWS Gateway Load Balancer to hang.
 For example, such timeouts can occur when a LogMiner session that processes large amounts of data runs concurrently with Oracle's periodic checkpointing task.
-
++
 ifdef::product[]
 To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following steps as root or a super-user:
 endif::product[]
@@ -4144,17 +4126,60 @@ net.ipv4.tcp_keepalive_time=60
 database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(Host=hostname)(Port=port)))(CONNECT_DATA=(SERVICE_NAME=serviceName)))
 ```
 
++
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
 
-[id="oracle-oracle-11-exception-ora01882"]
-=== Connection fails with error `ORA-01882: timezone region not found`
+*What's the cause for ORA-01555 and how to handle it?*::
+The {prodname} Oracle connector uses flashback queries when the initial snapshot phase executes.
+A flashback query is a special type of query that relies on the flashback area, maintained by the database's `UNDO_RETENTION` database parameter, to return the results of a query based on what the contents of the table had at a given time, or in our case at a given SCN.
+By default, Oracle generally only maintains an undo or flashback area for approximately 15 minutes unless this has been increased or decreased by your database administrator.
+For configurations that capture large tables, it may take longer than 15 minutes or your configured `UNDO_RETENTION` to perform the initial snapshot and this will eventually lead to this exception:
++
+```
+ORA-01555: snapshot too old: rollback segment number 12345 with name "_SYSSMU11_1234567890$" too small
+```
++
+The first way to deal with this exception is to work with your database administrator and see whether they can increase the `UNDO_RETENTION` database parameter temporarily.
+This does not require a restart of the Oracle database, so this can be done online without impacting database availability.
+However, changing this may still lead to the above exception or a "snapshot too old" exception if the tablespace has inadequate space to store the necessary undo data.
++
+The second way to deal with this exception is to not rely on the initial snapshot at all, setting the `snapshot.mode` to `schema_only` and then instead relying on incremental snapshots.
+An incremental snapshot does not rely on a flashback query and therefore isn't subject to ORA-01555 exceptions.
 
-When you start a connector that the Oracle JDBC driver (`ojdbc8.jar`) to access an Oracle 11g database, the connector might report the following error:
+*What's the cause for ORA-04036 and how to handle it?*::
+The {prodname} Oracle connector may report an ORA-04036 exception when the database changes occur infrequently.
+An Oracle LogMiner session is started and re-used until a log switch is detected.
+The session is re-used as it provides the optimal performance utilization with Oracle LogMiner, but should a long-running mining session occur, this can lead to excessive PGA memory usage, eventually causing an exception like this:
++
+```
+ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
+```
++
+This exception can be avoided by specifying how frequent Oracle switches redo logs or how long the {prodname} Oracle connector is allowed to re-use the mining session.
+The {prodname} Oracle connector provides a configuration option, xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`], which controls how long the current Oracle LogMiner session can be re-used for before being closed and a new session started.
+This allows the database resources to be kept in-check without exceeding the PGA memory allowed by the database.
 
-```shell
-Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
+*What's the cause for ORA-01882 and how to handle it?*::
+The {prodname} Oracle connector may report the following exception when connecting to an Oracle database:
++
+```
 ORA-01882: timezone region not found
 ```
++
+This happens when the timezone information cannot be correctly resolved by the JDBC driver.
+In order to solve this driver related problem, the driver needs to be told to not resolve the timezone details using regions.
+This can be done by specifying a driver pass through property using `driver.oracle.jdbc.timezoneAsRegion=false`.
 
-To prevent the preceding error from occurring, add the following setting to the connector configuration: `database.oracle.jdbc.timezoneAsRegion=false`.
+
+*What's the cause for ORA-25191 and how to handle it?*::
+The {prodname} Oracle connector automatically ignores index-organized tables (IOT) as they are not supported by Oracle LogMiner.
+However, if an ORA-25191 exception is thrown, this could be due to a unique corner case for such a mapping and the additional rules may be necessary to exclude these automatically.
+An example of an ORA-25191 exception might look like this:
++
+```
+ORA-25191: cannot reference overflow table of an index-organized table
+```
++
+If an ORA-25191 exception is thrown, please raise a Jira issue with the details about the table and it's mappings, related to other parent tables, etc.
+As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
