@@ -325,7 +325,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
-        validateSlotIsInExpectedState(lsn);
+        validateSlotIsInExpectedState(walPosition);
 
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
@@ -351,7 +351,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    protected void validateSlotIsInExpectedState(Lsn lsn) throws SQLException {
+    protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
+        Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
+        if (lsn == null) {
+            return;
+        }
         try (Statement stmt = pgConnection().createStatement()) {
             String seekCommand = String.format(
                     "SELECT pg_replication_slot_advance('%s', '%s')",
