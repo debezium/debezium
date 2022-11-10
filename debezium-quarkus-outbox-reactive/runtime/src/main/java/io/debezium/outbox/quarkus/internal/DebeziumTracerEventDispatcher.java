@@ -11,8 +11,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.opentracing.Scope;
@@ -32,18 +31,18 @@ import io.smallrye.mutiny.Uni;
 @ApplicationScoped
 public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
+    private static final Logger LOGGER = Logger.getLogger(DebeziumTracerEventDispatcher.class);
     public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
     private static final String OPERATION_NAME = "outbox-write";
     private static final String TRACING_COMPONENT = "debezium";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumTracerEventDispatcher.class);
 
     @Inject
     Tracer tracer;
 
     @Override
     public Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event) {
-        LOGGER.debug("An exported event was found for type {}", event.getType());
+        LOGGER.info(Thread.currentThread().getName());
+        LOGGER.infof("An exported event was found for type {}", event.getType());
 
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
         final DebeziumTextMap exportedSpanData = new DebeziumTextMap();
@@ -66,6 +65,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             // Define the entity map-mode object using property names and values
             final Map<String, Object> dataMap = getDataMapFromEvent(event);
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
+
             return persist(dataMap);
         }
         // return null;

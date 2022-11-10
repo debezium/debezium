@@ -27,10 +27,7 @@ public class MyService {
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
         System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
-        // event.fire(new MyOutboxEvent(values));
-        // var name = event.fireAsync(new MyOutboxEvent(values));
         return Uni.createFrom().completionStage(
                 event.fireAsync(new MyOutboxEvent(values)));
-        // return Uni.createFrom().voidItem();
     }
 }

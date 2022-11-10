@@ -5,10 +5,13 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 
 /**
  * Integration tests for the Debezium Outbox extension, using default configuration from application.properties.
@@ -40,9 +44,14 @@ public class OutboxTest extends AbstractOutboxTest {
 
     @Override
     @Test
-    @SuppressWarnings("rawtypes")
+    // @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
-        myService.doSomething().await().indefinitely();
+        var finished = this.myService.doSomething()
+                .subscribe().withSubscriber(UniAssertSubscriber.create())
+                .assertSubscribed()
+                .awaitItem(Duration.ofSeconds(5))
+                .getItem();
+        System.out.println(finished);
 
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())

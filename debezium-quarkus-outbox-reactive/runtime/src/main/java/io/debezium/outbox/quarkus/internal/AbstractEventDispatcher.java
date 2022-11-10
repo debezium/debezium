@@ -47,19 +47,24 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     DebeziumOutboxRuntimeConfig config;
 
     protected Uni<Void> persist(Map<String, Object> dataMap) {
+        LOGGER.infof(Thread.currentThread().getName());
         System.out.println("@@@@@@@@@@@@@@@@@@@@ PERSIST@@@@@@@@@@@@@@@@" + " thedata;  " + dataMap);
         LOGGER.infof("i am become persist");
-        try {
-            factory.withSession(
-                    session -> session.withTransaction(
-                            tx -> session.persist(dataMap)))
-                    .await().indefinitely();
-        }
-        finally {
-            LOGGER.infof("i am finish persist");
-            return Uni.createFrom().nullItem();
-
-        }
+        return factory.withSession(
+                session -> session.withTransaction(
+                        tx -> session.persist(dataMap)))
+                .invoke(() -> LOGGER.info("i am become persist part two"));
+        // try {
+        // factory.withSession(
+        // session -> session.withTransaction(
+        // tx -> session.persist(dataMap)))
+        // .await().indefinitely();
+        // }
+        // finally {
+        // LOGGER.infof("i am finish persist");
+        // return Uni.createFrom().nullItem();
+        //
+        // }
         // finally {
         // factory.close();
         // }
