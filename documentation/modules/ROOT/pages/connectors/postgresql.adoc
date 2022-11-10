@@ -362,36 +362,6 @@ To configure custom topic names, you specify regular expressions in the logical 
 For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
-// ModuleID: metadata-in-debezium-postgresql-change-event-records
-// Title: Metadata in {prodname} PostgreSQL change event records
-[[postgresql-meta-information]]
-=== Meta information
-
-In addition to a xref:{link-postgresql-connector}#postgresql-events[_database change event_], each record produced by a PostgreSQL connector contains some metadata. Metadata includes where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should go, for example:
-
-[source,json,indent=0]
-----
-   "sourcePartition": {
-        "server": "fulfillment"
-    },
-    "sourceOffset": {
-        "lsn": "24023128",
-        "txId": "555",
-        "ts_ms": "1482918357011"
-    },
-    "kafkaPartition": null
-----
-
-* `sourcePartition` always defaults to the setting of the `topic.prefix` connector configuration property.
-
-* `sourceOffset` contains information about the location of the server where the event occurred:
-
-** `lsn` represents the PostgreSQL https://www.postgresql.org/docs/current/static/datatype-pg-lsn.html[Log Sequence Number] or `offset` in the transaction log.
-** `txId` represents the identifier of the server transaction that caused the event.
-** `ts_ms` represents the server time at which the transaction was committed in the form of the number of milliseconds since the epoch.
-* `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition.
-
-// Type: concept
 // ModuleID: debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries
 // Title: {prodname} PostgreSQL connector-generated events that represent transaction boundaries
 [[postgresql-transaction-metadata]]
