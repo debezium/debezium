@@ -247,6 +247,7 @@ If any extra configuration options are needed by the converter, they can also be
 [NOTE]
 ====
 The converter `io.debezium.converters.ByteBufferConverter` has been deprecated since Debezium version 1.9, and has been removed in 2.0. Furthermore, when using Kafka Connect the connector's configuration must be updated before upgrading to Debezium 2.x
+====
 
 // Type: concept
 // Title: Emitting additional fields in {prodname} outbox messages
