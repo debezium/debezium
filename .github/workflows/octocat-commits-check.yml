@@ -22,7 +22,7 @@ jobs:
           while IFS=" " read -r AUTHOR;
           do
             if [[ $AUTHOR == *"null"* ]]; then
-              echo "::set-output name=OCTOCAT_COMMIT_FOUND::true"
+              echo "name=OCTOCAT_COMMIT_FOUND::true" >> $GITHUB_OUTPUT
             fi
           done < SORTED_AUTHORS.txt
       - name: Create comment
