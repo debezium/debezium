@@ -65,7 +65,8 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             final Map<String, Object> dataMap = getDataMapFromEvent(event);
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
             persist(dataMap);
-        } finally {
+        }
+        finally {
             activeSpan.finish();
         }
     }
