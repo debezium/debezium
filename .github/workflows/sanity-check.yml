@@ -35,7 +35,7 @@ jobs:
             echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
             echo "========================================================================"
             echo -e "$NON_PREFIX_COMMITS"
-            echo "::set-output name=PREFIX::false"
+            echo "name=PREFIX::false" >> $GITHUB_OUTPUT
           fi
       - name: Create Comment
         if: ${{ steps.check.outputs.PREFIX == 'false' }}
