@@ -280,14 +280,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // If the reference isn't included, the row will be skipped entirely.
         if (row.getTableId() != null) {
             if (LogWriterFlushStrategy.isFlushTable(row.getTableId(), connectorConfig.getJdbcConfig().getUser())) {
-                LOGGER.debug("Skipped change associated with flush table '{}'", row.getTableId());
+                LOGGER.trace("Skipped change associated with flush table '{}'", row.getTableId());
                 return;
             }
 
             // DDL events get filtered inside the DDL handler
             // We do the non-DDL ones here to cover multiple switch handlers in one place.
             if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
-                LOGGER.debug("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
+                LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
                 return;
             }
         }
@@ -580,17 +580,17 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         if (row.getTableId() != null) {
             if ("SYS".equalsIgnoreCase(row.getUserName()) || "SYSTEM".equalsIgnoreCase(row.getUserName())) {
                 // We do not process SYS/SYSTEM schema changes as these are mostly internal.
-                LOGGER.debug("SYS/SYSTEM initiated DDL '{}' skipped", row.getRedoSql());
+                LOGGER.trace("SYS/SYSTEM initiated DDL '{}' skipped", row.getRedoSql());
                 return;
             }
             else if (row.getInfo() != null && row.getInfo().startsWith("INTERNAL DDL")) {
                 // Internal DDL operations are skipped.
-                LOGGER.debug("Internal DDL '{}' skipped", row.getRedoSql());
+                LOGGER.trace("Internal DDL '{}' skipped", row.getRedoSql());
                 return;
             }
 
             if (schema.storeOnlyCapturedTables() && !tableFilter.isIncluded(row.getTableId())) {
-                LOGGER.debug("Skipping DDL associated with table '{}', schema history only stores included tables only.", row.getTableId());
+                LOGGER.trace("Skipping DDL associated with table '{}', schema history only stores included tables only.", row.getTableId());
                 return;
             }
         }
