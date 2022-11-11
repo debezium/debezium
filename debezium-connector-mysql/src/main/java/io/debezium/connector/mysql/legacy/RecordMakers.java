@@ -311,7 +311,7 @@ public class RecordMakers {
                     else {
                         // The key has not changed, so a simple update is fine ...
                         SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
-                                keySchema, newkey, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts));
+                                keySchema, newkey, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts, new String[0]));
                         consumer.accept(record);
                         ++count;
                     }

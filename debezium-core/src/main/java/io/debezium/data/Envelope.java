@@ -6,9 +6,7 @@
 package io.debezium.data;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -109,6 +107,8 @@ public final class Envelope {
          * variations.
          */
         public static final String TIMESTAMP = "ts_ms";
+
+        public static final String UNAVAILABLE_COLUMNS = "unavailable_columns";
     }
 
     /**
@@ -129,6 +129,7 @@ public final class Envelope {
         fields.add(FieldName.AFTER);
         fields.add(FieldName.SOURCE);
         fields.add(FieldName.TRANSACTION);
+        fields.add(FieldName.UNAVAILABLE_COLUMNS);
         ALL_FIELD_NAMES = Collections.unmodifiableSet(fields);
     }
 
@@ -225,11 +226,13 @@ public final class Envelope {
                 builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
                 builder.field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+                builder.field(FieldName.UNAVAILABLE_COLUMNS, SchemaBuilder.array(Schema.STRING_SCHEMA))
                 checkFieldIsDefined(FieldName.OPERATION);
                 checkFieldIsDefined(FieldName.BEFORE);
                 checkFieldIsDefined(FieldName.AFTER);
                 checkFieldIsDefined(FieldName.SOURCE);
                 checkFieldIsDefined(FieldName.TRANSACTION);
+                checkFieldIsDefined(FieldName.UNAVAILABLE_COLUMNS);
                 if (!missingFields.isEmpty()) {
                     throw new IllegalStateException("The envelope schema is missing field(s) " + String.join(", ", missingFields));
                 }
@@ -314,7 +317,7 @@ public final class Envelope {
      * @param timestamp the timestamp for this message; may be null
      * @return the update message; never null
      */
-    public Struct update(Object before, Struct after, Struct source, Instant timestamp) {
+    public Struct update(Object before, Struct after, Struct source, Instant timestamp, String[] unavailableCols) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.UPDATE.code());
         if (before != null) {
@@ -326,6 +329,9 @@ public final class Envelope {
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
+        }
+        if(unavailableCols != null) {
+            struct.put(FieldName.UNAVAILABLE_COLUMNS, Arrays.asList(unavailableCols));
         }
         return struct;
     }

@@ -978,6 +978,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
+            if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+                r.deliver(null);
+            }
             if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
                         .map(value -> resolveArrayValue(value, elementType))

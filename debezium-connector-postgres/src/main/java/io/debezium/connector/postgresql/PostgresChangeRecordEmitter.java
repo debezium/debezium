@@ -156,6 +156,41 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         return schema.schemaFor(tableId);
     }
 
+    @Override
+    public String[] getColumnsWithUnavailableValues() {
+        List<ReplicationMessage.Column> columns = message.getNewTupleList();
+
+        if (columns == null || columns.isEmpty()) {
+            return new String[0];
+        }
+
+        List<String> toastedCols = new ArrayList<>();
+        final Table table = schema.tableFor(tableId);
+        Objects.requireNonNull(table);
+
+        // based on the schema columns, create the values on the same position as the columns
+        List<Column> schemaColumns = table.columns();
+        // based on the replication message without toasted columns for now
+        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn))
+                .collect(Collectors.toList());
+        // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
+        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
+
+        for (ReplicationMessage.Column column : columns) {
+            final String columnName = Strings.unquoteIdentifierPart(column.getName());
+
+            int position = getPosition(columnName, table, values);
+            if (position != -1) {
+                Object value = column.getValue(() -> (BaseConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                if (value == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+                    toastedCols.add(columnName);
+                }
+            }
+        }
+
+        return toastedCols.toArray(new String[0]);
+    }
+
     private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage,
                                   boolean sourceOfToasted, boolean oldValues)
             throws SQLException {

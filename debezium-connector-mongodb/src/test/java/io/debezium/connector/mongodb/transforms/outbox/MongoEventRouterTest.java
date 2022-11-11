@@ -222,7 +222,7 @@ public class MongoEventRouterTest {
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-        final Struct payload = envelope.update(before, before, null, Instant.now());
+        final Struct payload = envelope.update(before, before, null, Instant.now(), new String[0]);
         final SourceRecord eventRecord = new SourceRecord(
                 new HashMap<>(),
                 new HashMap<>(),
@@ -253,7 +253,7 @@ public class MongoEventRouterTest {
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-        final Struct payload = envelope.update(before, before, null, Instant.now());
+        final Struct payload = envelope.update(before, before, null, Instant.now(), new String[0]);
         final SourceRecord eventRecord = new SourceRecord(
                 new HashMap<>(),
                 new HashMap<>(),

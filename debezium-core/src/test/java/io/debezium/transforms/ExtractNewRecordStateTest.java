@@ -163,7 +163,7 @@ public class ExtractNewRecordStateTest {
         transaction.put("id", "571");
         transaction.put("total_order", 42L);
         transaction.put("data_collection_order", 42L);
-        final Struct payload = envelope.update(before, after, source, Instant.now());
+        final Struct payload = envelope.update(before, after, source, Instant.now(), new String[0]);
         payload.put("transaction", transaction);
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }

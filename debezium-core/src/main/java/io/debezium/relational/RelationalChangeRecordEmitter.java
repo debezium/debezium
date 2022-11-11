@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Struct;
@@ -109,7 +110,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant(), getColumnsWithUnavailableValues());
             receiver.changeRecord(getPartition(), tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
         }
         // PK update -> emit as delete and re-insert with new key
@@ -156,6 +157,10 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
      * Returns the new row state in case of a CREATE or READ.
      */
     protected abstract Object[] getNewColumnValues();
+
+    protected String[] getColumnsWithUnavailableValues() {
+        return null;
+    }
 
     /**
      * Whether empty data messages should be ignored.
