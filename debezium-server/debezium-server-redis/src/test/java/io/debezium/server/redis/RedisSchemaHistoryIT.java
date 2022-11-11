@@ -57,7 +57,7 @@ public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
         SchemaHistory history = new RedisSchemaHistory();
 
         history.configure(Configuration.create()
-                .with(RedisSchemaHistory.PROP_ADDRESS, HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
+                .with("schema.history.internal.redis.address", HostAndPort.from(RedisTestResourceLifecycleManager.getRedisContainerAddress()))
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         history.start();
         return history;
