@@ -8,7 +8,6 @@ package io.debezium.outbox.quarkus.internal;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.ObservesAsync;
 import javax.inject.Inject;
 
 import org.jboss.logging.Logger;
@@ -19,6 +18,7 @@ import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
+import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 
 /**
@@ -40,7 +40,8 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    public Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event) {
+    @ConsumeEvent("debezium-outbox")
+    public Uni<Void> onExportedEvent(ExportedEvent<?, ?> event) {
         LOGGER.info(Thread.currentThread().getName());
         LOGGER.infof("An exported event was found for type {}", event.getType());
 

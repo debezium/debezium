@@ -6,12 +6,12 @@
 package io.debezium.outbox.quarkus.internal;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.ObservesAsync;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 
 /**
@@ -27,7 +27,8 @@ public class DefaultEventDispatcher extends AbstractEventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventDispatcher.class);
 
     @Override
-    public Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event) {
+    @ConsumeEvent("debezium-outbox")
+    public Uni<Void> onExportedEvent(ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
         return persist(getDataMapFromEvent(event));
     }
