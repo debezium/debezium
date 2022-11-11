@@ -22,7 +22,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -453,7 +455,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
     }
 
-    @Test(expected = DebeziumException.class)
+    @Test
     @FixFor("DBZ-1208")
     @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL")
     public void shouldFailOnUnknownTlsProtocol() {
@@ -467,10 +469,16 @@ public class StreamingSourceIT extends AbstractConnectorTest {
                 .build();
 
         // Start the connector ...
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        Map<String, Object> result = new HashMap<>();
+        start(MySqlConnector.class, config, (success, message, error) -> {
+            result.put("success", success);
+            result.put("message", message);
+        });
 
-        throw (RuntimeException) exception.get();
+        assertEquals(false, result.get("success"));
+        assertEquals(
+                "Connector configuration is not valid. Unable to connect: Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3.",
+                result.get("message").toString());
     }
 
     @Test
