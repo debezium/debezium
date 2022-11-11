@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
@@ -91,7 +92,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         @Override
         public ConfigDef config() {
-            return null;
+            return new ConfigDef();
         }
 
         @Override
@@ -102,7 +103,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     public static class FilterPredicate implements Predicate<SourceRecord> {
         @Override
         public ConfigDef config() {
-            return null;
+            return new ConfigDef();
         }
 
         @Override
@@ -703,6 +704,27 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         engine.run();
 
         assertThat(exceptionCaught.get()).isTrue();
+    }
+
+    @FixFor("DBZ-4720")
+    @Test
+    public void validationThrowsException() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        // Start the connector ...
+        AtomicReference<String> errorReference = new AtomicReference<>();
+        start(FileStreamSourceConnector.class, Configuration.from(new Properties()), (success, message, error) -> {
+            if (message != null) {
+                errorReference.set(message);
+            }
+        });
+
+        assertNoRecordsToConsume();
+
+        assertThat(errorReference.get()).isNotNull();
+        assertThat(errorReference.get()).contains("Connector configuration is not valid. ");
+        assertThat(this.engine.isRunning()).isFalse();
     }
 }
 
