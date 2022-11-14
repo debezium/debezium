@@ -13,6 +13,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EX
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
@@ -2599,6 +2600,24 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldFailWhenUserDoesNotHaveAccessToDatabase() {
+        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
+        final Configuration config2 = TestHelper.defaultConfig(
+                TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+        Map<String, Object> result = new HashMap<>();
+        start(SqlServerConnector.class, config2, (success, message, error) -> {
+            result.put("success", success);
+            result.put("message", message);
+        });
+        assertEquals(false, result.get("success"));
+        assertEquals(
+                "Connector configuration is not valid. User sa does not have access to CDC schema in the following databases: testDB2. This user can only be used in initial_only snapshot mode",
+                result.get("message"));
+    }
+
+    @Test
     @FixFor("DBZ-5033")
     public void shouldIgnoreNullOffsetsWhenRecoveringHistory() {
         final Configuration config1 = TestHelper.defaultConfig()
@@ -2612,10 +2631,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_2);
         final Configuration config2 = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2)
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .build();
         start(SqlServerConnector.class, config2);
         assertConnectorIsRunning();
+        TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_2);
         stopConnector();
     }
 
