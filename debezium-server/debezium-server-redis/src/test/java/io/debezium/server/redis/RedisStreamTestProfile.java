@@ -30,6 +30,7 @@ public class RedisStreamTestProfile implements QuarkusTestProfile {
         Map<String, String> config = new HashMap<String, String>();
         config.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         config.put("debezium.source." + OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        config.put("debezium.sink.redis.memory.threshold.percentage", "0");
         return config;
     }
 

@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
+import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
@@ -50,6 +52,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
@@ -72,6 +75,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private final OracleStreamingChangeEventSourceMetrics metrics;
     private final LogMinerDmlParser dmlParser;
     private final SelectLobParser selectLobParser;
+    private final Tables.TableFilter tableFilter;
 
     protected final Counters counters;
 
@@ -94,6 +98,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         this.offsetContext = offsetContext;
         this.dispatcher = dispatcher;
         this.metrics = metrics;
+        this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.counters = new Counters();
         this.dmlParser = new LogMinerDmlParser();
         this.selectLobParser = new SelectLobParser();
@@ -206,6 +211,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                         offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
                         metrics.getMillisecondToSleepBetweenMiningQuery());
 
+                if (metrics.getNumberOfActiveTransactions() > 0) {
+                    LOGGER.debug("All active transactions: {}",
+                            getTransactionCache().values().stream()
+                                    .map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
+                                    .collect(Collectors.joining(",")));
+                }
+
                 metrics.addProcessedRows(counters.rows);
                 return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
             }
@@ -263,6 +275,23 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 return;
             }
         }
+
+        // Check whether the row has a table reference and if so, is the reference included by the filter.
+        // If the reference isn't included, the row will be skipped entirely.
+        if (row.getTableId() != null) {
+            if (LogWriterFlushStrategy.isFlushTable(row.getTableId(), connectorConfig.getJdbcConfig().getUser())) {
+                LOGGER.trace("Skipped change associated with flush table '{}'", row.getTableId());
+                return;
+            }
+
+            // DDL events get filtered inside the DDL handler
+            // We do the non-DDL ones here to cover multiple switch handlers in one place.
+            if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
+                LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
+                return;
+            }
+        }
+
         switch (row.getEventType()) {
             case MISSING_SCN:
                 handleMissingScn(row);
@@ -548,6 +577,24 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws InterruptedException if the event dispatcher is interrupted sending the event
      */
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
+        if (row.getTableId() != null) {
+            if ("SYS".equalsIgnoreCase(row.getUserName()) || "SYSTEM".equalsIgnoreCase(row.getUserName())) {
+                // We do not process SYS/SYSTEM schema changes as these are mostly internal.
+                LOGGER.trace("SYS/SYSTEM initiated DDL '{}' skipped", row.getRedoSql());
+                return;
+            }
+            else if (row.getInfo() != null && row.getInfo().startsWith("INTERNAL DDL")) {
+                // Internal DDL operations are skipped.
+                LOGGER.trace("Internal DDL '{}' skipped", row.getRedoSql());
+                return;
+            }
+
+            if (schema.storeOnlyCapturedTables() && !tableFilter.isIncluded(row.getTableId())) {
+                LOGGER.trace("Skipping DDL associated with table '{}', schema history only stores included tables only.", row.getTableId());
+                return;
+            }
+        }
+
         if (hasSchemaChangeBeenSeen(row)) {
             LOGGER.trace("DDL: Scn {}, SQL '{}' has already been processed, skipped.", row.getScn(), row.getRedoSql());
             return;

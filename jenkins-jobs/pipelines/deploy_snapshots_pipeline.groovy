@@ -2,9 +2,9 @@ import groovy.json.*
 import java.util.stream.*
 
 if (
-    !DEBEZIUM_REPOSITORY ||
-    !DEBEZIUM_BRANCH ||
-    !DEBEZIUM_ADDITIONAL_REPOSITORIES
+    !params.DEBEZIUM_REPOSITORY ||
+    !params.DEBEZIUM_BRANCH ||
+    !params.DEBEZIUM_ADDITIONAL_REPOSITORIES
 ) {
     error 'Input parameters not provided'
 }
@@ -22,14 +22,14 @@ node('Slave') {
                 deleteDir()
             }
             checkout([$class                           : 'GitSCM',
-                      branches                         : [[name: "*/$DEBEZIUM_BRANCH"]],
+                      branches                         : [[name: "*/$params.DEBEZIUM_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
                       extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_DIR]],
                       submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                      userRemoteConfigs                : [[url: "https://$params.DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
-            DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
+            params.DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
                 def (id, repository, branch) = it.split('#')
                 checkout([$class                           : 'GitSCM',
                           branches                         : [[name: "*/$branch"]],
@@ -55,18 +55,18 @@ node('Slave') {
 
         stage('Build and deploy Debezium') {
             dir(DEBEZIUM_DIR) {
-                sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,oracle-all,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
+                sh "mvn clean deploy -U -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,oracle-all,docs  -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
             }
         }
 
         additionalDirs.each { id ->
             stage("Build and deploy Debezium ${id.capitalize()}") {
                 dir(id) {
-                    sh "mvn clean deploy -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
+                    sh "mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
                 }
             }
         }
     } finally {
-        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+        mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }

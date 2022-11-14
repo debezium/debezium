@@ -168,3 +168,6 @@ janjwerner-confluent,Jan Werner
 enzo-cappa,Enzo Cappa
 zhanghelong,Helong Zhang
 Théophile Helleboid - chtitux,Théophile Helleboid
+dude0001,Mark Lambert
+adasari,Anil Dasari
+mkobayas,Masazumi Kobayashi

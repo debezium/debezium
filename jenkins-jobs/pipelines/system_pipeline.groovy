@@ -94,7 +94,7 @@ pipeline {
                     env.TEST_CONNECT_STRZ_BUILD = params.IMAGE_CONNECT_STRZ ? false : true
 
 //                    Configure images if provided
-                    env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
+                    env.IMAGE_TAG_SUFFIX = "${BUILD_NUMBER}"
                     env.MVN_IMAGE_CONNECT_STRZ = params.IMAGE_CONNECT_STRZ ? "-Dimage.kc=${params.IMAGE_CONNECT_STRZ}" : ""
                     env.MVN_IMAGE_CONNECT_RHEL = params.IMAGE_CONNECT_RHEL ? "-Ddocker.image.kc=${params.IMAGE_CONNECT_RHEL}" : ""
                     env.MVN_IMAGE_DBZ_AS = params.IMAGE_DBZ_AS ? "-Dimage.as=${params.IMAGE_DBZ_AS}" : ""
@@ -117,13 +117,13 @@ pipeline {
 
                 ]) {
                     sh '''
-                    set -x            
+                    set -x
                     docker login -u=${QUAY_USERNAME} -p=${QUAY_PASSWORD} quay.io
                     oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
                     '''
 
                     sh '''
-                    set -x            
+                    set -x
                     cd "${WORKSPACE}/debezium"
                     ./jenkins-jobs/scripts/ocp-projects.sh --create -t "${BUILD_NUMBER}" --envfile "${OCP_ENV_FILE}"
                     source "${OCP_ENV_FILE}"
@@ -131,10 +131,10 @@ pipeline {
 
                     sh '''
                     set -x
-                    cd ${WORKSPACE}/debezium 
+                    cd ${WORKSPACE}/debezium
                     ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
                     ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
-                  
+
                     cd ${ORACLE_ARTIFACT_DIR}
                     mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar
                     mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar
@@ -151,7 +151,6 @@ pipeline {
             }
         }
 
-
         stage('Configure - Apicurio') {
             when {
                 expression { params.TEST_APICURIO_REGISTRY }
@@ -166,7 +165,7 @@ pipeline {
 
                 ]) {
                     sh '''
-                    set -x            
+                    set -x
                     oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
                     '''
                     sh '''
@@ -207,7 +206,7 @@ pipeline {
                 sh '''
                 set -x
                 cd ${WORKSPACE}/debezium
-                mvn install -Passembly,oracle-all -DskipTests -DskipITs 
+                mvn install -Passembly,oracle-all -DskipTests -DskipITs
                 '''
             }
         }
@@ -218,7 +217,7 @@ pipeline {
             }
             steps {
                 script {
-                    env.MAVEN_OPTS="-DforkCount=0 -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=*:5005"
+                    env.MAVEN_OPTS = "-DforkCount=0 -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=*:5005"
                 }
             }
         }
@@ -227,13 +226,13 @@ pipeline {
             steps {
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
-                        file(credentialsId: "${PULL_SECRET}", variable: 'SECRET_PATH'),
+                        file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
                     sh '''
                     set -x
                     cd ${WORKSPACE}/debezium
                     source "${OCP_ENV_FILE}"
-               
+
                     mvn install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs \\
                     ${MVN_PROFILE_PROD} \\
                     -Docp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
@@ -257,7 +256,7 @@ pipeline {
                     ${MVN_VERSION_KAFKA} \\
                     ${MVN_VERSION_AS_DEBEZIUM} \\
                     ${MVN_VERSION_AS_APICURIO} \\
-                    -Dgroups="${TEST_TAG_EXPRESSION}" 
+                    -Dgroups="${TEST_TAG_EXPRESSION}"
                     '''
                 }
             }
@@ -273,8 +272,8 @@ pipeline {
             archiveArtifacts '**/target/failsafe-reports/*.xml'
             junit '**/target/failsafe-reports/*.xml'
 
-            mail to: MAIL_TO, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
-OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: params.MAIL_TO, subject: "Debezium OpenShift test run #${env.BUILD_NUMBER} finished", body: """
+OpenShift interoperability test run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
             withCredentials([
                     usernamePassword(credentialsId: "rh-integration-quay-creds", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),

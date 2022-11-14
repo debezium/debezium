@@ -82,6 +82,7 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezi
     -Dmysql.gtid.port=4302 \
     -Dmysql.gtid.replica.port=4303 \
     -P$PROFILE \
+    -Papicurio \
     -Dinsecure.repositories=WARN \
     $PROFILE_PROD
     

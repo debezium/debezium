@@ -472,7 +472,7 @@ jobs:
 
       - name: Build Debezium Server
         run: >
-          ./mvnw clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd
+          ./mvnw clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server,:debezium-storage-redis -Pserver-ci -am -amd
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Dhttp.keepAlive=false
@@ -712,7 +712,7 @@ jobs:
       - name: Build Debezium (Core)
         run: >
            ./core/mvnw clean install -f core/pom.xml 
-           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-storage-redis,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
            -am
            -DskipTests=true
            -DskipITs=true

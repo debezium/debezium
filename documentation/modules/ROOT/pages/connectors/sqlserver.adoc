@@ -2700,6 +2700,12 @@ That is, columns that were previously defined as optional (or `NULL`) continue t
 Similarly, columns that had been defined as required (`NOT NULL`), retain that designation, although they are now defined as `NULL`.
 ====
 
+[NOTE]
+====
+After you rename a table using `sp_rename` function, it will continue to emit changes under the old source table name until the connector is restarted.
+Upon restart of the connector, it will emit changes under the new source table name.
+====
+
 // Type: procedure
 // ModuleID: debezium-sql-server-connector-running-an-offline-update-after-a-schema-change
 // Title: Running an offline update after a schema change

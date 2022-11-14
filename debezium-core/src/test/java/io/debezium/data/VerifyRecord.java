@@ -34,6 +34,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.Converter;
 import org.assertj.core.api.Assertions;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -69,16 +70,28 @@ public class VerifyRecord {
         void assertEquals(String pathToField, Object actualValue, Object expectedValue);
     }
 
+    private static final String APICURIO_URL = "http://localhost:8080/apis/registry/v2";
+
     private static final JsonConverter keyJsonConverter = new JsonConverter();
     private static final JsonConverter valueJsonConverter = new JsonConverter();
     private static final JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private static final JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
 
-    private static final MockSchemaRegistryClient schemaRegistry = new MockSchemaRegistryClient();
-    private static final AvroConverter avroKeyConverter = new AvroConverter(schemaRegistry);
-    private static final AvroConverter avroValueConverter = new AvroConverter(schemaRegistry);
+    private static final boolean useApicurio = isApucurioAvailable();
+    private static Converter avroKeyConverter;
+    private static Converter avroValueConverter;
 
     static {
+        if (useApicurio) {
+            avroKeyConverter = new io.apicurio.registry.utils.converter.AvroConverter();
+            avroValueConverter = new io.apicurio.registry.utils.converter.AvroConverter();
+        }
+        else {
+            MockSchemaRegistryClient schemaRegistry = new MockSchemaRegistryClient();
+            avroKeyConverter = new AvroConverter(schemaRegistry);
+            avroValueConverter = new AvroConverter(schemaRegistry);
+        }
+
         Map<String, Object> config = new HashMap<>();
         config.put("schemas.enable", Boolean.TRUE.toString());
         config.put("schemas.cache.size", String.valueOf(100));
@@ -88,7 +101,15 @@ public class VerifyRecord {
         valueJsonDeserializer.configure(config, false);
 
         config = new HashMap<>();
-        config.put("schema.registry.url", "http://fake-url");
+        if (useApicurio) {
+            config.put("apicurio.registry.url", APICURIO_URL);
+            config.put("apicurio.registry.auto-register", true);
+            config.put("apicurio.registry.find-latest", true);
+        }
+        else {
+            config.put("schema.registry.url", "http://fake-url");
+        }
+
         avroKeyConverter.configure(config, false);
         avroValueConverter.configure(config, false);
     }
@@ -823,7 +844,6 @@ public class VerifyRecord {
             assertEquals(setVersion(avroValueWithSchema, null).value(), setVersion(record.value(), null));
             msg = "comparing value to its schema";
             schemaMatchesStruct(avroValueWithSchema);
-
         }
         catch (Throwable t) {
             Testing.Print.enable();
@@ -1263,4 +1283,10 @@ public class VerifyRecord {
         }
         return struct;
     }
+
+    public static boolean isApucurioAvailable() {
+        String useApicurio = System.getProperty("use.apicurio");
+        return useApicurio != null && useApicurio.equalsIgnoreCase("true");
+    }
+
 }

@@ -5,14 +5,19 @@
  */
 package io.debezium.server.redis;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -37,6 +42,7 @@ import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.IoUtil;
 
 /**
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
@@ -64,6 +70,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String PROP_WAIT_TIMEOUT = PROP_PREFIX + "wait.timeout.ms";
     private static final String PROP_WAIT_RETRY_ENABLED = PROP_PREFIX + "wait.retry.enabled";
     private static final String PROP_WAIT_RETRY_DELAY = PROP_PREFIX + "wait.retry.delay.ms";
+
+    private static final int DEFAULT_MEMORY_THRESHOLD_PERCENTAGE = 85;
+    private static final String PROP_MEMORY_THRESHOLD_PERCENTAGE = PROP_PREFIX + "memory.threshold.percentage";
+    private static final String INFO_MEMORY = "memory";
+    private static final String INFO_MEMORY_SECTION_MAXMEMORY = "maxmemory";
+    private static final String INFO_MEMORY_SECTION_USEDMEMORY = "used_memory";
 
     private static final String MESSAGE_FORMAT_COMPACT = "compact";
     private static final String MESSAGE_FORMAT_EXTENDED = "extended";
@@ -98,6 +110,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     private BiFunction<String, String, Map<String, String>> recordMapFunction;
 
+    private Supplier<Boolean> isMemoryOk;
+
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
@@ -124,6 +138,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             throw new DebeziumException(
                     String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
         }
+
+        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD_PERCENTAGE, Integer.class).orElse(DEFAULT_MEMORY_THRESHOLD_PERCENTAGE);
+        if (memoryThreshold < 0 || memoryThreshold > 100) {
+            throw new DebeziumException(String.format("Property %s should be between 0 and 100", PROP_MEMORY_THRESHOLD_PERCENTAGE));
+        }
+        isMemoryOk = memoryThreshold > 0 ? () -> isMemoryOk(memoryThreshold) : () -> true;
 
         boolean waitEnabled = config.getOptionalValue(PROP_WAIT_ENABLED, Boolean.class).orElse(false);
         long waitTimeout = config.getOptionalValue(PROP_WAIT_TIMEOUT, Long.class).orElse(1000L);
@@ -191,7 +211,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         LOGGER.error("Can't connect to Redis", e);
                     }
                 }
-                else {
+                else if (canHandleBatch()) {
                     try {
                         LOGGER.trace("Preparing a Redis Pipeline of {} records", clonedBatch.size());
 
@@ -244,6 +264,9 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         throw new DebeziumException(e);
                     }
                 }
+                else {
+                    LOGGER.warn("Stopped consuming records!");
+                }
 
                 // Failed to execute the transaction, retry...
                 delayStrategy.sleepWhen(!completedSuccessfully);
@@ -252,5 +275,36 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
         // Mark the whole batch as finished once the sub batches completed
         committer.markBatchFinished();
+    }
+
+    private boolean canHandleBatch() {
+        return isMemoryOk.get();
+    }
+
+    private boolean isMemoryOk(int memoryThreshold) {
+        String memory = client.info(INFO_MEMORY);
+        Map<String, String> infoMemory = new HashMap<>();
+        try {
+            IoUtil.readLines(new ByteArrayInputStream(memory.getBytes(StandardCharsets.UTF_8)), line -> {
+                String[] pair = line.split(":");
+                if (pair.length == 2) {
+                    infoMemory.put(pair[0], pair[1]);
+                }
+            });
+        }
+        catch (IOException e) {
+            LOGGER.error("Cannot parse Redis info memory {}", memory, e);
+            return true;
+        }
+        long maxMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_MAXMEMORY));
+        if (maxMemory > 0) {
+            long usedMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_USEDMEMORY));
+            long percentage = 100 * usedMemory / maxMemory;
+            if (percentage >= memoryThreshold) {
+                LOGGER.warn("Used memory percentage of {}% is higher than configured threshold of {}%", percentage, memoryThreshold);
+                return false;
+            }
+        }
+        return true;
     }
 }

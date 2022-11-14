@@ -62,6 +62,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private static final int MAXIMUM_NAME_LENGTH = 30;
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final int MINING_START_RETRIES = 5;
+    private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -145,6 +146,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 setNlsSessionParameters(jdbcConnection);
                 checkDatabaseAndTableState(jdbcConnection, connectorConfig.getPdbName(), schema);
 
+                logOnlineRedoLogSizes(connectorConfig);
+
                 try (LogMinerEventProcessor processor = createProcessor(context, partition, offsetContext)) {
 
                     if (archiveLogOnlyMode && !waitForStartScnInArchiveLogs(context, startScn)) {
@@ -226,6 +229,28 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             LOGGER.info("Offsets: {}", offsetContext);
         }
+    }
+
+    private void logOnlineRedoLogSizes(OracleConnectorConfig config) throws SQLException {
+        jdbcConnection.query("SELECT GROUP#, BYTES FROM V$LOG ORDER BY 1", rs -> {
+            LOGGER.info("Redo Log Group Sizes:");
+            boolean potentiallySmallLogs = false;
+            while (rs.next()) {
+                long logSize = rs.getLong(2);
+                if (logSize < SMALL_REDO_LOG_WARNING) {
+                    potentiallySmallLogs = true;
+                }
+                LOGGER.info("\tGroup #{}: {} bytes", rs.getInt(1), logSize);
+            }
+            if (config.getAdapter().getType().equals(LogMinerAdapter.TYPE)) {
+                if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO) {
+                    if (potentiallySmallLogs) {
+                        LOGGER.warn("Redo logs may be sized too small using the default mining strategy, " +
+                                "consider increasing redo log sizes to a minimum of 500MB.");
+                    }
+                }
+            }
+        });
     }
 
     /**
