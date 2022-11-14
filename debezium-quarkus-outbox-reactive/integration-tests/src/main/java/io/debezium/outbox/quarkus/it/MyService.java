@@ -38,7 +38,6 @@ public class MyService {
         event.setPayload("Some amazing payload");
         event.setAdditionalValues(values);
         return bus.<XportedEvent> request("debezium-outbox", event)
-                // new DeliveryOptions().setCodecName(ExportedEvent.class.getName()))
                 .onItem().transform(message -> message.body());
     }
 }
