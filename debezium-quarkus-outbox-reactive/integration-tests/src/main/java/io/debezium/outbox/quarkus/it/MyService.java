@@ -21,15 +21,15 @@ public class MyService {
     // @Inject
     // Event<ExportedEvent<?, ?>> event;
 
-    public Uni<MyOutboxEvent> doSomething() {
+    public Uni<Object> doSomething() {
         final Map<String, Object> values = new HashMap<>();
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
         System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
-        return Uni.createFrom().nullItem();
-        // return bus.<MyOutboxEvent> request("debezium-outbox", new MyOutboxEvent(values)).onItem().transform(message -> message.body());
-        // return Uni.createFrom().completionStage(
-        // event.fireAsync(new MyOutboxEvent(values)));
+        // return Uni.createFrom().nullItem();
+        return bus.<MyOutboxEvent> request("debezium-outbox", new MyOutboxEvent(values))
+                // new DeliveryOptions().setCodecName(ExportedEvent.class.getName()))
+                .onItem().transform(message -> message.body());
     }
 }

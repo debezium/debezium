@@ -32,6 +32,10 @@
             <artifactId>quarkus-smallrye-opentracing</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-vertx</artifactId>
+        </dependency>
         <!-- Needed specifically for AdditionalJaxbMappingProducerImpl usage -->
         <dependency>
             <groupId>org.jboss</groupId>

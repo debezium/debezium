@@ -12,6 +12,7 @@ import javax.inject.Inject;
 
 import org.jboss.logging.Logger;
 
+import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -40,7 +41,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    @ConsumeEvent("debezium-outbox")
+    @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(ExportedEvent<?, ?> event) {
         LOGGER.info(Thread.currentThread().getName());
         LOGGER.infof("An exported event was found for type {}", event.getType());

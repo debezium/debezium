@@ -5,6 +5,7 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
+import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
@@ -26,6 +27,6 @@ public interface EventDispatcher {
 
     // Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event);
 
-    @ConsumeEvent("debezium-outbox")
+    @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     Uni<Void> onExportedEvent(ExportedEvent<?, ?> event);
 }

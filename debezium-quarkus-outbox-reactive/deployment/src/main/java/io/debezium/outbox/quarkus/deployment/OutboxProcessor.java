@@ -74,6 +74,7 @@ public final class OutboxProcessor {
         boolean parameterizedTypesDetected = false;
         for (ClassInfo classInfo : index.getIndex().getAllKnownImplementors(exportedEvent)) {
             LOGGER.infof("Found ExportedEvent (reactive?) type: %s", classInfo.name());
+
             for (Type interfaceType : classInfo.interfaceTypes()) {
                 if (interfaceType.name().equals(exportedEvent)) {
                     if (interfaceType.kind().equals(Type.Kind.PARAMETERIZED_TYPE)) {
@@ -176,4 +177,7 @@ public final class OutboxProcessor {
             throw new IllegalStateException("Failed to produce Outbox HBM mapping", e);
         }
     }
+
+    // @BuildStep
+    // private void generateCustomCodec()
 }
