@@ -79,7 +79,9 @@ public class KafkaIT {
 
     @Test
     public void testKafka() throws Exception {
-
+        Awaitility.await().atMost(Duration.ofSeconds(KafkaTestConfigSource.waitForSeconds())).until(() -> {
+            return consumer != null;
+        });
         consumer.subscribe(Arrays.asList(TOPIC_NAME));
 
         final List<ConsumerRecord<String, String>> actual = new ArrayList<>();
