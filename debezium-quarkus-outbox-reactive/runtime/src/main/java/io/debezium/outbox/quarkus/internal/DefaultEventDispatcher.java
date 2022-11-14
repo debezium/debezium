@@ -10,8 +10,8 @@ import javax.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.quarkus.XportedEvent;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 
@@ -28,8 +28,8 @@ public class DefaultEventDispatcher extends AbstractEventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventDispatcher.class);
 
     @Override
-    @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
-    public Uni<Void> onExportedEvent(ExportedEvent<?, ?> event) {
+    @ConsumeEvent(value = "debezium-outbox")
+    public Uni<Void> onExportedEvent(XportedEvent event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
         return persist(getDataMapFromEvent(event));
     }

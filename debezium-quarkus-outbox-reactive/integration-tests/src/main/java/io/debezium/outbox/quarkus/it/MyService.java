@@ -5,12 +5,14 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import io.debezium.outbox.quarkus.XportedEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
 
@@ -28,7 +30,14 @@ public class MyService {
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
         System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
         // return Uni.createFrom().nullItem();
-        return bus.<MyOutboxEvent> request("debezium-outbox", new MyOutboxEvent(values))
+        XportedEvent event = new XportedEvent();
+        event.setAggregateId(1L);
+        event.setAggregateType("MyOutboxEvent");
+        event.setType("SomeType");
+        event.setTimestamp(Instant.now());
+        event.setPayload("Some amazing payload");
+        event.setAdditionalValues(values);
+        return bus.<XportedEvent> request("debezium-outbox", event)
                 // new DeliveryOptions().setCodecName(ExportedEvent.class.getName()))
                 .onItem().transform(message -> message.body());
     }

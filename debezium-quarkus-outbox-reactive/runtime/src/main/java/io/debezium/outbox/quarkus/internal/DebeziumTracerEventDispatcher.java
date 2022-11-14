@@ -12,8 +12,8 @@ import javax.inject.Inject;
 
 import org.jboss.logging.Logger;
 
-import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.quarkus.XportedEvent;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -41,8 +41,8 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     Tracer tracer;
 
     @Override
-    @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
-    public Uni<Void> onExportedEvent(ExportedEvent<?, ?> event) {
+    @ConsumeEvent(value = "debezium-outbox")
+    public Uni<Void> onExportedEvent(XportedEvent event) {
         LOGGER.info(Thread.currentThread().getName());
         LOGGER.infof("An exported event was found for type {}", event.getType());
 
@@ -54,7 +54,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             spanBuilder.asChildOf(parentSpan);
         }
         spanBuilder.withTag(AGGREGATE_TYPE, event.getAggregateType())
-                .withTag(AGGREGATE_ID, event.getAggregateId().toString())
+                .withTag(AGGREGATE_ID, Long.toString(event.getAggregateId()))
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
