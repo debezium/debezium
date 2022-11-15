@@ -16,7 +16,7 @@ import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.tuple.DynamicMapInstantiator;
 import org.jboss.logging.Logger;
 
-import io.debezium.outbox.quarkus.XportedEvent;
+import io.debezium.outbox.quarkus.ExportedEvent;
 import io.smallrye.mutiny.Uni;
 
 /**
@@ -124,7 +124,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     // }
     // }
 
-    protected Map<String, Object> getDataMapFromEvent(XportedEvent event) {
+    protected Map<String, Object> getDataMapFromEvent(ExportedEvent<?, ?> event) {
         final HashMap<String, Object> dataMap = new HashMap<>();
         dataMap.put(AGGREGATE_TYPE, event.getAggregateType());
         dataMap.put(AGGREGATE_ID, event.getAggregateId());
@@ -133,7 +133,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         dataMap.put(TIMESTAMP, event.getTimestamp());
         dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
         ;
-        for (Map.Entry<String, Object> additionalFields : event.getAdditionalValues().entrySet()) {
+        for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
             if (dataMap.containsKey(additionalFields.getKey())) {
                 LOGGER.error(
                         additionalFields.getKey());

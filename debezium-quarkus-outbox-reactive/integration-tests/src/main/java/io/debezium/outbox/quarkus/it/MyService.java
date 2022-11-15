@@ -11,8 +11,9 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import io.debezium.outbox.quarkus.XportedEvent;
+import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.eventbus.EventBus;
 
 @ApplicationScoped
@@ -37,7 +38,12 @@ public class MyService {
         // event.setTimestamp(Instant.now());
         // event.setPayload("Some amazing payload");
         // event.setAdditionalValues(values);
-        return bus.<XportedEvent> request("debezium-outbox", new XportedEvent(event1))
+        DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
+        bus.registerCodec(myCodec);
+
+        DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
+
+        return bus.<MyOutboxEvent> request("debezium-outbox", event1, options)
                 .onItem().transform(message -> message.body());
     }
 }

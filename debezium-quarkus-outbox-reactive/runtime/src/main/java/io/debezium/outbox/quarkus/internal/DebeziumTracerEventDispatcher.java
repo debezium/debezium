@@ -13,7 +13,6 @@ import javax.inject.Inject;
 import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.debezium.outbox.quarkus.XportedEvent;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -42,7 +41,8 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
     @Override
     @ConsumeEvent(value = "debezium-outbox")
-    public Uni<Void> onExportedEvent(XportedEvent event) {
+    public Uni<Void> onExportedEvent(Object incomingevent) {
+        ExportedEvent<?, ?> event = (ExportedEvent<?, ?>) incomingevent;
         LOGGER.info(Thread.currentThread().getName());
         LOGGER.infof("An exported event was found for type {}", event.getType());
 
@@ -54,7 +54,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             spanBuilder.asChildOf(parentSpan);
         }
         spanBuilder.withTag(AGGREGATE_TYPE, event.getAggregateType())
-                .withTag(AGGREGATE_ID, Long.toString(event.getAggregateId()))
+                .withTag(AGGREGATE_ID, Long.toString((long) event.getAggregateId()))
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
@@ -65,7 +65,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             tracer.inject(activeSpan.context(), Format.Builtin.TEXT_MAP, exportedSpanData);
 
             // Define the entity map-mode object using property names and values
-            final Map<String, Object> dataMap = getDataMapFromEvent(event);
+            final Map<String, Object> dataMap = getDataMapFromEvent((ExportedEvent<?, ?>) event);
             dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
 
             return persist(dataMap);

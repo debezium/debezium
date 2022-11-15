@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.debezium.outbox.quarkus.XportedEvent;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 
@@ -29,8 +28,8 @@ public class DefaultEventDispatcher extends AbstractEventDispatcher {
 
     @Override
     @ConsumeEvent(value = "debezium-outbox")
-    public Uni<Void> onExportedEvent(XportedEvent event) {
-        LOGGER.debug("An exported event was found for type {}", event.getType());
-        return persist(getDataMapFromEvent(event));
+    public Uni<Void> onExportedEvent(Object event) {
+        LOGGER.debug("An exported event was found for type {}");
+        return persist(getDataMapFromEvent((ExportedEvent<?, ?>) event));
     }
 }
