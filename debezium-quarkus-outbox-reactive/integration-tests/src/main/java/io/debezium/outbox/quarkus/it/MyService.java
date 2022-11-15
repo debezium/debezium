@@ -11,39 +11,31 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import io.debezium.outbox.quarkus.DebeziumCustomCodec;
+import io.debezium.outbox.quarkus.internal.DebeziumOutboxHandler;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.mutiny.core.eventbus.EventBus;
 
 @ApplicationScoped
 public class MyService {
-    @Inject
-    EventBus bus;
     // @Inject
-    // Event<ExportedEvent<?, ?>> event;
+    // EventBus bus;
+    @Inject
+    DebeziumOutboxHandler handler;
 
     public Uni<Object> doSomething() {
         final Map<String, Object> values = new HashMap<>();
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
-        System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
-        MyOutboxEvent event1 = new MyOutboxEvent(values);
-        // return Uni.createFrom().nullItem();
-        // XportedEvent event = new XportedEvent();
-        // event.setAggregateId(1L);
-        // event.setAggregateType("MyOutboxEvent");
-        // event.setType("SomeType");
-        // event.setTimestamp(Instant.now());
-        // event.setPayload("Some amazing payload");
-        // event.setAdditionalValues(values);
-        DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
-        bus.registerCodec(myCodec);
 
-        DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
-
-        return bus.<MyOutboxEvent> request("debezium-outbox", event1, options)
-                .onItem().transform(message -> message.body());
+        return handler.persistToOutbox(new MyOutboxEvent(values));
+        // MyOutboxEvent event1 = new MyOutboxEvent(values);
+        //
+        // DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
+        // bus.registerCodec(myCodec);
+        //
+        // DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
+        //
+        // return bus.<MyOutboxEvent> request("debezium-outbox", event1, options)
+        // .onItem().transform(message -> message.body());
     }
 }

@@ -54,7 +54,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
             spanBuilder.asChildOf(parentSpan);
         }
         spanBuilder.withTag(AGGREGATE_TYPE, event.getAggregateType())
-                .withTag(AGGREGATE_ID, Long.toString((long) event.getAggregateId()))
+                .withTag(AGGREGATE_ID, event.getAggregateId().toString())
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
@@ -70,6 +70,5 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
             return persist(dataMap);
         }
-        // return null;
     }
 }

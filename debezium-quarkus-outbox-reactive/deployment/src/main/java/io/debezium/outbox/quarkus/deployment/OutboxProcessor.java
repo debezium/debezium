@@ -26,6 +26,7 @@ import org.jboss.logging.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.quarkus.internal.DebeziumOutboxHandler;
 import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.debezium.outbox.quarkus.internal.DefaultEventDispatcher;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
@@ -149,10 +150,12 @@ public final class OutboxProcessor {
                       Capabilities capabilities) {
         if (debeziumOutboxConfig.tracingEnabled && capabilities.isPresent(Capability.OPENTRACING)) {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DebeziumTracerEventDispatcher.class));
+
         }
         else {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DefaultEventDispatcher.class));
         }
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DebeziumOutboxHandler.class));
         generateHbmMapping(outboxBuildItem, generatedResourcesProducer);
     }
 
@@ -177,7 +180,4 @@ public final class OutboxProcessor {
             throw new IllegalStateException("Failed to produce Outbox HBM mapping", e);
         }
     }
-
-    // @BuildStep
-    // private void generateCustomCodec()
 }

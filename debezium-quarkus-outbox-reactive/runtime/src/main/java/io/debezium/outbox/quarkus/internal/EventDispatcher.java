@@ -22,10 +22,6 @@ public interface EventDispatcher {
      * @param event
      *            the exported event
      */
-    // Uni<Void> onExportedEvent(@Observes ExportedEvent<?, ?> event);
-
-    // Uni<Void> onExportedEvent(@ObservesAsync ExportedEvent<?, ?> event);
-
     @ConsumeEvent(value = "debezium-outbox")
     Uni<Void> onExportedEvent(Object event);
 }

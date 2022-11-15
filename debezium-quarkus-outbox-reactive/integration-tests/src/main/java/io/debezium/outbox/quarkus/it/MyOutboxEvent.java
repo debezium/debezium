@@ -42,6 +42,7 @@ public class MyOutboxEvent implements ExportedEvent<Long, JsonNode> {
         return Instant.now();
     }
 
+    // using this test to illustrate case of JsonNode payload
     @Override
     public JsonNode getPayload() {
         ObjectNode asJson = mapper.createObjectNode()

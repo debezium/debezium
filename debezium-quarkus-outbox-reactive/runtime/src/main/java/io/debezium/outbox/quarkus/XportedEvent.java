@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.outbox.quarkus;
 
 import java.time.Instant;
@@ -19,21 +24,7 @@ public class XportedEvent {
         this.aggregateType = inEvent.getAggregateType();
         this.type = inEvent.getType();
         this.timestamp = inEvent.getTimestamp();
-        System.out.println(inEvent.getPayload().getClass());
-        // if (inEvent.getPayload() instanceof JsonNode) {
-        // try {
-        // this.payload = mapper.writeValueAsString(inEvent.getPayload());
-        // }
-        // catch (JsonProcessingException e) {
-        // throw new RuntimeException(e);
-        // }
-        // }
-        // else {
-        // this.payload = (String) inEvent.getPayload();
-        // }
-        //
         this.payload = inEvent.getPayload();
-        System.out.println(this.payload);
         this.additionalValues = inEvent.getAdditionalFieldValues();
 
     }

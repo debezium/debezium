@@ -5,11 +5,9 @@
  */
 package io.debezium.outbox.quarkus.it;
 
-import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,9 +31,6 @@ import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 @TestProfile(OutboxProfiles.Default.class)
 public class OutboxTest extends AbstractOutboxTest {
 
-    // @Inject
-    // EntityManager entityManager;
-
     @Inject
     MyService myService;
 
@@ -51,12 +46,10 @@ public class OutboxTest extends AbstractOutboxTest {
                 .assertSubscribed()
                 .awaitItem(Duration.ofSeconds(5))
                 .getItem();
-        System.out.println(finished);
 
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())
                 .await().indefinitely();
-        // final Map row = (Map) entityManager.createQuery("FROM OutboxEvent").getSingleResult();
         assertNotNull(row.get("id"));
         assertEquals(1L, row.get("aggregateId"));
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
