@@ -3,13 +3,15 @@ package io.debezium.outbox.quarkus;
 import java.time.Instant;
 import java.util.Map;
 
-public class XportedEvent {
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+public class XportedEvent {
+    private static final ObjectMapper mapper = new ObjectMapper();
     private long aggregateId;
     private String aggregateType;
     private String type;
     private Instant timestamp;
-    private String payload;
+    private Object payload;
     private Map<String, Object> additionalValues;
 
     public XportedEvent(ExportedEvent<?, ?> inEvent) {
@@ -17,7 +19,21 @@ public class XportedEvent {
         this.aggregateType = inEvent.getAggregateType();
         this.type = inEvent.getType();
         this.timestamp = inEvent.getTimestamp();
-        this.payload = (String) inEvent.getPayload();
+        System.out.println(inEvent.getPayload().getClass());
+        // if (inEvent.getPayload() instanceof JsonNode) {
+        // try {
+        // this.payload = mapper.writeValueAsString(inEvent.getPayload());
+        // }
+        // catch (JsonProcessingException e) {
+        // throw new RuntimeException(e);
+        // }
+        // }
+        // else {
+        // this.payload = (String) inEvent.getPayload();
+        // }
+        //
+        this.payload = inEvent.getPayload();
+        System.out.println(this.payload);
         this.additionalValues = inEvent.getAdditionalFieldValues();
 
     }
@@ -54,11 +70,11 @@ public class XportedEvent {
         this.timestamp = timestamp;
     }
 
-    public String getPayload() {
+    public Object getPayload() {
         return payload;
     }
 
-    public void setPayload(String payload) {
+    public void setPayload(Object payload) {
         this.payload = payload;
     }
 
