@@ -379,6 +379,14 @@ As an alternative, you can https://docs.confluent.io/platform/current/installati
 Beginning with {prodname} 2.0.0, Confluent Schema Registry support is not included in the {prodname} containers.
 To enable the Confluent Schema Registry for a {prodname} container, install the following Confluent Avro converter JAR files into the Connect plugin directory:
 
+* `kafka-connect-avro-converter`
+* `kafka-connect-avro-data`
+* `kafka-avro-serializer`
+* `kafka-schema-serializer`
+* `kafka-schema-registry-client`
+* `common-config`
+* `common-utils`
+
 You can download the preceding files from the https://packages.confluent.io/maven/[Confluent Maven repository].
 
 The configuration is slightly different.
