@@ -8,10 +8,12 @@ package io.debezium.outbox.quarkus.it;
 import java.time.Instant;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.outbox.quarkus.ExportedEvent;
 
 public class MyOutboxEvent implements ExportedEvent<Long, String> {
-
+    private static ObjectMapper mapper = new ObjectMapper();
     private final Map<String, Object> additionalValues;
 
     public MyOutboxEvent(Map<String, Object> additionalValues) {
@@ -40,6 +42,9 @@ public class MyOutboxEvent implements ExportedEvent<Long, String> {
 
     @Override
     public String getPayload() {
+        // ObjectNode asJson = mapper.createObjectNode()
+        // .put("something", "Some amazing payload");
+        // return asJson;
         return "Some amazing payload";
     }
 

@@ -10,8 +10,17 @@ public class XportedEvent {
     private String type;
     private Instant timestamp;
     private String payload;
-
     private Map<String, Object> additionalValues;
+
+    public XportedEvent(ExportedEvent<?, ?> inEvent) {
+        this.aggregateId = (long) inEvent.getAggregateId();
+        this.aggregateType = inEvent.getAggregateType();
+        this.type = inEvent.getType();
+        this.timestamp = inEvent.getTimestamp();
+        this.payload = (String) inEvent.getPayload();
+        this.additionalValues = inEvent.getAdditionalFieldValues();
+
+    }
 
     public String getAggregateType() {
         return aggregateType;

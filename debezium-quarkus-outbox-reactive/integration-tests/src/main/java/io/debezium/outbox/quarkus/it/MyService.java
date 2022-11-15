@@ -5,7 +5,6 @@
  */
 package io.debezium.outbox.quarkus.it;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,15 +28,16 @@ public class MyService {
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
         System.out.println("@@@@@@@@@@@@@@@@@@@@ myservice@@@@@@@@@@@@@@@@" + values);
+        MyOutboxEvent event1 = new MyOutboxEvent(values);
         // return Uni.createFrom().nullItem();
-        XportedEvent event = new XportedEvent();
-        event.setAggregateId(1L);
-        event.setAggregateType("MyOutboxEvent");
-        event.setType("SomeType");
-        event.setTimestamp(Instant.now());
-        event.setPayload("Some amazing payload");
-        event.setAdditionalValues(values);
-        return bus.<XportedEvent> request("debezium-outbox", event)
+        // XportedEvent event = new XportedEvent();
+        // event.setAggregateId(1L);
+        // event.setAggregateType("MyOutboxEvent");
+        // event.setType("SomeType");
+        // event.setTimestamp(Instant.now());
+        // event.setPayload("Some amazing payload");
+        // event.setAdditionalValues(values);
+        return bus.<XportedEvent> request("debezium-outbox", new XportedEvent(event1))
                 .onItem().transform(message -> message.body());
     }
 }
