@@ -110,7 +110,7 @@ ifdef::product[]
 endif::product[]
 
 ifdef::community[]
-. Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}.tar.gz[the installation package] into a plug-in directory. This is not needed when using the link:https://quay.io/repository/debezium/connect[Debezium Connect container image], see details in <<deploying-with-debezium-containers>>.
+. Install the Avro converter from the link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}.tar.gz[installation package] into a plug-in directory. If you are using the link:https://quay.io/repository/debezium/connect[Debezium Connect container image], it's not necessary to install the package. For more information, see  <<deploying-with-debezium-containers>>.
 endif::community[]
 ifdef::product[]
 . Install the Avro converter by downloading the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[Service Registry Kafka Connect] zip file and extracting it into the {prodname} connector's directory.
@@ -369,32 +369,17 @@ There is an alternative https://github.com/confluentinc/schema-registry[schema r
 [id="overview-of-deploying-confluent-schema-registry"]
 === Confluent Schema Registry deployment overview
 
-To install standalone Confluent Schema Registry, please see Confluent's https://docs.confluent.io/platform/current/installation/installing_cp/overview.html[official deployment guide].
+For information about installing the standalone Confluent Schema Registry, see the  https://docs.confluent.io/platform/current/installation/installing_cp/overview.html[Confluent Platform deployment documentation].
 
-[NOTE]
-====
-There's also possibility to https://docs.confluent.io/platform/current/installation/docker/installation.html[install] it as a container.
-====
+As an alternative, you can https://docs.confluent.io/platform/current/installation/docker/installation.html[install] the standalone Confluent Schema Registry as a container.
 
 [id="deploying-confluent-schema-registry-with-debezium-containers"]
 === Deploying Confluent Schema Registry with {prodname} containers
 
-As of {prodname} 2.0.0, Confluent Schema Registry support is on part of the {prodname} containers.
-To make it working, you need to install into Connect plugin directory appropriate jar files which contain Confluent Avro converters.
-Namely, you would need following jar file:
+Beginning with {prodname} 2.0.0, Confluent Schema Registry support is not included in the {prodname} containers.
+To enable the Confluent Schema Registry for a {prodname} container, install the following Confluent Avro converter JAR files into the Connect plugin directory:
 
-* `kafka-connect-avro-converter`
-* `kafka-connect-avro-data`
-* `kafka-avro-serializer`
-* `kafka-schema-serializer`
-* `kafka-schema-registry-client`
-* `common-config`
-* `common-utils`
-
-[NOTE]
-====
-You can download the required jar files https://packages.confluent.io/maven/[Confluent's Maven repository].
-====
+You can download the preceding files from the https://packages.confluent.io/maven/[Confluent Maven repository].
 
 The configuration is slightly different.
 
