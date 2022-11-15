@@ -213,7 +213,7 @@ pass:quotes[*tree ./my-plugins/*]
 
 . Add the Avro converter to the directory that contains the {prodname} connector that you want to configure to use Avro serialization:
 
-.. Go to the link:{DebeziumDownload} and download the {registry} Kafka Connect zip file.
+.. Go to the link:{LinkDebeziumDownloads}[{NameDebeziumDownloads}] and download the {registry} Kafka Connect zip file.
 .. Extract the archive into the desired {prodname} connector directory.
 
 +
