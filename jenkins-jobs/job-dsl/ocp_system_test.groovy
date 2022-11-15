@@ -3,7 +3,7 @@ pipelineJob('ocp-system-test') {
     description('Runs System Tests inside OCP')
 
     parameters {
-        stringParam('MAIL_TO', 'jcechace@redhat.com')
+        stringParam('MAIL_TO', 'debezium-qe@redhat.com')
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
 
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')
