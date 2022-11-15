@@ -76,7 +76,6 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dtest.argline="-Ddebezium.test.records.waittime=5" \
     -Dinsecure.repositories=WARN \
-    -Papicurio \
     $PROFILE_PROD
     
 RESULTS_FOLDER=final-results
