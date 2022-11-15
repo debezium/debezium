@@ -196,7 +196,7 @@ pipeline {
                     POD_DESCRIPTION="testsuite.yml"
                     PULL_SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
 
-                    LOG_LOCATION_IN_POD=/testsuite/testsuite_log
+                    LOG_LOCATION_IN_POD=/root/testsuite/testsuite_log
 
                     jenkins-jobs/docker/debezium-testing-system/deployment-template.sh --filename "${POD_DESCRIPTION}" \
                         --pull-secret-name "${PULL_SECRET_NAME}" \
@@ -222,7 +222,7 @@ pipeline {
                         # copy log and test results                 
                         mkdir ${WORKSPACE}/testsuite_artifacts
                         oc rsync ${pod_name}:${LOG_LOCATION_IN_POD} ${WORKSPACE}/testsuite_artifacts
-                        oc rsync ${pod_name}:/testsuite/artifacts.zip ${WORKSPACE}/testsuite_artifacts || oc delete pod ${pod_name}
+                        oc rsync ${pod_name}:/root/testsuite/artifacts.zip ${WORKSPACE}/testsuite_artifacts || oc delete pod ${pod_name}
                         oc delete pod ${pod_name}
                     } & 
                     

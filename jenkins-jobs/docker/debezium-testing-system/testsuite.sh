@@ -1,17 +1,18 @@
 #!/bin/bash
+SCRIPT_LOCATION=${HOME}/testsuite
+cd "${SCRIPT_LOCATION}" || exit 1
 {
-  source /root/.sdkman/bin/sdkman-init.sh
+  source "${HOME}/.sdkman/bin/sdkman-init.sh"
 
   set -x
 
-  DEBEZIUM_LOCATION="/testsuite/debezium"
+  DEBEZIUM_LOCATION=${SCRIPT_LOCATION}/debezium
 
   # copy secret to debezium project
-  TESTSUITE_SECRET=/testsuite/testsuite_secret.yml
-  oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-testsuite" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*//" | sed "s/uid: .*//" > ${TESTSUITE_SECRET}
+  TESTSUITE_SECRET=${PWD}/testsuite_secret.yml
+  oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-testsuite" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*//" | sed "s/uid: .*//" > "${TESTSUITE_SECRET}"
 
-  mkdir ${DEBEZIUM_LOCATION}
-  pushd /testsuite || exit 1;
+  mkdir "${DEBEZIUM_LOCATION}"
 
   OPTIONAL_ARGS=()
   if [ "${DBZ_PRODUCT_BUILD}" == true ] ; then
@@ -24,7 +25,7 @@
 
   # clone, compile debezium and run tests
   git clone --branch "${DBZ_GIT_BRANCH}" "${DBZ_GIT_REPOSITORY}"
-  pushd debezium || exit 1
+  pushd "${DEBEZIUM_LOCATION}" || exit 1
 
   ./mvnw install -DskipTests -DskipITs
 
@@ -41,12 +42,12 @@
 
   pushd debezium-testing/debezium-testing-system/target/failsafe-reports || exit 1
   zip artifacts ./*.xml
-  mv  artifacts.zip /testsuite
-  popd || exit 1
-} 2>&1 | tee /tmp/testsuite_log
+  mv artifacts.zip "${SCRIPT_LOCATION}"
+} 2>&1 | tee "${SCRIPT_LOCATION}/tmp_log"
 
 # move to a location checked by a readiness probe to signal jenkins artefacts are ready
-cp /tmp/testsuite_log "${TESTSUITE_LOG}"
+cd "${SCRIPT_LOCATION}" || exit 1
+mv tmp_log testsuite_log
 
 # keep alive until test results and logs are copied and pod is killed by jenkins job.
 while true; do

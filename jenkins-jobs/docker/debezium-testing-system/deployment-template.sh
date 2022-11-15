@@ -70,8 +70,6 @@ spec:
           value: \"${GROUPS_ARG}\"
         - name: DBZ_OCP_DELETE_PROJECTS
           value: \"true\"
-        - name: TESTSUITE_LOG
-          value: \"${TESTSUITE_LOG}\"
       readinessProbe:
         exec:
           command:
