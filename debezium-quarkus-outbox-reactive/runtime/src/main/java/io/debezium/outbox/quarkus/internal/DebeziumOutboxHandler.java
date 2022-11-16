@@ -16,13 +16,13 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 
 @ApplicationScoped
 public class DebeziumOutboxHandler {
+
     @Inject
     EventBus bus;
+    DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
+    DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
 
     public Uni<Object> persistToOutbox(ExportedEvent<?, ?> incomingEvent) {
-        DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
-        bus.registerCodec(myCodec);
-        DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
 
         return bus.<Object> request("debezium-outbox", incomingEvent, options)
                 .onItem().transform(message -> message.body());
