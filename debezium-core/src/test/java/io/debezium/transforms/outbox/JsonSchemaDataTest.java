@@ -100,7 +100,7 @@ public class JsonSchemaDataTest {
     }
 
     @Test
-    @FixFor("DBZ-DBZ-5796")
+    @FixFor("DBZ-5796")
     public void shouldConvertNullNodeToOptionalBytes() throws Exception {
         jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES);
         String json = "{\"heartbeat\": 1, \"email\": null}";
