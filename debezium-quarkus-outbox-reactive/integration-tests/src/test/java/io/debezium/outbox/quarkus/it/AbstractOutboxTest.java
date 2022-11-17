@@ -43,11 +43,8 @@ public abstract class AbstractOutboxTest {
     @Test
     public void testOutboxEntityMetamodelExists() throws Exception {
         final MetamodelImplementor metadata = (MetamodelImplementor) sessionFactory.getMetamodel();
-
-        System.out.println("executed abstract netanidek");
         final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
-
         // this assumes the default mapping settings, no custom converters or column types
         assertEquals(UUID.class, persister.getIdentifierType().getReturnedClass());
         assertEquals(String.class, persister.getPropertyType("aggregateType").getReturnedClass());
@@ -72,7 +69,7 @@ public abstract class AbstractOutboxTest {
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
         assertEquals("SomeType", row.get("type"));
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
-        // assertEquals("Some amazing payload", row.get("payload"));
+        // assertEquals({\"something\":\"Some amazing payload\"}, row.get("payload"));
         assertEquals("John Doe", row.get("name"));
         assertEquals("JOHN DOE", row.get("name_upper"));
         assertEquals("Jane Doe", row.get("name_no_columndef"));

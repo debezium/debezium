@@ -7,8 +7,7 @@ package io.debezium.outbox.quarkus.internal;
 
 import javax.enterprise.context.ApplicationScoped;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jboss.logging.Logger;
 
 import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
@@ -25,12 +24,13 @@ import io.smallrye.mutiny.Uni;
 @ApplicationScoped
 public class DefaultEventDispatcher extends AbstractEventDispatcher {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultEventDispatcher.class);
+    private static final Logger LOGGER = Logger.getLogger(DefaultEventDispatcher.class);
 
     @Override
     @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(Object event) {
-        LOGGER.debug("An exported event was found for type {}");
+        LOGGER.infof("default dispatcher on thread: " + Thread.currentThread().getName());
+        LOGGER.infof("An exported event was found for type {}");
         return persist(getDataMapFromEvent((ExportedEvent<?, ?>) event));
     }
 }

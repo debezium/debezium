@@ -44,8 +44,8 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(Object incomingevent) {
         ExportedEvent<?, ?> event = (ExportedEvent<?, ?>) incomingevent;
-        LOGGER.info(Thread.currentThread().getName());
-        LOGGER.infof("An exported event was found for type {}", event.getType());
+        LOGGER.infof("tracer dispatcher on thread: " + Thread.currentThread().getName());
+        LOGGER.infof("An exported event was found for type {}" + event.getType());
 
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
         final DebeziumTextMap exportedSpanData = new DebeziumTextMap();

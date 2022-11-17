@@ -48,10 +48,21 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         return factory.withSession(
                 session -> session.withTransaction(
                         tx -> session.persist(dataMap)))
-                .invoke(() -> LOGGER.info("outbox event persisted"));
-        // if (config.removeAfterInsert) {
-        // session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
-        // }
+                .invoke(() -> LOGGER.info("outbox event persisted"))
+                .call(() -> this.removeFromOutbox(dataMap));
+
+    }
+
+    protected Uni<Integer> removeFromOutbox(Map<String, Object> dataMap) {
+        if (config.removeAfterInsert) {
+            LOGGER.info("removing outbox event");
+
+            return factory.withSession(
+                    session -> session.withTransaction(
+                            tx -> session.createQuery("delete from " + OUTBOX_ENTITY_FULLNAME + " where " + AGGREGATE_ID + "=:aggregateId")
+                                    .setParameter("aggregateId", dataMap.get(AGGREGATE_ID)).executeUpdate()));
+        }
+        return Uni.createFrom().item(-1);
     }
 
     protected Map<String, Object> getDataMapFromEvent(ExportedEvent<?, ?> event) {

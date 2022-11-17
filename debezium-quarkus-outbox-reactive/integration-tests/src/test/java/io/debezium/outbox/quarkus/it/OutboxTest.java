@@ -16,8 +16,10 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.outbox.quarkus.internal.DefaultEventDispatcher;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
@@ -30,7 +32,7 @@ import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 @QuarkusTest
 @TestProfile(OutboxProfiles.Default.class)
 public class OutboxTest extends AbstractOutboxTest {
-
+    private static final Logger LOGGER = Logger.getLogger(DefaultEventDispatcher.class);
     @Inject
     MyService myService;
 
@@ -41,6 +43,7 @@ public class OutboxTest extends AbstractOutboxTest {
     @Test
     // @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
+        LOGGER.infof("test running on thread: " + Thread.currentThread().getName());
         var finished = this.myService.doSomething()
                 .subscribe().withSubscriber(UniAssertSubscriber.create())
                 .assertSubscribed()
@@ -55,7 +58,7 @@ public class OutboxTest extends AbstractOutboxTest {
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
         assertEquals("SomeType", row.get("type"));
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
-        // assertEquals("Some amazing payload", row.get("payload"));
+        // assertEquals("{\"something\":\"Some amazing payload\"}", row.get("payload"));
         assertNotNull(row.get("tracingspancontext"));
         assertEquals("John Doe", row.get("name"));
         assertEquals("JOHN DOE", row.get("name_upper"));
