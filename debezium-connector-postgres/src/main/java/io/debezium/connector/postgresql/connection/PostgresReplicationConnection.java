@@ -545,7 +545,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void flushLsn(Lsn lsn) throws SQLException {
-                doFlushLsn(lsn);
+                if (connectorConfig.isFlushLsnOnSource()) {
+                    doFlushLsn(lsn);
+                }
             }
 
             private void doFlushLsn(Lsn lsn) throws SQLException {

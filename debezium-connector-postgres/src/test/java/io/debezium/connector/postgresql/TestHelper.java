@@ -39,6 +39,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -323,7 +324,17 @@ public final class TestHelper {
                     decoderPlugin().getPostgresPluginName()));
         }
         catch (Exception e) {
-            LOGGER.debug("Error while dropping default replication slot", e);
+            LOGGER.debug("Error while creating default replication slot", e);
+        }
+    }
+
+    protected static SlotState getDefaultReplicationSlot() {
+        try (PostgresConnection connection = create()) {
+            return connection.getReplicationSlotState(ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
+                    decoderPlugin().getPostgresPluginName());
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
