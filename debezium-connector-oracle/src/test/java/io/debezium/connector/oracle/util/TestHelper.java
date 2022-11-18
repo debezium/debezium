@@ -24,6 +24,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -623,4 +624,19 @@ public class TestHelper {
         return ConnectorAdapter.parse(config.getString(OracleConnectorConfig.CONNECTOR_ADAPTER));
     }
 
+    /**
+     * Returns the current system change number in the database.
+     *
+     * @return the current system change number, never {@code null}
+     * @throws SQLException if a database error occurred
+     */
+    public static Scn getCurrentScn() throws SQLException {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+            // Force the connection to the CDB$ROOT if we're operating w/a PDB
+            if (isUsingPdb()) {
+                admin.resetSessionToCdb();
+            }
+            return admin.getCurrentScn();
+        }
+    }
 }
