@@ -5,9 +5,9 @@
  */
 package io.debezium.kcrestextension;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
-
-import io.debezium.util.IoUtil;
 
 /**
  * Information about this module.
@@ -15,9 +15,29 @@ import io.debezium.util.IoUtil;
  */
 public final class Module {
 
-    private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/kcrestextension/build.version");
+    private static final Properties INFO = loadProperties("io/debezium/kcrestextension/build.version");
 
     public static String version() {
         return INFO.getProperty("version");
+    }
+
+    /**
+     * Atomically load the properties file at the given location within the designated class loader.
+     *
+     * @param classpathResource the path to the resource file; may not be null
+     * @return the properties object; never null, but possibly empty
+     * @throws IllegalStateException if the file could not be found or read
+     */
+    private static Properties loadProperties(String classpathResource) {
+        var classLoader = Module.class.getClassLoader();
+        try (InputStream stream = classLoader.getResourceAsStream(classpathResource)) {
+            Properties props = new Properties();
+            props.load(stream);
+            return props;
+        }
+        catch (IOException e) {
+            throw new IllegalStateException("Unable to find or read the '" + classpathResource + "' file using the " +
+                    classLoader + " class loader", e);
+        }
     }
 }
