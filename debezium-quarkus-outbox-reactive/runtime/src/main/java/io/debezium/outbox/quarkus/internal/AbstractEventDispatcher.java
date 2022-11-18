@@ -14,7 +14,8 @@ import javax.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.tuple.DynamicMapInstantiator;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.smallrye.mutiny.Uni;
@@ -26,7 +27,7 @@ import io.smallrye.mutiny.Uni;
  */
 public abstract class AbstractEventDispatcher implements EventDispatcher {
 
-    private static final Logger LOGGER = Logger.getLogger(AbstractEventDispatcher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEventDispatcher.class);
 
     protected static final String TIMESTAMP = "timestamp";
     protected static final String PAYLOAD = "payload";
@@ -44,19 +45,17 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     DebeziumOutboxRuntimeConfig config;
 
     protected Uni<Void> persist(Map<String, Object> dataMap) {
-        LOGGER.infof("entered persist method on thread: " + Thread.currentThread().getName());
         return factory.withSession(
                 session -> session.withTransaction(
                         tx -> session.persist(dataMap)))
-                .invoke(() -> LOGGER.info("outbox event persisted"))
+                .invoke(() -> LOGGER.debug("outbox event persisted"))
                 .call(() -> this.removeFromOutbox(dataMap));
 
     }
 
     protected Uni<Integer> removeFromOutbox(Map<String, Object> dataMap) {
         if (config.removeAfterInsert) {
-            LOGGER.info("removing outbox event");
-
+            LOGGER.debug("removing outbox event");
             return factory.withSession(
                     session -> session.withTransaction(
                             tx -> session.createQuery("delete from " + OUTBOX_ENTITY_FULLNAME + " where " + AGGREGATE_ID + "=:aggregateId")

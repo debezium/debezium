@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>debezium-quarkus-outbox-reactive-deployment</artifactId>
-    <name>Debezium Quarkus :: Outbox Reactive:: Deployment</name>
+    <name>Debezium Quarkus :: Outbox Reactive :: Deployment</name>
 
     <dependencies>
         <!-- Quarkus deployment dependencies -->

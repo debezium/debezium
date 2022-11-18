@@ -10,7 +10,8 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
@@ -32,7 +33,7 @@ import io.smallrye.mutiny.Uni;
 @ApplicationScoped
 public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
-    private static final Logger LOGGER = Logger.getLogger(DebeziumTracerEventDispatcher.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumTracerEventDispatcher.class);
     public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
     private static final String OPERATION_NAME = "outbox-write";
     private static final String TRACING_COMPONENT = "debezium";
@@ -44,9 +45,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(Object incomingevent) {
         ExportedEvent<?, ?> event = (ExportedEvent<?, ?>) incomingevent;
-        LOGGER.infof("tracer dispatcher on thread: " + Thread.currentThread().getName());
-        LOGGER.infof("An exported event was found for type {}" + event.getType());
-
+        LOGGER.debug("An exported event was found for type {}" + event.getType());
         final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
         final DebeziumTextMap exportedSpanData = new DebeziumTextMap();
 

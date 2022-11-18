@@ -16,8 +16,7 @@ import io.smallrye.mutiny.Uni;
 
 @ApplicationScoped
 public class MyService {
-    // @Inject
-    // EventBus bus;
+
     @Inject
     DebeziumOutboxHandler handler;
 
@@ -26,16 +25,6 @@ public class MyService {
         values.put("name", "John Doe"); // illustrates additional field with no converter
         values.put("name_upper", "John Doe"); // illustrates additional field with converter
         values.put("name_no_columndef", "Jane Doe"); // illustrates default behavior with no column definition specified
-
         return handler.persistToOutbox(new MyOutboxEvent(values));
-        // MyOutboxEvent event1 = new MyOutboxEvent(values);
-        //
-        // DebeziumCustomCodec myCodec = new DebeziumCustomCodec();
-        // bus.registerCodec(myCodec);
-        //
-        // DeliveryOptions options = new DeliveryOptions().setCodecName(myCodec.name());
-        //
-        // return bus.<MyOutboxEvent> request("debezium-outbox", event1, options)
-        // .onItem().transform(message -> message.body());
     }
 }

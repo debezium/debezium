@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>debezium-quarkus-outbox-reactive-integration-tests</artifactId>
-    <name>Debezium Quarkus :: Reactive Outbox:: Integration Tests</name>
+    <name>Debezium Quarkus :: Outbox Reactive :: Integration Tests</name>
 
     <dependencyManagement>
         <dependencies>

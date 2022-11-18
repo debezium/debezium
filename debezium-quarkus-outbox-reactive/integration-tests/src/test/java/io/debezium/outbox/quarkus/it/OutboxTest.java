@@ -16,10 +16,12 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
-import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.outbox.quarkus.internal.DefaultEventDispatcher;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
@@ -32,7 +34,6 @@ import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 @QuarkusTest
 @TestProfile(OutboxProfiles.Default.class)
 public class OutboxTest extends AbstractOutboxTest {
-    private static final Logger LOGGER = Logger.getLogger(DefaultEventDispatcher.class);
     @Inject
     MyService myService;
 
@@ -41,15 +42,24 @@ public class OutboxTest extends AbstractOutboxTest {
 
     @Override
     @Test
-    // @SuppressWarnings("rawtypes")
+    @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
-        LOGGER.infof("test running on thread: " + Thread.currentThread().getName());
+        // a way to subscribe to the mock service call
         var finished = this.myService.doSomething()
                 .subscribe().withSubscriber(UniAssertSubscriber.create())
                 .assertSubscribed()
                 .awaitItem(Duration.ofSeconds(5))
                 .getItem();
 
+        // to test jsonnode
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode actualObj;
+        try {
+            actualObj = mapper.readValue("{\"something\":\"Some amazing payload\"}", JsonNode.class);
+        }
+        catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())
                 .await().indefinitely();
@@ -58,7 +68,7 @@ public class OutboxTest extends AbstractOutboxTest {
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
         assertEquals("SomeType", row.get("type"));
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
-        // assertEquals("{\"something\":\"Some amazing payload\"}", row.get("payload"));
+        assertEquals(actualObj, row.get("payload"));
         assertNotNull(row.get("tracingspancontext"));
         assertEquals("John Doe", row.get("name"));
         assertEquals("JOHN DOE", row.get("name_upper"));

@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>debezium-quarkus-outbox-reactive</artifactId>
-    <name>Debezium Quarkus :: Reactive Outbox :: Runtime</name>
+    <name>Debezium Quarkus :: Outbox Reactive :: Runtime</name>
 
     <dependencies>
         <!-- Quarkus extensions -->

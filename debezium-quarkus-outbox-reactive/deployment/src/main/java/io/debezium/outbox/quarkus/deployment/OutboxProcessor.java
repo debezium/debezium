@@ -21,7 +21,8 @@ import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.ParameterizedType;
 import org.jboss.jandex.Type;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -48,7 +49,7 @@ import io.quarkus.hibernate.orm.deployment.integration.HibernateOrmIntegrationSt
  */
 public final class OutboxProcessor {
 
-    private static final Logger LOGGER = Logger.getLogger(OutboxProcessor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OutboxProcessor.class);
 
     private static final String DEBEZIUM_OUTBOX = "debezium-outbox";
 
@@ -74,7 +75,7 @@ public final class OutboxProcessor {
 
         boolean parameterizedTypesDetected = false;
         for (ClassInfo classInfo : index.getIndex().getAllKnownImplementors(exportedEvent)) {
-            LOGGER.infof("Found ExportedEvent (reactive?) type: %s", classInfo.name());
+            LOGGER.info("Found ExportedEvent type: %s", classInfo.name());
 
             for (Type interfaceType : classInfo.interfaceTypes()) {
                 if (interfaceType.name().equals(exportedEvent)) {
@@ -90,8 +91,8 @@ public final class OutboxProcessor {
                         final Type pTypeAggregateType = pType.arguments().get(0);
                         final Type pTypePayloadType = pType.arguments().get(1);
                         LOGGER.debug(" * Implements ExportedEvent with generic parameters:");
-                        LOGGER.debugf("     AggregateId: %s", pTypeAggregateType.name().toString());
-                        LOGGER.debugf("     Payload: %s", pTypePayloadType.name().toString());
+                        LOGGER.debug("     AggregateId: %s", pTypeAggregateType.name().toString());
+                        LOGGER.debug("     Payload: %s", pTypePayloadType.name().toString());
 
                         if (parameterizedTypesDetected) {
                             if (!pTypeAggregateType.equals(aggregateIdType)) {
@@ -121,15 +122,15 @@ public final class OutboxProcessor {
                     }
                     else {
                         LOGGER.debug(" * Implements ExportedEvent without parameters, using:");
-                        LOGGER.debugf("     AggregateId: %s", aggregateIdType.name().toString());
-                        LOGGER.debugf("     Payload: %s", payloadType.name().toString());
+                        LOGGER.debug("     AggregateId: %s", aggregateIdType.name().toString());
+                        LOGGER.debug("     Payload: %s", payloadType.name().toString());
                     }
                 }
             }
         }
 
-        LOGGER.infof("Binding Aggregate Id as '%s'.", aggregateIdType.name().toString());
-        LOGGER.infof("Binding Payload as '%s'.", payloadType.name().toString());
+        LOGGER.info("Binding Aggregate Id as '%s'.", aggregateIdType.name().toString());
+        LOGGER.info("Binding Payload as '%s'.", payloadType.name().toString());
 
         outboxEventEntityProducer.produce(new OutboxEventEntityBuildItem(aggregateIdType, payloadType));
 
@@ -172,7 +173,7 @@ public final class OutboxProcessor {
                 final PrintWriter writer = new PrintWriter(os);
                 marshaller.marshal(jaxbMapping, writer);
 
-                LOGGER.debugf("Outbox entity HBM mapping:\n%s", new String(os.toByteArray()));
+                LOGGER.debug("Outbox entity HBM mapping:\n%s", new String(os.toByteArray()));
                 generatedResourcesProducer.produce(new GeneratedResourceBuildItem(OUTBOX_ENTITY_HBMXML, os.toByteArray()));
             }
         }

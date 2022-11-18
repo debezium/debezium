@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -20,10 +21,13 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
 import io.quarkus.test.common.QuarkusTestResource;
+import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 
 /**
  * Abstract base class for the Debezium Outbox extension test suite.  Each subclass implementation can
@@ -60,7 +64,22 @@ public abstract class AbstractOutboxTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void firedEventGetsPersistedInOutboxTable() {
-        myService.doSomething().await().indefinitely();
+        var finished = this.myService.doSomething()
+                .subscribe().withSubscriber(UniAssertSubscriber.create())
+                .assertSubscribed()
+                .awaitItem(Duration.ofSeconds(5))
+                .getItem();
+
+        // to test jsonnode
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode actualObj;
+        try {
+            actualObj = mapper.readValue("{\"something\":\"Some amazing payload\"}", JsonNode.class);
+        }
+        catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
         final Map row = (Map) sessionFactory.withSession(
                 session -> session.createQuery("FROM OutboxEvent").getSingleResult())
                 .await().indefinitely();
@@ -69,7 +88,7 @@ public abstract class AbstractOutboxTest {
         assertEquals("MyOutboxEvent", row.get("aggregateType"));
         assertEquals("SomeType", row.get("type"));
         assertTrue(((Instant) row.get("timestamp")).isBefore(Instant.now()));
-        // assertEquals({\"something\":\"Some amazing payload\"}, row.get("payload"));
+        assertEquals(actualObj, row.get("payload"));
         assertEquals("John Doe", row.get("name"));
         assertEquals("JOHN DOE", row.get("name_upper"));
         assertEquals("Jane Doe", row.get("name_no_columndef"));
