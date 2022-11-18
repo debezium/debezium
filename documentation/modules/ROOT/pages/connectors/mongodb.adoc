@@ -246,7 +246,7 @@ endif::community[]
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!sql-based-snapshot]
 
 // Type: procedure
 [id="mongodb-stopping-an-incremental-snapshot"]
