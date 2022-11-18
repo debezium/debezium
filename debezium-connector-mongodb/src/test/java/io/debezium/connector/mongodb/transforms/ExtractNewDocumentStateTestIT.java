@@ -1744,6 +1744,55 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(f2.get(0).getArray("f3").size()).isEqualTo(0);
     }
 
+    @Test
+    @FixFor({ "DBZ-5834" })
+    public void shouldAddUpdateDescription() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_HEADERS, "updateDescription.updatedFields");
+        props.put(ADD_HEADERS_PREFIX, "prefix.");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("street", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // update
+        Document updateObj = new Document()
+                .append("$set", new Document(Collect.hashMapOf(
+                        "name", "Mary",
+                        "zipcode", "11111")));
+
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        SourceRecords updateRecords = consumeRecordsByTopic(1);
+        assertThat(updateRecords.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        // do the transform
+        final SourceRecord transformed = transformation.apply(updateRecords.recordsForTopic(this.topicName()).get(0));
+
+        // verify headers
+        final String expectedUpdateFields = "{\"name\": \"Mary\", \"zipcode\": \"11111\"}";
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.updateDescription_updatedFields")).isEqualTo(expectedUpdateFields);
+    }
+
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
         final List<Document> documents = loadTestDocuments(pathOnClasspath);
         primary().execute("Load JSON", client -> {

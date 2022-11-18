@@ -171,7 +171,7 @@ For more information, see the https://docs.mongodb.com/manual/core/replica-set-a
 [[mongodb-logical-connector-name]]
 === Logical connector name
 
-The connector configuration property `mongodb.name` serves as a _logical name_ for the MongoDB replica set or sharded cluster.
+The connector configuration property `topic.prefix` serves as a _logical name_ for the MongoDB replica set or sharded cluster.
 The connector uses the logical name in a number of ways: as the prefix for all topic names, and as a unique identifier when recording the change stream position of each replica set.
 
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
@@ -286,7 +286,7 @@ Since the size of Mongo change stream event is limited to 16 megabytes, enabling
 === Topic names
 
 The MongoDB connector writes events for all insert, update, and delete operations to documents in each collection to a single Kafka topic.
-The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the xref:{link-mongodb-connector}#mongodb-logical-connector-name[logical name] of the connector as specified with the `mongodb.name` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
+The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the xref:{link-mongodb-connector}#mongodb-logical-connector-name[logical name] of the connector as specified with the `topic.prefix` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
 
 For example, consider a MongoDB replica set with an `inventory` database that contains four collections: `products`, `products_on_hand`, `customers`, and `orders`.
 If the connector monitoring this database were given a logical name of `fulfillment`, then the connector would produce events on these four Kafka topics:
@@ -368,7 +368,7 @@ The following example shows a typical message:
 ----
 
 Unless overridden via the xref:{link-mongodb-connector}#mongodb-property-topic-transaction[`topic.transaction`] option,
-transaction events are written to the topic named xref:mongodb-property-mongodb-name[`_<mongodb.name>_`]`.transaction`.
+transaction events are written to the topic named xref:mongodb-property-topic-prefix[`_<topic.prefix>_`]`.transaction`.
 
 .Change data event enrichment
 When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
@@ -992,7 +992,7 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
@@ -1179,7 +1179,7 @@ apiVersion: {KafkaConnectApiVersion}
     class: io.debezium.connector.mongodb.MongoDbConnector // <2>
     config:
      mongodb.hosts: rs0/192.168.99.100:27017 // <3>
-     mongodb.name: fulfillment // <4>
+     topic.prefix: fulfillment // <4>
      collection.include.list: inventory[.]* // <5>
 ----
 <1> The name that is used to register the connector with Kafka Connect.
@@ -1216,7 +1216,7 @@ Optionally, you can filter out collections that are not needed.
   "config": {
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector", // <2>
     "mongodb.hosts": "rs0/192.168.99.100:27017", // <3>
-    "mongodb.name": "fullfillment", // <4>
+    "topic.prefix": "fullfillment", // <4>
     "collection.include.list": "inventory[.]*" // <5>
   }
 }
@@ -1328,7 +1328,7 @@ However, if credential information is not present elsewhere in the configuration
 For example, if the `mongodb.user` property is not set, but the connection string includes the MongoDB username, the connector reads the information from the string.
 ====
 
-|[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
+|[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
 |No default
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
 Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
@@ -1624,14 +1624,6 @@ endif::product[]
 |[[mongodb-property-topic-delimiter]]<<mongodb-property-topic-delimiter, `topic.delimiter`>>
 |`.`
 |Specify the delimiter for topic name, defaults to `.`.
-
-|[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `topic.prefix`>>
-|`${mongodb.name}`
-|The name of the prefix to be used for all topics, defaults to xref:mongodb-property-mongodb-name[`${mongodb.name}`].
-[NOTE]
-====
-Once specify the prefix value to this property, the xref:mongodb-property-mongodb-name[`${mongodb.name}`] will not play the prefix role of all topics.
-====
 
 |[[mongodb-property-topic-cache-size]]<<mongodb-property-topic-cache-size, `topic.cache.size`>>
 |`10000`

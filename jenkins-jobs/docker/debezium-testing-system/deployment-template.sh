@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OPTS=$(getopt -o h: --long dbz-git-repository:,dbz-git-branch:,filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,help  -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h: --long dbz-git-repository:,dbz-git-branch:,filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,testsuite-log:,help  -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -19,61 +19,62 @@ while true; do
         --dbz-connect-image )     DBZ_CONNECT_IMAGE=$2;       shift 2;;
         --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;   shift 2;;
         --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
-        --kafka-version )         KAFKA_VERSION=$2;        shift 2;;
+        --kafka-version )         KAFKA_VERSION=$2;           shift 2;;
         --groups-arg )            GROUPS_ARG=$2;              shift 2;;
+        --testsuite-log )         TESTSUITE_LOG=$2;           shift 2;;
         -h | --help )             PRINT_HELP=true=$2;         shift ;;
         -- ) shift; break ;;
         * ) break ;;
     esac
 done
 
-output="apiVersion: batch/v1
-kind: Job
+output="apiVersion: v1
+kind: Pod
 metadata:
   name: \"testsuite\"
 spec:
-  template:
-    metadata:
-      labels:
-        name: \"testsuite\"
-    spec:
-      restartPolicy: Never
-      imagePullSecrets:
-        - name: ${PULL_SECRET_NAME}
-      containers:
-        - name: \"dbz-testing-system\"
-          image: \"quay.io/rh_integration/dbz-testing-system:${DOCKER_TAG}\"
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-              protocol: \"TCP\"
-          env:
-            - name: DBZ_GIT_REPOSITORY
-              value: \"${DBZ_GIT_REPOSITORY}\"
-            - name: DBZ_GIT_BRANCH
-              value: \"${DBZ_GIT_BRANCH}\"
-            - name: DBZ_OCP_PROJECT_DEBEZIUM
-              value: \"${PROJECT_NAME}\"
-            - name: DBZ_SECRET_NAME
-              value: \"${PULL_SECRET_NAME}\"
-            - name: DBZ_TEST_WAIT_SCALE
-              value: \"10\"
-            - name: DBZ_PRODUCT_BUILD
-              value: \"${PRODUCT_BUILD}\"
-            - name: DBZ_STRIMZI_KC_BUILD
-              value: \"${STRIMZI_KC_BUILD}\"
-            - name: DBZ_CONNECT_IMAGE
-              value: \"${DBZ_CONNECT_IMAGE}\"
-            - name: DBZ_ARTIFACT_SERVER_IMAGE
-              value: \"${ARTIFACT_SERVER_IMAGE}\"
-            - name: DBZ_APICURIO_VERSION
-              value: \"${APICURIO_VERSION}\"
-            - name: DBZ_KAFKA_VERSION
-              value: \"${KAFKA_VERSION}\"
-            - name: DBZ_GROUPS_ARG
-              value: \"${GROUPS_ARG}\"
-            - name: DBZ_OCP_DELETE_PROJECTS
-              value: \"true\"
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: ${PULL_SECRET_NAME}
+  containers:
+    - name: \"dbz-testing-system\"
+      image: \"quay.io/rh_integration/dbz-testing-system:${DOCKER_TAG}\"
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 8080
+          protocol: \"TCP\"
+      env:
+        - name: DBZ_GIT_REPOSITORY
+          value: \"${DBZ_GIT_REPOSITORY}\"
+        - name: DBZ_GIT_BRANCH
+          value: \"${DBZ_GIT_BRANCH}\"
+        - name: DBZ_OCP_PROJECT_DEBEZIUM
+          value: \"${PROJECT_NAME}\"
+        - name: DBZ_SECRET_NAME
+          value: \"${PULL_SECRET_NAME}\"
+        - name: DBZ_TEST_WAIT_SCALE
+          value: \"10\"
+        - name: DBZ_PRODUCT_BUILD
+          value: \"${PRODUCT_BUILD}\"
+        - name: DBZ_STRIMZI_KC_BUILD
+          value: \"${STRIMZI_KC_BUILD}\"
+        - name: DBZ_CONNECT_IMAGE
+          value: \"${DBZ_CONNECT_IMAGE}\"
+        - name: DBZ_ARTIFACT_SERVER_IMAGE
+          value: \"${ARTIFACT_SERVER_IMAGE}\"
+        - name: DBZ_APICURIO_VERSION
+          value: \"${APICURIO_VERSION}\"
+        - name: DBZ_KAFKA_VERSION
+          value: \"${KAFKA_VERSION}\"
+        - name: DBZ_GROUPS_ARG
+          value: \"${GROUPS_ARG}\"
+        - name: DBZ_OCP_DELETE_PROJECTS
+          value: \"true\"
+      readinessProbe:
+        exec:
+          command:
+          - cat
+          - ${TESTSUITE_LOG}
   triggers:
     - type: \"ConfigChange\"
   paused: false

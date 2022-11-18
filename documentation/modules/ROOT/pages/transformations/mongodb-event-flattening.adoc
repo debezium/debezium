@@ -225,11 +225,12 @@ transforms.unwrap.add.headers=op
 
 The possible values are the ones from the `op` field of xref:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
 
-=== Adding source metadata fields
+=== Adding metadata fields
 
-The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
+The SMT can optionally add metadata fields from the original change event's to the final flattened record (prefixed with "__").
 This ability to add metadata to the event record makes it possible to include content such as the name of the collection associated with the change event, or such connector-specific fields as the replica set name.
-For more information about the MongoDB source structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
+Currently, only fields from change event sub-structures `source`, `transaction` and `updateDescription` can be added.
+For more information about the MongoDB change event structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
 For example, you might specify the following configuration to add a replica set name (`rs`) and the collection name for a change event to the final flattened event record:
 

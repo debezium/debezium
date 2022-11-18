@@ -77,7 +77,6 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezi
     -Dmaven.test.failure.ignore=true \
     -Dversion.mongo.server=$MONGODB_VERSION \
     -Dinsecure.repositories=WARN \
-    -Papicurio \
     $PROFILE_PROD
  
 

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -24,16 +25,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.doc.FixFor;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 
 /**
  * @author vjuranek
  */
-public class SchemaBuilderUtilTest {
+public class JsonSchemaDataTest {
+    private JsonSchemaData jsonSchemaData;
     private ObjectMapper mapper;
     private String record;
 
     @Before
     public void setup() throws Exception {
+        jsonSchemaData = new JsonSchemaData();
         mapper = new ObjectMapper();
         record = getFile("json/restaurants5.json");
     }
@@ -45,7 +49,7 @@ public class SchemaBuilderUtilTest {
 
         RuntimeException expectedException = null;
         try {
-            SchemaBuilderUtil.toConnectSchema(null, testNode);
+            jsonSchemaData.toConnectSchema(null, testNode);
         }
         catch (ConnectException e) {
             expectedException = e;
@@ -59,7 +63,7 @@ public class SchemaBuilderUtilTest {
     @FixFor("DBZ-5654")
     public void shouldCreateCorrectSchemaFromInsertJson() throws Exception {
         JsonNode recordNode = mapper.readTree(record);
-        Schema schema = SchemaBuilderUtil.toConnectSchema("pub", recordNode);
+        Schema schema = jsonSchemaData.toConnectSchema("pub", recordNode);
         assertThat(schema).isEqualTo(
                 SchemaBuilder.struct().name("pub").optional()
                         .field("address", SchemaBuilder.struct().name("pub.address").optional()
@@ -95,4 +99,15 @@ public class SchemaBuilderUtilTest {
                 StandardCharsets.UTF_8);
     }
 
+    @Test
+    @FixFor("DBZ-5796")
+    public void shouldConvertNullNodeToOptionalBytes() throws Exception {
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES);
+        String json = "{\"heartbeat\": 1, \"email\": null}";
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Field emailField = payloadSchema.field("email");
+        assertThat(emailField).isNotNull();
+        assertThat(emailField.schema().type()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA.schema().type());
+    }
 }

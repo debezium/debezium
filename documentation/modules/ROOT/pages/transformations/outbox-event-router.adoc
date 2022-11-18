@@ -393,6 +393,14 @@ a|Specifies whether the JSON expansion of a String payload should be done. If no
  +
 Fore more details, please see the xref:expanding-escaped-json-string-as-json[expanding escaped json] section.
 
+|[[outbox-event-router-property-table-json-payload-null-behavior]]<<outbox-event-router-property-table-json-payload-null-behavior, `table.json.payload.null.behavior`>>
+|`ignore`
+|Table
+a|When enable JSON expansion property `table.expand.json.payload`, determines the behavior of json payload that including an `null` value on the outbox table. Possible settings are:
+
+* `ignore` - Ignore the null value.
+* `optional_bytes` - Keep the null value, and treat null as optional bytes of connect.
+
 |[[outbox-event-router-property-table-fields-additional-placement]]<<outbox-event-router-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |
 |Table, Envelope

@@ -487,7 +487,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             else if (parts.length == 2) {
                 this.struct = parts[0];
 
-                if (!(this.struct.equals(Envelope.FieldName.SOURCE) || this.struct.equals(Envelope.FieldName.TRANSACTION))) {
+                if (!(this.struct.equals(Envelope.FieldName.SOURCE) || this.struct.equals(Envelope.FieldName.TRANSACTION)
+                        || this.struct.equals(MongoDbFieldName.UPDATE_DESCRIPTION))) {
                     throw new IllegalArgumentException("Unexpected field name: " + field);
                 }
 
@@ -512,6 +513,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                     simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY) ||
                     simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY)) {
                 return Envelope.FieldName.TRANSACTION;
+            }
+            else if (simpleFieldName.equals(MongoDbFieldName.UPDATE_DESCRIPTION)) {
+                return MongoDbFieldName.UPDATE_DESCRIPTION;
             }
             else {
                 return Envelope.FieldName.SOURCE;

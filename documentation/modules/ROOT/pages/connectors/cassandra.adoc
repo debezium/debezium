@@ -747,6 +747,94 @@ The following table describes how the connector maps each of the Cassandra data 
 
 **TODO**: add logical types
 
+=== Arbitrary-precision integer types
+
+The Cassandra connector handles `varint` values according to the setting of the xref:{link-cassandra-connector}#cassandra-property-varint-handling-mode[`varint.handling.mode` connector configuration property].
+
+varint.handling.mode=long::
++
+.Mapping when `varint.handling.mode=long`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`varint`
+|`INT64`
+a|_n/a_
+
+|===
+
+varint.handling.mode=precise::
++
+.Mappings when `decimal.handling.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`varint`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter is set to zero.
+
+|===
+
+varint.handling.mode=string::
++
+.Mapping when `varint.handling.mode=string`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`varint`
+|`STRING`
+a|_n/a_
+
+|===
+
+=== Decimal types
+
+The Cassandra connector handles `decimal` values according to the setting of the xref:{link-cassandra-connector}#cassandra-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
+
+decimal.handling.mode=double::
++
+.Mapping when `decimal.handling.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`decimal`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=precise::
++
+.Mappings when `decimal.handling.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`decimal`
+|`STRUCT`
+a|`io.debezium.data.VariableScaleDecimal` +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+
+|===
+
+decimal.handling.mode=string::
++
+.Mapping when `decimal.handling.mode=string`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|Cassandra type |Literal type |Semantic type
+
+|`decimal`
+|`STRING`
+a|_n/a_
+
+|===
+
 If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
 
 [[cassandra-when-things-go-wrong]]
@@ -1089,6 +1177,26 @@ The connector is also unable to recover its database schema history topic.
 _topic.heartbeat.prefix_._topic.prefix_ +
  +
 For example, if the database server name or topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[cassandra-property-varint-handling-mode]]<<cassandra-property-varint-handling-mode, `varint.handling.mode`>>
+|`long`
+|Specifies how `varint` columns should be represented in change events. Possible settings are: +
+ +
+`long` (the default) represents values by using Java's `long`, which might not offer the precision but which is easy to use in consumers. +
+ +
+`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type. +
+ +
+`string` encodes values as formatted strings, which is easy to consume.
+
+|[[cassandra-property-decimal-handling-mode]]<<cassandra-property-decimal-handling-mode, `decimal.handling.mode`>>
+|`double`
+|Specifies how `decimal` columns should be represented in change events. Possible settings are: +
+ +
+`double` (the default) represents values by using Java's `double`, which might not offer the precision but which is easy to use in consumers. +
+ +
+`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.VariableScaleDecimal` type. +
+ +
+`string` encodes values as formatted strings, which is easy to consume.
 
 |===
 
