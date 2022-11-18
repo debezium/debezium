@@ -37,6 +37,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>io.debezium</groupId>
       <artifactId>debezium-testing-testcontainers</artifactId>
       <scope>test</scope>
