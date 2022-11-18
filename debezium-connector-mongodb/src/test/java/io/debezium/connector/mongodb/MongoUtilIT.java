@@ -11,6 +11,7 @@ import java.util.Optional;
 
 import org.junit.Test;
 
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.connection.ServerDescription;
 
@@ -41,7 +42,7 @@ public class MongoUtilIT extends AbstractMongoIT {
         assertThat(expectedPrimaryAddress).isPresent();
 
         primary.execute("shouldConnect", mongo -> {
-            ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(mongo);
+            ServerAddress primaryAddress = MongoUtil.getPreferredAddress(mongo, ReadPreference.primary());
             assertThat(primaryAddress.getHost()).isEqualTo(expectedPrimaryAddress.map(ServerAddress::getHost).get());
             assertThat(primaryAddress.getPort()).isEqualTo(expectedPrimaryAddress.map(ServerAddress::getPort).get());
         });
