@@ -230,9 +230,9 @@ public class MongoUtil {
         return null;
     }
 
-    public static BsonDocument getOplogEntry(MongoClient primary, int sortOrder, Logger logger) throws MongoQueryException {
+    public static BsonDocument getOplogEntry(MongoClient client, int sortOrder, Logger logger) throws MongoQueryException {
         try {
-            MongoCollection<BsonDocument> oplog = primary.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+            MongoCollection<BsonDocument> oplog = client.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
             return oplog.find().sort(new Document("$natural", sortOrder)).limit(1).first();
         }
         catch (MongoQueryException e) {
@@ -388,10 +388,6 @@ public class MongoUtil {
                 .map(ServerDescription::getAddress)
                 .map(address -> new ServerAddress(address.getHost(), address.getPort()))
                 .orElseThrow(() -> new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'"));
-    }
-
-    protected static ServerAddress getPrimaryAddress(MongoClient client) {
-        return getPreferredAddress(client, ReadPreference.primary());
     }
 
     /**
