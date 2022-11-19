@@ -36,7 +36,7 @@ tag::sql-based-snapshot[]
 
 . Send a SQL query to add the ad hoc incremental snapshot request to the signaling {data-collection}:
 +
-[source,sql,indent=0,subs="+attributes"]
+[source,sql,indent=0,subs="+attributes,+quotes"]
 ----
 INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
 ----
@@ -58,14 +58,14 @@ tag::nosql-based-snapshot[]
 
 . Insert a snapshot signal document into the signaling {data-collection}:
 +
-[source,bash,indent=0,subs="+attributes"]
+[source,bash,indent=0,subs="+attributes,+quotes"]
 ----
 _<signalDataCollection>_.insert({"_id" : _<idNumber>_,"type" : _<snapshotType>, "data" : {"data-collections" ["<collectionName", "collectionName"],"type": _<snapshotType>_}});
 ----
 +
 For example,
 +
-[source,bash,indent=0,subs="+attributes"]
+[source,bash,indent=0,subs="+attributes,+quotes"]
 ----
 db.debeziumSignal.insert({ // <1>
 "type" : "execute-snapshot", // <2> <3>
