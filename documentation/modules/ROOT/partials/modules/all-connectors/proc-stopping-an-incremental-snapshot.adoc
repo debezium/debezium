@@ -20,7 +20,7 @@ tag::sql-based-snapshot[]
 
 . Send a SQL query to stop the ad hoc incremental snapshot to the signaling {data-collection}:
 +
-[source,sql,indent=0,subs="+attributes"]
+[source,sql,indent=0,subs="+attributes,+quotes"]
 ----
 INSERT INTO _<signalTable>_ (id, type, data) values (_'<id>'_, 'stop-snapshot', '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"incremental"}');
 ----
@@ -39,7 +39,7 @@ end::sql-based-snapshot[]
 tag::nosql-based-snapshot[]
 . Insert a stop snapshot signal document into the signaling {data-collection}:
 +
-[source,bash,indent=0,subs="+attributes"]
+[source,bash,indent=0,subs="+attributes,+quotes"]
 ----
 _<signalDataCollection>_.insert({"id" : _<idNumber>_,"type" : "stop-snapshot", "data" : {"data-collections" ["<collectionName", "collectionName"],"type": "incremental"}});
 ----
