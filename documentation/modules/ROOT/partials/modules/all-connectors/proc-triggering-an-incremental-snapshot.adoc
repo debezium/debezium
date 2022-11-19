@@ -18,6 +18,7 @@ end::sql-based-snapshot[]
 tag::nosql-based-snapshot[]
 `{"data-collections": ["public.Collection1", "public.Collection2"]}` +
 end::nosql-based-snapshot[]
+
 The `data-collections` array for an incremental snapshot signal has no default value.
 If the `data-collections` array is empty, {prodname} detects that no action is required and does not perform a snapshot.
 
