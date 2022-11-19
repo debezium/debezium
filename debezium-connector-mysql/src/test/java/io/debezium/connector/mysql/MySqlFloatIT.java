@@ -85,9 +85,10 @@ public class MySqlFloatIT extends AbstractConnectorTest {
                         + "  `f4_23` FLOAT(23) DEFAULT NULL,\n"
                         + "  `f4_24` FLOAT(24) DEFAULT NULL,\n"
                         + "  `f4_25` FLOAT(25) DEFAULT NULL,\n"
+                        + "  `weight` FLOAT UNSIGNED DEFAULT '0',\n"
                         + "  PRIMARY KEY (`ID`)\n"
                         + ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;";
-                String insertDml = "INSERT INTO DBZ3865_2(f1, f2, f3, f4_23, f4_24, f4_25) VALUE (5.6, 5.61, 30.123456, 64.1, 64.1, 64.1);";
+                String insertDml = "INSERT INTO DBZ3865_2(f1, f2, f3, f4_23, f4_24, f4_25, weight) VALUE (5.6, 5.61, 30.123456, 64.1, 64.1, 64.1, 64.1234);";
                 conn.execute(createDdl, insertDml);
             }
         }
@@ -128,5 +129,7 @@ public class MySqlFloatIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getFloat32("f4_24")).isEqualTo((float) 64.1);
         // Mysql will convert float(25) to double type
         Assertions.assertThat(change.getFloat64("f4_25")).isEqualTo(64.1);
+        // Mysql will treat "float unsigned" as float type
+        Assertions.assertThat(change.getFloat32("weight")).isEqualTo((float) 64.1234);
     }
 }
