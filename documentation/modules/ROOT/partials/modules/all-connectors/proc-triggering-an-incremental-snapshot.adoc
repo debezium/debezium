@@ -12,8 +12,12 @@ The query that you submit specifies the {data-collection}s to include in the sna
 Currently, the only valid option for snapshots operations is the default value, `incremental`.
 
 To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s or an array of regular expressions used to match {data-collection}s, for example, +
+tag::sql-based-snapshot[]
 `{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}` +
-
+end::sql-based-snapshot[]
+tag::nosql-based-snapshot[]
+`{"data-collections": ["public.Collection1", "public.Collection2"]}` +
+end::nosql-based-snapshot[]
 The `data-collections` array for an incremental snapshot signal has no default value.
 If the `data-collections` array is empty, {prodname} detects that no action is required and does not perform a snapshot.
 
