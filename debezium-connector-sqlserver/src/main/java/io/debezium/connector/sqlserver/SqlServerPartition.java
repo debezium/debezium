@@ -24,7 +24,6 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
     private final Map<String, String> fallbackPartition;
     private final int hashCode;
 
-
     public SqlServerPartition(String serverName, String databaseName) {
         this(serverName, databaseName, true);
 
@@ -37,7 +36,7 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
 
-        //backward compatibility needs to be enhanced for single-partition mode only
+        // backward compatibility needs to be enhanced for single-partition mode only
         this.fallbackPartition = multiPartitionMode ? null : Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
 
         this.hashCode = Objects.hash(serverName, databaseName);
