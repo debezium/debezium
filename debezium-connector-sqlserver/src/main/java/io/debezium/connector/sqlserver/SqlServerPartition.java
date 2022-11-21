@@ -20,13 +20,25 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
 
     private final String serverName;
     private final Map<String, String> sourcePartition;
+
+    private final Map<String, String> fallbackPartition;
     private final int hashCode;
 
+
     public SqlServerPartition(String serverName, String databaseName) {
+        this(serverName, databaseName, true);
+
+    }
+
+    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
+
         super(databaseName);
         this.serverName = serverName;
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
+
+        //backward compatibility needs to be enhanced for single-partition mode only
+        this.fallbackPartition = multiPartitionMode ? null : Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
 
         this.hashCode = Objects.hash(serverName, databaseName);
     }
@@ -34,6 +46,10 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return sourcePartition;
+    }
+
+    public Map<String, String> getFallbackPartition() {
+        return fallbackPartition;
     }
 
     /**
@@ -75,9 +91,10 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         @Override
         public Set<SqlServerPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
+            boolean multiPartitionMode = connectorConfig.getDatabaseNames().size() > 1;
 
             return connectorConfig.getDatabaseNames().stream()
-                    .map(databaseName -> new SqlServerPartition(serverName, databaseName))
+                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
                     .collect(Collectors.toSet());
         }
     }
