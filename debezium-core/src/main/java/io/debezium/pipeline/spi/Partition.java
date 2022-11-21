@@ -16,6 +16,10 @@ import java.util.Set;
 public interface Partition {
     Map<String, String> getSourcePartition();
 
+    default Map<String, String> getFallbackPartition() {
+        return null;
+    }
+
     /**
      * Returns the partition representation in the logging context.
      */

@@ -24,13 +24,25 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
 
     private final String serverName;
     private final Map<String, String> sourcePartition;
+
+    private final Map<String, String> fallbackPartition;
     private final int hashCode;
 
+
     public SqlServerPartition(String serverName, String databaseName) {
+        this(serverName, databaseName, true);
+
+    }
+
+    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
+
         super(databaseName);
         this.serverName = serverName;
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
+
+        //backward compatibility needs to be enhanced for single-partition mode only
+        this.fallbackPartition = multiPartitionMode ? null : Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
 
         this.hashCode = Objects.hash(serverName, databaseName);
     }
@@ -38,6 +50,10 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return sourcePartition;
+    }
+
+    public Map<String, String> getFallbackPartition() {
+        return fallbackPartition;
     }
 
     /**
@@ -82,8 +98,11 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         public Set<SqlServerPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
 
-            return Arrays.stream(taskConfig.getString(DATABASE_NAMES.name()).split(","))
-                    .map(databaseName -> new SqlServerPartition(serverName, databaseName))
+            String[] databaseNames = taskConfig.getString(DATABASE_NAMES.name()).split(",");
+            boolean multiPartitionMode = databaseNames.length > 1;
+
+            return Arrays.stream(databaseNames)
+                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
                     .collect(Collectors.toSet());
         }
     }
