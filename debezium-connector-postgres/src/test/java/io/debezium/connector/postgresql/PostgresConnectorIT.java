@@ -3136,6 +3136,57 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                         .containsMessage("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset."));
     }
 
+    @Test
+    @FixFor("DBZ-5852")
+    public void shouldInvokeSnapshotterAbortedMethod() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        // insert another set of rows so we can stop at certain point
+        String setupStmt = SETUP_TABLES_STMT + INSERT_STMT + INSERT_STMT + INSERT_STMT;
+        TestHelper.execute(setupStmt);
+
+        TestHelper.execute(
+                "CREATE TABLE s1.lifecycle_state (hook text, state text, PRIMARY KEY(hook));");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, 2)
+                .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 60 * 1000)
+                .with(PostgresConnectorConfig.SNAPSHOT_FETCH_SIZE, 1)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomLifecycleHookTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
+            if (error != null) {
+                latch.countDown();
+            }
+            else {
+                fail("A controlled exception was expected....");
+            }
+        };
+
+        start(PostgresConnector.class, configBuilder.build(), completionCallback, stopOnPKPredicate(1));
+
+        // wait until we know we've raised the exception at startup AND the engine has been shutdown
+        if (!latch.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)) {
+            fail("did not reach stop condition in time");
+        }
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            List<String> snapshotCompleteState = connection.queryAndMap(
+                    "SELECT state FROM s1.lifecycle_state WHERE hook like 'snapshotComplete'",
+                    rs -> {
+                        final List<String> ret = new ArrayList<>();
+                        while (rs.next()) {
+                            ret.add(rs.getString(1));
+                        }
+                        return ret;
+                    });
+            assertEquals(Collections.singletonList("aborted"), snapshotCompleteState);
+        }
+    }
+
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
         return record -> {
             Struct key = (Struct) record.key();
