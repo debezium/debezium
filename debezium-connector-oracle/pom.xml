@@ -110,6 +110,11 @@
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
