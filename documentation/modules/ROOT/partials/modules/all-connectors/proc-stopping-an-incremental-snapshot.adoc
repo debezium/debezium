@@ -51,7 +51,7 @@ For example,
 db.debeziumSignal.insert({ // <1>
 "type" : "stop-snapshot", // <2> <3>
 "data" : {
-"data-collections" ["public.Collection1", "public.Collection2"], // <4>
+"data-collections" ["\"public\".\"Collection1\"", "\"public\".\"Collection2\""], // <4>
 "type": "incremental"} // <5>
 });
 ----
