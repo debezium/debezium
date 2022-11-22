@@ -154,7 +154,7 @@ For example, suppose you have a `products` {data-collection} that contains the f
 
 * `id` (primary key)
 * `color`
-* `brand`
+* `quantity`
 
 If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
 
@@ -164,11 +164,11 @@ INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execut
 ----
 
 The `additional-condition` parameter also enables you to pass conditions that are based on more than on column.
-For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `brand=customize`:
+For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND brand=customize"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantify>10"}');
 ----
 
 end::sql-based-snapshot[]
