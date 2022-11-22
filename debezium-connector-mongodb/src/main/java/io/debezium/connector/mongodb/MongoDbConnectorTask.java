@@ -13,11 +13,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -174,10 +174,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private ReplicaSets getReplicaSets(Configuration config) {
-        final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
-        final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
-        if (replicaSets.validReplicaSetCount() == 0) {
-            throw new ConnectException("Unable to start MongoDB connector task since no replica sets were found at " + hosts);
+        var replicas = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::new);
+
+        final ReplicaSets replicaSets = new ReplicaSets(replicas);
+        if (replicaSets.size() == 0) {
+            throw new DebeziumException("Unable to start MongoDB connector task since no replica sets were found");
         }
         return replicaSets;
     }

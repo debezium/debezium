@@ -6,21 +6,16 @@
 package io.debezium.connector.mongodb;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
-import com.mongodb.connection.ServerConnectionState;
-import com.mongodb.connection.ServerDescription;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -65,21 +60,26 @@ public class ReplicaSetDiscovery {
      */
     public ReplicaSets getReplicaSets() {
         ConnectionContext connectionContext = context.getConnectionContext();
-        MongoClient client = connectionContext.clientForSeedConnection();
+        MongoClient client = connectionContext.connect();
         Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
         final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
 
         if (clusterDescription.getType() == ClusterType.SHARDED) {
-            // First see if the addresses are for a config server replica set ...
+            LOGGER.info("Cluster at {} identified as sharded cluster", maskedConnectionSeed);
+
+            // Gather connection details to each shard ...
             String shardsCollection = "shards";
             try {
                 MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, shardsCollection, doc -> {
-                    LOGGER.info("Checking shard details from configuration replica set {}", maskedConnectionSeed);
                     String shardName = doc.getString("_id");
                     String hostStr = doc.getString("host");
-                    String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
-                    replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
+
+                    LOGGER.info("Reading shard details for {}", shardName);
+
+                    ConnectionStrings.parseFromHosts(hostStr).ifPresentOrElse(
+                            cs -> replicaSetSpecs.add(new ReplicaSet(cs)),
+                            () -> LOGGER.info("Shard {} is not a valid replica set", shardName));
                 });
             }
             catch (MongoInterruptedException e) {
@@ -94,17 +94,30 @@ public class ReplicaSetDiscovery {
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Checking current members of replica set at {}", maskedConnectionSeed);
-            final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions().stream()
-                    .filter(x -> x.getState() == ServerConnectionState.CONNECTED).collect(Collectors.toList());
-            if (serverDescriptions.size() == 0) {
-                LOGGER.warn("Server descriptions not available, got '{}'", serverDescriptions);
+            LOGGER.info("Cluster at '{}' identified as replicaSet", maskedConnectionSeed);
+
+            var connectionString = connectionContext.connectionSeed();
+            var cs = connectionContext.connectionString();
+
+            if (cs.getRequiredReplicaSetName() == null) {
+                // Java driver is smart enough to connect correctly
+                // However replicaSet parameter is mandatory, and we need the name for offset storage
+                LOGGER.warn("Replica set not specified in '{}'", maskedConnectionSeed);
+                LOGGER.warn("Parameter 'replicaSet' should be added to connection string");
+                LOGGER.warn("Trying to determine replica set name for '{}'", maskedConnectionSeed);
+                var rsName = MongoUtil.replicaSetName(clusterDescription);
+
+                if (rsName.isPresent()) {
+                    LOGGER.info("Found '{}' replica set for '{}'", rsName.get(), maskedConnectionSeed);
+                    connectionString = ConnectionStrings.appendParameter(connectionString, "replicaSet", rsName.get());
+                }
+                else {
+                    LOGGER.warn("Unable to find replica set name for '{}'", maskedConnectionSeed);
+                }
             }
-            else {
-                List<ServerAddress> addresses = serverDescriptions.stream().map(ServerDescription::getAddress).collect(Collectors.toList());
-                String replicaSetName = serverDescriptions.get(0).getSetName();
-                replicaSetSpecs.add(new ReplicaSet(addresses, replicaSetName, null));
-            }
+
+            LOGGER.info("Using '{}' as replica set connection string", ConnectionStrings.mask(connectionString));
+            replicaSetSpecs.add(new ReplicaSet(connectionString));
         }
 
         if (replicaSetSpecs.isEmpty()) {

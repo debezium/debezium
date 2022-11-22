@@ -226,36 +226,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("Database connection string.");
 
     /**
-     * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
-     * replica set.
+     * The comma-separated list of replica set names
      */
-    public static final Field HOSTS = Field.create("mongodb.hosts")
-            .withDisplayName("Hosts")
-            .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withValidation(MongoDbConnectorConfig::validateHosts)
-            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
-                    + "of the MongoDB server(s) in the replica set.");
-
-    public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
-            .withDisplayName("Auto-discovery")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(true)
-            .withValidation(Field::isBoolean, MongoDbConnectorConfig::validateAutodiscovery)
-            .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
-                    + "used to discover all members of the cluster or replica set ('true'), "
-                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
-                    + "The default is 'true'.");
+    public static final Field REPLICA_SETS = Field.create("mongodb.replica.sets")
+            .withDescription("Internal use only")
+            .withType(Type.LIST);
 
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Database user for connecting to MongoDB, if necessary.");
@@ -263,7 +243,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field PASSWORD = Field.create("mongodb.password")
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
@@ -271,7 +251,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
@@ -529,6 +509,35 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(DefaultTopicNamingStrategy.class.getName());
 
+    /**
+     * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
+     * replica set.
+     */
+    @Deprecated
+    public static final Field HOSTS = Field.create("mongodb.hosts")
+            .withDisplayName("Hosts")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(MongoDbConnectorConfig::validateHosts)
+            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
+                    + "of the MongoDB server(s) in the replica set.");
+
+    @Deprecated
+    public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
+            .withDisplayName("Auto-discovery")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isBoolean)
+            .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
+                    + "used to discover all members of the cluster or replica set ('true'), "
+                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
+                    + "The default is 'true'.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -597,31 +606,22 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String hosts = config.getString(field);
         String connectionString = config.getString(CONNECTION_STRING);
 
-        if (hosts == null && connectionString == null) {
-            problems.accept(field, hosts, "Host specification or connection string is required");
+        if (hosts == null) {
+            return 0;
+        }
+
+        LOGGER.warn("Config property '{}' will be removed in the future, use '{}' instead", field.name(), CONNECTION_STRING.name());
+
+        if (connectionString != null) {
+            LOGGER.warn("Config property '{}' is ignored, property '{}' takes precedence", field.name(), CONNECTION_STRING.name());
+            return 0;
+        }
+
+        if (ConnectionStrings.parseFromHosts(hosts).isEmpty()) {
+            problems.accept(field, null, "Invalid host specification");
             return 1;
         }
 
-        int count = 0;
-        if (hosts != null && ReplicaSets.parse(hosts).all().isEmpty()) {
-            problems.accept(field, hosts, "Invalid host specification");
-            ++count;
-        }
-        return count;
-    }
-
-    private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
-        String value = config.getString(field);
-
-        try {
-            if (value != null) {
-                ConnectionString cs = new ConnectionString(value);
-            }
-        }
-        catch (Exception e) {
-            problems.accept(field, value, "Connection string is invalid");
-            return 1;
-        }
         return 0;
     }
 
@@ -638,10 +638,23 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
-    private static int validateAutodiscovery(Configuration config, Field field, ValidationOutput problems) {
-        boolean value = config.getBoolean(field);
-        if (!value && config.hasKey(CONNECTION_STRING)) {
-            problems.accept(field, value, "Connection string requires autodiscovery");
+    private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
+        String connectionStringValue = config.getString(field);
+        String hostValue = config.getString(HOSTS);
+
+        if (connectionStringValue == null) {
+            if (hostValue == null) {
+                problems.accept(field, null, "Missing connection string");
+                return 1;
+            }
+            return 0;
+        }
+
+        try {
+            ConnectionString cs = new ConnectionString(connectionStringValue);
+        }
+        catch (Exception e) {
+            problems.accept(field, connectionStringValue, "Invalid connection string");
             return 1;
         }
         return 0;

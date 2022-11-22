@@ -13,7 +13,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -28,6 +27,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.InsertOneOptions;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -40,7 +40,7 @@ public class ConnectionIT extends AbstractMongoIT {
         TestHelper.cleanDatabase(mongo, "dbC");
     }
 
-    @Test(expected = ConnectException.class)
+    @Test(expected = DebeziumException.class)
     public void shouldUseSSL() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         useConfiguration(config.edit()

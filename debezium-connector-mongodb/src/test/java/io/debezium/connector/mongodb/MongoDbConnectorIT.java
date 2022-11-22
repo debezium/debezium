@@ -77,7 +77,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
-                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, "true")
+                .with(MongoDbConnectorConfig.SSL_ENABLED, "true")
                 .build();
 
         // we expect the engine will log at least one error, so preface it ...
@@ -95,11 +95,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
 
-        assertConfigurationErrors(result, MongoDbConnectorConfig.HOSTS, 1);
+        assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 1);
         assertConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX, 1);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
@@ -222,7 +221,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.USER);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);

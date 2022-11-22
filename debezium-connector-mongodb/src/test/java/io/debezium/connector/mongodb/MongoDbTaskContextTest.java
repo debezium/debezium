@@ -21,10 +21,9 @@ public class MongoDbTaskContextTest implements Testing {
     @Before
     public void setup() {
         this.config = Configuration.create()
-                .with(MongoDbConnectorConfig.HOSTS, "rs0/localhost:27017")
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://dummy:27017")
                 .with(MongoDbConnectorConfig.TASK_ID, 42)
                 .with(MongoDbConnectorConfig.TOPIC_PREFIX, "bistromath")
-                .with(MongoDbConnectorConfig.HOSTS, "dummy")
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS)
                 .build();
         this.context = new MongoDbTaskContext(config);

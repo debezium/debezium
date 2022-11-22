@@ -90,7 +90,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
         }
         finally {
             if (context != null) {
-                context.getConnectionContext().shutdown();
+                context.getConnectionContext().close();
             }
         }
         outboxEventRouter.close();

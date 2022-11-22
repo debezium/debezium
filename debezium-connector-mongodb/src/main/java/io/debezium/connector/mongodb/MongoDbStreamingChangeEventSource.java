@@ -14,7 +14,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
@@ -22,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ReadPreference;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
@@ -30,7 +28,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
-import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
+import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -78,7 +76,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
             throws InterruptedException {
-        final List<ReplicaSet> validReplicaSets = replicaSets.validReplicaSets();
+        final List<ReplicaSet> validReplicaSets = replicaSets.all();
 
         if (offsetContext == null) {
             offsetContext = initializeOffsets(connectorConfig, partition, replicaSets);
@@ -95,17 +93,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
         finally {
-            taskContext.getConnectionContext().shutdown();
+            taskContext.getConnectionContext().close();
         }
     }
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
-        MongoPreferredNode mongo = null;
+        RetryingMongoClient mongo = null;
         try {
             mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred());
             if (mongo != null) {
-                final AtomicReference<MongoPreferredNode> mongoReference = new AtomicReference<>(mongo);
+                final AtomicReference<RetryingMongoClient> mongoReference = new AtomicReference<>(mongo);
                 mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
                     readChangeStream(client, mongoReference.get(), replicaSet, context, offsetContext);
                 });
@@ -152,21 +150,21 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         executor.shutdown();
     }
 
-    private MongoPreferredNode establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
-        return connectionContext.preferredFor(replicaSet, preference, taskContext.filters(), (desc, error) -> {
+    private RetryingMongoClient establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
+        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
             else {
                 dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
         });
     }
 
-    private void readChangeStream(MongoClient client, MongoPreferredNode mongo, ReplicaSet replicaSet, ChangeEventSourceContext context,
+    private void readChangeStream(MongoClient client, RetryingMongoClient mongo, ReplicaSet replicaSet, ChangeEventSourceContext context,
                                   MongoDbOffsetContext offsetContext) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
@@ -175,8 +173,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         ReplicaSetChangeStreamsContext oplogContext = new ReplicaSetChangeStreamsContext(rsPartition, rsOffsetContext, mongo, replicaSet);
 
-        final ServerAddress nodeAddress = MongoUtil.getPreferredAddress(client, mongo.getPreference());
-        LOGGER.info("Reading change stream for '{}'/{} from {} starting at {}", replicaSet, mongo.getPreference().getName(), nodeAddress, oplogStart);
+        LOGGER.info("Reading change stream for '{}' starting at {}", replicaSet, oplogStart);
 
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig())
                 .create();
@@ -271,7 +268,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
-            MongoPreferredNode mongo = establishConnection(partition, replicaSet, ReadPreference.primaryPreferred());
+            RetryingMongoClient mongo = establishConnection(partition, replicaSet, ReadPreference.primaryPreferred());
             if (mongo != null) {
                 try {
                     mongo.execute("get oplog position", client -> {
@@ -295,11 +292,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static class ReplicaSetChangeStreamsContext {
         private final ReplicaSetPartition partition;
         private final ReplicaSetOffsetContext offset;
-        private final MongoPreferredNode mongo;
+        private final RetryingMongoClient mongo;
         private final ReplicaSet replicaSet;
 
         ReplicaSetChangeStreamsContext(ReplicaSetPartition partition, ReplicaSetOffsetContext offsetContext,
-                                       MongoPreferredNode mongo, ReplicaSet replicaSet) {
+                                       RetryingMongoClient mongo, ReplicaSet replicaSet) {
             this.partition = partition;
             this.offset = offsetContext;
             this.mongo = mongo;
@@ -314,7 +311,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return offset;
         }
 
-        MongoPreferredNode getMongo() {
+        RetryingMongoClient getMongo() {
             return mongo;
         }
 

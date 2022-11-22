@@ -13,12 +13,12 @@ import java.util.Map.Entry;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 
 /**
@@ -81,7 +81,7 @@ public class MongoArrayConverterTest {
         builder = SchemaBuilder.struct().name("array");
     }
 
-    @Test(expected = ConnectException.class)
+    @Test(expected = DebeziumException.class)
     public void shouldDetectHeterogenousArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
@@ -90,7 +90,7 @@ public class MongoArrayConverterTest {
         }
     }
 
-    @Test(expected = ConnectException.class)
+    @Test(expected = DebeziumException.class)
     public void shouldDetectHeterogenousDocumentInArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);

@@ -6,17 +6,11 @@
 package io.debezium.connector.mongodb;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.kafka.connect.util.ConnectorUtils;
 
@@ -31,37 +25,6 @@ import io.debezium.util.Strings;
 @Immutable
 public class ReplicaSets {
 
-    private static final Pattern REPLICA_DELIMITER_PATTERN = Pattern.compile(";");
-
-    /**
-     * Parse the supplied string for the information about the replica set hosts. The string is a semicolon-delimited list of
-     * shard hosts (e.g., "{@code shard01=replicaSet1/host1:27017,host2:27017}"), replica set hosts (e.g.,
-     * "{@code replicaSet1/host1:27017,host2:27017}"), and standalone hosts (e.g., "{@code host1:27017}" or
-     * "{@code 1.2.3.4:27017}").
-     *
-     * @param hosts the hosts string; may be null
-     * @return the replica sets; never null but possibly empty
-     * @see ReplicaSets#hosts()
-     */
-    public static ReplicaSets parse(String hosts) {
-        Set<ReplicaSet> replicaSets = splitHosts(hosts).stream()
-                .map(ReplicaSet::parse)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        return new ReplicaSets(replicaSets);
-    }
-
-    public static List<String> splitHosts(String hosts) {
-        if (hosts == null) {
-            return List.of();
-        }
-        return Stream.of(REPLICA_DELIMITER_PATTERN
-                .split(hosts.trim()))
-                .filter(h -> !h.isBlank())
-                .collect(Collectors.toList());
-    }
-
     /**
      * Get an instance that contains no replica sets.
      *
@@ -71,8 +34,11 @@ public class ReplicaSets {
         return new ReplicaSets(null);
     }
 
-    private final Map<String, ReplicaSet> replicaSetsByName = new HashMap<>();
-    private final List<ReplicaSet> nonReplicaSets = new ArrayList<>();
+    public static ReplicaSets of(ReplicaSet... replicaSets) {
+        return new ReplicaSets(Arrays.asList(replicaSets));
+    }
+
+    private final List<ReplicaSet> replicaSets = new ArrayList<>();
 
     /**
      * Create a set of replica set specifications.
@@ -81,16 +47,9 @@ public class ReplicaSets {
      */
     public ReplicaSets(Collection<ReplicaSet> rsSpecs) {
         if (rsSpecs != null) {
-            rsSpecs.forEach(replicaSet -> {
-                if (replicaSet.hasReplicaSetName()) {
-                    replicaSetsByName.put(replicaSet.replicaSetName(), replicaSet);
-                }
-                else {
-                    nonReplicaSets.add(replicaSet);
-                }
-            });
+            replicaSets.addAll(rsSpecs);
         }
-        Collections.sort(nonReplicaSets);
+        Collections.sort(replicaSets);
     }
 
     /**
@@ -98,17 +57,8 @@ public class ReplicaSets {
      *
      * @return the replica set count
      */
-    public int replicaSetCount() {
-        return replicaSetsByName.size() + nonReplicaSets.size();
-    }
-
-    /**
-     * Get the number of replica sets with names.
-     *
-     * @return the valid replica set count
-     */
-    public int validReplicaSetCount() {
-        return replicaSetsByName.size();
+    public int size() {
+        return replicaSets.size();
     }
 
     /**
@@ -117,8 +67,7 @@ public class ReplicaSets {
      * @param function the consumer function; may not be null
      */
     public void onEachReplicaSet(Consumer<ReplicaSet> function) {
-        this.replicaSetsByName.values().forEach(function);
-        this.nonReplicaSets.forEach(function);
+        this.replicaSets.forEach(function);
     }
 
     /**
@@ -128,15 +77,10 @@ public class ReplicaSets {
      * @param subdivisionConsumer the function to be called with each subdivision; may not be null
      */
     public void subdivide(int maxSubdivisionCount, Consumer<ReplicaSets> subdivisionConsumer) {
-        int numGroups = Math.min(replicaSetCount(), maxSubdivisionCount);
-        if (numGroups <= 1) {
-            // Just one replica set or subdivision ...
-            subdivisionConsumer.accept(this);
-            return;
-        }
-        ConnectorUtils.groupPartitions(all(), numGroups).forEach(rsList -> {
-            subdivisionConsumer.accept(new ReplicaSets(rsList));
-        });
+        int numGroups = Math.min(size(), maxSubdivisionCount);
+        ConnectorUtils.groupPartitions(all(), numGroups).stream()
+                .map(ReplicaSets::new)
+                .forEach(subdivisionConsumer);
     }
 
     /**
@@ -145,32 +89,7 @@ public class ReplicaSets {
      * @return the replica set objects; never null but possibly empty
      */
     public List<ReplicaSet> all() {
-        List<ReplicaSet> replicaSets = new ArrayList<>();
-        replicaSets.addAll(replicaSetsByName.values());
-        replicaSets.addAll(nonReplicaSets);
-        return replicaSets;
-    }
-
-    /**
-     * Get a copy of all of the valid {@link ReplicaSet} objects that have names.
-     *
-     * @return the valid replica set objects; never null but possibly empty
-     */
-    public List<ReplicaSet> validReplicaSets() {
-        List<ReplicaSet> replicaSets = new ArrayList<>();
-        replicaSets.addAll(replicaSetsByName.values());
-        return replicaSets;
-    }
-
-    /**
-     * Get a copy of all of the {@link ReplicaSet} objects that have no names.
-     *
-     * @return the unnamed replica set objects; never null but possibly empty
-     */
-    public List<ReplicaSet> unnamedReplicaSets() {
-        List<ReplicaSet> replicaSets = new ArrayList<>();
-        replicaSets.addAll(nonReplicaSets);
-        return replicaSets;
+        return new ArrayList<>(this.replicaSets);
     }
 
     /**
@@ -180,40 +99,12 @@ public class ReplicaSets {
      * @return {@code true} if the replica sets have changed since the prior state, or {@code false} otherwise
      */
     public boolean haveChangedSince(ReplicaSets priorState) {
-        if (priorState.replicaSetCount() != this.replicaSetCount()) {
-            // At least one replica set has been added or removed ...
-            return true;
-        }
-        if (this.replicaSetsByName.size() != priorState.replicaSetsByName.size()) {
-            // The total number of replica sets hasn't changed, but the number of named replica sets has changed ...
-            return true;
-        }
-        // We have the same number of named replica sets ...
-        if (!this.replicaSetsByName.isEmpty()) {
-            if (!this.replicaSetsByName.keySet().equals(priorState.replicaSetsByName.keySet())) {
-                // The replica sets have different names ...
-                return true;
-            }
-            // Otherwise, they have the same names and we don't care about the members ...
-        }
-        // None of the named replica sets has changed, so we have no choice to be compare the non-replica set members ...
-        return this.nonReplicaSets.equals(priorState.nonReplicaSets) ? false : true;
-    }
-
-    /**
-     * Get the string containing the host names for the replica sets. The result is a string with each replica set hosts
-     * separated by a semicolon.
-     *
-     * @return the host names; never null
-     * @see #parse(String)
-     */
-    public String hosts() {
-        return Strings.join(";", all());
+        return !this.replicaSets.equals(priorState.replicaSets);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(replicaSetsByName, nonReplicaSets);
+        return replicaSets.hashCode();
     }
 
     @Override
@@ -223,14 +114,14 @@ public class ReplicaSets {
         }
         if (obj instanceof ReplicaSets) {
             ReplicaSets that = (ReplicaSets) obj;
-            return this.replicaSetsByName.equals(that.replicaSetsByName) && this.nonReplicaSets.equals(that.nonReplicaSets);
+            return this.replicaSets.equals(that.replicaSets);
         }
         return false;
     }
 
     @Override
     public String toString() {
-        return hosts();
+        return Strings.join(";", all());
     }
 
 }

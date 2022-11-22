@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -26,7 +25,6 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -71,8 +69,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     protected IncrementalSnapshotContext<CollectionId> context = null;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
-    private MongoPreferredNode primary;
-    private MongoPreferredNode secondary;
+    private RetryingMongoClient primary;
+    private RetryingMongoClient secondary;
+
     private CollectionId signallingCollectionId;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
@@ -260,7 +259,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 final CollectionId currentDataCollectionId = context.currentDataCollectionId().getId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
                 if (replicaSets.all().size() > 1) {
-                    LOGGER.warn("Incremental snapshotting supported only for single result set topology, skipping collection '{}', known collections {}",
+                    LOGGER.warn("Incremental snapshotting supported only for single replica set topology, skipping collection '{}', known collections {}",
                             currentDataCollectionId);
                     nextDataCollection(partition);
                     continue;
@@ -562,16 +561,16 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private MongoPreferredNode establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
-        return connectionContext.preferredFor(replicaSet, preference, taskContext.filters(), (desc, error) -> {
+    private RetryingMongoClient establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
+        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
             else {
                 dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
         });
     }

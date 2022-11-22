@@ -12,7 +12,9 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.mongodb.ServerAddress;
+import com.mongodb.ConnectionString;
+
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 
 /**
  * @author Randall Hauch
@@ -20,259 +22,162 @@ import com.mongodb.ServerAddress;
  */
 public class ReplicaSetsTest {
 
-    private ReplicaSets sets;
-    private ReplicaSet rs;
-
     @Test
     public void shouldHaveNoReplicaSetsInEmptyInstance() {
-        assertThat(ReplicaSets.empty().replicaSetCount()).isEqualTo(0);
+        assertThat(ReplicaSets.empty().size()).isEqualTo(0);
     }
 
     @Test
     public void shouldParseNullHostString() {
-        assertThat(ReplicaSets.parse(null)).isEqualTo(ReplicaSets.empty());
+        assertThat(ConnectionStrings.parseFromHosts(null)).isEmpty();
     }
 
     @Test
     public void shouldParseEmptyHostString() {
-        assertThat(ReplicaSets.parse("")).isEqualTo(ReplicaSets.empty());
+        assertThat(ConnectionStrings.parseFromHosts("")).isEmpty();
     }
 
     @Test
     public void shouldParseBlankHostString() {
-        assertThat(ReplicaSets.parse("   ")).isEqualTo(ReplicaSets.empty());
+        assertThat(ConnectionStrings.parseFromHosts("")).isEmpty();
     }
 
     @Test
-    public void shouldParseHostStringWithStandaloneAddress() {
-        sets = ReplicaSets.parse("localhost:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("localhost:27017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isFalse();
-        assertThat(rs.isStandaloneServer()).isTrue();
-        assertThat(rs.replicaSetName()).isNull();
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected = new ServerAddress("localhost", 27017);
-        assertThat(rs.addresses().size()).isEqualTo(1);
-        assertThat(rs.addresses()).containsOnly(expected);
+    public void shouldParseSingleHostStringWithStandaloneAddress() {
+        var cs = ConnectionStrings.parseFromHosts("localhost:27017");
+        assertThat(cs).hasValue("mongodb://localhost:27017/");
     }
 
     @Test
     public void shouldParseHostStringWithStandaloneAddresses() {
-        sets = ReplicaSets.parse("localhost:27017,1.2.3.4:27017,localhost:28017,[fe80::601:9bff:feab:ec01]:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("1.2.3.4:27017,[fe80::601:9bff:feab:ec01]:27017,localhost:27017,localhost:28017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isFalse();
-        assertThat(rs.isStandaloneServer()).isTrue();
-        assertThat(rs.replicaSetName()).isNull();
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected1 = new ServerAddress("1.2.3.4", 27017);
-        ServerAddress expected2 = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        ServerAddress expected3 = new ServerAddress("localhost", 27017);
-        ServerAddress expected4 = new ServerAddress("localhost", 28017);
-        assertThat(rs.addresses().size()).isEqualTo(4);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2, expected3, expected4);
+        var hosts = "localhost:27017,1.2.3.4:27017,localhost:28017,[fe80::601:9bff:feab:ec01]:27017";
+        var cs = ConnectionStrings.parseFromHosts(hosts);
+        assertThat(cs).hasValue("mongodb://" + hosts + "/");
     }
 
     @Test
-    public void shouldParseHostStringWithAddressForOneReplicaSet() {
-        sets = ReplicaSets.parse("myReplicaSet/localhost:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("myReplicaSet/localhost:27017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected = new ServerAddress("localhost", 27017);
-        assertThat(rs.addresses().size()).isEqualTo(1);
-        assertThat(rs.addresses()).containsOnly(expected);
+    public void shouldParseHostStringWithAddressAndReplicaSet() {
+        var cs = ConnectionStrings.parseFromHosts("myReplicaSet/localhost:27017");
+        assertThat(cs).hasValue("mongodb://localhost:27017/?replicaSet=myReplicaSet");
     }
 
     @Test
-    public void shouldParseHostStringWithIpv6AddressForOneReplicaSet() {
-        sets = ReplicaSets.parse("myReplicaSet/[fe80::601:9bff:feab:ec01]:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("myReplicaSet/[fe80::601:9bff:feab:ec01]:27017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        assertThat(rs.addresses().size()).isEqualTo(1);
-        assertThat(rs.addresses()).containsOnly(expected);
+    public void shouldParseHostStringWithIpv6AddressAndReplicaSet() {
+        var cs = ConnectionStrings.parseFromHosts("myReplicaSet/[fe80::601:9bff:feab:ec01]:27017");
+        assertThat(cs).hasValue("mongodb://[fe80::601:9bff:feab:ec01]:27017/?replicaSet=myReplicaSet");
     }
 
     @Test
-    public void shouldParseHostStringWithAddressesForOneReplicaSet() {
-        sets = ReplicaSets.parse("myReplicaSet/localhost:27017,1.2.3.4:27017,localhost:28017,[fe80::601:9bff:feab:ec01]:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("myReplicaSet/1.2.3.4:27017,[fe80::601:9bff:feab:ec01]:27017,localhost:27017,localhost:28017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected1 = new ServerAddress("1.2.3.4", 27017);
-        ServerAddress expected2 = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        ServerAddress expected3 = new ServerAddress("localhost", 27017);
-        ServerAddress expected4 = new ServerAddress("localhost", 28017);
-        assertThat(rs.addresses().size()).isEqualTo(4);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2, expected3, expected4);
+    public void shouldParseHostStringWithAddressesAndReplicaSet() {
+        var hosts = "localhost:27017,1.2.3.4:27017,localhost:28017,[fe80::601:9bff:feab:ec01]:27017";
+        var cs = ConnectionStrings.parseFromHosts("myReplicaSet/" + hosts);
+        assertThat(cs).hasValue("mongodb://" + hosts + "/?replicaSet=myReplicaSet");
     }
 
     @Test
-    public void shouldParseHostStringWithAddressesForMultipleReplicaSet() {
-        sets = ReplicaSets.parse("myReplicaSet/host1:27017,[fe80::601:9bff:feab:ec01]:27017;otherReplicaset/1.2.3.4:27017,localhost:28017");
-        assertThat(sets.replicaSetCount()).isEqualTo(2);
-        assertThat(sets.hosts()).isEqualTo("myReplicaSet/[fe80::601:9bff:feab:ec01]:27017,host1:27017;otherReplicaset/1.2.3.4:27017,localhost:28017");
+    public void shouldHaveAttributesFromConnectionString() {
+        var cs = new ConnectionString("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs = new ReplicaSet(cs);
 
-        rs = sets.all().get(0);
         assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isNull();
-        ServerAddress expected1 = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        ServerAddress expected2 = new ServerAddress("host1", 27017);
-        assertThat(rs.addresses().size()).isEqualTo(2);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2);
-
-        rs = sets.all().get(1);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("otherReplicaset");
-        assertThat(rs.shardName()).isNull();
-        expected1 = new ServerAddress("1.2.3.4", 27017);
-        expected2 = new ServerAddress("localhost", 28017);
-        assertThat(rs.addresses().size()).isEqualTo(2);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2);
-    }
-
-    @Test
-    public void shouldParseHostStringWithAddressesForOneShard() {
-        sets = ReplicaSets.parse("shard1=myReplicaSet/localhost:27017,1.2.3.4:27017,localhost:28017,[fe80::601:9bff:feab:ec01]:27017");
-        assertThat(sets.replicaSetCount()).isEqualTo(1);
-        assertThat(sets.hosts()).isEqualTo("shard1=myReplicaSet/1.2.3.4:27017,[fe80::601:9bff:feab:ec01]:27017,localhost:27017,localhost:28017");
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isEqualTo("shard1");
-        ServerAddress expected1 = new ServerAddress("1.2.3.4", 27017);
-        ServerAddress expected2 = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        ServerAddress expected3 = new ServerAddress("localhost", 27017);
-        ServerAddress expected4 = new ServerAddress("localhost", 28017);
-        assertThat(rs.addresses().size()).isEqualTo(4);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2, expected3, expected4);
-    }
-
-    @Test
-    public void shouldParseHostStringWithAddressesForMultipleShard() {
-        sets = ReplicaSets.parse("shard1=myReplicaSet/host1:27017,[fe80::601:9bff:feab:ec01]:27017;shard2=otherReplicaset/1.2.3.4:27017,localhost:28017");
-        assertThat(sets.replicaSetCount()).isEqualTo(2);
-        assertThat(sets.hosts()).isEqualTo("shard1=myReplicaSet/[fe80::601:9bff:feab:ec01]:27017,host1:27017;shard2=otherReplicaset/1.2.3.4:27017,localhost:28017");
-
-        rs = sets.all().get(0);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("myReplicaSet");
-        assertThat(rs.shardName()).isEqualTo("shard1");
-        ServerAddress expected1 = new ServerAddress("[fe80::601:9bff:feab:ec01]", 27017);
-        ServerAddress expected2 = new ServerAddress("host1", 27017);
-        assertThat(rs.addresses().size()).isEqualTo(2);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2);
-
-        rs = sets.all().get(1);
-        assertThat(rs.hasReplicaSetName()).isTrue();
-        assertThat(rs.isStandaloneServer()).isFalse();
-        assertThat(rs.replicaSetName()).isEqualTo("otherReplicaset");
-        assertThat(rs.shardName()).isEqualTo("shard2");
-        expected1 = new ServerAddress("1.2.3.4", 27017);
-        expected2 = new ServerAddress("localhost", 28017);
-        assertThat(rs.addresses().size()).isEqualTo(2);
-        assertThat(rs.addresses()).containsOnly(expected1, expected2);
+        assertThat(rs.replicaSetName()).isEqualTo("rs0");
+        assertThat(rs.connectionString()).isEqualTo(cs);
     }
 
     @Test
     public void shouldConsiderUnchangedSameInstance() {
-        sets = ReplicaSets.parse("localhost:27017");
+        var rs = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var sets = ReplicaSets.of(rs);
+
         assertThat(sets.haveChangedSince(sets)).isFalse();
     }
 
     @Test
-    public void shouldConsiderUnchangedSimilarReplicaSets() {
-        ReplicaSets sets1 = ReplicaSets.parse("localhost:27017");
-        ReplicaSets sets2 = ReplicaSets.parse("localhost:27017");
-        assertThat(sets1.haveChangedSince(sets2)).isFalse();
+    public void shouldConsiderUnchangedSameReplicaSets() {
+        var rs0 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var sets0 = ReplicaSets.of(rs0);
+        var sets1 = ReplicaSets.of(rs1);
 
-        sets1 = ReplicaSets.parse("shard1=myReplicaSet/host1:27017,[fe80::601:9bff:feab:ec01]:27017;shard2=otherReplicaset/1.2.3.4:27017,localhost:28017");
-        sets2 = ReplicaSets.parse("shard1=myReplicaSet/host1:27017,[fe80::601:9bff:feab:ec01]:27017;shard2=otherReplicaset/1.2.3.4:27017,localhost:28017");
-        assertThat(sets1.haveChangedSince(sets2)).isFalse();
+        assertThat(sets0.haveChangedSince(sets1)).isFalse();
     }
 
     @Test
-    public void shouldConsiderChangedReplicaSetsWithOneReplicaSetContainingDifferentLocalServers() {
-        ReplicaSets sets1 = ReplicaSets.parse("localhost:27017");
-        ReplicaSets sets2 = ReplicaSets.parse("localhost:27017,host2:27017");
-        assertThat(sets1.haveChangedSince(sets2)).isTrue();
+    public void shouldConsiderUnchangedSameReplicaSetsWithDifferentAddresses() {
+        var rs0 = new ReplicaSet("mongodb://1.2.3.4:27017,localhost:28017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs2 = new ReplicaSet("mongodb://localhost:28017/?replicaSet=rs2");
+        var sets0 = ReplicaSets.of(rs0, rs2);
+        var sets1 = ReplicaSets.of(rs1, rs2);
+
+        assertThat(sets0.haveChangedSince(sets1)).isFalse();
     }
 
     @Test
-    public void shouldConsiderUnchangedReplicaSetsWithAdditionalServerAddressInExistingReplicaSet() {
-        ReplicaSets sets1 = ReplicaSets.parse("rs1/localhost:27017");
-        ReplicaSets sets2 = ReplicaSets.parse("rs1/localhost:27017,host2:27017");
-        assertThat(sets1.haveChangedSince(sets2)).isFalse();
+    public void shouldConsiderChangedDifferentReplicaSetsWithSameAddresses() {
+        var rs0 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs1");
+        var sets0 = ReplicaSets.of(rs0);
+        var sets1 = ReplicaSets.of(rs1);
+
+        assertThat(sets0.haveChangedSince(sets1)).isTrue();
     }
 
     @Test
     public void shouldConsiderChangedReplicaSetsWithAdditionalReplicaSet() {
-        ReplicaSets sets1 = ReplicaSets.parse("rs1/localhost:27017;rs2/host2:17017");
-        ReplicaSets sets2 = ReplicaSets.parse("rs1/localhost:27017");
-        assertThat(sets1.haveChangedSince(sets2)).isTrue();
+        var rs0 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var sets0 = ReplicaSets.of(rs0);
+        var sets1 = ReplicaSets.of(rs0, rs1);
+
+        assertThat(sets1.haveChangedSince(sets0)).isTrue();
     }
 
     @Test
     public void shouldConsiderChangedReplicaSetsWithRemovedReplicaSet() {
-        ReplicaSets sets1 = ReplicaSets.parse("rs1/localhost:27017");
-        ReplicaSets sets2 = ReplicaSets.parse("rs1/localhost:27017;rs2/host2:17017");
-        assertThat(sets1.haveChangedSince(sets2)).isTrue();
+        var rs0 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://localhost:27017/?replicaSet=rs0");
+        var sets0 = ReplicaSets.of(rs0, rs1);
+        var sets1 = ReplicaSets.of(rs0);
+
+        assertThat(sets1.haveChangedSince(sets0)).isTrue();
     }
 
     @Test
     public void shouldNotSubdivideOneReplicaSet() {
-        sets = ReplicaSets.parse("rs1/host1:27017,host2:27017");
+        var rs0 = new ReplicaSet("mongodb://host0:27017,host1:27017/?replicaSet=rs0");
+        var sets = ReplicaSets.of(rs0);
+
         List<ReplicaSets> divided = new ArrayList<>();
         sets.subdivide(1, divided::add);
         assertThat(divided.size()).isEqualTo(1);
-        assertThat(divided.get(0)).isSameAs(sets);
+        assertThat(divided.get(0)).isEqualTo(sets);
     }
 
     @Test
     public void shouldNotSubdivideMultipleReplicaSetsIntoOneGroup() {
-        sets = ReplicaSets.parse("rs1/host1:27017,host2:27017;rs2/host3:27017");
+        var rs0 = new ReplicaSet("mongodb://host0:27017,host1:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://host2:27017/?replicaSet=rs01");
+        var sets = ReplicaSets.of(rs0);
+
         List<ReplicaSets> divided = new ArrayList<>();
         sets.subdivide(1, divided::add);
         assertThat(divided.size()).isEqualTo(1);
-        assertThat(divided.get(0)).isSameAs(sets);
+        assertThat(divided.get(0)).isEqualTo(sets);
+
     }
 
     @Test
     public void shouldSubdivideMultipleReplicaSetsWithIntoMultipleGroups() {
-        sets = ReplicaSets.parse("rs1/host1:27017,host2:27017;rs2/host3:27017");
+        var rs0 = new ReplicaSet("mongodb://host0:27017,host1:27017/?replicaSet=rs0");
+        var rs1 = new ReplicaSet("mongodb://host2:27017/?replicaSet=rs01");
+        var sets = ReplicaSets.of(rs0, rs1);
+
         List<ReplicaSets> divided = new ArrayList<>();
         sets.subdivide(2, divided::add);
         assertThat(divided.size()).isEqualTo(2);
-
-        ReplicaSets dividedSet1 = divided.get(0);
-        assertThat(dividedSet1.replicaSetCount()).isEqualTo(1);
-        assertThat(dividedSet1.all().get(0)).isSameAs(sets.all().get(0));
-
-        ReplicaSets dividedSet2 = divided.get(1);
-        assertThat(dividedSet2.replicaSetCount()).isEqualTo(1);
-        assertThat(dividedSet2.all().get(0)).isSameAs(sets.all().get(1));
+        assertThat(divided.get(0).all()).containsExactly(sets.all().get(0));
+        assertThat(divided.get(1).all()).containsExactly(sets.all().get(1));
     }
 
 }

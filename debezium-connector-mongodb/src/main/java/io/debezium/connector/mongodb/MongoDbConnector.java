@@ -9,22 +9,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -45,10 +46,6 @@ import io.debezium.util.Threads;
  * with the host addresses of the replica set. When the connector starts, it will discover the primary node and use it to
  * replicate the contents of the replica set.
  * <p>
- * If necessary, a {@link MongoDbConnectorConfig#AUTO_DISCOVER_MEMBERS configuration property} can be used to disable the
- * logic used to discover the primary node, an in this case the connector will use the first host address specified in the
- * configuration as the primary node. Obviously this may cause problems when the replica set elects a different node as the
- * primary, since the connector will continue to read the oplog using the same node that may no longer be the primary.
  *
  * <h2>Parallel Replication</h2>
  * The connector will concurrently and independently replicate each of the replica sets. When the connector is asked to
@@ -102,10 +99,10 @@ public class MongoDbConnector extends SourceConnector {
     public void start(Map<String, String> props) {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
 
+        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+            throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+        }
         this.config = config;
 
         // Set up the replication context ...
@@ -152,15 +149,17 @@ public class MongoDbConnector extends SourceConnector {
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                        replicaSets.replicaSetCount(), maxTasks);
+                        replicaSets.size(), maxTasks);
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
                     // Create the configuration for each task ...
                     int taskId = taskConfigs.size();
-                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
-                    Properties configProps = config.asProperties();
-                    configProps.remove(MongoDbConnectorConfig.CONNECTION_STRING.name());
+                    String rsConnectionStrings = replicaSetsForTask.all().stream()
+                            .map(ReplicaSet::connectionString)
+                            .map(ConnectionString::toString)
+                            .collect(Collectors.joining(";"));
+                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s): {}", taskId, rsConnectionStrings);
                     taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
+                            .with(MongoDbConnectorConfig.REPLICA_SETS, rsConnectionStrings)
                             .with(MongoDbConnectorConfig.TASK_ID, taskId)
                             .build()
                             .asMap());
@@ -187,7 +186,7 @@ public class MongoDbConnector extends SourceConnector {
             }
             try {
                 if (this.connectionContext != null) {
-                    this.connectionContext.shutdown();
+                    this.connectionContext.close();
                 }
             }
             finally {
@@ -227,7 +226,7 @@ public class MongoDbConnector extends SourceConnector {
             // Try to connect to the database ...
             try (ConnectionContext connContext = new ConnectionContext(config)) {
 
-                try (MongoClient client = connContext.clientForSeedConnection()) {
+                try (MongoClient client = connContext.connect()) {
                     client.listDatabaseNames();
                 }
             }
