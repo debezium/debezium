@@ -84,7 +84,7 @@ public abstract class AbstractStreamingAdapter implements StreamingAdapter {
                 .append(" WHERE");
 
         for (TableId table : ctx.capturedTables) {
-            lastDdlScnQuery.append(" (owner = '" + table.schema() + "' AND object_name = '" + table.table() + "') OR");
+            lastDdlScnQuery.append(" (owner = '").append(table.schema()).append("' AND object_name = '").append(table.table()).append("') OR");
         }
 
         String query = lastDdlScnQuery.substring(0, lastDdlScnQuery.length() - 3).toString();
