@@ -1568,7 +1568,8 @@ alterUser
           (tlsNone=NONE | tlsOption (AND? tlsOption)* )
         )?
         (WITH userResourceOption+)?
-        (userPasswordOption | userLockOption)*                      #alterUserMysqlV57
+        (userPasswordOption | userLockOption)*
+        (COMMENT STRING_LITERAL)?                                   #alterUserMysqlV80
     ;
 
 createUser
@@ -1580,7 +1581,8 @@ createUser
           (tlsNone=NONE | tlsOption (AND? tlsOption)* )
         )?
         (WITH userResourceOption+)?
-        (userPasswordOption | userLockOption)*                      #createUserMysqlV57
+        (userPasswordOption | userLockOption)*
+        (COMMENT STRING_LITERAL)?                                  #createUserMysqlV80
     ;
 
 dropUser
