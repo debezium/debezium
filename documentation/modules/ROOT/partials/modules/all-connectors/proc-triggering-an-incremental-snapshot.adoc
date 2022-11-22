@@ -168,7 +168,7 @@ For example, using the `products` {data-collection} from the previous example, y
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantify>10"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantity>10"}');
 ----
 
 end::sql-based-snapshot[]
