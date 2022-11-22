@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.ConnectionString;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -56,25 +55,17 @@ public class TestHelper {
                 .collect(Collectors.toList());
     }
 
-    public static String hostsFor(MongoDbReplicaSet mongo) {
-        var connectionString = new ConnectionString(mongo.getConnectionString());
-        var hosts = String.join(",", connectionString.getHosts());
-        return mongo.getName() + "/" + hosts;
-    }
-
     public static Configuration getConfiguration() {
-        return getConfiguration("rs0/localhost:27017");
+        return getConfiguration("mongodb://dummy:27017");
     }
 
     public static Configuration getConfiguration(MongoDbReplicaSet mongo) {
-        var hosts = hostsFor(mongo);
-        return getConfiguration(hosts);
+        return getConfiguration(mongo.getConnectionString());
     }
 
-    public static Configuration getConfiguration(String hosts) {
+    public static Configuration getConfiguration(String connectionString) {
         final Builder cfgBuilder = Configuration.fromSystemProperties("connector.").edit()
-                .withDefault(MongoDbConnectorConfig.HOSTS, hosts)
-                .withDefault(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, true)
+                .withDefault(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
                 .withDefault(CommonConnectorConfig.TOPIC_PREFIX, "mongo1");
         return cfgBuilder.build();
     }

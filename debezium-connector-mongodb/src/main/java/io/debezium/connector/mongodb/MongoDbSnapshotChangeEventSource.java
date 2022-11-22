@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -32,8 +31,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -108,7 +107,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator-snapshot", threads);
         final CountDownLatch latch = new CountDownLatch(threads);
 
-        LOGGER.info("Ignoring unnamed replica sets: {}", replicaSets.unnamedReplicaSets());
         LOGGER.info("Starting {} thread(s) to snapshot replica sets: {}", threads, replicaSetsToSnapshot);
 
         LOGGER.info("Snapshot step 3 - Snapshotting data");
@@ -151,7 +149,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
         finally {
             LOGGER.info("Stopping mongodb connections");
-            taskContext.getConnectionContext().shutdown();
+            taskContext.getConnectionContext().close();
         }
 
         if (aborted.get()) {
@@ -183,7 +181,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final MongoDbOffsetContext offsetContext = (MongoDbOffsetContext) previousOffset;
         try {
             replicaSets.onEachReplicaSet(replicaSet -> {
-                MongoPreferredNode mongo = null;
+                RetryingMongoClient mongo = null;
                 try {
                     mongo = establishConnection(partition, replicaSet, ReadPreference.primaryPreferred());
                     final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
@@ -199,7 +197,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             });
         }
         finally {
-            taskContext.getConnectionContext().shutdown();
+            taskContext.getConnectionContext().close();
         }
 
         return new MongoDbSnapshottingTask(replicaSetSnapshots);
@@ -212,7 +210,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void snapshotReplicaSet(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext ctx, ReplicaSet replicaSet) throws InterruptedException {
-        MongoPreferredNode mongo = null;
+        RetryingMongoClient mongo = null;
         try {
             mongo = establishConnection(ctx.partition, replicaSet, ReadPreference.secondaryPreferred());
             if (mongo != null) {
@@ -226,21 +224,21 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
     }
 
-    private MongoPreferredNode establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
-        return connectionContext.preferredFor(replicaSet, preference, taskContext.filters(), (desc, error) -> {
+    private RetryingMongoClient establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
+        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
             else {
                 dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new ConnectException("Error while attempting to " + desc, error);
+                throw new DebeziumException("Error while attempting to " + desc, error);
             }
         });
     }
 
-    private boolean isSnapshotExpected(MongoPreferredNode mongo, ReplicaSetOffsetContext offsetContext) {
+    private boolean isSnapshotExpected(RetryingMongoClient mongo, ReplicaSetOffsetContext offsetContext) {
         boolean performSnapshot = true;
         if (offsetContext.hasOffset()) {
             if (LOGGER.isInfoEnabled()) {
@@ -291,7 +289,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
         replicaSets.onEachReplicaSet(replicaSet -> {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
-            MongoPreferredNode mongo = establishConnection(ctx.partition, replicaSet, ReadPreference.primaryPreferred());
+            RetryingMongoClient mongo = establishConnection(ctx.partition, replicaSet, ReadPreference.primaryPreferred());
             if (mongo != null) {
                 try {
                     mongo.execute("get oplog position", client -> {
@@ -310,7 +308,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext snapshotContext, ReplicaSet replicaSet,
-                                  MongoPreferredNode mongo)
+                                  RetryingMongoClient mongo)
             throws InterruptedException {
         SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotContext.offset.preSnapshotStart();
@@ -328,7 +326,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void createDataEventsForReplicaSet(ChangeEventSourceContext sourceContext,
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
-                                               ReplicaSet replicaSet, MongoPreferredNode mongo)
+                                               ReplicaSet replicaSet, RetryingMongoClient mongo)
             throws InterruptedException {
 
         final String rsName = replicaSet.replicaSetName();
@@ -434,7 +432,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void createDataEventsForCollection(ChangeEventSourceContext sourceContext,
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
-                                               ReplicaSet replicaSet, CollectionId collectionId, MongoPreferredNode mongo)
+                                               ReplicaSet replicaSet, CollectionId collectionId, RetryingMongoClient mongo)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();

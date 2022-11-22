@@ -22,7 +22,6 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
@@ -35,6 +34,7 @@ import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.config.Configuration;
@@ -385,7 +385,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 ExtractNewRecordStateConfigDefinition.ADD_FIELDS);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
-            throw new ConnectException("Unable to validate config.");
+            throw new DebeziumException("Unable to validate config.");
         }
 
         FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(

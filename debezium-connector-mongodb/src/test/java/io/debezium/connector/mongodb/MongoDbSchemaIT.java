@@ -24,7 +24,7 @@ public class MongoDbSchemaIT {
     @After
     public void afterEach() {
         if (taskContext != null) {
-            taskContext.getConnectionContext().shutdown();
+            taskContext.getConnectionContext().close();
         }
     }
 

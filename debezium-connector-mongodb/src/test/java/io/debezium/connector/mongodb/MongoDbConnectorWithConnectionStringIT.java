@@ -50,7 +50,6 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, ssl)
-                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, true)
                 .build();
     }
 

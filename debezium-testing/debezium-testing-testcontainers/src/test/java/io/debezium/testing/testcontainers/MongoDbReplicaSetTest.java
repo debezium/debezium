@@ -102,7 +102,7 @@ public class MongoDbReplicaSetTest {
 
             // Create a connection string with a desired read preference
             var readPreference = ReadPreference.primary();
-            var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference.getName());
+            var connectionString = new ConnectionString(cluster.getConnectionString() + "&readPreference=" + readPreference.getName());
 
             LOGGER.info("Connecting to cluster: {}", connectionString);
             try (var client = MongoClients.create(connectionString)) {

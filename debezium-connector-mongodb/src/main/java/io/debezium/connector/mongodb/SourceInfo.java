@@ -14,7 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.types.BSONTimestamp;
@@ -22,6 +21,7 @@ import org.bson.types.BSONTimestamp;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
@@ -367,7 +367,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
-     * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
+     * @throws DebeziumException if any offset parameter values are missing, invalid, or of the wrong type
      */
     public boolean setOffsetFor(String replicaSetName, Map<String, ?> sourceOffset) {
         if (replicaSetName == null) {
@@ -402,7 +402,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param partition the partition information; may not be null
      * @param sourceOffset the previously-recorded Kafka Connect source offset; may be null
      * @return {@code true} if the offset was recorded, or {@code false} if the source offset is null
-     * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
+     * @throws DebeziumException if any offset parameter values are missing, invalid, or of the wrong type
      */
     public boolean setOffsetFor(Map<String, String> partition, Map<String, ?> sourceOffset) {
         String replicaSetName = partition.get(REPLICA_SET_NAME);
@@ -457,7 +457,7 @@ public final class SourceInfo extends BaseSourceInfo {
             return Integer.parseInt(obj.toString());
         }
         catch (NumberFormatException e) {
-            throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to an integer");
+            throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to an integer");
         }
     }
 
@@ -473,7 +473,7 @@ public final class SourceInfo extends BaseSourceInfo {
             return Long.parseLong(obj.toString());
         }
         catch (NumberFormatException e) {
-            throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
+            throw new DebeziumException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
     }
 

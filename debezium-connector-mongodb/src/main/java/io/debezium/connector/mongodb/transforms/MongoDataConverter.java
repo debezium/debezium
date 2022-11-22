@@ -17,13 +17,13 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
@@ -454,7 +454,7 @@ public class MongoDataConverter {
                 addFieldSchema(arrayDoc, documentSchemaBuilder);
             }
             else if (prevType != arrayDoc.getValue().getBsonType()) {
-                throw new ConnectException("Field " + key + " of schema " + documentSchemaBuilder.name()
+                throw new DebeziumException("Field " + key + " of schema " + documentSchemaBuilder.name()
                         + " is not the same type for all documents in the array.\n"
                         + "Check option 'struct' of parameter 'array.encoding'");
             }
@@ -470,7 +470,7 @@ public class MongoDataConverter {
                     final String docKey = fieldNamer.fieldNameFor(arrayDoc.getKey());
                     final BsonType prevType = union.putIfAbsent(docKey, arrayDoc.getValue().getBsonType());
                     if (prevType != null && prevType != arrayDoc.getValue().getBsonType()) {
-                        throw new ConnectException("Field " + docKey + " of schema " + builder.name()
+                        throw new DebeziumException("Field " + docKey + " of schema " + builder.name()
                                 + " is not the same type for all documents in the array.\n"
                                 + "Check option 'struct' of parameter 'array.encoding'");
                     }
@@ -486,7 +486,7 @@ public class MongoDataConverter {
         else {
             for (BsonValue element : value.asArray()) {
                 if (element.getBsonType() != valueType) {
-                    throw new ConnectException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
+                    throw new DebeziumException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
                             + "Check option 'struct' of parameter 'array.encoding'");
                 }
             }

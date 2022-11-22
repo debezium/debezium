@@ -145,7 +145,7 @@ public class MongoDbReplicaSet implements Startable {
         return "mongodb://" + members.stream()
                 .map(MongoDbContainer::getClientAddress)
                 .map(Objects::toString)
-                .collect(joining(","));
+                .collect(joining(",")) + "/?replicaSet=" + name;
     }
 
     /**

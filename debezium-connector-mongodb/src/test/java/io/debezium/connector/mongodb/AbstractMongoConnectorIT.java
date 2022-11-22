@@ -79,7 +79,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         }
         finally {
             if (context != null) {
-                context.getConnectionContext().shutdown();
+                context.getConnectionContext().close();
             }
         }
     }
