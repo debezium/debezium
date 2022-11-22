@@ -491,7 +491,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (pattern != null && event.containsKey(STRIPE_AUDIT_FIELD)) {
             String stripeAudit = event.getString(STRIPE_AUDIT_FIELD).getValue();
             if (stripeAudit != null && pattern.matcher(stripeAudit).matches()) {
-                LOGGER.debug("Skipping event due to stripeAudit filtering: {}", event.toJson());
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Skipping event due to stripeAudit filtering: {}", event.toJson());
+                }
                 return true;
             }
         }
