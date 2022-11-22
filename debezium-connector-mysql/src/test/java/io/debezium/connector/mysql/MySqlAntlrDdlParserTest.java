@@ -2986,6 +2986,14 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-5836")
+    public void parseCreateUserDdlStatement() {
+        String ddl = "CREATE USER 'test_crm_debezium'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9' PASSWORD EXPIRE NEVER COMMENT '-';";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-530")
     public void parsePartitionReorganize() {
         String ddl = "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"
