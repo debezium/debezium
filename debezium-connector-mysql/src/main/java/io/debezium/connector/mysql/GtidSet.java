@@ -323,9 +323,6 @@ public final class GtidSet {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (sb.length() != 0) {
-                sb.append(',');
-            }
             sb.append(uuid).append(':');
             Iterator<Interval> iter = intervals.iterator();
             if (iter.hasNext()) {
