@@ -31,11 +31,9 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
 
     public SqlServerPartition(String serverName, String databaseName) {
         this(serverName, databaseName, true);
-
     }
 
     public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
-
         super(databaseName);
         this.serverName = serverName;
 
@@ -44,8 +42,8 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         // for connectors working in single-partition mode the format of a partition has been changed in Debezium 2.0,
         // the legacy/old format of the partition should still be supported along with the new format
         // the new format has precedence over the old format
-        this.supportedFormats = multiPartitionMode ? Collections.singletonList(this.sourcePartition) :
-                Arrays.asList(this.sourcePartition, Collect.hashMapOf(SERVER_PARTITION_KEY, serverName));
+        this.supportedFormats = multiPartitionMode ? Collections.singletonList(this.sourcePartition)
+                : Arrays.asList(this.sourcePartition, Collect.hashMapOf(SERVER_PARTITION_KEY, serverName));
 
         this.hashCode = Objects.hash(serverName, databaseName);
     }
@@ -101,7 +99,6 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         @Override
         public Set<SqlServerPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
-
             String[] databaseNames = taskConfig.getString(DATABASE_NAMES.name()).split(",");
             boolean multiPartitionMode = databaseNames.length > 1;
 
