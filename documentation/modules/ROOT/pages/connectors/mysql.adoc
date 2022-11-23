@@ -467,6 +467,17 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+// Type: procedure
+[id="mysql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="mysql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
 
 ifdef::community[]
 [id="mysql-read-only-incremental-snapshots"]
