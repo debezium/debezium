@@ -259,7 +259,7 @@ jobs:
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
-      # Since we do a complete build conditionally above, we should always either be abel to rely on the
+      # Since we do a complete build conditionally above, we should always either be able to rely on the
       # build step to have installed all needed artifacts or the artifacts that exist from a prior run
       # in order to satisfy dependencies for the format, checkstyle, and import sort checks.  If the
       # dependencies change, a new cache should be generated and a full build step executed, so this

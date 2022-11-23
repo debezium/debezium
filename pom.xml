@@ -73,7 +73,7 @@
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.40.2</version.docker.maven.plugin>
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>

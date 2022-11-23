@@ -23,7 +23,7 @@ import io.debezium.spi.schema.DataCollectionId;
  * The action to trigger an ad-hoc snapshot.
  * The action parameters are {@code type} of snapshot and list of {@code data-collections} on which the
  * snapshot will be executed.
- * 
+ *
  * @author Jiri Pechanec
  *
  */

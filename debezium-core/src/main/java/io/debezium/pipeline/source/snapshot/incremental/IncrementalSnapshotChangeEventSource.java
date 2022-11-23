@@ -14,7 +14,7 @@ import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A Contract t
- * 
+ *
  * @author Jiri Pechanec
  *
  * @param <T> data collection id class

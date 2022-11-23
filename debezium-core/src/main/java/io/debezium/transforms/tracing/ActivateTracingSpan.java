@@ -39,9 +39,9 @@ import io.opentracing.util.GlobalTracer;
  * The application then needs to export its tracing active span context into a database field.
  * The SMT looks for a predefined field name in the {@code after} block
  * and when found it extracts the parent span from it.
- * 
+ *
  * @see {@link EventDispatcher} for example of such implementation
- * 
+ *
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec

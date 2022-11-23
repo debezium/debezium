@@ -7,7 +7,7 @@ package io.debezium.pipeline;
 
 /**
  * Calculates or estimates the size of the object
- * 
+ *
  * @author Jiri Pechanec
  *
  */

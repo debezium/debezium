@@ -41,7 +41,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
-     * 
+     *
      * @param loggerName logger that emits the log message
      */
     public LogInterceptor(String loggerName) {
@@ -57,7 +57,7 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
 
     /**
      * Provides a log interceptor based on the logger that emits the message.
-     * 
+     *
      * @param clazz class that emits the log message
      */
     public LogInterceptor(Class<?> clazz) {

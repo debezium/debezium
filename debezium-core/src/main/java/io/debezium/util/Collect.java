@@ -290,7 +290,7 @@ public class Collect {
     /**
      * Remove the content of one set from an another one.
      *
-     * @param subtrahend the main set 
+     * @param subtrahend the main set
      * @param minuend the elements to be removed
      */
     public static <T> Set<T> minus(Set<T> subtrahend, Set<T> minuend) {
