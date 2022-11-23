@@ -10,8 +10,11 @@ import java.util.List;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
 import javax.inject.Named;
 
+import io.debezium.server.CustomConsumerBuilder;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -54,11 +57,22 @@ public class NatsJetStreamChangeConsumer extends BaseChangeConsumer
     @ConfigProperty(name = PROP_CREATE_STREAM, defaultValue = "false")
     boolean createStream;
 
+
+    @Inject
+    @CustomConsumerBuilder
+    Instance<JetStream> customStreamingConnection;
+
     @PostConstruct
     void connect() {
         // Read config
         final Config config = ConfigProvider.getConfig();
         String url = config.getValue(PROP_URL, String.class);
+
+        if (customStreamingConnection.isResolvable()) {
+            js = customStreamingConnection.get();
+            LOGGER.info("Obtained custom configured JetStream '{}'", js);
+            return;
+        }
 
         try {
             // Setup NATS connection
