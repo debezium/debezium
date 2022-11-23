@@ -205,12 +205,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("Optional list of single message transformations applied on the messages. "
                     + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
 
+    private static final int DEFAULT_ERROR_MAX_RETRIES = -1;
+
     private static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
             .withDisplayName("The maximum number of retries")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(-1)
+            .withDefault(DEFAULT_ERROR_MAX_RETRIES)
             .withValidation(Field::isInteger)
             .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
 
@@ -840,7 +842,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     }
 
                     recordsSinceLastCommit = 0;
-                    Throwable handlerError = null;
+                    Throwable handlerError = null, retryError = null;
                     try {
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
                         RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
@@ -865,7 +867,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             catch (RetriableException e) {
                                 int maxRetries = getErrorsMaxRetries();
                                 LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-                                if (maxRetries != 0) {
+                                if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
+                                    retryError = e;
+                                    throw e;
+                                }
+                                else if (maxRetries != 0) {
                                     DelayStrategy delayStrategy = delayStrategy(config);
                                     int totalRetries = 0;
                                     boolean startedSuccessfully = false;
@@ -880,6 +886,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                         catch (Exception ex) {
                                             if (totalRetries == maxRetries) {
                                                 LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
+                                                retryError = ex;
                                                 throw ex;
                                             }
                                             else {
@@ -926,6 +933,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
                                     handlerError);
                         }
+                        else if (retryError != null) {
+                            fail("Stopping connector after retry error: " + retryError.getMessage(), retryError);
+                        }
+                        else {
+                            // We stopped normally ...
+                            succeed("Connector '" + connectorClassName + "' completed normally.");
+                        }
                         try {
                             // First stop the task ...
                             LOGGER.info("Stopping the task and engine");
@@ -933,10 +947,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
                             commitOffsets(offsetWriter, commitTimeout, task);
-                            if (handlerError == null) {
-                                // We stopped normally ...
-                                succeed("Connector '" + connectorClassName + "' completed normally.");
-                            }
                         }
                         catch (InterruptedException e) {
                             LOGGER.debug("Interrupted while committing offsets");
