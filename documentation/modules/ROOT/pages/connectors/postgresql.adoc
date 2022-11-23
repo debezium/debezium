@@ -187,6 +187,18 @@ The {prodname} connector for PostgreSQL does not support schema changes while an
 If a schema change is performed _before_ the incremental snapshot start but _after_ sending the signal then passthrough config option `database.autosave` is set to `conservative` to correctly process the schema change.
 ====
 
+// Type: procedure
+[id="postgresql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="postgresql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
 ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
