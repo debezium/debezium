@@ -1044,6 +1044,28 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
 
+===== Injection points
+
+The NATS JetStream sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[jetstream_connection]]<<streaming_connection, `io.nats.client.JetStream`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `JetStream` used to publish messages to target subjects.
+
+|[[jetstream-ext-stream-name-mapper]]<<nats-streaming-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical NATS JetStream subject name.
+By default the same name is used.
+
+|===
+
 ==== Apache Kafka
 
 https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. Debezium server supports publishing captured change events to a configured Kafka message broker.
