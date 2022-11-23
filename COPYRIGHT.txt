@@ -49,6 +49,7 @@ Avinash Vishwakarma
 Aykut Farsak
 Babur Duisenov
 Balázs Németh
+Balázs Sipos
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
