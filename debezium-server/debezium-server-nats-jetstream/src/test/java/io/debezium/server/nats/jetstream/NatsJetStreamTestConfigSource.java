@@ -20,7 +20,6 @@ public class NatsJetStreamTestConfigSource extends TestConfigSource {
         natsJetStreamTest.put("debezium.sink.nats-jetstream.url",
                 NatsJetStreamTestResourceLifecycleManager.getNatsContainerUrl());
         natsJetStreamTest.put("debezium.sink.nats-jetstream.create-stream", "true");
-        natsJetStreamTest.put("debezium.sink.nats-jetstream.subjects", "asd,asd");
         natsJetStreamTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         natsJetStreamTest.put("debezium.source.topic.prefix", "testc");
         natsJetStreamTest.put("debezium.source.schema.include.list", "inventory");
