@@ -17,7 +17,7 @@ jobs:
         feature: [ 18 ]
     name: SQL Server - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -34,7 +34,7 @@ jobs:
         feature: [ 18 ]
     name: MySQL - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -51,7 +51,7 @@ jobs:
         feature: [ 18 ]
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -68,7 +68,7 @@ jobs:
         feature: [ 18 ]
     name: MongoDB 4.0 - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -85,7 +85,7 @@ jobs:
         feature: [ 18 ]
     name: Oracle - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -103,11 +103,11 @@ jobs:
     name: Db2 - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: core
       - name: Checkout Db2
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -128,11 +128,11 @@ jobs:
     name: Vitess - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: core
       - name: Checkout Vitess
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -152,7 +152,7 @@ jobs:
         feature: [ 18 ]
     name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -169,7 +169,7 @@ jobs:
         feature: [ 18 ]
     name: Rest Extension - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -186,7 +186,7 @@ jobs:
         feature: [ 18 ]
     name: Testing - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -203,7 +203,7 @@ jobs:
         feature: [ 18 ]
     name: Server - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Setup OpenJDK
