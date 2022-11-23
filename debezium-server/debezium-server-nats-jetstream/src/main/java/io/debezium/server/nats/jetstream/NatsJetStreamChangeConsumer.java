@@ -14,7 +14,6 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import io.debezium.server.CustomConsumerBuilder;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -26,6 +25,7 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
+import io.debezium.server.CustomConsumerBuilder;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamManagement;
@@ -56,7 +56,6 @@ public class NatsJetStreamChangeConsumer extends BaseChangeConsumer
 
     @ConfigProperty(name = PROP_CREATE_STREAM, defaultValue = "false")
     boolean createStream;
-
 
     @Inject
     @CustomConsumerBuilder
