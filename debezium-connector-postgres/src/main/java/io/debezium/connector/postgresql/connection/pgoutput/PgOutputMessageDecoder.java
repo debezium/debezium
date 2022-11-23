@@ -733,6 +733,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final String typeExpression = column.typeExpression();
             final boolean optional = column.isOptional();
 
+            final Column replicationMessageColumn;
+
             // Read the sub-message type
             // 't' : Value is represented as text
             // 'u' : An unchanged TOAST-ed value, actual value is not sent.
@@ -740,7 +742,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             char type = (char) buffer.get();
             if (type == 't') {
                 final String valueStr = readColumnValueAsString(buffer);
-                columns.add(
+                replicationMessageColumn =
                         new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
                             @Override
                             public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
@@ -755,7 +757,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                         });
             }
             else if (type == 'u') {
-                columns.add(
+                replicationMessageColumn =
                         new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
                             @Override
                             public String toString() {
@@ -764,7 +766,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                         });
             }
             else if (type == 'n') {
-                columns.add(
+                replicationMessageColumn =
                         new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
                             @Override
                             public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
@@ -772,9 +774,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                             }
                         });
             }
+
+            columns.add(replicationMessageColumn);
+            LOGGER.trace("Column: {}", replicationMessageColumn));
         }
 
-        columns.forEach(c -> LOGGER.trace("Column: {}", c));
         return columns;
     }
 
