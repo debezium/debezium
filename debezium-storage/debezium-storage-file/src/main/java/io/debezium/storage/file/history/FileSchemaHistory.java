@@ -8,8 +8,6 @@ package io.debezium.storage.file.history;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,7 +48,6 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(FILE_PATH);
 
-    private static final Charset UTF8 = StandardCharsets.UTF_8;
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
@@ -63,7 +60,6 @@ public final class FileSchemaHistory extends AbstractSchemaHistory {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
-        config.validateAndRecord(ALL_FIELDS, logger::error);
         if (running.get()) {
             throw new IllegalStateException("Database schema history file already initialized to " + path);
         }

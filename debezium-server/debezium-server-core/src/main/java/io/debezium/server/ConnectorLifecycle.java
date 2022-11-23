@@ -79,7 +79,13 @@ public class ConnectorLifecycle implements HealthCheck, DebeziumEngine.Connector
 
     @Override
     public void handle(boolean success, String message, Throwable error) {
-        LOGGER.info("Connector completed: success = '{}', message = '{}', error = '{}'", success, message, error);
+        String logMessage = String.format("Connector completed: success = '%s', message = '%s', error = '%s'", success, message, error);
+        if (success) {
+            LOGGER.info(logMessage);
+        }
+        else {
+            LOGGER.error(logMessage);
+        }
         connectorCompletedEvent.fire(new ConnectorCompletedEvent(success, message, error));
         live = false;
     }

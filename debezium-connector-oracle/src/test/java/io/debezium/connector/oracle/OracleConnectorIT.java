@@ -2582,16 +2582,15 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             connection.execute("INSERT INTO dbz3898 (id,data) values (1,'Test')");
 
+            final Scn scnAfterInsert = TestHelper.getCurrentScn();
+
             SourceRecords records = consumeRecordsByTopic(1);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3898")).hasSize(1);
 
-            // Wait for the connector to run 10 mining cycles
-            // Over the course of these cycles, there should be nothing to be consumed.
-            final long fetchingQueryCount = getStreamingMetric("FetchingQueryCount");
-            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> {
-                final long currentQueryCount = getStreamingMetric("FetchingQueryCount");
-                return currentQueryCount >= fetchingQueryCount + 10L;
-            });
+            // Wait for the connector to advance beyond the current SCN after the INSERT.
+            Awaitility.await().atMost(Duration.ofMinutes(3))
+                    .until(() -> Scn.valueOf(getStreamingMetric("CurrentScn")).compareTo(scnAfterInsert) > 0);
+
             assertNoRecordsToConsume();
         }
         finally {

@@ -100,7 +100,7 @@ public class SimpleSourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return null;
+        return new ConfigDef();
     }
 
     public static class SimpleConnectorTask extends SourceTask {

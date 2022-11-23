@@ -211,7 +211,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
                     return Decimal.builder(0);
             }
         }
-        if (matches(typeName, "FLOAT") && column.scale().isEmpty() && column.length() <= 24) {
+        if ((matches(typeName, "FLOAT")
+                || matches(typeName, "FLOAT UNSIGNED")
+                || matches(typeName, "FLOAT UNSIGNED ZEROFILL"))
+                && column.scale().isEmpty() && column.length() <= 24) {
             return SchemaBuilder.float32();
         }
         // Otherwise, let the base class handle it ...

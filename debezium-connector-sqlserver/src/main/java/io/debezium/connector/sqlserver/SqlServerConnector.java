@@ -132,7 +132,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                 if (!noAccessDatabaseNames.isEmpty()) {
                     String errorMessage = String.format(
                             "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
-                            userValue.value(), String.join(", ", noAccessDatabaseNames));
+                            config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
                     LOGGER.error(errorMessage);
                     userValue.addErrorMessage(errorMessage);
                 }

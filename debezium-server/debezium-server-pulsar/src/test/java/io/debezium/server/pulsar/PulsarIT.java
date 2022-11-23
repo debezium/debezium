@@ -84,6 +84,9 @@ public class PulsarIT {
 
     @Test
     public void testPulsar() throws Exception {
+        Awaitility.await().atMost(Duration.ofSeconds(PulsarTestConfigSource.waitForSeconds())).until(() -> {
+            return pulsarClient != null;
+        });
         final Consumer<String> consumer = pulsarClient.newConsumer(Schema.STRING)
                 .topic(TOPIC_NAME)
                 .subscriptionName("test-" + UUID.randomUUID())

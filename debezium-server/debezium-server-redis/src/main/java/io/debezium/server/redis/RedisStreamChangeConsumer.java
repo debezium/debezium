@@ -5,6 +5,9 @@
  */
 package io.debezium.server.redis;
 
+import static io.debezium.server.redis.RedisStreamChangeConsumerConfig.MESSAGE_FORMAT_COMPACT;
+import static io.debezium.server.redis.RedisStreamChangeConsumerConfig.MESSAGE_FORMAT_EXTENDED;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,13 +30,12 @@ import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
-import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.Configuration;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
@@ -59,52 +61,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     private static final String DEBEZIUM_REDIS_SINK_CLIENT_NAME = "debezium:redis:sink";
 
-    private static final String PROP_PREFIX = "debezium.sink.redis.";
-    private static final String PROP_ADDRESS = PROP_PREFIX + "address";
-    private static final String PROP_USER = PROP_PREFIX + "user";
-    private static final String PROP_PASSWORD = PROP_PREFIX + "password";
-    private static final String PROP_CONNECTION_TIMEOUT = PROP_PREFIX + "connection.timeout.ms";
-    private static final String PROP_SOCKET_TIMEOUT = PROP_PREFIX + "socket.timeout.ms";
-    private static final String PROP_MESSAGE_FORMAT = PROP_PREFIX + "message.format";
-    private static final String PROP_WAIT_ENABLED = PROP_PREFIX + "wait.enabled";
-    private static final String PROP_WAIT_TIMEOUT = PROP_PREFIX + "wait.timeout.ms";
-    private static final String PROP_WAIT_RETRY_ENABLED = PROP_PREFIX + "wait.retry.enabled";
-    private static final String PROP_WAIT_RETRY_DELAY = PROP_PREFIX + "wait.retry.delay.ms";
-
-    private static final int DEFAULT_MEMORY_THRESHOLD_PERCENTAGE = 85;
-    private static final String PROP_MEMORY_THRESHOLD_PERCENTAGE = PROP_PREFIX + "memory.threshold.percentage";
-    private static final String INFO_MEMORY = "memory";
-    private static final String INFO_MEMORY_SECTION_MAXMEMORY = "maxmemory";
-    private static final String INFO_MEMORY_SECTION_USEDMEMORY = "used_memory";
-
-    private static final String MESSAGE_FORMAT_COMPACT = "compact";
-    private static final String MESSAGE_FORMAT_EXTENDED = "extended";
     private static final String EXTENDED_MESSAGE_KEY_KEY = "key";
     private static final String EXTENDED_MESSAGE_VALUE_KEY = "value";
 
-    private String address;
-    private String user;
-    private String password;
-    private Integer connectionTimeout;
-    private Integer socketTimeout;
-
-    @ConfigProperty(name = PROP_PREFIX + "ssl.enabled", defaultValue = "false")
-    boolean sslEnabled;
-
-    @ConfigProperty(name = PROP_PREFIX + "batch.size", defaultValue = "500")
-    Integer batchSize;
-
-    @ConfigProperty(name = PROP_PREFIX + "retry.initial.delay.ms", defaultValue = "300")
-    Integer initialRetryDelay;
-
-    @ConfigProperty(name = PROP_PREFIX + "retry.max.delay.ms", defaultValue = "10000")
-    Integer maxRetryDelay;
-
-    @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
-    String nullKey;
-
-    @ConfigProperty(name = PROP_PREFIX + "null.value", defaultValue = "default")
-    String nullValue;
+    private static final String INFO_MEMORY = "memory";
+    private static final String INFO_MEMORY_SECTION_MAXMEMORY = "maxmemory";
+    private static final String INFO_MEMORY_SECTION_USEDMEMORY = "used_memory";
 
     private RedisClient client;
 
@@ -112,17 +74,13 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
 
     private Supplier<Boolean> isMemoryOk;
 
+    private RedisStreamChangeConsumerConfig config;
+
     @PostConstruct
     void connect() {
-        final Config config = ConfigProvider.getConfig();
-        address = config.getValue(PROP_ADDRESS, String.class);
-        user = config.getOptionalValue(PROP_USER, String.class).orElse(null);
-        password = config.getOptionalValue(PROP_PASSWORD, String.class).orElse(null);
-        connectionTimeout = config.getOptionalValue(PROP_CONNECTION_TIMEOUT, Integer.class).orElse(2000);
-        socketTimeout = config.getOptionalValue(PROP_SOCKET_TIMEOUT, Integer.class).orElse(2000);
-
-        String messageFormat = config.getOptionalValue(PROP_MESSAGE_FORMAT, String.class).orElse(MESSAGE_FORMAT_COMPACT);
-        LOGGER.info("Property {}={}", PROP_MESSAGE_FORMAT, messageFormat);
+        Configuration configuration = Configuration.from(getConfigSubset(ConfigProvider.getConfig(), ""));
+        config = new RedisStreamChangeConsumerConfig(configuration);
+        String messageFormat = config.getMessageFormat();
         if (MESSAGE_FORMAT_EXTENDED.equals(messageFormat)) {
             recordMapFunction = (key, value) -> {
                 Map<String, String> recordMap = new LinkedHashMap<>(2);
@@ -134,24 +92,14 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         else if (MESSAGE_FORMAT_COMPACT.equals(messageFormat)) {
             recordMapFunction = Collections::singletonMap;
         }
-        else {
-            throw new DebeziumException(
-                    String.format("Property %s expects value one of '%s' or '%s'", PROP_MESSAGE_FORMAT, MESSAGE_FORMAT_EXTENDED, MESSAGE_FORMAT_COMPACT));
-        }
 
-        int memoryThreshold = config.getOptionalValue(PROP_MEMORY_THRESHOLD_PERCENTAGE, Integer.class).orElse(DEFAULT_MEMORY_THRESHOLD_PERCENTAGE);
-        if (memoryThreshold < 0 || memoryThreshold > 100) {
-            throw new DebeziumException(String.format("Property %s should be between 0 and 100", PROP_MEMORY_THRESHOLD_PERCENTAGE));
-        }
+        int memoryThreshold = config.getMemoryThreshold();
         isMemoryOk = memoryThreshold > 0 ? () -> isMemoryOk(memoryThreshold) : () -> true;
 
-        boolean waitEnabled = config.getOptionalValue(PROP_WAIT_ENABLED, Boolean.class).orElse(false);
-        long waitTimeout = config.getOptionalValue(PROP_WAIT_TIMEOUT, Long.class).orElse(1000L);
-        boolean waitRetryEnabled = config.getOptionalValue(PROP_WAIT_RETRY_ENABLED, Boolean.class).orElse(false);
-        long waitRetryDelay = config.getOptionalValue(PROP_WAIT_RETRY_DELAY, Long.class).orElse(1000L);
-
-        RedisConnection redisConnection = new RedisConnection(address, user, password, connectionTimeout, socketTimeout, sslEnabled);
-        client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME, waitEnabled, waitTimeout, waitRetryEnabled, waitRetryDelay);
+        RedisConnection redisConnection = new RedisConnection(config.getAddress(), config.getUser(), config.getPassword(), config.getConnectionTimeout(),
+                config.getSocketTimeout(), config.isSslEnabled());
+        client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME, config.isWaitEnabled(), config.getWaitTimeout(), config.isWaitRetryEnabled(),
+                config.getWaitRetryDelay());
     }
 
     @PreDestroy
@@ -188,10 +136,10 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
                             RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
-        DelayStrategy delayStrategy = DelayStrategy.exponential(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(maxRetryDelay));
+        DelayStrategy delayStrategy = DelayStrategy.exponential(Duration.ofMillis(config.getInitialRetryDelay()), Duration.ofMillis(config.getMaxRetryDelay()));
 
         LOGGER.trace("Handling a batch of {} records", records.size());
-        batches(records, batchSize).forEach(batch -> {
+        batches(records, config.getBatchSize()).forEach(batch -> {
             boolean completedSuccessfully = false;
 
             // Clone the batch and remove the records that have been successfully processed.
@@ -218,8 +166,8 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         List<SimpleEntry<String, Map<String, String>>> recordsMap = new ArrayList<>(clonedBatch.size());
                         for (ChangeEvent<Object, Object> record : clonedBatch) {
                             String destination = streamNameMapper.map(record.destination());
-                            String key = (record.key() != null) ? getString(record.key()) : nullKey;
-                            String value = (record.value() != null) ? getString(record.value()) : nullValue;
+                            String key = (record.key() != null) ? getString(record.key()) : config.getNullKey();
+                            String value = (record.value() != null) ? getString(record.value()) : config.getNullValue();
                             Map<String, String> recordMap = recordMapFunction.apply(key, value);
                             recordsMap.add(new SimpleEntry<>(destination, recordMap));
                         }

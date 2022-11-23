@@ -1372,7 +1372,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
                 .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();
@@ -2151,7 +2151,10 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
-        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s2").build();
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s2")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
 
         // Start connector, verify that it does not log no captured tables warning
         start(PostgresConnector.class, config);
@@ -2626,6 +2629,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder initalConfigBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
 
         start(PostgresConnector.class, initalConfigBuilder.build());
@@ -2935,6 +2939,73 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(recordsForTopic).hasSize(1);
         assertThat(recordsForTopic.get(0).valueSchema().field("after").schema().field("data")).isNull();
         assertThat(logInterceptor.containsMessage("Column 'data' optionality could not be determined, defaulting to true")).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-5739")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "This needs pg_replication_slot_advance which is supported only on Postgres 11+")
+    public void shouldStopConnectorOnSlotRecreation() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnectorIT.class);
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        TestHelper.execute(INSERT_STMT);
+
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsStacktraceElement("Cannot seek to the last known offset "));
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-5739")
+    @SkipWhenDatabaseVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, major = 11, reason = "This pg_replication_slot_advance is not present Postgres 10")
+    public void shouldSeekToCorrectOffset() throws InterruptedException {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        TestHelper.execute(INSERT_STMT);
+
+        configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        consumeRecordsByTopic(1);
+        assertConnectorIsRunning();
+
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .until(() -> logInterceptor
+                        .containsMessage("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset."));
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
