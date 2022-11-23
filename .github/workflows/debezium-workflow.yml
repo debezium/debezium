@@ -39,7 +39,7 @@ jobs:
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -194,7 +194,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -242,7 +242,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -283,7 +283,7 @@ jobs:
         version-mongo-server: ["4.0", "4.4", "5.0", "6.0"]
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -317,7 +317,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -352,7 +352,7 @@ jobs:
         postgres-plugin: ["assembly", "assembly,postgres-15,pgoutput-decoder"]
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -385,7 +385,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -421,7 +421,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -454,7 +454,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -495,7 +495,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -528,7 +528,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -560,7 +560,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -592,7 +592,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
         uses: actions/setup-java@v2
@@ -625,12 +625,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: core
 
       - name: Checkout Action (Cassandra)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -682,12 +682,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: core
 
       - name: Checkout Action (Db2)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -739,12 +739,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: core
 
       - name: Checkout Action (Vitess)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -796,7 +796,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (UI)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: debezium/debezium-ui
           path: debezium-ui
