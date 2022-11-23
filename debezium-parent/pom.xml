@@ -15,11 +15,6 @@
     <packaging>pom</packaging>
     <properties>
 
-        <!-- Maven Plugins -->
-        <version.docker.maven.plugin>0.40.2</version.docker.maven.plugin>
-        <version.code.formatter>2.16.0</version.code.formatter>
-        <version.impsort>1.6.2</version.impsort>
-
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
 
