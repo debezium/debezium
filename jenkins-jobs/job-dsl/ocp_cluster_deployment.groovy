@@ -13,6 +13,7 @@ pipelineJob('ocp-cluster-deployment') {
     parameters {
         stringParam('CLUSTER_NAME', 'cluster', 'Name of OCP cluster')
         stringParam('INSTALLER_VERSION', 'latest-4.10', 'Version of OCP installer')
+        stringParam('CLOUD', 'openstack', 'Cloud')
         booleanParam('REMOVE_CLUSTER', false, 'If true, instead of cluster deployment removes said cluster')
     }
 
