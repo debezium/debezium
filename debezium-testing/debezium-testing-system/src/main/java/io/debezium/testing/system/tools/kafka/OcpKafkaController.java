@@ -5,7 +5,6 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
-import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_FILENAME;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
@@ -66,9 +65,6 @@ public class OcpKafkaController implements KafkaController {
 
     @Override
     public String getPublicBootstrapAddress() {
-        if (isRunningFromOcp()) {
-            return getBootstrapAddress();
-        }
         List<ListenerStatus> listeners = kafka.getStatus().getListeners();
         ListenerStatus listener = listeners.stream()
                 .filter(l -> l.getType().equalsIgnoreCase("external"))
