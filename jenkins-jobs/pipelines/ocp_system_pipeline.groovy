@@ -5,7 +5,8 @@ pipeline {
 
     environment {
         DEBEZIUM_LOCATION = "${WORKSPACE}/debezium"
-        OCP_PROJECT_NAME = "debezium-${BUILD_NUMBER}"
+        OCP_PROJECT_NAME = "debezium-ocp-${BUILD_NUMBER}"
+        OCP_PROJECT_DEBEZIUM_TESTSUITE = "${OCP_PROJECT_NAME}-testsuite"
     }
 
     stages {
@@ -27,59 +28,6 @@ pipeline {
             }
         }
 
-        stage('Copy artifacts') {
-            when {
-                expression { params.PRODUCT_BUILD }
-            }
-            stages {
-                stage('Copy apicurio artifacts - latest') {
-                    when {
-                        expression { !params.APICURIO_PREPARE_BUILD_NUMBER }
-                    }
-                    steps {
-                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job',
-                                target: "${WORKSPACE}/apicurio",
-                                filter: 'apicurio-registry-install-examples.zip',
-                                selector: lastSuccessful()
-                    }
-                }
-                stage('Copy apicurio artifacts') {
-                    when {
-                        expression { params.APICURIO_PREPARE_BUILD_NUMBER }
-                    }
-                    steps {
-                        copyArtifacts projectName: 'ocp-downstream-apicurio-prepare-job',
-                                target: "${WORKSPACE}/apicurio",
-                                filter: 'apicurio-registry-install-examples.zip',
-                                selector: specific(params.APICURIO_PREPARE_BUILD_NUMBER)
-                    }
-                }
-
-                stage('Copy strimzi artifacts - latest') {
-                    when {
-                        expression { !params.STRIMZI_PREPARE_BUILD_NUMBER }
-                    }
-                    steps {
-                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job',
-                                target: "${WORKSPACE}/strimzi",
-                                filter: 'amq-streams-install-examples.zip',
-                                selector: lastSuccessful()
-                    }
-                }
-                stage('Copy strimzi artifacts') {
-                    when {
-                        expression { params.STRIMZI_PREPARE_BUILD_NUMBER }
-                    }
-                    steps {
-                        copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job',
-                                target: "${WORKSPACE}/strimzi",
-                                filter: 'amq-streams-install-examples.zip',
-                                selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
-                    }
-                }
-            }
-        }
-
         stage('Configure namespaces') {
             steps {
                 withCredentials([
@@ -89,90 +37,49 @@ pipeline {
                     sh '''
                     oc login -u "${OCP_USERNAME}" -p "${OCP_PASSWORD}" --insecure-skip-tls-verify=true "${OCP_URL}"
 
-                    # create projects
-                    cd ${DEBEZIUM_LOCATION}
-                    ./jenkins-jobs/scripts/ocp-projects.sh --project ${OCP_PROJECT_NAME} --create --testsuite
-                    source ./${OCP_PROJECT_NAME}.ocp.env
-
-                    # create secret
-                    oc project "${OCP_PROJECT_DEBEZIUM_TESTSUITE}"
+                    # create testsuite project and secret
+                    oc new-project "${OCP_PROJECT_DEBEZIUM_TESTSUITE}"
                     oc adm policy add-cluster-role-to-user cluster-admin "system:serviceaccount:${OCP_PROJECT_DEBEZIUM_TESTSUITE}:default"
                     oc apply -f "${SECRET_PATH}"
-                    oc apply -f "${SECRET_PATH}" -n "${OCP_PROJECT_REGISTRY}"
                     '''
                 }
             }
         }
 
-        stage('Prepare strimzi - upstream') {
+        stage('Checkout Downstream AMQ Streams') {
             when {
-                expression { !params.PRODUCT_BUILD }
+                expression { params.PRODUCT_BUILD && params.STRIMZI_PREPARE_BUILD_NUMBER }
             }
             steps {
-                sh '''
-                source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
-                mkdir ${WORKSPACE}/strimzi && cd ${WORKSPACE}/strimzi
-                git clone --branch "${STRZ_GIT_BRANCH}" "${STRZ_GIT_REPOSITORY}" . || exit 2 ;
-                sed -i 's/namespace: .*/namespace: '"${OCP_PROJECT_DEBEZIUM}"'/' install/cluster-operator/*RoleBinding*.yaml ;
-                oc apply -f install/cluster-operator/ -n "${OCP_PROJECT_DEBEZIUM}"  || true ;
-                '''
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job',
+                        filter: 'amq-streams-install-examples.zip',
+                        selector: specific(params.STRIMZI_PREPARE_BUILD_NUMBER)
+                unzip zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi'
             }
         }
 
-        stage('Prepare strimzi - downstream') {
+        stage('Prepare Downstream AMQ Streams') {
             when {
-                expression { params.PRODUCT_BUILD }
+                expression { params.PRODUCT_BUILD && params.STRIMZI_PREPARE_BUILD_NUMBER }
             }
             steps {
-                sh '''
-                source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
-                cd ${WORKSPACE}/strimzi
-                unzip ./*.zip;
-                sed -i 's/namespace: .*/namespace: '"${OCP_PROJECT_DEBEZIUM}"'/' install/cluster-operator/*RoleBinding*.yaml ;
-                oc apply -f install/cluster-operator/ -n "${OCP_PROJECT_DEBEZIUM}"  || true ;
-                '''
-            }
-        }
-
-        stage('Prepare apicurio - upstream') {
-            when {
-                expression { !params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
-            }
-            steps {
-                withCredentials([
-                    file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
-                ]) {
-                    sh '''
-                    source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
-                    mkdir ${WORKSPACE}/apicurio && cd ${WORKSPACE}/apicurio
-                    git clone --branch "${APIC_GIT_BRANCH}" "${APIC_GIT_REPOSITORY}" . || exit 2 ;
-
-                    APICURIO_RESOURCE="install/apicurio-registry-operator-*-dev.yaml"
-
-                    sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" install/*.yaml ;
-                    oc apply -f ${APICURIO_RESOURCE} -n "${OCP_PROJECT_REGISTRY}" || true ;
-                    '''
+                script {
+                    env.STRZ_RESOURCES = "${env.WORKSPACE}/strimzi/install/cluster-operator"
+                    env.OCP_ENV_FILE = "${WORKSPACE}/debezium-${BUILD_NUMBER}.ocp.env"
                 }
-            }
-        }
-
-        stage('Prepare apicurio - downstream') {
-            when {
-                expression { params.PRODUCT_BUILD && params.TEST_APICURIO_REGISTRY }
-            }
-            steps {
                 withCredentials([
-                    file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
+                        usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
                 ]) {
                     sh '''
-                    source ${DEBEZIUM_LOCATION}/${OCP_PROJECT_NAME}.ocp.env
-                    cd ${WORKSPACE}/apicurio
-                    unzip ./*.zip;
-
-                    APICURIO_RESOURCE="install/install.yaml"
-
-                    sed -i "s/namespace: apicurio-registry-operator-namespace/namespace: ${OCP_PROJECT_REGISTRY}/" install/*.yaml ;
-                    oc apply -f ${APICURIO_RESOURCE} -n "${OCP_PROJECT_REGISTRY}" || true ;
+                    set -x
+                    cd "${DEBEZIUM_LOCATION}"
+                    oc login ${OCP_URL} -u "${OCP_USERNAME}" --password="${OCP_PASSWORD}" --insecure-skip-tls-verify=true >/dev/null
+                    ./jenkins-jobs/scripts/ocp-projects.sh --create --project "${OCP_PROJECT_NAME}" --envfile "${OCP_ENV_FILE}"
+                    source "${OCP_ENV_FILE}"
+                        
+                    sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_NAME}/" ${WORKSPACE}/strimzi/install/cluster-operator/*RoleBinding*.yaml
+                    oc delete -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_NAME} --ignore-not-found
+                    oc create -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_NAME}
                     '''
                 }
             }
@@ -184,14 +91,16 @@ pipeline {
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
                         file(credentialsId: "${params.PULL_SECRET}", variable: 'SECRET_PATH'),
                 ]) {
+                    script{
+                        env.PREPARE_STRIMZI = params.STRIMZI_PREPARE_BUILD_NUMBER ? "false" : "true"
+                        env.TEST_TAG_EXPRESSION = params.TEST_TAGS
+                        if (!params.TEST_APICURIO_REGISTRY) {
+                            env.TEST_TAG_EXPRESSION = [env.TEST_TAG_EXPRESSION, "!avro"].findAll().join(" & ")
+                        }
+                        env.TEST_TAG_EXPRESSION = [env.TEST_TAG_EXPRESSION, "!docker"].findAll().join(" & ")
+                    }
                     sh '''
                     cd ${DEBEZIUM_LOCATION}
-                    source ./${OCP_PROJECT_NAME}.ocp.env
-
-                    DBZ_GROUPS_ARG="!docker"
-                    if [ ${TEST_APICURIO_REGISTRY} == false ]; then
-                        DBZ_GROUPS_ARG="${DBZ_GROUPS_ARG} & !avro"
-                    fi
 
                     POD_DESCRIPTION="testsuite.yml"
                     PULL_SECRET_NAME=$(cat ${SECRET_PATH} | grep name | awk '{print $2;}')
@@ -206,13 +115,17 @@ pipeline {
                         --strimzi-kc-build ${STRIMZI_KC_BUILD} \
                         --apicurio-version "${APICURIO_VERSION}" \
                         --kafka-version "${KAFKA_VERSION}" \
-                        --groups-arg "${DBZ_GROUPS_ARG}" \
+                        --groups-arg "${TEST_TAG_EXPRESSION}" \
                         --dbz-connect-image "${DBZ_CONNECT_IMAGE}" \
                         --artifact-server-image "${ARTIFACT_SERVER_IMAGE}" \
                         --dbz-git-repository "${DBZ_GIT_REPOSITORY}" \
                         --dbz-git-branch "${DBZ_GIT_BRANCH}" \
-                        --testsuite-log "${LOG_LOCATION_IN_POD}"
+                        --testsuite-log "${LOG_LOCATION_IN_POD}" \
+                        --strimzi-channel "${STRZ_CHANNEL}" \
+                        --apicurio-channel "${APIC_CHANNEL}" \
+                        --prepare-strimzi "${PREPARE_STRIMZI}"
 
+                    oc project "${OCP_PROJECT_DEBEZIUM_TESTSUITE}"
                     oc create -f "${POD_DESCRIPTION}"
                     pod_name=$(oc get pods | tail -1 | awk '{print $1;}')
                     

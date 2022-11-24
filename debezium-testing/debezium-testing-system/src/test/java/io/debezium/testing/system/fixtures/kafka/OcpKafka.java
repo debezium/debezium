@@ -11,6 +11,8 @@ import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_OPERATOR
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.assertions.PlainKafkaAssertions;
@@ -34,11 +36,13 @@ import fixture5.TestFixture;
 import fixture5.annotations.FixtureContext;
 import okhttp3.OkHttpClient;
 
-@FixtureContext(requires = { OpenShiftClient.class }, provides = { KafkaController.class, KafkaConnectController.class, KafkaAssertions.class })
+@FixtureContext(requires = { OpenShiftClient.class, StrimziOperatorController.class }, provides = { KafkaController.class, KafkaConnectController.class,
+        KafkaAssertions.class })
 public class OcpKafka extends TestFixture {
 
     private final OpenShiftClient ocp;
     private final String project;
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafka.class);
 
     // Kafka resources
     String KAFKA_CONNECT_LOGGING = "/kafka-resources/020-kafka-connect-cfg.yaml";
@@ -54,7 +58,11 @@ public class OcpKafka extends TestFixture {
 
     @Override
     public void setup() throws Exception {
-        StrimziOperatorController operatorController = updateKafkaOperator();
+        StrimziOperatorController operatorController = retrieve(StrimziOperatorController.class);
+
+        if (operatorController == null) {
+            throw new IllegalStateException("Strimzi operator controller is null");
+        }
 
         OcpKafkaController kafkaController = deployKafkaCluster(operatorController);
         deployConnectCluster(operatorController, kafkaController);
@@ -63,6 +71,7 @@ public class OcpKafka extends TestFixture {
     @Override
     public void teardown() {
         // no-op: kafka is reused across tests
+        LOGGER.debug("Skipping kafka tear down");
     }
 
     private OcpKafkaController deployKafkaCluster(StrimziOperatorController operatorController) throws Exception {
@@ -120,20 +129,5 @@ public class OcpKafka extends TestFixture {
                 .build();
 
         return deployer.deploy();
-    }
-
-    private StrimziOperatorController updateKafkaOperator() {
-        StrimziOperatorController operatorController = StrimziOperatorController.forProject(project, ocp);
-
-        operatorController.setLogLevel("DEBUG");
-        operatorController.setAlwaysPullPolicy();
-        operatorController.setOperandAlwaysPullPolicy();
-        operatorController.setSingleReplica();
-
-        ConfigProperties.OCP_PULL_SECRET_PATH.ifPresent(operatorController::deployPullSecret);
-
-        operatorController.updateOperator();
-
-        return operatorController;
     }
 }
