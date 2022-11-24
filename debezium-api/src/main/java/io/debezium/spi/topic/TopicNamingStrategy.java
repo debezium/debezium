@@ -7,9 +7,6 @@ package io.debezium.spi.topic;
 
 import java.util.Properties;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.common.annotation.Incubating;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -21,7 +18,6 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 @Incubating
 public interface TopicNamingStrategy<I extends DataCollectionId> {
-    Logger LOGGER = LoggerFactory.getLogger(TopicNamingStrategy.class);
 
     String REPLACEMENT_CHAR = "_";
 
@@ -43,44 +39,7 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
      *
      * @link https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
      */
-    default String sanitizedTopicName(String topicName) {
-        StringBuilder sanitizedNameBuilder = new StringBuilder(topicName.length());
-        boolean changed = false;
-
-        for (int i = 0; i < topicName.length(); i++) {
-            char c = topicName.charAt(i);
-            if (c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
-                sanitizedNameBuilder.append(c);
-            }
-            else {
-                sanitizedNameBuilder.append(REPLACEMENT_CHAR);
-                changed = true;
-            }
-        }
-
-        String sanitizedName = sanitizedNameBuilder.toString();
-        if (sanitizedName.length() > MAX_NAME_LENGTH) {
-            sanitizedName = sanitizedName.substring(0, MAX_NAME_LENGTH);
-            changed = true;
-        }
-        else if (sanitizedName.equals(".")) {
-            sanitizedName = "_";
-            changed = true;
-        }
-        else if (sanitizedName.equals("..")) {
-            sanitizedName = "__";
-            changed = true;
-        }
-
-        if (changed) {
-            LOGGER.warn("Topic '{}' name isn't a valid topic name, replacing it with '{}'.", topicName, sanitizedName);
-
-            return sanitizedName;
-        }
-        else {
-            return topicName;
-        }
-    }
+    String sanitizedTopicName(String topicName);
 
     default TopicSchemaAugment keySchemaAugment() {
         return NO_SCHEMA_OP;
@@ -119,7 +78,22 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
         boolean augment(I id, S schema, R struct);
     }
 
+    /**
+     * Function used to determine the replacement for a character that is not valid per Kafka topic naming strategies.
+     */
+    interface ReplacementFunction {
+        /**
+         * Determine the replacement string for the invalid character.
+         *
+         * @param invalid the invalid character
+         * @return the replacement string; may not be null
+         */
+        String replace(char invalid);
+    }
+
     TopicSchemaAugment NO_SCHEMA_OP = schemaBuilder -> false;
 
     TopicValueAugment NO_VALUE_OP = (id, schema, struct) -> false;
+
+    ReplacementFunction DEFAULT_REPLACEMENT_OP = c -> REPLACEMENT_CHAR;
 }
