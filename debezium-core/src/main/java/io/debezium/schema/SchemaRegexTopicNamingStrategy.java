@@ -9,7 +9,6 @@ import java.util.Properties;
 
 import io.debezium.common.annotation.Incubating;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Collect;
 
 /**
  * Implement a regex expression strategy to determine data event topic names using {@link DataCollectionId#schemaParts()}.
@@ -25,6 +24,6 @@ public class SchemaRegexTopicNamingStrategy extends AbstractRegexTopicNamingStra
 
     @Override
     public String getOriginTopic(DataCollectionId id) {
-        return mkString(Collect.arrayListOf(prefix, id.schemaParts()), delimiter);
+        return getSchemaPartsTopicName(id);
     }
 }

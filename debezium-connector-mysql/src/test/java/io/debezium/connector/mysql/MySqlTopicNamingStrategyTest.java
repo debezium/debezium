@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.config.CommonConnectorConfig.MULTI_PARTITION_MODE;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_DELIMITER;
 import static io.debezium.schema.AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX;
@@ -21,6 +22,8 @@ import io.debezium.config.Field;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.DefaultUnicodeTopicNamingStrategy;
+import io.debezium.schema.SchemaUnicodeTopicNamingStrategy;
 
 public class MySqlTopicNamingStrategyTest {
 
@@ -140,5 +143,53 @@ public class MySqlTopicNamingStrategyTest {
         config = Configuration.create().with(TOPIC_TRANSACTION, "*transaction*").build();
         errorList = config.validate(Field.setOf(TOPIC_TRANSACTION)).get(TOPIC_TRANSACTION.name()).errorMessages();
         assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(TOPIC_TRANSACTION, "*transaction*" + errorMessageSuffix));
+    }
+
+    @Test
+    public void testDefaultUnicodeTopicNamingStrategy() {
+        final String logicalName = "mysql-server-1";
+        final Properties props = new Properties();
+        props.put("topic.prefix", logicalName);
+        final DefaultUnicodeTopicNamingStrategy strategy = new DefaultUnicodeTopicNamingStrategy(props);
+
+        TableId tableId = TableId.parse("testdb.test_中文");
+        String tableTopic = strategy.dataChangeTopic(tableId);
+        String expectedTopic = "mysql-server-1.testdb.test_u005f_u4e2d_u6587";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
+
+        tableId = TableId.parse("testdb.test_한국인");
+        tableTopic = strategy.dataChangeTopic(tableId);
+        expectedTopic = "mysql-server-1.testdb.test_u005f_ud55c_uad6d_uc778";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
+
+        tableId = TableId.parse("testdb.test_カタカナ");
+        tableTopic = strategy.dataChangeTopic(tableId);
+        expectedTopic = "mysql-server-1.testdb.test_u005f_u30ab_u30bf_u30ab_u30ca";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
+
+        tableId = TableId.parse("testdb.test_normal");
+        tableTopic = strategy.dataChangeTopic(tableId);
+        expectedTopic = "mysql-server-1.testdb.test_u005fnormal";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
+    }
+
+    @Test
+    public void testSchemaUnicodeTopicNamingStrategy() {
+        final String logicalName = "mysql-server-1";
+        final Properties props = new Properties();
+        props.put("topic.prefix", logicalName);
+        SchemaUnicodeTopicNamingStrategy strategy = new SchemaUnicodeTopicNamingStrategy(props);
+
+        TableId tableId = TableId.parse("testdb.dbo.test_中文", false);
+        String tableTopic = strategy.dataChangeTopic(tableId);
+        String expectedTopic = "mysql-server-1.dbo.test_u005f_u4e2d_u6587";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
+
+        // multi partition mode
+        props.put(MULTI_PARTITION_MODE, true);
+        strategy = new SchemaUnicodeTopicNamingStrategy(props);
+        tableTopic = strategy.dataChangeTopic(tableId);
+        expectedTopic = "mysql-server-1.testdb.dbo.test_u005f_u4e2d_u6587";
+        assertThat(tableTopic).isEqualTo(expectedTopic);
     }
 }
