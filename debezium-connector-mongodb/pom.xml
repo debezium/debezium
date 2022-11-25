@@ -83,6 +83,12 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mongodb</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
     <properties>
         <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->
@@ -241,6 +247,7 @@
                         <connector.mongodb.hosts>${mongo.data.replicaset.name}/${docker.host.address}:27017</connector.mongodb.hosts>
                         <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
                         <connector.mongodb.name>mongo1</connector.mongodb.name>
+                        <version.mongo.server>${version.mongo.server}</version.mongo.server>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                 </configuration>
