@@ -163,7 +163,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         Collection<Map<String, String>> partitions = loader.getPartitions();
 
         Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
-        if (offsets != null && !offsets.values().stream().filter(Objects::nonNull).collect(Collectors.toList()).isEmpty()) {
+        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
             MongoDbOffsetContext offsetContext = loader.loadOffsets(offsets);
             logger.info("Found previous offsets {}", offsetContext);
             return offsetContext;
