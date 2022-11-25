@@ -113,6 +113,7 @@ mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-
     -Ddatabase.user=${MVN_PROP_USER_NAME}       \\
     ${MVN_PROP_PDB_NAME}                        \\
     ${MVN_PROP_DATABASE_NAME}                   \\
+    -Papicurio                                  \\
     ${PROFILE_PROD}
 
 # Cleanup
