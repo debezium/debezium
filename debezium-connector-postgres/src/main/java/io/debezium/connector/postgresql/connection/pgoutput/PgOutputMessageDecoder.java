@@ -742,41 +742,44 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             char type = (char) buffer.get();
             if (type == 't') {
                 final String valueStr = readColumnValueAsString(buffer);
-                replicationMessageColumn =
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
-                            @Override
-                            public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                                return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
-                                        typeRegistry);
-                            }
+                replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
+                    @Override
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                        return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
+                                typeRegistry);
+                    }
 
-                            @Override
-                            public String toString() {
-                                return columnName + "(" + typeExpression + ")=" + valueStr;
-                            }
-                        });
+                    @Override
+                    public String toString() {
+                        return columnName + "(" + typeExpression + ")=" + valueStr;
+                    }
+                };
             }
             else if (type == 'u') {
-                replicationMessageColumn =
-                        new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
-                            @Override
-                            public String toString() {
-                                return columnName + "(" + typeExpression + ") - Unchanged toasted column";
-                            }
-                        });
+                replicationMessageColumn = new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
+                    @Override
+                    public String toString() {
+                        return columnName + "(" + typeExpression + ") - Unchanged toasted column";
+                    }
+                };
             }
             else if (type == 'n') {
-                replicationMessageColumn =
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
-                            @Override
-                            public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                                return null;
-                            }
-                        });
+                replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
+                    @Override
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                        return null;
+                    }
+                };
+            }
+            else {
+                replicationMessageColumn = null;
+                LOGGER.trace("Unsupported type '{}' for column: '{}'", type, column);
             }
 
-            columns.add(replicationMessageColumn);
-            LOGGER.trace("Column: {}", replicationMessageColumn));
+            if (replicationMessageColumn != null) {
+                columns.add(replicationMessageColumn);
+                LOGGER.trace("Column: {}", replicationMessageColumn);
+            }
         }
 
         return columns;
