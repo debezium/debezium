@@ -25,7 +25,13 @@ import com.github.dockerjava.api.command.SyncDockerCmd;
 import com.mongodb.ServerAddress;
 
 /**
- * A MongoDB node.
+ * A container for running a single MongoDB {@code mongod} or {@code mongos} process.
+ * <p>
+ * In order to interact with a running container from the host using a client driver, the container's network alias
+ * ({@link #name}) must be resolvable from the host. On most systems this will require configuring {@code /etc/hosts}
+ * to have an entry that maps {@link #name} to {@code 127.0.0.1}. To make this portable across systems, fixed ports are
+ * used on the host and are mapped exactly to the container. Random free ports are assigned to minimize the chance of
+ * conflicts.
  */
 public class MongoDbNode extends GenericContainer<MongoDbNode> {
 
