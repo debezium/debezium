@@ -299,6 +299,12 @@ jobs:
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
+      - name: Add MongoDB test container hosts to /etc/hosts
+        run: >
+          for host in test-mongo{1..3} test-mongos{1..3} test-mongo-configdb{1..3} test-shard{1..3}-replica{1..3}; do 
+            echo -e "127.0.0.1\t$host" | sudo tee -a /etc/hosts; 
+          done
+
       - name: Build Debezium Connector MongoDB (Mode ${{ matrix.capture-mode }})
         run: >
           ./mvnw clean install -B -pl debezium-connector-mongodb -am -Passembly
