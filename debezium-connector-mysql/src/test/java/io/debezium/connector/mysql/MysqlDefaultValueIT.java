@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -72,6 +73,10 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
     }
 
     @After
@@ -81,6 +86,17 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         }
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
+        }
+    }
+
+    @Override
+    protected void validate(SourceRecord record) {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            VerifyRecord.isValid(record, true);
+        }
+        else {
+            super.validate(record);
         }
     }
 

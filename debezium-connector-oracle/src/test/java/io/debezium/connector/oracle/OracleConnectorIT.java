@@ -1301,6 +1301,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-2624")
     public void shouldSnapshotAndStreamChangesFromTableWithNumericDefaultValues() throws Exception {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+
         // Drop table if it exists
         TestHelper.dropTable(connection, "debezium.complex_ddl");
 

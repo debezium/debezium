@@ -12,9 +12,11 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.VerifyRecord;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
@@ -171,6 +173,15 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
+    }
+
+    @Test
+    public void snapshotPreceededBySchemaChange() throws Exception {
+        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
+        if (VerifyRecord.isApucurioAvailable()) {
+            skipAvroValidation();
+        }
+        super.snapshotPreceededBySchemaChange();
     }
 
     private void createTables() throws Exception {
