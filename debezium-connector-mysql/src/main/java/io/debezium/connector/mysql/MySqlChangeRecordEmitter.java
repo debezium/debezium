@@ -49,12 +49,12 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
 
     @Override
     protected Object[] getOldColumnValues() {
-        return before != null ? before : null;
+        return before;
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return after != null ? after : null;
+        return after;
     }
 
     @Override
