@@ -27,8 +27,6 @@ import org.testcontainers.lifecycle.Startables;
 
 /**
  * A MongoDB sharded cluster.
- *
- * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
 public class MongoDbShardedCluster implements Startable {
 

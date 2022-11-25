@@ -6,6 +6,10 @@
 package io.debezium.connector.mongodb.cluster;
 
 import static io.debezium.connector.mongodb.cluster.MongoDbShardedCluster.shardedCluster;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.rangeClosed;
+import static java.util.stream.StreamSupport.stream;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.bson.Document;
 import org.junit.Test;
@@ -13,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClients;
 
 /**
@@ -28,8 +33,10 @@ public class MongoDbShardedClusterIT {
             logger.info("Starting {}...", cluster);
             cluster.start();
 
-            String readPreference = "primary";
-            var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference);
+            // Create a connection string with a desired read preference
+            var readPreference = ReadPreference.primary();
+            var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference.getName());
+
             logger.info("Connecting to cluster: {}", connectionString);
             try (var client = MongoClients.create(connectionString)) {
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
@@ -41,16 +48,17 @@ public class MongoDbShardedClusterIT {
                 cluster.shardCollection(databaseName, collectionName, "name");
 
                 var collection = client.getDatabase(databaseName).getCollection(collectionName);
-                for (int i = 1; i <= 10; i++) {
-                    collection.insertOne(Document.parse("{name:" + i + "}"));
-                }
+                rangeClosed(1, 10)
+                        .mapToObj(i -> Document.parse("{name:" + i + "}"))
+                        .forEach(collection::insertOne);
 
-                for (var doc : collection.find()) {
-                    logger.info("Doc: {}", doc);
-                }
+                var docs = stream(collection.find().spliterator(), false)
+                        .collect(toList());
+                assertThat(docs).hasSize(10);
 
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
                 cluster.addShard();
+
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
                 cluster.removeShard();
             }

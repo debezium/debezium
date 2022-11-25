@@ -299,9 +299,15 @@ jobs:
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
+      # Unfortunately, this is required so that multi-node replica sets can properly resolve both within cluster using
+      # the user-defined Docker bridge network and from the host. While it is possible to use IPs in the `rs.initialize`
+      # call, this is not possible on Docker Desktop for Mac as the `docker0` bridge network is not exposed. While there
+      # are other techniques that can be used to make this more transparent to the user (e.g. JVM DNS hijacking via
+      # reflection) this seemed the easiest and most consistent / reliable. However, for local testing it does require
+      # adding these host names to the local `/etc/hosts` as well.
       - name: Add MongoDB test container hosts to /etc/hosts
         run: >
-          for host in test-mongo{1..3} test-mongos{1..3} test-mongo-configdb{1..3} test-shard{1..3}-replica{1..3}; do 
+          for host in test-mongo{1..3} test-mongos{1..3} test-mongo-configdb{1..3} test-mongo-shard{1..3}-replica{1..3}; do 
             echo -e "127.0.0.1\t$host" | sudo tee -a /etc/hosts; 
           done
 
