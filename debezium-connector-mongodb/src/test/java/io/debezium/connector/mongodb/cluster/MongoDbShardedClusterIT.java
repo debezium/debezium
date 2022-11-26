@@ -16,8 +16,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.ConnectionString;
 import com.mongodb.ReadPreference;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 /**
@@ -47,7 +49,10 @@ public class MongoDbShardedClusterIT {
                 var collectionName = "docs";
                 cluster.shardCollection(databaseName, collectionName, "name");
 
-                var collection = client.getDatabase(databaseName).getCollection(collectionName);
+                var database = client.getDatabase(databaseName);
+                assertShardCount(client, 1);
+
+                var collection = database.getCollection(collectionName);
                 rangeClosed(1, 10)
                         .mapToObj(i -> Document.parse("{name:" + i + "}"))
                         .forEach(collection::insertOne);
@@ -58,11 +63,21 @@ public class MongoDbShardedClusterIT {
 
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
                 cluster.addShard();
+                assertShardCount(client, 2);
 
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
                 cluster.removeShard();
+                assertShardCount(client, 1);
             }
         }
+    }
+
+    private static void assertShardCount(MongoClient client, int expectedShardCount) {
+        assertThat(client
+                .getDatabase("admin")
+                .runCommand(new BasicDBObject("listShards", 1))
+                .getList("shards", Document.class))
+                        .hasSize(expectedShardCount);
     }
 
 }

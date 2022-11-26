@@ -9,9 +9,11 @@ import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
 import static io.debezium.connector.mongodb.cluster.MongoDbReplicaSet.replicaSet;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.runAsync;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
+import static org.awaitility.Awaitility.await;
 
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +26,9 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.client.MongoClients;
 
 /**
  * A MongoDB sharded cluster.
@@ -91,6 +96,9 @@ public class MongoDbShardedCluster implements Startable {
         this.routers = createRouters();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void start() {
         // `start` needs to be reentrant for `Startables.deepStart` or it will be sad
@@ -109,6 +117,9 @@ public class MongoDbShardedCluster implements Startable {
         started = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void stop() {
         // Idempotent
@@ -160,7 +171,8 @@ public class MongoDbShardedCluster implements Startable {
         var shard = replicaSet()
                 .network(network)
                 .namespace("test-mongo-shard" + i + "-replica")
-                .name("shard" + i).memberCount(replicaCount)
+                .name("shard" + i)
+                .memberCount(replicaCount)
                 .build();
 
         shard.getMembers().forEach(node -> node.setCommand(
@@ -208,13 +220,17 @@ public class MongoDbShardedCluster implements Startable {
                 "mongos",
                 "--port", String.valueOf(router.getNamedAddress().getPort()),
                 "--bind_ip", "localhost," + router.getNamedAddress().getHost(),
-                "--configdb", formatReplicaSetAddress(configServers, true));
+                "--configdb", formatReplicaSetAddress(configServers, /* namedAddess= */ true));
         router.getDependencies().addAll(shards);
         router.getDependencies().add(configServers);
 
         return router;
     }
 
+    /**
+     * Invokes <a hrer="https://www.mongodb.com/docs/v6.0/reference/method/sh.addShard/#mongodb-method-sh.addShard">sh.addShard</a>
+     * on a router to add a new shard replica set to the sharded cluster.
+     */
     public void addShard() {
         var shard = createShard(shards.size() + 1);
         shard.start();
@@ -222,9 +238,28 @@ public class MongoDbShardedCluster implements Startable {
         addShard(shard);
     }
 
+    /**
+     * Invokes the <a href="https://www.mongodb.com/docs/manual/reference/command/removeShard/">removeShard</a> command to
+     * remove the last added {@code shard} from the sharded cluster.
+     * <p>
+     * Waits until the state of the shard is {@code completed} before shutting down the shard replica set.
+     */
     public void removeShard() {
         var shard = shards.remove(shards.size() - 1);
-        removeShard(shard);
+        LOGGER.info("Removing shard: {}", shard.getName());
+
+        // See https://www.mongodb.com/docs/manual/reference/command/removeShard/
+        try (var client = MongoClients.create(getConnectionString())) {
+            var admin = client.getDatabase("admin");
+            var command = new BasicDBObject("removeShard", shard.getName());
+            await()
+                    .atMost(30, SECONDS)
+                    .pollInterval(1, SECONDS)
+                    .until(() -> admin.runCommand(command)
+                            .get("state", String.class)
+                            .equals("completed"));
+        }
+
         shard.stop();
     }
 
@@ -234,29 +269,21 @@ public class MongoDbShardedCluster implements Startable {
 
     private void addShard(MongoDbReplicaSet shard) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#add-shards-to-the-cluster
-        var shardAddress = formatReplicaSetAddress(shard, false);
+        var shardAddress = formatReplicaSetAddress(shard, /* namedAddess= */ false);
         LOGGER.info("Adding shard: {}", shardAddress);
         var arbitraryRouter = routers.get(0);
         arbitraryRouter.eval(
                 "sh.addShard('" + shardAddress + "');");
     }
 
-    private void removeShard(MongoDbReplicaSet shard) {
-        // See https://www.mongodb.com/docs/manual/reference/command/removeShard/
-        LOGGER.info("Removing shard: {}", shard.getName());
-        var arbitraryRouter = routers.get(0);
-        arbitraryRouter.eval(
-                "db.adminCommand({removeShard: '" + shard.getName() + "'});");
-    }
-
     private Stream<Startable> stream() {
         return Stream.concat(Stream.concat(shards.stream(), Stream.of(configServers)), routers.stream());
     }
 
-    private static String formatReplicaSetAddress(MongoDbReplicaSet replicaSet, boolean named) {
+    private static String formatReplicaSetAddress(MongoDbReplicaSet replicaSet, boolean namedAddress) {
         // See https://www.mongodb.com/docs/v6.0/reference/method/sh.addShard/#mongodb-method-sh.addShard
         return replicaSet.getName() + "/" + replicaSet.getMembers().stream()
-                .map(named ? MongoDbContainer::getNamedAddress : MongoDbContainer::getClientAddress)
+                .map(namedAddress ? MongoDbContainer::getNamedAddress : MongoDbContainer::getClientAddress)
                 .map(Object::toString)
                 .collect(joining(","));
     }

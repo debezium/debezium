@@ -28,10 +28,10 @@ import com.mongodb.ServerAddress;
 /**
  * A container for running a single MongoDB {@code mongod} or {@code mongos} process.
  * <p>
- * In order to interact with a running container from the host using a client driver, the container's network alias
- * ({@link #name}) must be resolvable from the host. On most systems this will require configuring {@code /etc/hosts}
- * to have an entry that maps {@link #name} to {@code 127.0.0.1}. To make this portable across systems, fixed ports are
- * used on the host and are mapped exactly to the container. Random free ports are assigned to minimize the chance of
+ * In order to interact with a running container from the host running Docker Desktop using a client driver, the
+ * container's network alias ({@link #name}) must be resolvable from the host. On most systems this will require
+ * configuring {@code /etc/hosts} to have an entry that maps {@link #name} to {@code 127.0.0.1}. Fixed ports are used on
+ * the host and are mapped 1:1 exactly with the container. Random free ports are assigned to minimize the chance of
  * conflicts.
  */
 public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
@@ -55,7 +55,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     public static final class Builder {
 
         private String name;
-        private int port = -1;
+        private int port = 27017;
         private String replicaSet;
         private Network network = Network.SHARED;
 
@@ -88,12 +88,18 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     private MongoDbContainer(Builder builder) {
         super(IMAGE_NAME);
         this.name = builder.name;
-        this.port = builder.port == -1 ? findFreePort() : builder.port;
         this.replicaSet = builder.replicaSet;
 
+        if (isDockerDesktop()) {
+            // See class-level Java Docs
+            this.port = findFreePort();
+            addFixedExposedPort(port, port);
+        }
+        else {
+            this.port = builder.port;
+        }
+
         withNetwork(builder.network);
-        addFixedExposedPort(port, port);
-        withCreateContainerCmdModifier(cmd -> cmd.withName(name));
         withNetworkAliases(name);
         withCommand(
                 "--replSet", replicaSet,
@@ -134,6 +140,13 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         return new ServerAddress(name, port);
     }
 
+    /**
+     * Invokes <a href="https://www.mongodb.com/docs/manual/reference/method/rs.initiate/">rs.initiate</a> on the
+     * container.
+     *
+     * @param configServer whether this replica set is a used for a <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.configsvr">sharded cluster's config server</a>.
+     * @param serverAddresses the list of <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.members-n-.host">hostname / port numbers</a> of the set members
+     */
     public void initReplicaSet(boolean configServer, ServerAddress... serverAddresses) {
         LOGGER.info("[{}:{}] Initializing replica set...", replicaSet, name);
         eval("rs.initiate({_id:'" + replicaSet + "',configsvr:" + configServer + ",members:[" +
@@ -144,6 +157,10 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                 "]});");
     }
 
+    /**
+     * Invokes <a href="https://www.mongodb.com/docs/manual/reference/method/rs.stepDown/">rs.stepDown</a> on the
+     * container to instruct the primary of the replica set to become the primary.
+     */
     public void stepDown() {
         LOGGER.info("[{}:{}] Stepping down...", replicaSet, name);
         eval("rs.stepDown();");
