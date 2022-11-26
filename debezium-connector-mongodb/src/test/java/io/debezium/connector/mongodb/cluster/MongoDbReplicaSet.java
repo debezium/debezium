@@ -112,6 +112,9 @@ public class MongoDbReplicaSet implements Startable {
         return name;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Set<Startable> getDependencies() {
         return new HashSet<>(members);
@@ -128,10 +131,18 @@ public class MongoDbReplicaSet implements Startable {
                 .collect(joining(","));
     }
 
+    /**
+     * Returns the replica set member containers.
+     *
+     * @return the replica set members
+     */
     public List<MongoDbContainer> getMembers() {
         return members;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void start() {
         // `start` needs to be reentrant for `Startables.deepStart` or it will be sad
@@ -159,6 +170,9 @@ public class MongoDbReplicaSet implements Startable {
         started = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void stop() {
         LOGGER.info("[{}] Stopping...", name);
@@ -168,7 +182,10 @@ public class MongoDbReplicaSet implements Startable {
 
     private void initializeReplicaSet() {
         var arbitraryNode = members.get(0);
-        var serverAddresses = members.stream().map(MongoDbContainer::getClientAddress).toArray(ServerAddress[]::new);
+        var serverAddresses = members.stream()
+                .map(MongoDbContainer::getClientAddress)
+                .toArray(ServerAddress[]::new);
+
         arbitraryNode.initReplicaSet(configServer, serverAddresses);
     }
 
@@ -199,7 +216,7 @@ public class MongoDbReplicaSet implements Startable {
 
     private Optional<MongoDbContainer> findMember(ServerDescription serverDescription) {
         return members.stream()
-                .filter(node -> node.getNamedAddress().equals(serverDescription.getAddress()) ||
+                .filter(node -> node.getNamedAddress().equals(serverDescription.getAddress()) || // Match by name or possibly IP
                         node.getClientAddress().equals(serverDescription.getAddress()))
                 .findFirst();
     }
@@ -220,6 +237,7 @@ public class MongoDbReplicaSet implements Startable {
         try (var client = MongoClients.create(getConnectionString())) {
             // Force an actual connection via `first` since `listDatabaseNames` is lazily evaluated
             client.listDatabaseNames().first();
+
             return client.getClusterDescription();
         }
     }
