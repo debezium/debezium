@@ -22,6 +22,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.SyncDockerCmd;
+import com.github.dockerjava.api.model.ContainerNetwork;
 import com.mongodb.ServerAddress;
 
 /**
@@ -33,9 +34,9 @@ import com.mongodb.ServerAddress;
  * used on the host and are mapped exactly to the container. Random free ports are assigned to minimize the chance of
  * conflicts.
  */
-public class MongoDbNode extends GenericContainer<MongoDbNode> {
+public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbNode.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbContainer.class);
 
     /**
      * Default should match {@code version.mongo.server} in parent {@code pom.xml}.
@@ -78,13 +79,13 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
             return this;
         }
 
-        public MongoDbNode build() {
-            return new MongoDbNode(this);
+        public MongoDbContainer build() {
+            return new MongoDbContainer(this);
         }
 
     }
 
-    private MongoDbNode(Builder builder) {
+    private MongoDbContainer(Builder builder) {
         super(IMAGE_NAME);
         this.name = builder.name;
         this.port = builder.port == -1 ? findFreePort() : builder.port;
@@ -101,7 +102,35 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
         waitingFor(Wait.forLogMessage("(?i).*waiting for connections.*", 1));
     }
 
-    public ServerAddress getAddress() {
+    /**
+     * Returns the public address that should be used by clients.
+     * <p>
+     * Must be called after {@link #start()} since the public address may not be available on all platforms before then.
+     *
+     * @return the host-addressable address
+     */
+    public ServerAddress getClientAddress() {
+        checkStarted();
+
+        // Technically we only need to do this for Mac
+        if (isDockerDesktop()) {
+            return getNamedAddress();
+        }
+
+        // On Linux we can address directly
+        return new ServerAddress(getNetworkIp(), port);
+    }
+
+    /**
+     * Returns the named-address that is only guaranteed available within the network.
+     * <p>
+     * Can always be called before {@link #start()} safely. Useful for intra-cluster addressing that must
+     * be configured before containers are running and the addresses are not available (e.g. in the constructor of
+     * a replica set or sharded cluster).
+     *
+     * @return the name-addressable network address
+     */
+    public ServerAddress getNamedAddress() {
         return new ServerAddress(name, port);
     }
 
@@ -135,11 +164,25 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
         dockerCommand((client) -> client.unpauseContainerCmd(getContainerId()));
     }
 
+    private String getNetworkIp() {
+        var info = getContainerInfo();
+        return info
+                .getNetworkSettings()
+                .getNetworks()
+                .values()
+                .stream()
+                .findFirst() // Only one, and it's the one we set in the constructor
+                .map(ContainerNetwork::getIpAddress)
+                .orElseThrow();
+    }
+
     private void dockerCommand(Function<DockerClient, SyncDockerCmd<?>> action) {
         action.apply(DockerClientFactory.instance().client()).exec();
     }
 
     public void eval(String command) {
+        checkStarted();
+
         try {
             var mongoCommand = "mongo " +
                     "--quiet " +
@@ -158,7 +201,8 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
     }
 
     private void checkExitcode(ExecResult result) {
-        // See https://docs.publishing.service.gov.uk/manual/mongo-db-commands.html#step-down-the-primary for exit code 252 and `rs.stepDown` on Mongo 4.0
+        // See https://docs.publishing.service.gov.uk/manual/mongo-db-commands.html#step-down-the-primary for exit
+        // code 252 and `rs.stepDown` on Mongo 4.0
         boolean ok = result.getExitCode() == 0 || isLegacy() && result.getExitCode() == 252;
         if (ok) {
             return;
@@ -169,6 +213,21 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
         throw new IllegalStateException(message);
     }
 
+    private void checkStarted() {
+        if (getContainerId() == null) {
+            throw new IllegalStateException("Cannot execute operation before calling `start`.");
+        }
+    }
+
+    private static boolean isDockerDesktop() {
+        var info = DockerClientFactory.instance().getInfo();
+        return "docker-desktop".equals(info.getName());
+    }
+
+    private static boolean isLegacy() {
+        return IMAGE_VERSION.equals("4.0") || IMAGE_VERSION.equals("4.4");
+    }
+
     private static int findFreePort() {
         try (var serverSocket = new ServerSocket(0)) {
             serverSocket.setReuseAddress(true);
@@ -177,10 +236,6 @@ public class MongoDbNode extends GenericContainer<MongoDbNode> {
         catch (IOException e) {
             return -1;
         }
-    }
-
-    private static boolean isLegacy() {
-        return IMAGE_VERSION.equals("4.0") || IMAGE_VERSION.equals("4.4");
     }
 
 }

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.cluster;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbNode.node;
+import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -46,7 +46,7 @@ public class MongoDbReplicaSet implements Startable {
     private final boolean configServer;
     private final Network network;
 
-    private final List<MongoDbNode> members = new ArrayList<>();
+    private final List<MongoDbContainer> members = new ArrayList<>();
 
     private boolean started;
 
@@ -123,12 +123,12 @@ public class MongoDbReplicaSet implements Startable {
      */
     public String getConnectionString() {
         return "mongodb://" + members.stream()
-                .map(MongoDbNode::getAddress)
+                .map(MongoDbContainer::getClientAddress)
                 .map(Objects::toString)
                 .collect(joining(","));
     }
 
-    public List<MongoDbNode> getMembers() {
+    public List<MongoDbContainer> getMembers() {
         return members;
     }
 
@@ -168,7 +168,7 @@ public class MongoDbReplicaSet implements Startable {
 
     private void initializeReplicaSet() {
         var arbitraryNode = members.get(0);
-        var serverAddresses = members.stream().map(MongoDbNode::getAddress).toArray(ServerAddress[]::new);
+        var serverAddresses = members.stream().map(MongoDbContainer::getClientAddress).toArray(ServerAddress[]::new);
         arbitraryNode.initReplicaSet(configServer, serverAddresses);
     }
 
@@ -180,7 +180,7 @@ public class MongoDbReplicaSet implements Startable {
     }
 
     public void stepDown() {
-        tryPrimary().ifPresent(MongoDbNode::stepDown);
+        tryPrimary().ifPresent(MongoDbContainer::stepDown);
     }
 
     public void killPrimary() {
@@ -190,16 +190,17 @@ public class MongoDbReplicaSet implements Startable {
         });
     }
 
-    public Optional<MongoDbNode> tryPrimary() {
+    public Optional<MongoDbContainer> tryPrimary() {
         return getClusterDescription().getServerDescriptions().stream()
                 .filter(ServerDescription::isPrimary)
                 .findFirst()
                 .flatMap(this::findMember);
     }
 
-    private Optional<MongoDbNode> findMember(ServerDescription serverDescription) {
+    private Optional<MongoDbContainer> findMember(ServerDescription serverDescription) {
         return members.stream()
-                .filter(node -> node.getAddress().equals(serverDescription.getAddress()))
+                .filter(node -> node.getNamedAddress().equals(serverDescription.getAddress()) ||
+                        node.getClientAddress().equals(serverDescription.getAddress()))
                 .findFirst();
     }
 

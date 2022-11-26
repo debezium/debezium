@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.cluster;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbNode.node;
+import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
 import static io.debezium.connector.mongodb.cluster.MongoDbReplicaSet.replicaSet;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.runAsync;
@@ -39,7 +39,7 @@ public class MongoDbShardedCluster implements Startable {
 
     private final MongoDbReplicaSet configServers;
     private final List<MongoDbReplicaSet> shards;
-    private final List<MongoDbNode> routers;
+    private final List<MongoDbContainer> routers;
 
     private volatile boolean started;
 
@@ -127,7 +127,7 @@ public class MongoDbShardedCluster implements Startable {
      */
     public String getConnectionString() {
         return "mongodb://" + routers.stream()
-                .map(MongoDbNode::getAddress)
+                .map(MongoDbContainer::getClientAddress)
                 .map(Objects::toString)
                 .collect(joining(","));
     }
@@ -166,8 +166,8 @@ public class MongoDbShardedCluster implements Startable {
         shard.getMembers().forEach(node -> node.setCommand(
                 "--shardsvr",
                 "--replSet", shard.getName(),
-                "--port", String.valueOf(node.getAddress().getPort()),
-                "--bind_ip", "localhost," + node.getAddress().getHost()));
+                "--port", String.valueOf(node.getNamedAddress().getPort()),
+                "--bind_ip", "localhost," + node.getNamedAddress().getHost()));
 
         return shard;
     }
@@ -185,19 +185,19 @@ public class MongoDbShardedCluster implements Startable {
         configServers.getMembers().forEach(node -> node.setCommand(
                 "--configsvr",
                 "--replSet", configServers.getName(),
-                "--port", String.valueOf(node.getAddress().getPort()),
-                "--bind_ip", "localhost," + node.getAddress().getHost()));
+                "--port", String.valueOf(node.getNamedAddress().getPort()),
+                "--bind_ip", "localhost," + node.getNamedAddress().getHost()));
 
         return configServers;
     }
 
-    private List<MongoDbNode> createRouters() {
+    private List<MongoDbContainer> createRouters() {
         return rangeClosed(1, routerCount)
                 .mapToObj(i -> createRouter(network, i))
                 .collect(toList());
     }
 
-    private MongoDbNode createRouter(Network network, int i) {
+    private MongoDbContainer createRouter(Network network, int i) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#start-a-mongos-for-the-sharded-cluster
         var router = node()
                 .network(network)
@@ -206,9 +206,9 @@ public class MongoDbShardedCluster implements Startable {
 
         router.setCommand(
                 "mongos",
-                "--port", String.valueOf(router.getAddress().getPort()),
-                "--bind_ip", "localhost," + router.getAddress().getHost(),
-                "--configdb", formatReplicaSetAddress(configServers));
+                "--port", String.valueOf(router.getNamedAddress().getPort()),
+                "--bind_ip", "localhost," + router.getNamedAddress().getHost(),
+                "--configdb", formatReplicaSetAddress(configServers, true));
         router.getDependencies().addAll(shards);
         router.getDependencies().add(configServers);
 
@@ -234,7 +234,7 @@ public class MongoDbShardedCluster implements Startable {
 
     private void addShard(MongoDbReplicaSet shard) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#add-shards-to-the-cluster
-        var shardAddress = formatReplicaSetAddress(shard);
+        var shardAddress = formatReplicaSetAddress(shard, false);
         LOGGER.info("Adding shard: {}", shardAddress);
         var arbitraryRouter = routers.get(0);
         arbitraryRouter.eval(
@@ -253,10 +253,10 @@ public class MongoDbShardedCluster implements Startable {
         return Stream.concat(Stream.concat(shards.stream(), Stream.of(configServers)), routers.stream());
     }
 
-    private static String formatReplicaSetAddress(MongoDbReplicaSet replicaSet) {
+    private static String formatReplicaSetAddress(MongoDbReplicaSet replicaSet, boolean named) {
         // See https://www.mongodb.com/docs/v6.0/reference/method/sh.addShard/#mongodb-method-sh.addShard
         return replicaSet.getName() + "/" + replicaSet.getMembers().stream()
-                .map(MongoDbNode::getAddress)
+                .map(named ? MongoDbContainer::getNamedAddress : MongoDbContainer::getClientAddress)
                 .map(Object::toString)
                 .collect(joining(","));
     }

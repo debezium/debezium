@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -38,8 +39,10 @@ public class MongoDbReplicaSetIT {
             LOGGER.info("Starting {}...", cluster);
             cluster.start();
 
-            String readPreference = "primary";
-            var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference);
+            // Create a connection string with a desired read preference
+            var readPreference = ReadPreference.primary();
+            var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference.getName());
+
             LOGGER.info("Connecting to cluster: {}", connectionString);
             try (var client = MongoClients.create(connectionString)) {
                 LOGGER.info("Connected to cluster: {}", client.getClusterDescription());
@@ -50,7 +53,7 @@ public class MongoDbReplicaSetIT {
         }
     }
 
-    private void run(MongoDbReplicaSet cluster, MongoClient client, MongoCollection<Document> collection) throws InterruptedException {
+    private void run(MongoDbReplicaSet cluster, MongoClient client, MongoCollection<Document> collection) {
         try (var cursor = collection.watch().batchSize(1).cursor()) {
             // Write 2 docs
             collection.insertOne(Document.parse("{username: 'user" + 1 + "', name: 'User " + 1 + "'}"));
@@ -67,11 +70,11 @@ public class MongoDbReplicaSetIT {
             await().atMost(30, SECONDS)
                     .pollInterval(1, SECONDS)
                     .until(() -> cluster.tryPrimary()
-                            .map(node -> !node.getAddress().equals(cursor.getServerAddress()))
+                            .map(node -> !node.getNamedAddress().equals(cursor.getServerAddress()))
                             .orElse(false));
 
             // Ensure it's invalid
-            if (!MongoDbNode.IMAGE_VERSION.equals("4.0")) {
+            if (!MongoDbContainer.IMAGE_VERSION.equals("4.0")) {
                 assertThat(isSelectedReadPreference(client, collection, cursor)).isFalse();
             }
 
