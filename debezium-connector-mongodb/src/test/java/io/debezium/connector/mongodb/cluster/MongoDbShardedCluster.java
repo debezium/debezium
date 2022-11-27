@@ -7,8 +7,6 @@ package io.debezium.connector.mongodb.cluster;
 
 import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
 import static io.debezium.connector.mongodb.cluster.MongoDbReplicaSet.replicaSet;
-import static java.util.concurrent.CompletableFuture.allOf;
-import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -16,19 +14,20 @@ import static java.util.stream.IntStream.rangeClosed;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
-import org.testcontainers.lifecycle.Startables;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoDatabase;
 
 /**
  * A MongoDB sharded cluster.
@@ -105,12 +104,9 @@ public class MongoDbShardedCluster implements Startable {
         if (started) {
             return;
         }
-        try {
-            Startables.deepStart(stream().toArray(Startable[]::new)).get();
-        }
-        catch (InterruptedException | ExecutionException e) {
-            throw new IllegalStateException(e);
-        }
+
+        LOGGER.info("Starting {} shard cluster...", shards.size());
+        MongoDbStartables.deepStart(stream());
 
         addShards();
 
@@ -123,13 +119,9 @@ public class MongoDbShardedCluster implements Startable {
     @Override
     public void stop() {
         // Idempotent
-        try {
-            allOf(stream().map(node -> runAsync(node::stop)).toArray(CompletableFuture[]::new)).get();
-            network.close();
-        }
-        catch (InterruptedException | ExecutionException e) {
-            throw new IllegalStateException(e);
-        }
+        LOGGER.info("Stopping {} shard cluster...", shards.size());
+        MongoDbStartables.deepStop(stream());
+        network.close();
     }
 
     /**
@@ -232,10 +224,15 @@ public class MongoDbShardedCluster implements Startable {
      * on a router to add a new shard replica set to the sharded cluster.
      */
     public void addShard() {
+        // Create shard replica set
         var shard = createShard(shards.size() + 1);
         shard.start();
-        shards.add(shard);
+
+        // Add to shard
         addShard(shard);
+
+        // Make visible to clients
+        shards.add(shard);
     }
 
     /**
@@ -248,32 +245,60 @@ public class MongoDbShardedCluster implements Startable {
         var shard = shards.remove(shards.size() - 1);
         LOGGER.info("Removing shard: {}", shard.getName());
 
-        // See https://www.mongodb.com/docs/manual/reference/command/removeShard/
-        try (var client = MongoClients.create(getConnectionString())) {
-            var admin = client.getDatabase("admin");
-            var command = new BasicDBObject("removeShard", shard.getName());
+        withAdmin(admin -> {
+            var removeShard = new BasicDBObject("removeShard", shard.getName());
             await()
                     .atMost(30, SECONDS)
                     .pollInterval(1, SECONDS)
-                    .until(() -> admin.runCommand(command)
+                    .until(() -> admin.runCommand(removeShard)
                             .get("state", String.class)
                             .equals("completed"));
-        }
+        });
 
         shard.stop();
     }
 
+    /**
+     * Adds the previously created and started shards to the shards to the cluster.
+     */
     private void addShards() {
         shards.forEach(this::addShard);
     }
 
+    /**
+     * Adds the previously created and started supplied {@code shard} to the cluster.
+     *
+     * @param shard the shard to add
+     */
     private void addShard(MongoDbReplicaSet shard) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#add-shards-to-the-cluster
         var shardAddress = formatReplicaSetAddress(shard, /* namedAddess= */ false);
         LOGGER.info("Adding shard: {}", shardAddress);
-        var arbitraryRouter = routers.get(0);
-        arbitraryRouter.eval(
-                "sh.addShard('" + shardAddress + "');");
+
+        withAdmin(admin -> {
+            // https://www.mongodb.com/docs/manual/reference/command/addShard/
+            var addShard = new BasicDBObject(Map.of("addShard", shardAddress));
+            admin.runCommand(addShard);
+
+            // https://www.mongodb.com/docs/manual/reference/command/listShards/
+            var listShards = new BasicDBObject("listShards", 1);
+            await()
+                    .atMost(30, SECONDS)
+                    .pollInterval(1, SECONDS)
+                    .until(() -> admin.runCommand(listShards)
+                            .getList("shards", Document.class)
+                            .stream()
+                            .anyMatch(s -> s.get("_id", String.class).equals(shard.getName()) &&
+                                    s.get("state", Integer.class) == 1));
+        });
+    }
+
+    private void withAdmin(Consumer<MongoDatabase> callback) {
+        try (var client = MongoClients.create(getConnectionString())) {
+            var admin = client.getDatabase("admin");
+
+            callback.accept(admin);
+        }
     }
 
     private Stream<Startable> stream() {

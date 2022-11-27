@@ -6,8 +6,6 @@
 package io.debezium.connector.mongodb.cluster;
 
 import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
-import static java.util.concurrent.CompletableFuture.allOf;
-import static java.util.concurrent.CompletableFuture.runAsync;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
@@ -19,15 +17,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
-import org.testcontainers.lifecycle.Startables;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClients;
@@ -152,12 +146,7 @@ public class MongoDbReplicaSet implements Startable {
 
         // Start all containers in parallel
         LOGGER.info("[{}] Starting {} node replica set...", name, memberCount);
-        try {
-            Startables.deepStart(getDependencies()).get();
-        }
-        catch (InterruptedException | ExecutionException e) {
-            throw new IllegalStateException(e);
-        }
+        MongoDbStartables.deepStart(getDependencies().stream());
 
         // Initialize the configured replica set to contain all the cluster's members
         LOGGER.info("[{}] Initializing replica set...", name);
@@ -176,7 +165,7 @@ public class MongoDbReplicaSet implements Startable {
     @Override
     public void stop() {
         LOGGER.info("[{}] Stopping...", name);
-        executeAll(Startable::stop);
+        MongoDbStartables.deepStop(members.stream());
         network.close();
     }
 
@@ -219,18 +208,6 @@ public class MongoDbReplicaSet implements Startable {
                 .filter(node -> node.getNamedAddress().equals(serverDescription.getAddress()) || // Match by name or possibly IP
                         node.getClientAddress().equals(serverDescription.getAddress()))
                 .findFirst();
-    }
-
-    private void executeAll(Consumer<Startable> action) {
-        try {
-            allOf(members.stream()
-                    .map(node -> runAsync(() -> action.accept(node)))
-                    .toArray(CompletableFuture[]::new))
-                            .get();
-        }
-        catch (InterruptedException | ExecutionException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     private ClusterDescription getClusterDescription() {
