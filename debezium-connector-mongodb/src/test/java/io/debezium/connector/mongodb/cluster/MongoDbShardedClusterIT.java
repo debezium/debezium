@@ -11,6 +11,7 @@ import static java.util.stream.IntStream.rangeClosed;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.assertj.core.api.ListAssert;
 import org.bson.Document;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import com.mongodb.ConnectionString;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
 
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
@@ -44,40 +46,43 @@ public class MongoDbShardedClusterIT {
                 logger.info("Connected to cluster: {}", client.getClusterDescription());
 
                 var databaseName = "test";
-                cluster.enableSharding(databaseName); // Only needed in 5.0
+                cluster.enableSharding(databaseName); // Only needed in 5.0, no-op in other versions
 
                 var collectionName = "docs";
                 cluster.shardCollection(databaseName, collectionName, "name");
 
                 var database = client.getDatabase(databaseName);
-                assertShardCount(client, 1);
+                assertThatShards(client).hasSize(1);
 
+                // Populate the collection
                 var collection = database.getCollection(collectionName);
-                rangeClosed(1, 10)
+                int docCount = 10;
+                rangeClosed(1, docCount)
                         .mapToObj(i -> Document.parse("{name:" + i + "}"))
                         .forEach(collection::insertOne);
+                assertThatCollection(collection).hasSize(docCount);
 
-                var docs = stream(collection.find().spliterator(), false)
-                        .collect(toList());
-                assertThat(docs).hasSize(10);
-
-                logger.info("Connected to cluster: {}", client.getClusterDescription());
+                // Add another shard (2 total)
                 cluster.addShard();
-                assertShardCount(client, 2);
+                assertThatShards(client).hasSize(2);
 
-                logger.info("Connected to cluster: {}", client.getClusterDescription());
+                // Remove the last shard
                 cluster.removeShard();
-                assertShardCount(client, 1);
+                assertThatShards(client).hasSize(1);
             }
         }
     }
 
-    private static void assertShardCount(MongoClient client, int expectedShardCount) {
-        assertThat(client
+    private static ListAssert<Document> assertThatCollection(MongoCollection<Document> collection) {
+        return assertThat(stream(collection.find().spliterator(), false)
+                .collect(toList()));
+    }
+
+    private static ListAssert<Document> assertThatShards(MongoClient client) {
+        return assertThat(client
                 .getDatabase("admin")
                 .runCommand(new BasicDBObject("listShards", 1))
-                .getList("shards", Document.class))
-                        .hasSize(expectedShardCount);
+                .getList("shards", Document.class));
     }
 
 }
