@@ -1,0 +1,140 @@
+:page-aliases: configuration/partition-routing.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: route-record-to-specific-partition-base-on-specific-table-column
+// Title: Partition Routing
+[id="partition-routing"]
+= Partition Routing
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+ifdef::community[]
+[NOTE]
+====
+This single message transformation (SMT) is supported for only the MySQL database connector.
+====
+endif::community[]
+
+As described in xref:install.adoc#configuring-debezium-topics[Installing Debezium], by default, table changes will be sent to a topic with a single partition.
+If you decide to change this configuration as described in xref:configuration/topic-auto-create-config.adoc[Customization of Kafka Connect automatic topic creation], Kafka will determine the partition by hashing the key by default.
+
+You can use this SMT if you want to use a specific table column to calculate the destination partition. The hash of the value will be used to compute the destination partition.
+
+// Type: concept
+// Title: Example: {prodname} basic partition routing SMT configuration
+// ModuleID: example-basic-debezium-partition-routing-smt-configuration
+[[example-basic-partition-routing-configuration-example]]
+== Example: Basic configuration
+
+You configure the partition routing transformation in the {prodname} connector's Kafka Connect configuration.
+In the configuration, you specify the tables that you are interested in, the table column you want to use to calculate the partition and the max number of partition configured for the tables.
+Only events that come from configured tables will be processed. The others will be simply leaved as is.
+
+To configure a {prodname} connector to route events to a specific partition, configure the `ComputePartition` SMT in the Kafka Connect configuration for the {prodname} connector.
+
+For example, you might add the following configuration in your connector configuration.
+
+[source]
+----
+...
+topic.creation.default.partitions=2
+topic.creation.default.replication.factor=1
+...
+transforms=ComputePartition
+transforms.ComputePartition.type=io.debezium.connector.mysql.transforms.partitions.ComputePartition
+transforms.ComputePartition.partition.table.list=products,orders
+transforms.ComputePartition.partition.table.field.mappings=products:name,orders:purchaser
+transforms.ComputePartition.partition.table.partition.num.mappings=products:2,orders:2
+...
+----
+
+The preceding example specifies to enable partition routing computation for `products` and `orders` tables.
+It specifies that `name` column will be used to compute the partition for the `products` table and that the number of partition for this table is `2`.
+Note that the number of partitions must be the number that you have configured for the topic. As you can see in the example we have defined that every topic will have `2` partitions.
+
+Given this `Products` table
+
+.Products table
+[cols="25%a,25%a,25%a,25%a"]
+|===
+|id
+|name
+|description
+|weight
+
+|101
+|scooter
+|Small 2-wheel scooter
+|   3.14
+
+|102
+|car battery
+|12V car battery
+|   8.1
+|103
+|12-pack drill bits
+|12-pack of drill bits with sizes ranging from #40 to #3
+|   0.8
+|104
+|hammer
+|12oz carpenter's hammer
+|  0.75
+|105
+|hammer
+|14oz carpenter's hammer
+| 0.875
+|106
+|hammer
+|16oz carpenter's hammer
+|   1.0
+|107
+|rocks
+|box of assorted rocks
+|   5.3
+|108
+|jacket
+|water resistent black wind breaker
+|   0.1
+|109
+|spare tire
+|24 inch spare tire
+|  22.2
+|===
+
+the records with id: `104,105,106` will go on the same partition as the name `hammer` is the same.
+
+// Type: reference
+// ModuleID: options-for-configuring-partition-routing-transformation
+// Title: Options for configuring partition routing transformation
+[[partition-routing-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the partition routing SMT.
+
+.filter SMT configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[partition-routing-topic-regex]]<<partition-routing-topic-regex, `partition.table.list`>>
+|
+|A comma-separated list of table names for which the SMT will be applied.
+
+|[[partition-routing-language]]<<partition-routing-language, `partition.table.field.mappings`>>
+|
+|A comma-separated list of colon-delimited pairs to specify column used for a specific table, e.g. products:name,orders:purchaser.
+
+|[[partition-routing-condition]]<<partition-routing-condition, `partition.table.partition.num.mappings`>>
+|
+|A comma-separated list of colon-delimited pairs to specify the number of partitions used for a specific table, e.g. products:2,orders:3.
+|
+
+|===

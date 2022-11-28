@@ -43,7 +43,7 @@ public class ComputePartitionConf {
             .withDescription("comma-separated list of colon-delimited table field pairs, e.g. products:name,orders:purchaser");
 
     static final Field FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD = Field.create(FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF)
-            .withDisplayName("Table number of  partition mapping")
+            .withDisplayName("Table number of partition mapping")
             .withType(ConfigDef.Type.STRING)
             .withValidation(ComputePartitionConf::isValidMapping)
             .withWidth(ConfigDef.Width.MEDIUM)
