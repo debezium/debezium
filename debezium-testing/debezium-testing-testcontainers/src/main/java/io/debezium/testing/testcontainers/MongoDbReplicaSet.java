@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb.cluster;
+package io.debezium.testing.testcontainers;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
+import static io.debezium.testing.testcontainers.MongoDbContainer.node;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
@@ -26,7 +26,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
-import io.debezium.connector.mongodb.cluster.MongoDbContainer.Address;
+import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 
 /**
  * A MongoDB replica set.

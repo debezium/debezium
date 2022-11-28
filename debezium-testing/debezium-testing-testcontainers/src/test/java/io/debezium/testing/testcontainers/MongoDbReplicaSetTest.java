@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb.cluster;
+package io.debezium.testing.testcontainers;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbReplicaSet.replicaSet;
+import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -29,9 +29,9 @@ import com.mongodb.internal.selector.ReadPreferenceServerSelector;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
-public class MongoDbReplicaSetIT {
+public class MongoDbReplicaSetTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetIT.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetTest.class);
 
     @Test
     public void testCluster() throws InterruptedException {
@@ -70,7 +70,8 @@ public class MongoDbReplicaSetIT {
             await().atMost(30, SECONDS)
                     .pollInterval(1, SECONDS)
                     .until(() -> cluster.tryPrimary()
-                            .map(node -> !node.getNamedAddress().equals(cursor.getServerAddress()))
+                            .map(node -> !node.getNamedAddress().toString().equals(cursor.getServerAddress().toString()) &&
+                                    !node.getClientAddress().toString().equals(cursor.getServerAddress().toString()))
                             .orElse(false));
 
             // Ensure it's invalid

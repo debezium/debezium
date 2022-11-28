@@ -3,10 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb.cluster;
+package io.debezium.testing.testcontainers;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbContainer.node;
-import static io.debezium.connector.mongodb.cluster.MongoDbReplicaSet.replicaSet;
+import static io.debezium.testing.testcontainers.MongoDbContainer.node;
+import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
