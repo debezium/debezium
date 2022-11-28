@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ListAssert;
 import org.bson.Document;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +80,7 @@ public class MongoDbShardedClusterTest {
     }
 
     private static ListAssert<Document> assertThatShards(MongoClient client) {
-        return Assertions.assertThat(client
+        return assertThat(client
                 .getDatabase("admin")
                 .runCommand(new BasicDBObject("listShards", 1))
                 .getList("shards", Document.class));
