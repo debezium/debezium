@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 
+import io.debezium.testing.testcontainers.util.MoreStartables;
+
 /**
  * A MongoDB sharded cluster.
  */
@@ -100,7 +102,7 @@ public class MongoDbShardedCluster implements Startable {
         }
 
         LOGGER.info("Starting {} shard cluster...", shards.size());
-        MongoDbStartables.deepStart(stream());
+        MoreStartables.deepStartSync(stream());
 
         addShards();
 
@@ -114,7 +116,7 @@ public class MongoDbShardedCluster implements Startable {
     public void stop() {
         // Idempotent
         LOGGER.info("Stopping {} shard cluster...", shards.size());
-        MongoDbStartables.deepStop(stream());
+        MoreStartables.deepStopSync(stream());
         network.close();
     }
 

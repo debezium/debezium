@@ -27,6 +27,7 @@ import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.testing.testcontainers.MongoDbContainer.Address;
+import io.debezium.testing.testcontainers.util.MoreStartables;
 
 /**
  * A MongoDB replica set.
@@ -146,7 +147,7 @@ public class MongoDbReplicaSet implements Startable {
 
         // Start all containers in parallel
         LOGGER.info("[{}] Starting {} node replica set...", name, memberCount);
-        MongoDbStartables.deepStart(getDependencies().stream());
+        MoreStartables.deepStartSync(getDependencies().stream());
 
         // Initialize the configured replica set to contain all the cluster's members
         LOGGER.info("[{}] Initializing replica set...", name);
@@ -165,7 +166,7 @@ public class MongoDbReplicaSet implements Startable {
     @Override
     public void stop() {
         LOGGER.info("[{}] Stopping...", name);
-        MongoDbStartables.deepStop(members.stream());
+        MoreStartables.deepStopSync(members.stream());
         network.close();
     }
 
