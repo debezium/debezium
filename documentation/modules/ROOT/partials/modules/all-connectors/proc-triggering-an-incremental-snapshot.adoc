@@ -26,7 +26,12 @@ If the `data-collections` array is empty, {prodname} detects that no action is r
 ====
 If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
  +
+tag::sql-based-snapshot[]
 For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public"."My.Table"*`.
+end::sql-based-snapshot[]
+tag::nosql-based-snapshot[]
+For example, to include a data collection that exists in the `*public*` database, and that has the name `*MyCollection*`, use the following format: `*"public"."MyCollection"*`.
+end::nosql-based-snapshot[]
 ====
 
 .Prerequisites
