@@ -65,7 +65,7 @@ tag::nosql-based-snapshot[]
 +
 [source,bash,indent=0,subs="+attributes,+quotes"]
 ----
-_<signalDataCollection>_.insert({"_id" : _<idNumber>_,"type" : _<snapshotType>, "data" : {"data-collections" ["<collectionName", "collectionName"],"type": _<snapshotType>_}});
+_<signalDataCollection>_.insert({"_id" : _<idNumber>_,"type" : _<snapshotType>_, "data" : {"data-collections" ["_<collectionName>_", "_<collectionName>_"],"type": _<snapshotType>_}});
 ----
 +
 For example,
