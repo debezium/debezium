@@ -14,20 +14,14 @@ import static java.util.stream.IntStream.rangeClosed;
 import static org.awaitility.Awaitility.await;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
-
-import com.mongodb.BasicDBObject;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
 
 /**
  * A MongoDB sharded cluster.
@@ -139,7 +133,7 @@ public class MongoDbShardedCluster implements Startable {
         // Note: No longer required in 6.0
         // See https://www.mongodb.com/docs/v5.0/reference/method/sh.enableSharding/
         var arbitraryRouter = routers.get(0);
-        arbitraryRouter.eval("sh.enableSharding('" + databaseName + "');");
+        arbitraryRouter.eval("sh.enableSharding('" + databaseName + "')");
     }
 
     public void shardCollection(String databaseName, String collectionName, String keyField) {
@@ -148,7 +142,7 @@ public class MongoDbShardedCluster implements Startable {
         arbitraryRouter.eval("sh.shardCollection(" +
                 "'" + databaseName + "." + collectionName + "'," +
                 "{" + keyField + ":'hashed'}" + // Note: only hashing supported for testing
-                ");");
+                ")");
     }
 
     private List<MongoDbReplicaSet> createShards() {
@@ -245,15 +239,14 @@ public class MongoDbShardedCluster implements Startable {
         var shard = shards.remove(shards.size() - 1);
         LOGGER.info("Removing shard: {}", shard.getName());
 
-        withAdmin(admin -> {
-            var removeShard = new BasicDBObject("removeShard", shard.getName());
-            await()
-                    .atMost(30, SECONDS)
-                    .pollInterval(1, SECONDS)
-                    .until(() -> admin.runCommand(removeShard)
-                            .get("state", String.class)
-                            .equals("completed"));
-        });
+        var arbitraryRouter = routers.get(0);
+        await()
+                .atMost(30, SECONDS)
+                .pollInterval(1, SECONDS)
+                .until(() -> arbitraryRouter.eval("db.adminCommand({removeShard: '" + shard.getName() + "'})")
+                        .path("state")
+                        .asText()
+                        .equals("completed"));
 
         shard.stop();
     }
@@ -275,30 +268,18 @@ public class MongoDbShardedCluster implements Startable {
         var shardAddress = formatReplicaSetAddress(shard, /* namedAddess= */ false);
         LOGGER.info("Adding shard: {}", shardAddress);
 
-        withAdmin(admin -> {
-            // https://www.mongodb.com/docs/manual/reference/command/addShard/
-            var addShard = new BasicDBObject(Map.of("addShard", shardAddress));
-            admin.runCommand(addShard);
+        // https://www.mongodb.com/docs/manual/reference/command/addShard/
+        var arbitraryRouter = routers.get(0);
+        arbitraryRouter.eval("sh.addShard('" + shardAddress + "')");
 
-            // https://www.mongodb.com/docs/manual/reference/command/listShards/
-            var listShards = new BasicDBObject("listShards", 1);
-            await()
-                    .atMost(30, SECONDS)
-                    .pollInterval(1, SECONDS)
-                    .until(() -> admin.runCommand(listShards)
-                            .getList("shards", Document.class)
-                            .stream()
-                            .anyMatch(s -> s.get("_id", String.class).equals(shard.getName()) &&
-                                    s.get("state", Integer.class) == 1));
-        });
-    }
-
-    private void withAdmin(Consumer<MongoDatabase> callback) {
-        try (var client = MongoClients.create(getConnectionString())) {
-            var admin = client.getDatabase("admin");
-
-            callback.accept(admin);
-        }
+        // https://www.mongodb.com/docs/manual/reference/command/listShards/
+        await()
+                .atMost(30, SECONDS)
+                .pollInterval(1, SECONDS)
+                .until(() -> stream(arbitraryRouter.eval("db.adminCommand({listShards: 1})")
+                        .path("shards"))
+                                .anyMatch(s -> s.get("_id").asText().equals(shard.getName()) &&
+                                        s.get("state").asInt() == 1));
     }
 
     private Stream<Startable> stream() {
@@ -321,6 +302,10 @@ public class MongoDbShardedCluster implements Startable {
                 ", routers=" + routers +
                 ", started=" + started +
                 '}';
+    }
+
+    private static <T> Stream<T> stream(Iterable<T> iterable) {
+        return StreamSupport.stream(iterable.spliterator(), false);
     }
 
 }

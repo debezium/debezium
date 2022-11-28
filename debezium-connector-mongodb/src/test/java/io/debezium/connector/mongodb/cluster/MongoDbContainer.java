@@ -18,12 +18,13 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.utility.DockerImageName;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.SyncDockerCmd;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import com.mongodb.ServerAddress;
 
 /**
  * A container for running a single MongoDB {@code mongod} or {@code mongos} process.
@@ -43,6 +44,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
      */
     public static final String IMAGE_VERSION = System.getProperty("version.mongo.server", "6.0");
     private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mongo:" + IMAGE_VERSION);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String name;
     private final int port;
@@ -115,7 +117,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
      *
      * @return the host-addressable address
      */
-    public ServerAddress getClientAddress() {
+    public Address getClientAddress() {
         checkStarted();
 
         // Technically we only need to do this for Mac
@@ -124,7 +126,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         }
 
         // On Linux we can address directly
-        return new ServerAddress(getNetworkIp(), port);
+        return new Address(getNetworkIp(), port);
     }
 
     /**
@@ -136,25 +138,25 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
      *
      * @return the name-addressable network address
      */
-    public ServerAddress getNamedAddress() {
-        return new ServerAddress(name, port);
+    public Address getNamedAddress() {
+        return new Address(name, port);
     }
 
     /**
      * Invokes <a href="https://www.mongodb.com/docs/manual/reference/method/rs.initiate/">rs.initiate</a> on the
      * container.
      *
-     * @param configServer whether this replica set is a used for a <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.configsvr">sharded cluster's config server</a>.
-     * @param serverAddresses the list of <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.members-n-.host">hostname / port numbers</a> of the set members
+     * @param configServer    whether this replica set is a used for a <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.configsvr">sharded cluster's config server</a>.
+     * @param Addresses the list of <a href="https://www.mongodb.com/docs/manual/reference/replica-configuration/#mongodb-rsconf-rsconf.members-n-.host">hostname / port numbers</a> of the set members
      */
-    public void initReplicaSet(boolean configServer, ServerAddress... serverAddresses) {
+    public void initReplicaSet(boolean configServer, Address... Addresses) {
         LOGGER.info("[{}:{}] Initializing replica set...", replicaSet, name);
         eval("rs.initiate({_id:'" + replicaSet + "',configsvr:" + configServer + ",members:[" +
-                range(0, serverAddresses.length)
-                        .mapToObj(i -> "{_id:" + i + ",host:'" + serverAddresses[i] + "'}")
+                range(0, Addresses.length)
+                        .mapToObj(i -> "{_id:" + i + ",host:'" + Addresses[i] + "'}")
                         .collect(joining(","))
                 +
-                "]});");
+                "]})");
     }
 
     /**
@@ -163,7 +165,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
      */
     public void stepDown() {
         LOGGER.info("[{}:{}] Stepping down...", replicaSet, name);
-        eval("rs.stepDown();");
+        eval("rs.stepDown()");
     }
 
     public void kill() {
@@ -197,7 +199,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         action.apply(DockerClientFactory.instance().client()).exec();
     }
 
-    public void eval(String command) {
+    public JsonNode eval(String command) {
         checkStarted();
 
         try {
@@ -205,12 +207,17 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                     "--quiet " +
                     "--host " + name + " " +
                     "--port " + port + " " +
-                    "--eval \"" + command + "\"";
+                    "--eval \"JSON.stringify(" + command + ")\"";
 
             // Support newer and older MongoDB versions respectively
             var result = execInContainer("sh", "-c", isLegacy() ? mongoCommand : "mongosh " + mongoCommand);
-            LOGGER.info(result.getStdout());
             checkExitcode(result);
+
+            String stdout = result.getStdout();
+            var response = OBJECT_MAPPER.readTree(stdout);
+            LOGGER.info("{}:", response);
+
+            return response;
         }
         catch (IOException | InterruptedException e) {
             throw new IllegalStateException(e);
@@ -253,6 +260,38 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         catch (IOException e) {
             return -1;
         }
+    }
+
+    public static class Address {
+
+        /**
+         * The host.
+         */
+        private final String host;
+
+        /**
+         * The port.
+         */
+        private final int port;
+
+        public Address(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        @Override
+        public String toString() {
+            return host + ":" + port;
+        }
+
     }
 
 }

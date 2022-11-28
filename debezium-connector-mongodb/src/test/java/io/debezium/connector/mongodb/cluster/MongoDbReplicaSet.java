@@ -17,16 +17,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoClients;
-import com.mongodb.connection.ClusterDescription;
-import com.mongodb.connection.ServerDescription;
+import io.debezium.connector.mongodb.cluster.MongoDbContainer.Address;
 
 /**
  * A MongoDB replica set.
@@ -173,7 +173,7 @@ public class MongoDbReplicaSet implements Startable {
         var arbitraryNode = members.get(0);
         var serverAddresses = members.stream()
                 .map(MongoDbContainer::getClientAddress)
-                .toArray(ServerAddress[]::new);
+                .toArray(Address[]::new);
 
         arbitraryNode.initReplicaSet(configServer, serverAddresses);
     }
@@ -197,26 +197,23 @@ public class MongoDbReplicaSet implements Startable {
     }
 
     public Optional<MongoDbContainer> tryPrimary() {
-        return getClusterDescription().getServerDescriptions().stream()
-                .filter(ServerDescription::isPrimary)
+        return stream(getStatus().path("members"))
+                .filter(memberStatus -> "PRIMARY".equals(memberStatus.path("stateStr").textValue()))
                 .findFirst()
                 .flatMap(this::findMember);
     }
 
-    private Optional<MongoDbContainer> findMember(ServerDescription serverDescription) {
+    private Optional<MongoDbContainer> findMember(JsonNode memberStatus) {
+        var name = memberStatus.path("name").textValue();
         return members.stream()
-                .filter(node -> node.getNamedAddress().equals(serverDescription.getAddress()) || // Match by name or possibly IP
-                        node.getClientAddress().equals(serverDescription.getAddress()))
+                .filter(node -> node.getNamedAddress().toString().equals(name) || // Match by name or possibly IP
+                        node.getClientAddress().toString().equals(name))
                 .findFirst();
     }
 
-    private ClusterDescription getClusterDescription() {
-        try (var client = MongoClients.create(getConnectionString())) {
-            // Force an actual connection via `first` since `listDatabaseNames` is lazily evaluated
-            client.listDatabaseNames().first();
-
-            return client.getClusterDescription();
-        }
+    private JsonNode getStatus() {
+        var arbitraryNode = members.get(0);
+        return arbitraryNode.eval("rs.status()");
     }
 
     @Override
@@ -230,4 +227,9 @@ public class MongoDbReplicaSet implements Startable {
                 ", started=" + started +
                 '}';
     }
+
+    private static <T> Stream<T> stream(Iterable<T> iterable) {
+        return StreamSupport.stream(iterable.spliterator(), false);
+    }
+
 }
