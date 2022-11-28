@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.mysql.transforms.partitions;
 
-import static io.debezium.connector.mysql.transforms.partitions.ComputePartitionConf.*;
+import static io.debezium.connector.mysql.transforms.partitions.ComputePartitionConf.FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD;
+import static io.debezium.connector.mysql.transforms.partitions.ComputePartitionConf.LIST_SEPARATOR;
+import static io.debezium.connector.mysql.transforms.partitions.ComputePartitionConf.PARTITION_TABLE_FIELD_NAME_MAPPINGS_FIELD;
+import static io.debezium.connector.mysql.transforms.partitions.ComputePartitionConf.PARTITION_TABLE_LIST_FIELD;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
