@@ -3,14 +3,15 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb.cluster;
+package io.debezium.testing.testcontainers;
 
-import static io.debezium.connector.mongodb.cluster.MongoDbShardedCluster.shardedCluster;
+import static io.debezium.testing.testcontainers.MongoDbShardedCluster.shardedCluster;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.rangeClosed;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ListAssert;
 import org.bson.Document;
 import org.junit.Test;
@@ -27,9 +28,9 @@ import com.mongodb.client.MongoCollection;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
-public class MongoDbShardedClusterIT {
+public class MongoDbShardedClusterTest {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterIT.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterTest.class);
 
     @Test
     public void testCluster() {
@@ -79,7 +80,7 @@ public class MongoDbShardedClusterIT {
     }
 
     private static ListAssert<Document> assertThatShards(MongoClient client) {
-        return assertThat(client
+        return Assertions.assertThat(client
                 .getDatabase("admin")
                 .runCommand(new BasicDBObject("listShards", 1))
                 .getList("shards", Document.class));
