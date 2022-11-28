@@ -29,21 +29,21 @@ import com.mongodb.client.MongoCollection;
  */
 public class MongoDbShardedClusterIT {
 
-    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterIT.class);
 
     @Test
     public void testCluster() {
         try (var cluster = shardedCluster().shardCount(1).replicaCount(1).routerCount(1).build()) {
-            logger.info("Starting {}...", cluster);
+            LOGGER.info("Starting {}...", cluster);
             cluster.start();
 
             // Create a connection string with a desired read preference
             var readPreference = ReadPreference.primary();
             var connectionString = new ConnectionString(cluster.getConnectionString() + "/?readPreference=" + readPreference.getName());
 
-            logger.info("Connecting to cluster: {}", connectionString);
+            LOGGER.info("Connecting to cluster: {}", connectionString);
             try (var client = MongoClients.create(connectionString)) {
-                logger.info("Connected to cluster: {}", client.getClusterDescription());
+                LOGGER.info("Connected to cluster: {}", client.getClusterDescription());
 
                 var databaseName = "test";
                 cluster.enableSharding(databaseName); // Only needed in 5.0, no-op in other versions
