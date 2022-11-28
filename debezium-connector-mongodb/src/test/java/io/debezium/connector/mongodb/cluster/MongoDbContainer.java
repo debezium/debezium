@@ -211,10 +211,10 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
             // Support newer and older MongoDB versions respectively
             var result = execInContainer("sh", "-c", isLegacy() ? mongoCommand : "mongosh " + mongoCommand);
-            checkExitcode(result);
+            checkExitCode(result);
 
             String stdout = result.getStdout();
-            var response = OBJECT_MAPPER.readTree(stdout);
+            var response = parseResponse(stdout);
             LOGGER.info("{}:", response);
 
             return response;
@@ -224,7 +224,17 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         }
     }
 
-    private void checkExitcode(ExecResult result) {
+    private static JsonNode parseResponse(String stdout) {
+        try {
+            return OBJECT_MAPPER.readTree(stdout);
+        }
+        catch (IOException e) {
+            LOGGER.warn("Could not parse the following text as JSON: {}", stdout, e);
+            return OBJECT_MAPPER.createObjectNode();
+        }
+    }
+
+    private void checkExitCode(ExecResult result) {
         // See https://docs.publishing.service.gov.uk/manual/mongo-db-commands.html#step-down-the-primary for exit
         // code 252 and `rs.stepDown` on Mongo 4.0
         boolean ok = result.getExitCode() == 0 || isLegacy() && result.getExitCode() == 252;
