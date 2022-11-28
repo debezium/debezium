@@ -11,7 +11,6 @@ import static java.util.stream.IntStream.rangeClosed;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ListAssert;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
