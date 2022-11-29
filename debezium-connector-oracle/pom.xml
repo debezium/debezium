@@ -150,8 +150,6 @@
         <oracle.infinispan.password>admin</oracle.infinispan.password>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
-        <docker.dbs>quay.io/rh_integration/dbz-oracle:${version.oracle.server}</docker.dbs>
-        <docker.filter>${docker.dbs}</docker.filter>
         <connector.assembly.ref>connector-distribution</connector.assembly.ref>
         <!-- Apicurion container properties -->
         <apicurio.port>8080</apicurio.port>
@@ -449,24 +447,6 @@
                                         <mode>override</mode>
                                     </external>
                                 </image>
-                                <image>
-                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
-                                    <run>
-                                        <namingStrategy>none</namingStrategy>
-                                        <ports>
-                                            <port>${apicurio.port}:8080</port>
-                                        </ports>
-                                        <log>
-                                            <prefix>apicurio</prefix>
-                                            <enabled>true</enabled>
-                                            <color>blue</color>
-                                        </log>
-                                        <wait>
-                                            <log>.*apicurio-registry-app.*started in.*</log>
-                                            <time>${apicurio.init.timeout}</time>
-                                        </wait>
-                                    </run>
-                                </image>
                             </images>
                         </configuration>
                         <!--
@@ -596,11 +576,60 @@
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <!--autoPull>always</autoPull-->
+                            <images>
+                                <!-- A container for the data server replica set -->
+                                <image>
+                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <run>
+                                        <namingStrategy>none</namingStrategy>
+                                        <ports>
+                                            <port>${apicurio.port}:8080</port>
+                                        </ports>
+                                        <log>
+                                            <prefix>apicurio</prefix>
+                                            <enabled>true</enabled>
+                                            <color>blue</color>
+                                        </log>
+                                        <wait>
+                                            <log>.*apicurio-registry-app.*started in.*</log>
+                                            <time>${apicurio.init.timeout}</time>
+                                        </wait>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                        <!--
+                        Connect this plugin to the maven lifecycle around the integration-test phase:
+                        start the container in pre-integration-test and stop it in post-integration-test.
+                        -->
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
-            <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
-            </properties>
         </profile>
     </profiles>
 </project>
