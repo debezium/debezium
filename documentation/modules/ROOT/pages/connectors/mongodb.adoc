@@ -1825,18 +1825,18 @@ Because there is a chance that some events may be duplicated during a recovery f
 As the connector generates change events, the Kafka Connect framework records those events in Kafka using the Kafka producer API. Kafka Connect will also periodically record the latest offset that appears in those change events, at a frequency that you have specified in the Kafka Connect worker configuration. If the Kafka brokers become unavailable, the Kafka Connect worker process running the connectors will simply repeatedly attempt to reconnect to the Kafka brokers. In other words, the connector tasks will simply pause until a connection can be reestablished, at which point the connectors will resume exactly where they left off.
 
 [id="debezium-mongodb-connector-is-stopped-for-a-long-interval"]
-=== Connector fails after it is stopped for a long interval
+=== Connector fails after it is stopped for a long interval if `snapshot.mode` is set to `initial`
 
-If the connector is gracefully stopped, replica sets can continue to be used.
+If the connector is gracefully stopped, users might continue to perform operations on replica set members.
 Changes that occur while the connector is offline continue to be recorded in MongoDB's oplog.
 In most cases, after the connector is restarted, it reads the offset value in the oplog to determine the last operation that it streamed for each replica set, and then resumes streaming changes from that point.
-Database operations that occurred while the connector was stopped are emitted to Kafka as usual, and after some time, the connector catches up with the database.
-The amount of time required for the connector to catch up depends upon the capabilities and performance of Kafka and the volume of changes that occurred in the database.
+After the restart, database operations that occurred while the connector was stopped are emitted to Kafka as usual, and after some time, the connector catches up with the database.
+The amount of time required for the connector to catch up depends on the capabilities and performance of Kafka and the volume of changes that occurred in the database.
 
-However, if the connector remains stopped for a long enough interval, it can occur that MongoDB purges the oplog while the connector is inactive, so that the connector's last position is lost.
-After the connector restarts, it cannot read the previous offset value to determine where to resume streaming.
-Typically, if the connector's `snapshot.mode` property is set to the default value (`initial`), when the connector does not find a value in its offsets topic, it runs a snapshot.
-But in this situation, the connector detects stored offset values in its Kafka topic, but it cannot find a matching value in the database.
+However, if the connector remains stopped for a long enough interval, it can occur that MongoDB purges the oplog during the time that the connector is inactive, resulting in the loss of information about the connector's last position.
+After the connector restarts, it cannot resume streaming, because the oplog no longer contains the previous offset value that marks the last operation that the connector processed.
+The connector also cannot perform a snapshot, as it typically would when the `snapshot.mode` property is set to `initial`, and no offset value is present.
+In this case, a mismatch exists, because the oplog does not contain the value of the previous offset, but the offset value is present in the connector's internal Kafka offsets topic.
 An error results and the connector fails.
 
 To recover from the failure, delete the failed connector, and create a new connector with the same configuration but with a different connector name.
