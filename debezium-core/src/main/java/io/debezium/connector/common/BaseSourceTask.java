@@ -7,8 +7,6 @@ package io.debezium.connector.common;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -20,7 +18,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
@@ -36,7 +33,6 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
-import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -63,8 +59,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     private final ReentrantLock stateLock = new ReentrantLock();
 
-    private volatile ElapsedTimeStrategy restartDelay;
-
     /**
      * Raw connector properties, kept here so they can be passed again in case of a restart.
      */
@@ -82,8 +76,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * (which may be a no-op depending on the connector).
      */
     private final Map<Map<String, ?>, Map<String, ?>> lastOffsets = new HashMap<>();
-
-    private Duration retriableRestartWait;
 
     private final ElapsedTimeStrategy pollOutputDelay;
     private final Clock clock = Clock.system();
@@ -119,9 +111,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             this.props = props;
             Configuration config = Configuration.from(props);
-            retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
-            // need to reset the delay or you only get one delayed restart
-            restartDelay = null;
+
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
                 throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
             }
@@ -151,26 +141,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
-        boolean started = startIfNeededAndPossible();
+        startIfNeededAndPossible();
 
-        // in backoff period after a retriable exception
-        if (!started) {
-            // WorkerSourceTask calls us immediately after we return the empty list.
-            // This turns into a throttling so we need to make a pause before we return
-            // the control back.
-            Metronome.parker(Duration.of(2, ChronoUnit.SECONDS), Clock.SYSTEM).pause();
-            return Collections.emptyList();
-        }
-
-        try {
-            final List<SourceRecord> records = doPoll();
-            logStatistics(records);
-            return records;
-        }
-        catch (RetriableException e) {
-            stop(true);
-            throw e;
-        }
+        final List<SourceRecord> records = doPoll();
+        logStatistics(records);
+        return records;
     }
 
     protected void logStatistics(final List<SourceRecord> records) {
@@ -220,20 +195,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
      */
-    private boolean startIfNeededAndPossible() {
+    private void startIfNeededAndPossible() {
         stateLock.lock();
 
         try {
-            if (state.get() == State.RUNNING) {
-                return true;
-            }
-            else if (restartDelay != null && restartDelay.hasElapsed()) {
+            if (state.get() != State.RUNNING) {
                 start(props);
-                return true;
-            }
-            else {
-                LOGGER.info("Awaiting end of restart backoff period after a retriable error");
-                return false;
             }
         }
         finally {
@@ -243,10 +210,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public final void stop() {
-        stop(false);
-    }
-
-    private void stop(boolean restart) {
         stateLock.lock();
 
         try {
@@ -255,12 +218,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 return;
             }
 
-            if (restart) {
-                LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
-            }
-            else {
-                LOGGER.info("Stopping down connector");
-            }
+            LOGGER.info("Stopping down connector");
 
             try {
                 if (coordinator != null) {
@@ -274,11 +232,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             doStop();
-
-            if (restart && restartDelay == null) {
-                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
-                restartDelay.hasElapsed();
-            }
         }
         finally {
             stateLock.unlock();
