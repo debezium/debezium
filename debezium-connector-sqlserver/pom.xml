@@ -20,8 +20,8 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.dbs>mcr.microsoft.com/mssql/server:2019-latest</docker.dbs>
-        <docker.filter>${docker.dbs}</docker.filter>
+        <docker.db>mcr.microsoft.com/mssql/server:2019-latest</docker.db>
+        <docker.filter>${docker.db}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <!-- Apicurion container properties -->
@@ -119,7 +119,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the SQL Server -->
-                            <name>${docker.filter}</name>
+                            <name>${docker.db}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
@@ -365,7 +365,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.db},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
