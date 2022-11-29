@@ -368,6 +368,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")) {
                 LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
             }
+            else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")) {
+                LOGGER.warn("Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version: " + e.getMessage());
+            }
             else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
                 throw new DebeziumException(
                         String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
