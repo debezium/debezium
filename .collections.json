@@ -1,5 +1,0 @@
-Error: couldn't connect to server 127.0.0.1:27017, connection attempt failed: SocketException: Error connecting to 127.0.0.1:27017 :: caused by :: Connection refused :
-connect@src/mongo/shell/mongo.js:374:17
-@(connect):3:6
-exception: connect failed
-exiting with code 1
