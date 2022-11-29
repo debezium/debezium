@@ -1831,7 +1831,7 @@ The amount of time required for the connector to catch up depends upon the capab
 
 However, if the connector remains stopped for a long enough interval, it can occur that MongoDB purges the oplog while the connector is inactive, so that the connector's last position is lost.
 After the connector restarts, it cannot read the previous offset value to determine where to resume streaming.
-Typically, if the connector's `snapshot.mode` property is set to the default value (`initial`), when it finds no offset in the data source, it runs a snapshot.
+Typically, if the connector's `snapshot.mode` property is set to the default value (`initial`), when the connector does not find a value in its offsets topic, it runs a snapshot.
 But in this situation, the connector detects stored offset values in its Kafka topic, but it cannot find a matching value in the database.
 An error results and the connector fails.
 
