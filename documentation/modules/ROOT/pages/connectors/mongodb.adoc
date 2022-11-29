@@ -1406,12 +1406,13 @@ If you include this property in the configuration, do not set the `collection.in
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for performing a snapshot when the connector starts.
-Set the property to one of the following values: +
+Set the property to one of the following values:
 
 `initial`::
-The connector performs a snapshot when it starts if it does not detect an offset in the oplog.
+When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
 
-`never`:: When the connector starts, it does not perform a snapshot.
+`never`::
+When the connector starts, it does not perform a snapshot.
 Instead of running a snapshot, the connector tails the oplog, and emits `read` events for the most recently recorded transactions.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
