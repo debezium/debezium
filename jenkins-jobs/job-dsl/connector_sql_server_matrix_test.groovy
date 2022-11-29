@@ -85,7 +85,7 @@ esac
 # Run maven build
 mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-bom,debezium-connector-sqlserver -am -fae \
     -Dmaven.test.failure.ignore=true \
-    -Ddocker.filter=$DATABASE_IMAGE \
+    -Ddocker.db=$DATABASE_IMAGE \
     -Dinsecure.repositories=WARN \
     $PROFILE_PROD 
     
