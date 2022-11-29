@@ -54,6 +54,7 @@ AND:                                 'AND';
 ARRAY:                               'ARRAY';
 AS:                                  'AS';
 ASC:                                 'ASC';
+ATTRIBUTE:                           'ATTRIBUTE';
 BEFORE:                              'BEFORE';
 BETWEEN:                             'BETWEEN';
 BOTH:                                'BOTH';
