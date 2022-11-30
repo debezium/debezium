@@ -1162,3 +1162,53 @@ Some of the sinks exposes dependency injections points that enable users to prov
 Typical examples are fine tuning of the target client setup, the destination naming etc.
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
+
+== Cassandra connector
+
+=== Running Debezium Server with Cassandra connector
+
+Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
+
+```
+JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
+```
+
+=== Sample of basic `application.properties` for running Cassandra connector with Redis sink
+
+```
+# Sink
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+
+# Connector
+debezium.source.connector.class=io.debezium.connector.cassandra.Cassandra4Connector
+## node.id must be unique per each connector running on each Cassandra node
+debezium.source.cassandra.node.id=sample_node_01
+debezium.source.cassandra.hosts=127.0.0.1
+debezium.source.cassandra.port=9042
+debezium.source.cassandra.config=/opt/cassandra/conf/cassandra.yaml
+debezium.source.commit.log.relocation.dir=cassandra/relocdir
+debezium.source.offset.storage=io.debezium.server.redis.RedisOffsetBackingStore
+debezium.source.topic.prefix=sample_prefix
+## internal Cassandra http port
+debezium.source.http.port=8040
+```
+
+=== Transformation for Operation Code
+
+By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with Debezium Operation Codes.
+If needed, a specific transform can be defined in Debezium Server's `application.properties` to enable the conversion:
+
+```
+debezium.transforms=EnvelopeTransformation
+debezium.transforms.EnvelopeTransformation.type=io.debezium.connector.cassandra.transforms.EnvelopeTransformation
+```
+
+This will convert Operation Codes as follows:
+
+```
+INSERT "i"          -> CREATE "c"
+UPDATE "u"          -> UPDATE "u"
+DELETE "d"          -> DELETE "d"
+RANGE_TOMBSTONE "r" -> TRUNCATE "t"
+```
