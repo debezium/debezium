@@ -2943,7 +2943,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5739")
-    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "This needs pg_replication_slot_advance which is supported only on Postgres 11+")
     public void shouldStopConnectorOnSlotRecreation() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnectorIT.class);
 
@@ -2969,43 +2968,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsStacktraceElement("Cannot seek to the last known offset "));
+                .until(() -> logInterceptor.containsStacktraceElement("Replication stream starts after the the last known offset "));
         assertConnectorNotRunning();
-    }
-
-    @Test
-    @FixFor("DBZ-5739")
-    @SkipWhenDatabaseVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, major = 11, reason = "This pg_replication_slot_advance is not present Postgres 10")
-    public void shouldSeekToCorrectOffset() throws InterruptedException {
-        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
-
-        TestHelper.execute(SETUP_TABLES_STMT);
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
-                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
-
-        start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
-
-        consumeRecordsByTopic(1);
-
-        stopConnector();
-        assertConnectorNotRunning();
-
-        TestHelper.execute(INSERT_STMT);
-
-        configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.name())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
-
-        start(PostgresConnector.class, configBuilder.build());
-        consumeRecordsByTopic(1);
-        assertConnectorIsRunning();
-
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .until(() -> logInterceptor
-                        .containsMessage("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset."));
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
