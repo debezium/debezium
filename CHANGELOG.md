@@ -7,6 +7,7 @@ November 30th 2022 [Detailed release notes](https://issues.redhat.com/secure/Rel
 
 ### New features since 2.1.0.Alpha1
 
+* Expose Cassandra Connector via Debezium Server [DBZ-2098](https://issues.redhat.com/browse/DBZ-2098)
 * Validate Debezium Server configuration properties [DBZ-4720](https://issues.redhat.com/browse/DBZ-4720)
 * Enable pass-thru of additional config options in Debezium UI [DBZ-5324](https://issues.redhat.com/browse/DBZ-5324)
 * Sink adapter for Nats JetStream [DBZ-5772](https://issues.redhat.com/browse/DBZ-5772)
