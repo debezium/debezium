@@ -26,11 +26,11 @@ spec:
       - name: debezium-connector-{connector-file}
         artifacts:
           - type: zip // <6>
-            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip  // <7>
+            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip  // <7>
           - type: zip
-            url: {red-hat-maven-repository}apicurio/apicurio-registry-distro-connect-converter/{registry-version}-redhat-_<build-number>_/apicurio-registry-distro-connect-converter-{registry-version}-redhat-_<build-number>_.zip // <8>
+            url: {red-hat-maven-repository}apicurio/apicurio-registry-distro-connect-converter/{registry-maven-version}-redhat-__<build-number>__/apicurio-registry-distro-connect-converter-{registry-maven-version}-redhat-__<build-number>__.zip  // <8>
           - type: zip
-            url: {red-hat-maven-repository}debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.zip // <9>
+            url: {red-hat-maven-repository}debezium/debezium-scripting/{debezium-version}-redhat-{debezium-build-number}/debezium-scripting-{debezium-version}-redhat-{debezium-build-number}.zip // <9>
           - type: jar
             url: https://repo1.maven.org/maven2/org/codehaus/groovy/groovy/{groovy-version}/groovy-{groovy-version}.jar  // <10>
           - type: jar
