@@ -60,6 +60,7 @@ Bingqin Zhou
 Björn Häuser
 Blake Peno
 Bob Roldan
+Bobby Tiernay
 Brad Morgan
 Braden Groom
 Braden Staudacher
@@ -120,6 +121,7 @@ Echo Xu
 Ed Laur
 Eduardo Hayashi
 Eero Koplimets
+Egyed Tamas
 Elan Hasson
 Eliran Agranovich
 Emmanuel Brard
@@ -414,6 +416,7 @@ Tim Patterson
 Tomaz Lemos Fernandes
 Tommy Karlsson
 Tony Rizko
+tooptoop4
 Tova Cohen
 Travis Elnicky
 Troy Gaines
