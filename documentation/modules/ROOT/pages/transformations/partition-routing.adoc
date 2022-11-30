@@ -1,7 +1,7 @@
 :page-aliases: configuration/partition-routing.adoc
 // Category: debezium-using
 // Type: assembly
-// ModuleID: route-record-to-specific-partition-base-on-specific-table-column
+// ModuleID: route-record-to-specific-partition-base-on-specific-data-collections-column
 // Title: Partition Routing
 [id="partition-routing"]
 = Partition Routing
@@ -14,17 +14,11 @@
 
 toc::[]
 
-ifdef::community[]
-[NOTE]
-====
-This single message transformation (SMT) is supported for only the MySQL database connector.
-====
-endif::community[]
 
-As described in xref:install.adoc#configuring-debezium-topics[Installing Debezium], by default, table changes will be sent to a topic with a single partition.
+As described in xref:install.adoc#configuring-debezium-topics[Installing Debezium], by default, data collections changes will be sent to a topic with a single partition.
 If you decide to change this configuration as described in xref:configuration/topic-auto-create-config.adoc[Customization of Kafka Connect automatic topic creation], Kafka will determine the partition by hashing the key by default.
 
-You can use this SMT if you want to use a specific table column to calculate the destination partition. The hash of the value will be used to compute the destination partition.
+You can use this SMT if you want to use a specific data collection column to calculate the destination partition. The hash of the value will be used to compute the destination partition.
 
 // Type: concept
 // Title: Example: {prodname} basic partition routing SMT configuration
@@ -33,8 +27,8 @@ You can use this SMT if you want to use a specific table column to calculate the
 == Example: Basic configuration
 
 You configure the partition routing transformation in the {prodname} connector's Kafka Connect configuration.
-In the configuration, you specify the tables that you are interested in, the table column you want to use to calculate the partition and the max number of partition configured for the tables.
-Only events that come from configured tables will be processed. The others will be simply leaved as is.
+In the configuration, you specify the data collection column you want to use to calculate the partition and the max number of partition configured for the data collection.
+Only events that come from configured data collections will be processed. The others will be simply leaved as is.
 
 To configure a {prodname} connector to route events to a specific partition, configure the `ComputePartition` SMT in the Kafka Connect configuration for the {prodname} connector.
 
@@ -47,15 +41,14 @@ topic.creation.default.partitions=2
 topic.creation.default.replication.factor=1
 ...
 transforms=ComputePartition
-transforms.ComputePartition.type=io.debezium.connector.mysql.transforms.partitions.ComputePartition
-transforms.ComputePartition.partition.table.list=products,orders
-transforms.ComputePartition.partition.table.field.mappings=products:name,orders:purchaser
-transforms.ComputePartition.partition.table.partition.num.mappings=products:2,orders:2
+transforms.ComputePartition.type=io.debezium.transforms.partitions.ComputePartition
+transforms.ComputePartition.partition.data-collections.field.mappings=inventory.products:name,inventory.orders:purchaser
+transforms.ComputePartition.partition.data-collections.partition.num.mappings=inventory.products:2,inventory.orders:2
 ...
 ----
 
 The preceding example specifies to enable partition routing computation for `products` and `orders` tables.
-It specifies that `name` column will be used to compute the partition for the `products` table and that the number of partition for this table is `2`.
+It specifies that `name` column will be used to compute the partition for the `products` data-collections and that the number of partition for this data-collections is `2`.
 Note that the number of partitions must be the number that you have configured for the topic. As you can see in the example we have defined that every topic will have `2` partitions.
 
 Given this `Products` table
@@ -124,17 +117,13 @@ The following table lists the configuration options that you can use with the pa
 |Default
 |Description
 
-|[[partition-routing-topic-regex]]<<partition-routing-topic-regex, `partition.table.list`>>
+|[[partition-routing-data-collections-field-mappings]]<<partition-routing-data-collections-field-mappings, `partition.data-collections.field.mappings`>>
 |
-|A comma-separated list of table names for which the SMT will be applied.
+|A comma-separated list of colon-delimited pairs to specify column used for a specific data-collection, e.g. inventory.products:name,inventory.orders:purchaser.
 
-|[[partition-routing-language]]<<partition-routing-language, `partition.table.field.mappings`>>
+|[[partition-routing-data-collections-partition-num-mappings]]<<partition-routing-data-collections-partition-num-mappings, `partition.data-collections.partition.num.mappings`>>
 |
-|A comma-separated list of colon-delimited pairs to specify column used for a specific table, e.g. products:name,orders:purchaser.
-
-|[[partition-routing-condition]]<<partition-routing-condition, `partition.table.partition.num.mappings`>>
-|
-|A comma-separated list of colon-delimited pairs to specify the number of partitions used for a specific table, e.g. products:2,orders:3.
+|A comma-separated list of colon-delimited pairs to specify the number of partitions used for a specific data-collection, e.g. inventory.products:2,inventory.orders:3.
 |
 
 |===
