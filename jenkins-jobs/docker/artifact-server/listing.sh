@@ -17,12 +17,14 @@ while true; do
   esac
 done
 
-shopt -s globstar nullglob
+shopt -s globstar
 pushd "$DIR" || exit
 rm -f "$OUTPUT"
 for connector in ${CONNECTORS}; do
-    file=$(ls **/*${connector}*.zip)
-
+    file=""
+    if [[ $(ls **/*"${connector}"*.zip) ]]; then
+        file=$(ls **/*"${connector}"*.zip)
+    fi
     artifact="debezium-connector-$connector"
     echo "$artifact"
     echo "$artifact::$file" >> "$OUTPUT"
@@ -42,6 +44,9 @@ echo "$artifact::$converter" >> "$OUTPUT"
 for driver in **/jdbc/*.{zip,jar}; do
     name=$(echo "$driver" | sed -rn 's@^(.*)-([[:digit:]].*([[:digit:]]|Final|SNAPSHOT))(.*)(\..*)$@\1@p')
     artifact="$name"
+        if [[ ! $artifact ]]; then
+                continue
+        fi
     echo "$artifact"
     echo "$artifact::$driver" >> "$OUTPUT"
 done
@@ -49,6 +54,9 @@ done
 for groovy_script in **/groovy/*.{zip,jar}; do
     name=$(echo "$groovy_script" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
     artifact="$name"
+    if [[ ! $artifact ]]; then
+        continue
+    fi
     echo "$artifact"
     echo "$artifact::$groovy_script" >> "$OUTPUT"
 done
