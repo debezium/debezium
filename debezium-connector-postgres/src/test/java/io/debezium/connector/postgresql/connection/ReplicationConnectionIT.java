@@ -23,8 +23,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,19 +55,30 @@ import io.debezium.util.Metronome;
 public class ReplicationConnectionIT {
 
     private static final Logger logger = LoggerFactory.getLogger(ReplicationConnectionIT.class);
+    private static PostgresConnection defaultConnection;
     @Rule
     public TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
 
     @Rule
     public TestRule logTestName = new TestLogger(logger);
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws Exception {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
         String statement = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                 "CREATE TABLE table_without_pk (a SERIAL, b NUMERIC(5,2), c TEXT);";
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
     }
 
     @Test
@@ -209,7 +222,7 @@ public class ReplicationConnectionIT {
 
         // run some more SQL while the slot is stopped
         // this deletes 2 entries so each of them will have a message
-        TestHelper.execute("DELETE FROM table_with_pk WHERE a < 3;");
+        TestHelper.execute(defaultConnection, "DELETE FROM table_with_pk WHERE a < 3;");
         int additionalMessages = 2;
 
         // create a new replication connection with the same slot and check that we get the additional messages
@@ -243,7 +256,7 @@ public class ReplicationConnectionIT {
             ReplicationStream stream = connection.startStreaming(Lsn.valueOf(Long.MAX_VALUE), new WalPositionLocator());
             expectedMessagesFromStream(stream, 0);
             // this deletes 2 entries so each of them will have a message
-            TestHelper.execute("DELETE FROM table_with_pk WHERE a < 3;");
+            TestHelper.execute(defaultConnection, "DELETE FROM table_with_pk WHERE a < 3;");
             // don't expect any messages because we've started stream from a very big (i.e. the end) position
             expectedMessagesFromStream(stream, 0);
         }
@@ -259,7 +272,7 @@ public class ReplicationConnectionIT {
                     "CREATE TABLE table_without_pk (a SERIAL, b NUMERIC(5,2), c TEXT);" +
                     "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); " +
                     "INSERT INTO table_with_pk (b, c) VALUES('val2', now()); ";
-            TestHelper.execute(statement);
+            TestHelper.execute(defaultConnection, statement);
             expectedMessagesFromStream(stream, 2);
         }
     }
@@ -272,7 +285,7 @@ public class ReplicationConnectionIT {
                     "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                     "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); " +
                     "ROLLBACK;";
-            TestHelper.execute(statement);
+            TestHelper.execute(defaultConnection, statement);
             expectedMessagesFromStream(stream, 0);
         }
     }
@@ -289,7 +302,7 @@ public class ReplicationConnectionIT {
                     "CREATE TABLE schema2.table (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                     "INSERT INTO schema1.table (b, c) VALUES('Value for schema1', now());" +
                     "INSERT INTO schema2.table (b, c) VALUES('Value for schema2', now());";
-            TestHelper.execute(statements);
+            TestHelper.execute(defaultConnection, statements);
             expectedMessagesFromStream(stream, 2);
         }
     }
@@ -317,7 +330,7 @@ public class ReplicationConnectionIT {
                     "ALTER TABLE t0 REPLICA IDENTITY FULL;" +
                     "INSERT INTO t0 VALUES (7,2);" +
                     "INSERT INTO t0 VALUES (8,2);";
-            TestHelper.execute(statements);
+            TestHelper.execute(defaultConnection, statements);
 
             try (ReplicationStream stream = connection.startStreaming(new WalPositionLocator())) {
                 expectedMessagesFromStream(stream, 8);
@@ -325,7 +338,7 @@ public class ReplicationConnectionIT {
             }
         }
 
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "INSERT INTO t0 VALUES (9,2);" +
                         "INSERT INTO t0 VALUES (10,2);" +
                         "DROP TABLE t0;" +
@@ -421,7 +434,7 @@ public class ReplicationConnectionIT {
     private int insertSmallTestData() throws Exception {
         String statement = "INSERT INTO table_with_pk (b, c) VALUES('Backup and Restore', now());" +
                 "INSERT INTO table_with_pk (b, c) VALUES('Tuning', now());";
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
         // we expect 2 messages from the above
         return 2;
     }
@@ -440,7 +453,7 @@ public class ReplicationConnectionIT {
         // if that table has a REPLICA IDENTITY of FULL or INDEX.
         // See http://michael.otacoo.com/postgresql-2/postgres-9-4-feature-highlight-replica-identity-logical-replication/
         // ...so we expect 8 messages for the above DML
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
         return 8;
     }
 }

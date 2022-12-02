@@ -18,14 +18,17 @@ import javax.management.ObjectName;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenJavaVersion;
 import io.debezium.util.Testing;
@@ -42,10 +45,22 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     private static final String INSERT_STATEMENTS = "INSERT INTO simple (val) VALUES (25); "
             + "INSERT INTO simple (val) VALUES (50);";
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
     }
 
     @After
@@ -94,7 +109,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     @Test
     public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
-        TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INIT_STATEMENTS, INSERT_STATEMENTS);
 
         // start connector
         start(PostgresConnector.class,
@@ -109,7 +124,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     @Test
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
-        TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INIT_STATEMENTS, INSERT_STATEMENTS);
 
         // start connector
         start(PostgresConnector.class,
@@ -127,7 +142,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
         // Setup
-        TestHelper.execute(INIT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INIT_STATEMENTS);
 
         // start connector
         start(PostgresConnector.class,
@@ -189,7 +204,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // Insert new records and wait for them to become available
-        TestHelper.execute(INSERT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INSERT_STATEMENTS);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
         Thread.sleep(Duration.ofSeconds(2).toMillis());
 
@@ -206,7 +221,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     public void oneRecordInQueue() throws Exception {
         // Testing.Print.enable();
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-        TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INIT_STATEMENTS, INSERT_STATEMENTS);
         final CountDownLatch step1 = new CountDownLatch(1);
         final CountDownLatch step2 = new CountDownLatch(1);
 
@@ -230,7 +245,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         }, true);
 
         waitForStreamingToStart();
-        TestHelper.execute(INSERT_STATEMENTS);
+        TestHelper.execute(defaultConnection, INSERT_STATEMENTS);
         LOGGER.info("Waiting for the first record to arrive");
         step1.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
         LOGGER.info("First record arrived");

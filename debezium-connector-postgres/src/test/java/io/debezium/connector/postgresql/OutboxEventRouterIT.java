@@ -9,10 +9,13 @@ package io.debezium.connector.postgresql;
 import java.util.UUID;
 
 import org.apache.kafka.connect.data.Schema;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.jdbc.JdbcConnection;
@@ -38,11 +41,23 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<PostgresConnect
             "  payload       jsonb" +
             ");";
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     @Override
     public void beforeEach() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
         super.beforeEach();
     }
 
@@ -93,8 +108,8 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<PostgresConnect
 
     @Override
     protected void createTable() throws Exception {
-        TestHelper.execute(SETUP_OUTBOX_SCHEMA);
-        TestHelper.execute(SETUP_OUTBOX_TABLE);
+        TestHelper.execute(defaultConnection, SETUP_OUTBOX_SCHEMA);
+        TestHelper.execute(defaultConnection, SETUP_OUTBOX_TABLE);
     }
 
     @Override
@@ -141,20 +156,20 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<PostgresConnect
 
     @Override
     protected void alterTableWithExtra4Fields() throws Exception {
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add version int not null;");
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add somebooltype boolean not null;");
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add is_deleted boolean default false;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox add version int not null;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox add somebooltype boolean not null;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox add is_deleted boolean default false;");
     }
 
     @Override
     protected void alterTableWithTimestampField() throws Exception {
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
     }
 
     @Override
     protected void alterTableModifyPayload() throws Exception {
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox ALTER COLUMN payload SET DATA TYPE VARCHAR(1000);");
+        TestHelper.execute(defaultConnection, "ALTER TABLE outboxsmtit.outbox ALTER COLUMN payload SET DATA TYPE VARCHAR(1000);");
     }
 
     @Override

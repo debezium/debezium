@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -39,6 +41,7 @@ import io.debezium.relational.TableId;
  */
 public class PublicGeometryIT extends AbstractRecordsProducerTest {
 
+    private static PostgresConnection defaultConnection;
     private TestConsumer consumer;
 
     @Rule
@@ -47,14 +50,24 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws Exception {
         // ensure the slot is deleted for each test
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
         }
-        TestHelper.dropAllSchemas();
-        TestHelper.execute(
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection,
                 "DROP SCHEMA IF EXISTS postgis CASCADE;",
                 "CREATE EXTENSION IF NOT EXISTS postgis SCHEMA public;",
                 "CREATE TABLE public.postgis_table (pk SERIAL, p GEOMETRY(POINT,3187), ml GEOGRAPHY(MULTILINESTRING), PRIMARY KEY(pk));",
@@ -70,7 +83,7 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
-        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        TestHelper.execute(defaultConnection, "INSERT INTO public.dummy_table DEFAULT VALUES;");
         consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
         while (true) {
             if (!consumer.isEmpty()) {
@@ -129,7 +142,7 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
     }
 
     private void executeAndWait(String statements) throws Exception {
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
     }
 }

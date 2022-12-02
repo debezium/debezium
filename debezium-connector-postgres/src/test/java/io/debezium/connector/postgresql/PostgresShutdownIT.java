@@ -40,7 +40,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
 
     /*
      * Specific tests that need to extend the initial DDL set should do it in a form of
-     * TestHelper.execute(SETUP_TABLES_STMT + ADDITIONAL_STATEMENTS)
+     * TestHelper.execute(defaultConnection, SETUP_TABLES_STMT + ADDITIONAL_STATEMENTS)
      */
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresShutdownIT.class);
@@ -76,8 +76,8 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         postgresContainer.start();
         oldContainerPort = System.getProperty("database.port", "5432");
         System.setProperty("database.port", String.valueOf(postgresContainer.getMappedPort(5432)));
-        try {
-            TestHelper.dropAllSchemas();
+        try (PostgresConnection connection = TestHelper.create()) {
+            TestHelper.dropAllSchemas(connection);
         }
         catch (SQLException exception) {
             throw new RuntimeException(exception);
@@ -95,11 +95,13 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-2617")
     public void shouldStopOnPostgresFastShutdown() throws Exception {
-        TestHelper.execute(SETUP_TABLES_STMT);
-        final int recordCount = 100;
+        try (PostgresConnection connection = TestHelper.create()) {
+            TestHelper.execute(connection, SETUP_TABLES_STMT);
+            final int recordCount = 100;
 
-        for (int i = 0; i < recordCount - 1; i++) {
-            TestHelper.execute(INSERT_STMT);
+            for (int i = 0; i < recordCount - 1; i++) {
+                TestHelper.execute(connection, INSERT_STMT);
+            }
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))

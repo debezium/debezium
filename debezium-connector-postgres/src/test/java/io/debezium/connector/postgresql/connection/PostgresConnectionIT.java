@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.postgresql.jdbc.PgConnection;
@@ -37,6 +39,18 @@ import io.debezium.util.Testing;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresConnectionIT {
+
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
 
     @After
     public void after() {
@@ -95,7 +109,7 @@ public class PostgresConnectionIT {
         String statement = "DROP SCHEMA IF EXISTS public CASCADE;" +
                 "CREATE SCHEMA public;" +
                 "CREATE TABLE test(pk serial, PRIMARY KEY (pk));";
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
         try (PostgresConnection connection = TestHelper.create()) {
             assertEquals(ServerInfo.ReplicaIdentity.DEFAULT, connection.readReplicaIdentityInfo(TableId.parse("public.test")));
         }

@@ -13,11 +13,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.Signal;
@@ -32,9 +35,21 @@ public class SignalsIT extends AbstractConnectorTest {
             "CREATE TABLE s1.debezium_signal (id varchar(32), type varchar(32), data varchar(2048));" +
             INSERT_STMT;
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
         initializeConnectorTestFramework();
     }
 
@@ -42,7 +57,7 @@ public class SignalsIT extends AbstractConnectorTest {
     public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
     }
 
     @Test
@@ -51,7 +66,7 @@ public class SignalsIT extends AbstractConnectorTest {
         final LogInterceptor logInterceptor = new LogInterceptor(Signal.class);
 
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(defaultConnection, SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
@@ -59,17 +74,17 @@ public class SignalsIT extends AbstractConnectorTest {
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
+        TestHelper.waitForDefaultReplicationSlotBeActive(defaultConnection);
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
         // insert and verify a new record
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute(defaultConnection, INSERT_STMT);
 
         // Insert the signal record
-        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')");
+        TestHelper.execute(defaultConnection, "INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')");
 
         final SourceRecords records = consumeRecordsByTopic(2);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
@@ -82,24 +97,24 @@ public class SignalsIT extends AbstractConnectorTest {
         final LogInterceptor logInterceptor = new LogInterceptor(Signal.class);
 
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(defaultConnection, SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
+        TestHelper.waitForDefaultReplicationSlotBeActive(defaultConnection);
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
         // Insert the signal record
-        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message\"}')");
+        TestHelper.execute(defaultConnection, "INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message\"}')");
 
         // insert and verify a new record
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute(defaultConnection, INSERT_STMT);
 
         final SourceRecords records = consumeRecordsByTopic(2);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
@@ -111,7 +126,7 @@ public class SignalsIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(defaultConnection, SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
@@ -119,17 +134,17 @@ public class SignalsIT extends AbstractConnectorTest {
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
+        TestHelper.waitForDefaultReplicationSlotBeActive(defaultConnection);
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
         // insert and verify a new record
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute(defaultConnection, INSERT_STMT);
 
         // Insert the signal record - add 'aa' column to PK fields
-        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'schema-changes', '{\"database\": \"postgres\", \"changes\": [{\n"
+        TestHelper.execute(defaultConnection, "INSERT INTO s1.debezium_signal VALUES('1', 'schema-changes', '{\"database\": \"postgres\", \"changes\": [{\n"
                 + "  \"type\" : \"ALTER\",\n"
                 + "  \"id\" : \"\\\"s1\\\".\\\"a\\\"\",\n"
                 + "  \"table\" : {\n"
@@ -165,7 +180,7 @@ public class SignalsIT extends AbstractConnectorTest {
                 + "  }\n"
                 + "}]}')");
 
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute(defaultConnection, INSERT_STMT);
 
         final SourceRecords records = consumeRecordsByTopic(3);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(3);
