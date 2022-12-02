@@ -105,6 +105,7 @@ public class VerifyRecord {
             config.put("apicurio.registry.url", APICURIO_URL);
             config.put("apicurio.registry.auto-register", true);
             config.put("apicurio.registry.find-latest", true);
+            config.put("apicurio.registry.check-period-ms", 1000);
         }
         else {
             config.put("schema.registry.url", "http://fake-url");
