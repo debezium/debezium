@@ -164,7 +164,7 @@ To snapshot just the content of the `products` {data-collection} where `color=bl
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additonal-condition":"color=blue"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue"}');
 ----
 
 * `additional-condition` can be used to pass condition based on multiple columns.
@@ -172,7 +172,7 @@ Using the same `products` {data-collection}, to snapshot content of the `product
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additonal-condition":"color=blue AND brand=foo"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND brand=foo"}');
 ----
 endif::[]
 
