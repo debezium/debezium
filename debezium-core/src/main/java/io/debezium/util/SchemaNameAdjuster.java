@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.schema.UnicodeReplacementFunction;
+import io.debezium.spi.common.ReplacementFunction;
 
 /**
  * A adjuster for the names of change data message schemas. Currently, this solely implements the rules required for
@@ -48,21 +50,6 @@ public interface SchemaNameAdjuster {
      * @return the valid fullname for Avro; never null
      */
     String adjust(String proposedName);
-
-    /**
-     * Function used to determine the replacement for a character that is not valid per Avro rules.
-     */
-    @FunctionalInterface
-    @ThreadSafe
-    interface ReplacementFunction {
-        /**
-         * Determine the replacement string for the invalid character.
-         *
-         * @param invalid the invalid character
-         * @return the replacement string; may not be null
-         */
-        String replace(char invalid);
-    }
 
     /**
      * Function used to report that an original value was replaced with an Avro-compatible string.
@@ -127,16 +114,7 @@ public interface SchemaNameAdjuster {
 
     SchemaNameAdjuster AVRO = create();
 
-    /**
-     * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
-     * with a valid fullname and throws an exception. This method replaces all invalid characters with the underscore character
-     * ('_').
-     *
-     * @return the validator; never null
-     */
-    static SchemaNameAdjuster avroAdjuster() {
-        return AVRO;
-    }
+    SchemaNameAdjuster AVRO_UNICODE = create(new UnicodeReplacementFunction());
 
     /**
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
@@ -144,7 +122,14 @@ public interface SchemaNameAdjuster {
      * replaces all invalid characters with the underscore character ('_').
      */
     static SchemaNameAdjuster create() {
-        return create((original, replacement, conflict) -> {
+        return create(ReplacementFunction.UNDERSCORE_REPLACEMENT);
+    }
+
+    /**
+     * This method replaces all invalid characters with {@link ReplacementFunction}
+     */
+    static SchemaNameAdjuster create(ReplacementFunction function) {
+        return create(function, (original, replacement, conflict) -> {
             String msg = "The Kafka Connect schema name '" + original +
                     "' is not a valid Avro schema name and its replacement '" + replacement +
                     "' conflicts with another different schema '" + conflict + "'";
@@ -156,10 +141,11 @@ public interface SchemaNameAdjuster {
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname. This method replaces all invalid characters with the underscore character ('_').
      *
+     * @param function the replacement function
      * @param uponConflict the function to be called when there is a conflict and after that conflict is logged; may be null
      * @return the validator; never null
      */
-    static SchemaNameAdjuster create(ReplacementOccurred uponConflict) {
+    static SchemaNameAdjuster create(ReplacementFunction function, ReplacementOccurred uponConflict) {
         ReplacementOccurred handler = (original, replacement, conflictsWith) -> {
             if (conflictsWith != null) {
                 LOGGER.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
@@ -173,7 +159,7 @@ public interface SchemaNameAdjuster {
                         replacement);
             }
         };
-        return create("_", handler.firstTimeOnly());
+        return (original) -> validFullname(original, function, handler.firstTimeOnly());
     }
 
     /**
@@ -202,18 +188,6 @@ public interface SchemaNameAdjuster {
     }
 
     /**
-     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
-     * fullname is seen and replaced with a valid fullname.
-     *
-     * @param function the replacement function
-     * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the adjuster; never null
-     */
-    static SchemaNameAdjuster create(ReplacementFunction function, ReplacementOccurred uponReplacement) {
-        return (original) -> validFullname(original, function, uponReplacement);
-    }
-
-    /**
      * Determine if the supplied string is a valid Avro namespace.
      *
      * @param fullname the name to be used as an Avro fullname; may not be null
@@ -224,38 +198,16 @@ public interface SchemaNameAdjuster {
             return true;
         }
         char c = fullname.charAt(0);
-        if (!isValidFullnameFirstCharacter(c)) {
+        if (!ReplacementFunction.UNDERSCORE_REPLACEMENT.isValidFirstCharacter(c)) {
             return false;
         }
         for (int i = 1; i != fullname.length(); ++i) {
             c = fullname.charAt(i);
-            if (!isValidFullnameNonFirstCharacter(c)) {
+            if (!ReplacementFunction.UNDERSCORE_REPLACEMENT.isValidNonFirstCharacter(c)) {
                 return false;
             }
         }
         return true;
-    }
-
-    /**
-     * Determine if the supplied character is a valid first character for Avro fullnames.
-     *
-     * @param c the character
-     * @return {@code true} if the character is a valid first character of an Avro fullname, or {@code false} otherwise
-     * @see #isValidFullname(String)
-     */
-    static boolean isValidFullnameFirstCharacter(char c) {
-        return c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-    }
-
-    /**
-     * Determine if the supplied character is a valid non-first character for Avro fullnames.
-     *
-     * @param c the character
-     * @return {@code true} if the character is a valid non-first character of an Avro fullname, or {@code false} otherwise
-     * @see #isValidFullname(String)
-     */
-    static boolean isValidFullnameNonFirstCharacter(char c) {
-        return c == '.' || isValidFullnameFirstCharacter(c) || (c >= '0' && c <= '9');
     }
 
     /**
@@ -305,7 +257,7 @@ public interface SchemaNameAdjuster {
         StringBuilder sb = new StringBuilder();
         char c = proposedName.charAt(0);
         boolean changed = false;
-        if (isValidFullnameFirstCharacter(c)) {
+        if (replacement.isValidFirstCharacter(c)) {
             sb.append(c);
         }
         else {
@@ -314,7 +266,7 @@ public interface SchemaNameAdjuster {
         }
         for (int i = 1; i != proposedName.length(); ++i) {
             c = proposedName.charAt(i);
-            if (isValidFullnameNonFirstCharacter(c)) {
+            if (replacement.isValidNonFirstCharacter(c)) {
                 sb.append(c);
             }
             else {
