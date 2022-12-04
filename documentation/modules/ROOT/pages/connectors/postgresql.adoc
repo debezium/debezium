@@ -2966,6 +2966,7 @@ For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`

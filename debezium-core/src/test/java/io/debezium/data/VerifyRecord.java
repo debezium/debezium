@@ -268,8 +268,6 @@ public class VerifyRecord {
      * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record without PK.
      *
      * @param record the source record; may not be null
-     * @param pkField the single field defining the primary key of the struct; may not be null
-     * @param pk the expected integer value of the primary key in the struct
      */
     public static void isValidUpdate(SourceRecord record) {
         isValidUpdate(record, false);
@@ -293,8 +291,6 @@ public class VerifyRecord {
      * matches the expected value.
      *
      * @param record the source record; may not be null
-     * @param pkField the single field defining the primary key of the struct; may not be null
-     * @param pk the expected integer value of the primary key in the struct
      */
     public static void isValidDelete(SourceRecord record) {
         isValidDelete(record, false);
@@ -1261,7 +1257,7 @@ public class VerifyRecord {
     /**
      * Sets the version of a passed schema to a new value.
      *
-     * @param object the value with schema to be updated
+     * @param obj the value with schema to be updated
      * @param version the target version value
      * @return the new value with the same schema but updated version
      */

@@ -21,18 +21,9 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 @Incubating
 public abstract class AbstractUnicodeTopicNamingStrategy extends AbstractTopicNamingStrategy<DataCollectionId> {
 
-    private static final ReplacementFunction UNICODE_REPLACEMENT = c -> {
-        String hex = Integer.toHexString(c);
-        if (hex.length() <= 2) {
-            hex = "00" + hex;
-        }
-        // Use underscore as escape sequence instead of backslash
-        return "_u" + hex;
-    };
-
     public AbstractUnicodeTopicNamingStrategy(Properties props) {
         super(props);
-        replacement = UNICODE_REPLACEMENT;
+        replacement = new UnicodeReplacementFunction();
     }
 
     // The underscore is an escape sequence like backslash in Java, so need to convert it to corresponding unicode.

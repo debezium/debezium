@@ -19,8 +19,6 @@ import io.debezium.spi.schema.DataCollectionId;
 @Incubating
 public interface TopicNamingStrategy<I extends DataCollectionId> {
 
-    String REPLACEMENT_CHAR = "_";
-
     int MAX_NAME_LENGTH = 249;
 
     void configure(Properties props);
@@ -78,22 +76,7 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
         boolean augment(I id, S schema, R struct);
     }
 
-    /**
-     * Function used to determine the replacement for a character that is not valid per Kafka topic naming strategies.
-     */
-    interface ReplacementFunction {
-        /**
-         * Determine the replacement string for the invalid character.
-         *
-         * @param invalid the invalid character
-         * @return the replacement string; may not be null
-         */
-        String replace(char invalid);
-    }
-
     TopicSchemaAugment NO_SCHEMA_OP = schemaBuilder -> false;
 
     TopicValueAugment NO_VALUE_OP = (id, schema, struct) -> false;
-
-    ReplacementFunction DEFAULT_REPLACEMENT_OP = c -> REPLACEMENT_CHAR;
 }

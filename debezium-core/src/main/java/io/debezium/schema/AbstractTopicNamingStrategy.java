@@ -18,6 +18,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.spi.common.ReplacementFunction;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -112,7 +113,7 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
         // SqlServer support the multi partition mode
         multiPartitionMode = props.get(CommonConnectorConfig.MULTI_PARTITION_MODE) == null ? false
                 : Boolean.parseBoolean(props.get(CommonConnectorConfig.MULTI_PARTITION_MODE).toString());
-        replacement = DEFAULT_REPLACEMENT_OP;
+        replacement = ReplacementFunction.UNDERSCORE_REPLACEMENT;
     }
 
     @Override
