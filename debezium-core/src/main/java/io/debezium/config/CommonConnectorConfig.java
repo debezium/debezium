@@ -261,7 +261,12 @@ public abstract class CommonConnectorConfig {
         /**
          * Adjust names for compatibility with Avro
          */
-        AVRO("avro");
+        AVRO("avro"),
+
+        /**
+         * Adjust names for compatibility with Avro, replace invalid character to corresponding unicode
+         */
+        AVRO_UNICODE("avro_unicode");
 
         private final String value;
 
@@ -275,10 +280,14 @@ public abstract class CommonConnectorConfig {
         }
 
         public SchemaNameAdjuster createAdjuster() {
-            if (this == SchemaNameAdjustmentMode.AVRO) {
-                return SchemaNameAdjuster.create();
+            switch (this) {
+                case AVRO:
+                    return SchemaNameAdjuster.AVRO;
+                case AVRO_UNICODE:
+                    return SchemaNameAdjuster.AVRO_UNICODE;
+                default:
+                    return SchemaNameAdjuster.NO_OP;
             }
-            return SchemaNameAdjuster.NO_OP;
         }
 
         /**

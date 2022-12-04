@@ -2885,6 +2885,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`

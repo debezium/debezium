@@ -1324,6 +1324,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
 |[[vitess-property-snapshot-mode]]<<vitess-property-snapshot-mode,`+snapshot.mode+`>>
 |initial
