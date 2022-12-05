@@ -86,6 +86,7 @@
                 <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                 <maven.home>${maven.home}</maven.home>
               </systemPropertyVariables>
+              <runOrder>${runOrder}</runOrder>
             </configuration>
           </execution>
         </executions>

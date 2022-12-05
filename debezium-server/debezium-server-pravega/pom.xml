@@ -141,6 +141,7 @@
                                 <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
                                 <debezium.sink.pravega.transaction>false</debezium.sink.pravega.transaction>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </execution>
                     <execution>
@@ -154,6 +155,7 @@
                                 <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
                                 <debezium.sink.pravega.transaction>true</debezium.sink.pravega.transaction>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </execution>
                     <execution>
