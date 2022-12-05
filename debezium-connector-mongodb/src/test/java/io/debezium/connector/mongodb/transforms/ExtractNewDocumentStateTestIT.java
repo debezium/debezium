@@ -26,7 +26,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
 import org.bson.types.ObjectId;
@@ -272,9 +271,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         validate(transformed);
         final Struct value = ((Struct) transformed.value()).getStruct("data");
 
-        Assertions.assertThat(value.getString("_ref")).isEqualTo("a2");
-        Assertions.assertThat(value.getInt32("_id")).isEqualTo(4);
-        Assertions.assertThat(value.getString("_db")).isEqualTo("b2");
+        assertThat(value.getString("_ref")).isEqualTo("a2");
+        assertThat(value.getInt32("_id")).isEqualTo(4);
+        assertThat(value.getString("_db")).isEqualTo("b2");
     }
 
     @Test
@@ -306,8 +305,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
         validate(transformed);
         final Struct metric = ((Struct) transformed.value()).getStruct("metrics").getStruct("metric__fct");
-        Assertions.assertThat(metric.getInt32("min")).isEqualTo(0);
-        Assertions.assertThat(metric.getInt32("max")).isEqualTo(1);
+        assertThat(metric.getInt32("min")).isEqualTo(0);
+        assertThat(metric.getInt32("max")).isEqualTo(1);
     }
 
     @Test

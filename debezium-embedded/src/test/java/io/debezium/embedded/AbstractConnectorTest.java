@@ -55,7 +55,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -1110,12 +1109,12 @@ public abstract class AbstractConnectorTest implements Testing {
         final Struct beginKey = (Struct) record.key();
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
 
-        Assertions.assertThat(begin.getString("status")).isEqualTo("BEGIN");
-        Assertions.assertThat(begin.getInt64("event_count")).isNull();
+        assertThat(begin.getString("status")).isEqualTo("BEGIN");
+        assertThat(begin.getInt64("event_count")).isNull();
         final String txId = begin.getString("id");
-        Assertions.assertThat(beginKey.getString("id")).isEqualTo(txId);
+        assertThat(beginKey.getString("id")).isEqualTo(txId);
 
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(txId);
+        assertThat(offset.get("transaction_id")).isEqualTo(txId);
         return txId;
     }
 
@@ -1125,16 +1124,15 @@ public abstract class AbstractConnectorTest implements Testing {
         final Struct endKey = (Struct) record.key();
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
 
-        Assertions.assertThat(end.getString("status")).isEqualTo("END");
-        Assertions.assertThat(end.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
-        Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getString("status")).isEqualTo("END");
+        assertThat(end.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
+        assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
 
-        Assertions
-                .assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
-                        .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
-                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+        assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
+                .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
+                        .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
     @SuppressWarnings("unchecked")
@@ -1142,10 +1140,10 @@ public abstract class AbstractConnectorTest implements Testing {
         final Struct change = ((Struct) record.value()).getStruct("transaction");
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
 
-        Assertions.assertThat(change.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
-        Assertions.assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
-        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+        assertThat(change.getString("id")).isEqualTo(expectedTxId);
+        assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
+        assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
     public static int waitTimeForRecords() {
@@ -1166,7 +1164,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
                         .getAttribute(getSnapshotMetricsObjectName(connector, server), event));

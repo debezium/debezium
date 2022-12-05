@@ -20,7 +20,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -374,7 +373,7 @@ public class KafkaSchemaHistoryTest {
                 .build();
 
         final Map<String, ConfigValue> issues = config.validate(KafkaSchemaHistory.ALL_FIELDS);
-        Assertions.assertThat(issues.keySet()).isEqualTo(Collect.unmodifiableSet(
+        assertThat(issues.keySet()).isEqualTo(Collect.unmodifiableSet(
                 "schema.history.internal.name",
                 "schema.history.internal.connector.class",
                 "schema.history.internal.kafka.topic",

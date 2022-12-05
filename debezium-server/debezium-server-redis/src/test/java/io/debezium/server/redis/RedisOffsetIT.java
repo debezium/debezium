@@ -5,9 +5,10 @@
  */
 package io.debezium.server.redis;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Map;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -43,7 +44,7 @@ public class RedisOffsetIT {
         TestUtils.awaitStreamLengthGte(jedis, STREAM_NAME, MESSAGE_COUNT);
 
         Map<String, String> redisOffsets = jedis.hgetAll(OFFSETS_HASH_NAME);
-        Assertions.assertThat(redisOffsets.size() > 0).isTrue();
+        assertThat(redisOffsets.size() > 0).isTrue();
     }
 
     /**
@@ -91,7 +92,7 @@ public class RedisOffsetIT {
 
         Map<String, String> redisOffsets = jedis.hgetAll(OFFSETS_HASH_NAME);
         jedis.close();
-        Assertions.assertThat(redisOffsets.size() > 0).isTrue();
+        assertThat(redisOffsets.size() > 0).isTrue();
     }
 
 }

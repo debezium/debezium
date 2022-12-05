@@ -47,7 +47,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -363,7 +362,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(recordCount);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
     }
 
     @Test
@@ -384,7 +383,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(recordCount);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
     }
 
     @Test
@@ -1271,7 +1270,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecord record = records.get(0);
         VerifyRecord.isValidInsert(record, PK_FIELD, 1);
         final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
-        Assertions.assertThat(isbn).isEqualTo("0-393-04002-X");
+        assertThat(isbn).isEqualTo("0-393-04002-X");
 
         TestHelper.assertNoOpenTransactions();
     }
@@ -1365,7 +1364,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         // Theoretically the LSN should change for each record but in reality there can be
         // unfortunate timings so let's suppose the change will happen in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+        assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
     @Test
@@ -1390,7 +1389,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         final SourceRecords firstRecords = consumeDmlRecordsByTopic(1);
         assertThat(firstRecords.topics().size()).isEqualTo(2);
         assertThat(firstRecords.recordsForTopic(txTopic).size()).isGreaterThanOrEqualTo(2);
-        Assertions.assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
+        assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
         stopConnector();
         assertConnectorNotRunning();
 
@@ -1422,7 +1421,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         // Theoretically the LSN should change for each record but in reality there can be
         // unfortunate timings so let's suppose the change will happen in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+        assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
     @Test
@@ -2133,14 +2132,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(2);
         records.recordsForTopic("test_server.s1.a").forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
-            Assertions.assertThat(key.get("aa")).isNotNull();
+            assertThat(key.get(PK_FIELD)).isNotNull();
+            assertThat(key.get("aa")).isNotNull();
         });
         records.recordsForTopic("test_server.s2.a").forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
-            Assertions.assertThat(key.get("pk")).isNotNull();
-            Assertions.assertThat(key.schema().field("aa")).isNull();
+            assertThat(key.get(PK_FIELD)).isNotNull();
+            assertThat(key.get("pk")).isNotNull();
+            assertThat(key.schema().field("aa")).isNull();
         });
 
         stopConnector();

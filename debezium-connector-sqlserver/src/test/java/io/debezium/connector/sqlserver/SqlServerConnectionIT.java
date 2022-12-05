@@ -6,6 +6,8 @@
 
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -20,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
@@ -445,7 +446,7 @@ public class SqlServerConnectionIT {
             TestHelper.enableTableCdc(connection, "testTable");
 
             // sa user should have access to CDC table
-            Assertions.assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1)).isTrue();
+            assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1)).isTrue();
         }
 
         // Re-connect with the newly created user
@@ -453,7 +454,7 @@ public class SqlServerConnectionIT {
                 TestHelper.jdbcConfig("test_user", "Password!"))) {
             // This user shouldn't have access to CDC table
             connection.execute("USE testDB1");
-            Assertions.assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1)).isFalse();
+            assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1)).isFalse();
         }
     }
 
@@ -462,7 +463,7 @@ public class SqlServerConnectionIT {
     public void shouldConnectToASingleDatabase() throws Exception {
         TestHelper.createTestDatabase();
         try (SqlServerConnection connection = TestHelper.testConnection()) {
-            Assertions.assertThat(connection.connection().getCatalog()).isEqualTo(TestHelper.TEST_DATABASE_1);
+            assertThat(connection.connection().getCatalog()).isEqualTo(TestHelper.TEST_DATABASE_1);
         }
     }
 
@@ -471,7 +472,7 @@ public class SqlServerConnectionIT {
     public void shouldNotConnectToAnyOfMultipleDatabase() throws Exception {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         try (SqlServerConnection connection = TestHelper.multiPartitionTestConnection()) {
-            Assertions.assertThat(connection.connection().getCatalog()).isEqualTo("master");
+            assertThat(connection.connection().getCatalog()).isEqualTo("master");
         }
     }
 
@@ -496,7 +497,7 @@ public class SqlServerConnectionIT {
 
     private void assertColumnHasNotDefaultValue(Table table, String columnName) {
         Column column = table.columnWithName(columnName);
-        Assertions.assertThat(column.hasDefaultValue()).isFalse();
+        assertThat(column.hasDefaultValue()).isFalse();
     }
 
     private void assertColumnHasDefaultValue(Table table, String columnName, Object expectedValue, TableSchemaBuilder tableSchemaBuilder) {
@@ -507,16 +508,16 @@ public class SqlServerConnectionIT {
         Schema columnSchema = schema.getEnvelopeSchema().schema().field("after").schema().field(columnName).schema();
 
         Column column = table.columnWithName(columnName);
-        Assertions.assertThat(column.hasDefaultValue()).isTrue();
-        Assertions.assertThat(columnSchema.defaultValue()).isEqualTo(expectedValue);
+        assertThat(column.hasDefaultValue()).isTrue();
+        assertThat(columnSchema.defaultValue()).isEqualTo(expectedValue);
         if (expectedValue instanceof BigDecimal) {
             // safe cast as we know the expectedValue and column.defaultValue are equal
             BigDecimal columnValue = (BigDecimal) columnSchema.defaultValue();
             BigDecimal expectedBigDecimal = (BigDecimal) expectedValue;
-            Assertions.assertThat(column.scale().isPresent()).isTrue();
+            assertThat(column.scale().isPresent()).isTrue();
             int columnScale = column.scale().get();
-            Assertions.assertThat(columnScale).isEqualTo(columnValue.scale());
-            Assertions.assertThat(columnValue.scale()).isEqualTo(expectedBigDecimal.scale());
+            assertThat(columnScale).isEqualTo(columnValue.scale());
+            assertThat(columnValue.scale()).isEqualTo(expectedBigDecimal.scale());
         }
     }
 

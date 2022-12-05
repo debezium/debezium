@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -27,7 +29,6 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
@@ -189,7 +190,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
-                Assertions.assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
+                assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
                         .isLessThanOrEqualTo(MAXIMUM_NO_RECORDS_CONSUMES);
                 continue;
             }
@@ -212,7 +213,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             }
         }
 
-        Assertions.assertThat(dbChanges).hasSize(recordCount);
+        assertThat(dbChanges).hasSize(recordCount);
         return dbChanges;
     }
 
@@ -365,7 +366,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -381,7 +382,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -409,7 +410,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -441,7 +442,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -490,7 +491,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -511,7 +512,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -545,7 +546,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -574,7 +575,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         // Initiate a schema change to the table immediately before the adhoc-snapshot
@@ -589,7 +590,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -602,7 +603,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -626,7 +627,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Stopping incremental snapshot")).isTrue();
 
         // stop the connector
@@ -635,7 +636,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -654,7 +655,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -678,7 +679,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
 
         // stop the connector
@@ -687,7 +688,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -706,7 +707,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -722,13 +723,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(1);
         final String tableToSnapshot = tableNames.get(0);
@@ -757,7 +758,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -773,13 +774,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(0);
         final String tableToSnapshot = tableNames.get(1);
@@ -808,7 +809,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -836,7 +837,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         stopConnector();
@@ -877,7 +878,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         if ((expectedRecordCount - beforeResume) > 0) {
             Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
             for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-                Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+                assertThat(dbChanges).contains(entry(i + 1, i));
             }
         }
     }

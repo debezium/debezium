@@ -5,9 +5,10 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Optional;
 
-import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -66,10 +67,10 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
+        assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo(
+        assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) ORDER BY \"pk1\" LIMIT 1024");
     }
 
@@ -88,11 +89,11 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo")))
+        assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo(
+        assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) AND \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
     }
 
@@ -115,10 +116,10 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+        assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo(
+        assertThat(source.buildChunkQuery(table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
@@ -141,11 +142,11 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo")))
+        assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
-        Assertions.assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo(
+        assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
@@ -160,7 +161,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
-        Assertions.assertThat(source.buildMaxPrimaryKeyQuery(table, Optional.empty()))
+        assertThat(source.buildMaxPrimaryKeyQuery(table, Optional.empty()))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" DESC, \"pk2\" DESC LIMIT 1");
     }
 
@@ -175,7 +176,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
-        Assertions.assertThat(source.buildMaxPrimaryKeyQuery(table, Optional.of("\"val1\"=foo")))
+        assertThat(source.buildMaxPrimaryKeyQuery(table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" DESC, \"pk2\" DESC LIMIT 1");
     }
 
@@ -191,7 +192,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         source.setContext(context);
         String actualProjection = source.buildChunkQuery(createTwoPrimaryKeysTable(), Optional.empty());
         String expectedProjection = "SELECT \"pk1\", \"pk2\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\" LIMIT 1024";
-        Assertions.assertThat(actualProjection).isEqualTo(expectedProjection);
+        assertThat(actualProjection).isEqualTo(expectedProjection);
     }
 
     @Test
@@ -206,7 +207,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         source.setContext(context);
         String actualProjection = source.buildChunkQuery(createTwoPrimaryKeysTable(), Optional.empty());
         String expectedProjection = "SELECT \"pk1\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\" LIMIT 1024";
-        Assertions.assertThat(actualProjection).isEqualTo(expectedProjection);
+        assertThat(actualProjection).isEqualTo(expectedProjection);
     }
 
     private Table createTwoPrimaryKeysTable() {

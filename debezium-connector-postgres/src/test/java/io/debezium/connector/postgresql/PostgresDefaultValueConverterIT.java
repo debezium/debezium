@@ -14,7 +14,6 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +57,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
         final SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(1);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(1);
 
         final SourceRecord sourceRecord = records.allRecordsInOrder().get(0);
         assertDefaultValueChangeRecord(sourceRecord);
@@ -78,7 +77,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         createTableAndInsertData();
 
         final SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(1);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(1);
 
         final SourceRecord sourceRecord = records.allRecordsInOrder().get(0);
         assertDefaultValueChangeRecord(sourceRecord);
@@ -144,26 +143,26 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
     private void assertDefaultValueChangeRecord(SourceRecord sourceRecord) {
         final Schema valueSchema = sourceRecord.valueSchema();
 
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dint")).isNull();
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc1")).isNull();
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc2")).isEqualTo("NULL");
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc3")).isEqualTo("MYVALUE");
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc4")).isEqualTo("NULL");
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc5")).isEqualTo("NULL::character varying");
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc6")).isNull();
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt1")).isNotNull();
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dt2")).isNotNull();
-        Assertions.assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt3")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dint")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc1")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc2")).isEqualTo("NULL");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc3")).isEqualTo("MYVALUE");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc4")).isEqualTo("NULL");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc5")).isEqualTo("NULL::character varying");
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getString("dvc6")).isNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt1")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt32("dt2")).isNotNull();
+        assertThat(((Struct) sourceRecord.value()).getStruct("after").getInt64("dt3")).isNotNull();
 
-        Assertions.assertThat(valueSchema.field("after").schema().field("dint").schema().defaultValue()).isNull();
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc1").schema().defaultValue()).isNull();
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc2").schema().defaultValue()).isEqualTo("NULL");
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc3").schema().defaultValue()).isEqualTo("MYVALUE");
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc4").schema().defaultValue()).isEqualTo("NULL");
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc5").schema().defaultValue()).isEqualTo("NULL::character varying");
-        Assertions.assertThat(valueSchema.field("after").schema().field("dvc6").schema().defaultValue()).isNull();
-        Assertions.assertThat(valueSchema.field("after").schema().field("dt1").schema().defaultValue()).isEqualTo(0L);
-        Assertions.assertThat(valueSchema.field("after").schema().field("dt2").schema().defaultValue()).isEqualTo(0);
-        Assertions.assertThat(valueSchema.field("after").schema().field("dt3").schema().defaultValue()).isEqualTo(0L);
+        assertThat(valueSchema.field("after").schema().field("dint").schema().defaultValue()).isNull();
+        assertThat(valueSchema.field("after").schema().field("dvc1").schema().defaultValue()).isNull();
+        assertThat(valueSchema.field("after").schema().field("dvc2").schema().defaultValue()).isEqualTo("NULL");
+        assertThat(valueSchema.field("after").schema().field("dvc3").schema().defaultValue()).isEqualTo("MYVALUE");
+        assertThat(valueSchema.field("after").schema().field("dvc4").schema().defaultValue()).isEqualTo("NULL");
+        assertThat(valueSchema.field("after").schema().field("dvc5").schema().defaultValue()).isEqualTo("NULL::character varying");
+        assertThat(valueSchema.field("after").schema().field("dvc6").schema().defaultValue()).isNull();
+        assertThat(valueSchema.field("after").schema().field("dt1").schema().defaultValue()).isEqualTo(0L);
+        assertThat(valueSchema.field("after").schema().field("dt2").schema().defaultValue()).isEqualTo(0);
+        assertThat(valueSchema.field("after").schema().field("dt3").schema().defaultValue()).isEqualTo(0L);
     }
 }

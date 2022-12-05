@@ -28,7 +28,6 @@ import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -628,15 +627,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(9);
 
-        Assertions.assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
-        Assertions.assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
+        assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
+        assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
+        assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
     }
 
     @Test
@@ -665,17 +664,17 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
 
         parser.parse("ALTER TABLE mytable DROP COLUMN id", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEmpty();
-        Assertions.assertThat(table.primaryKeyColumns()).isEmpty();
+        assertThat(table.primaryKeyColumnNames()).isEmpty();
+        assertThat(table.primaryKeyColumns()).isEmpty();
 
         parser.parse("ALTER TABLE mytable ADD PRIMARY KEY(id2)", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
-        Assertions.assertThat(table.primaryKeyColumns()).hasSize(1);
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
+        assertThat(table.primaryKeyColumns()).hasSize(1);
     }
 
     @Test

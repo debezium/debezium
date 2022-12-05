@@ -5,6 +5,8 @@
  */
 package io.debezium.server.kafka;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,7 +21,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -70,7 +71,7 @@ public class KafkaIT {
     }
 
     @AfterAll
-    static void stop() throws Exception {
+    static void stop() {
         if (consumer != null) {
             consumer.unsubscribe();
             consumer.close();
@@ -78,7 +79,7 @@ public class KafkaIT {
     }
 
     @Test
-    public void testKafka() throws Exception {
+    public void testKafka() {
         Awaitility.await().atMost(Duration.ofSeconds(KafkaTestConfigSource.waitForSeconds())).until(() -> {
             return consumer != null;
         });
@@ -94,6 +95,6 @@ public class KafkaIT {
                             .forEachRemaining(actual::add);
                     return actual.size() >= MESSAGE_COUNT;
                 });
-        Assertions.assertThat(actual.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
+        assertThat(actual.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
     }
 }
