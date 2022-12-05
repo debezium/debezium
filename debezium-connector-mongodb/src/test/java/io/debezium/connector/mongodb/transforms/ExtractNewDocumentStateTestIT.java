@@ -71,19 +71,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     @FixFor("DBZ-563")
     public void shouldDropTombstoneByDefault() throws InterruptedException {
         // First insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{'_id': 1, 'dataStr': 'hello', 'dataInt': 123, 'dataLong': 80000000000}"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
 
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
 
         // Test Delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
-        });
+        }
 
         // First delete record to arrive is coming from the oplog
         SourceRecord firstRecord = getRecordByOperation(Operation.DELETE);
@@ -107,7 +107,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(transformationConfig);
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             long timestamp = ZonedDateTime.of(2020, 1, 28, 10, 0, 33, 0, ZoneId.of("UTC")).toEpochSecond();
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse(
@@ -119,7 +119,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                                     + "  'dataDate': ISODate(\"2020-01-27T10:47:12.311Z\"), "
                                     + "  'dataTimestamp': Timestamp(" + timestamp + ", 1)" // seconds since epoch, operation counter within second
                                     + "}"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
 
@@ -140,10 +140,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedInsertValue.get("dataTimestamp")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 28, 10, 0, 33, 0, ZoneId.of("UTC")))));
 
         // Test update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$set': {'dataStr': 'bye'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         final SourceRecord candidateUpdateRecord = records.recordsForTopic(this.topicName()).get(0);
@@ -164,10 +164,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedUpdateValue.get("dataStr")).isEqualTo("bye");
 
         // Test Update Multiple Fields
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$set': {'newStr': 'hello', 'dataInt': 456}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
 
@@ -184,10 +184,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedMultipleUpdateValue.get("dataInt")).isEqualTo(456);
 
         // Test Update with $unset operation
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$unset': {'newStr': ''}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
 
@@ -201,10 +201,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedUnsetUpdateValue.schema().field("newStr")).isNull();
 
         // Test FullUpdate
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'dataStr': 'Hi again'}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         final SourceRecord candidateFullUpdateRecord = records.recordsForTopic(this.topicName()).get(0);
@@ -225,9 +225,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedFullUpdateValue.get("dataStr")).isEqualTo("Hi again");
 
         // Test Delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
@@ -259,10 +259,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformationConfig.put("sanitize.field.names", "true");
         transformation.configure(transformationConfig);
 
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{ '_id' : 2, 'data' : { '$ref' : 'a2', '$id' : 4, '$db' : 'b2' } }"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -294,10 +294,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 "  }" +
                 "}";
 
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse(doc));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -319,21 +319,21 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(props);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{ '_id' : 3, 'name' : 'Tim' }"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{'_id' : 3}"),
                             RawBsonDocument.parse("{'$set': {'name': 'Sally'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -367,20 +367,20 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(props);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{ '_id' : 4, 'name' : 'Sally' }"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : 4 }"));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
@@ -419,9 +419,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -476,9 +476,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("name", "Sally");
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -527,9 +527,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("name", "Tim");
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -538,10 +538,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         Document updateObj = new Document().append("$set", new Document("name", "Sally"));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -591,9 +591,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("active", false);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -604,10 +604,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("$unset", new Document().append("phone", true).append("active", false));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -642,9 +642,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("active", false);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -654,10 +654,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("$unset", new Document().append("phone", true).append("active", false));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -695,19 +695,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("_id", objId);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -746,19 +746,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("_id", objId);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
@@ -795,19 +795,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("_id", objId);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -835,19 +835,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("_id", objId);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -883,9 +883,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("name", "Tim");
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -894,10 +894,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         Document updateObj = new Document().append("$set", new Document("name", "Sally"));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -927,19 +927,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("_id", objId);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
         // delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
@@ -976,9 +976,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("name", "Tim");
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -987,10 +987,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         Document updateObj = new Document().append("$set", new Document("name", "Sally"));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1021,9 +1021,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("zipcode", "10462"));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1076,9 +1076,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("zipcode", "10462"));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1127,9 +1127,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("zipcode", "10462"));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1178,9 +1178,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("zipcode", "10462"));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1194,10 +1194,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         "address.city2.part", 3)));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1422,10 +1422,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(transformationConfig);
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{'empty_array': [] }"));
-        });
+        }
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
 
@@ -1449,9 +1449,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                 .append("c", 3);
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1461,10 +1461,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         Document updateObj = new Document().append("$set", new Document(Collect.hashMapOf("a", 22)));
 
         // update
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1533,7 +1533,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(transformationConfig);
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse(
                             "{"
@@ -1561,7 +1561,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                                     + "    ],"
                                     + "  ]"
                                     + "}"));
-        });
+        }
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
 
@@ -1629,7 +1629,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         transformation.configure(transformationConfig);
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse(
                             "{"
@@ -1639,7 +1639,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                                     + "    [7.0,8],"
                                     + "  ]"
                                     + "}"));
-        });
+        }
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
 
@@ -1691,10 +1691,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6c\"),\"f1\":{\"f2\":[{\"f3\":{}},{\"f3\":{\"f5\":5}}]}}"));
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1711,23 +1711,23 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedInsertValue.getStruct("f1").getArray("f2").size()).isEqualTo(2);
 
         // Test delete
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME)
                     .getCollection(this.getCollectionName())
                     .deleteOne(RawBsonDocument.parse("{'_id' : ObjectId('6182b1a25711ed59dd6a1d6c')}"));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
 
         // Test insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertMany(Collect.arrayListOf(
                             "{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6c\"),\"f1\":{\"f2\":[{\"f3\":[]},{\"f3\":[{\"f5\":5}]}]}}",
                             "{\"_id\":ObjectId(\"6182b1a25711ed59dd6a1d6d\"),\"f1\":{\"f2\":[{\"f3\":[]},{\"f3\":[]}]}}")
                             .stream().map(Document::parse).collect(Collectors.toList()));
-        });
+        }
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
@@ -1762,9 +1762,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("zipcode", "10462"));
 
         // insert
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1776,10 +1776,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         "name", "Mary",
                         "zipcode", "11111")));
 
-        primary().execute("update", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
-        });
+        }
 
         SourceRecords updateRecords = consumeRecordsByTopic(1);
         assertThat(updateRecords.recordsForTopic(this.topicName()).size()).isEqualTo(1);
@@ -1794,11 +1794,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
         final List<Document> documents = loadTestDocuments(pathOnClasspath);
-        primary().execute("Load JSON", client -> {
+        try (var client = connect()) {
             for (Document document : documents) {
                 client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(document);
             }
-        });
+        }
 
         final SourceRecords records = consumeRecordsByTopic(documents.size());
         assertThat(records.recordsForTopic(topicName()).size()).isEqualTo(documents.size());
@@ -1816,9 +1816,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("struct", "Morris Park Ave")
                         .append("zipcode", "10462"));
 
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(obj);
-        });
+        }
 
         final SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(topicName()).size()).isEqualTo(1);
@@ -1836,18 +1836,18 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                         .append("struct", "Morris Park Ave")
                         .append("zipcode", "10462"));
 
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(obj);
-        });
+        }
 
         final SourceRecords createRecords = consumeRecordsByTopic(1);
         assertThat(createRecords.recordsForTopic(topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
-        primary().execute("delete", client -> {
+        try (var client = connect()) {
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
             client.getDatabase(DB_NAME).getCollection(getCollectionName()).deleteOne(filter);
-        });
+        }
 
         final SourceRecords deleteRecords = consumeRecordsByTopic(2);
         assertThat(deleteRecords.recordsForTopic(topicName()).size()).isEqualTo(2);

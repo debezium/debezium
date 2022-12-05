@@ -5,11 +5,8 @@
  */
 package io.debezium.connector.mongodb.junit;
 
-import java.util.List;
+import static io.debezium.connector.mongodb.TestHelper.MONGO_VERSION;
 
-import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.MongoDbTaskContext;
-import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.junit.DatabaseVersionResolver;
 
 /**
@@ -20,12 +17,7 @@ import io.debezium.junit.DatabaseVersionResolver;
 public class MongoDbDatabaseVersionResolver implements DatabaseVersionResolver {
 
     public DatabaseVersion getVersion() {
-        Configuration config = TestHelper.getConfiguration();
-        MongoDbTaskContext context = new MongoDbTaskContext(config);
-
-        List<Integer> version = TestHelper.getVersionArray(TestHelper.primary(context), "mongo1");
-
-        return new DatabaseVersion(version.get(0), version.get(1), version.get(2));
+        return new DatabaseVersion(MONGO_VERSION.get(0), MONGO_VERSION.get(1), MONGO_VERSION.get(2));
     }
 
 }

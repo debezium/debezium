@@ -47,7 +47,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
     @Before
     public void beforeEach() {
         // Use the DB configuration to define the connector's configuration ...
-        Configuration config = TestHelper.getConfiguration().edit()
+        Configuration config = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
@@ -77,7 +77,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), DB_NAME);
+        TestHelper.cleanDatabase(mongo, DB_NAME);
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
@@ -98,7 +98,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldConsumeRecordsFromInsert() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("aggregateid", 123L)
@@ -111,7 +111,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("asset", 100000L)
                                     .append("age", 42)
                                     .append("pets", Arrays.asList("dog", "cat"))));
-        });
+        }
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -137,7 +137,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldSendEventTypeAsHeader() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("aggregateid", 123L)
@@ -147,7 +147,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("fullName", "John Doe")
                                     .append("asset", 100000L)));
-        });
+        }
 
         final Map<String, String> config = new HashMap<>();
         config.put(
@@ -177,7 +177,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldSendEventTypeAsValue() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("aggregateid", 123L)
@@ -188,7 +188,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("fullName", "John Doe")
                                     .append("asset", 100000L)
                                     .append("age", 42)));
-        });
+        }
 
         final Map<String, String> config = new HashMap<>();
         config.put(
@@ -215,7 +215,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldSupportAllFeatures() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("_id", new ObjectId("111111111111111111111111"))
@@ -231,7 +231,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                                     .append("fullName", "John Doe")
                                     .append("asset", 100000L)
                                     .append("age", 42)));
-        });
+        }
 
         final Map<String, String> config = new HashMap<>();
         config.put(MongoEventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name(), "version");
@@ -278,7 +278,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("_id", new ObjectId("000000000000000000000000"))
@@ -286,7 +286,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                             .append("aggregatetype", "Order")
                             .append("type", "OrderCreated")
                             .append("payload", null));
-        });
+        }
 
         final Map<String, String> config = new HashMap<>();
         config.put(
@@ -321,7 +321,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
     @Test
     public void shouldProduceTombstoneEventForNullPayload() throws Exception {
-        primary().execute("insert", client -> {
+        try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(new Document()
                             .append("_id", new ObjectId("000000000000000000000000"))
@@ -329,7 +329,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
                             .append("aggregatetype", "Order")
                             .append("type", "OrderCreated")
                             .append("payload", null));
-        });
+        }
 
         final Map<String, String> config = new HashMap<>();
         config.put("route.tombstone.on.empty.payload", "true");

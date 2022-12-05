@@ -23,14 +23,12 @@ import org.bson.types.ObjectId;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.util.IoUtil;
@@ -43,7 +41,7 @@ import io.debezium.util.Testing;
 public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnectorIT {
 
     private Configuration getConfig(String connectionString, boolean ssl) {
-        var properties = TestHelper.getConfiguration().asProperties();
+        var properties = TestHelper.getConfiguration(mongo).asProperties();
         properties.remove(MongoDbConnectorConfig.HOSTS.name());
 
         return Configuration.from(properties).edit()
@@ -67,7 +65,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
 
     @Test
     public void shouldConsumeAllEventsFromSingleReplicaWithMongoProtocol() throws InterruptedException {
-        shouldConsumeAllEventsFromDatabase("mongodb://localhost:27017/", false);
+        shouldConsumeAllEventsFromDatabase(mongo.getConnectionString(), false);
     }
 
     @Test
@@ -84,7 +82,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
         context = new MongoDbTaskContext(config);
 
         // Cleanup database
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // Before starting the connector, add data to the databases ...
         storeDocuments("dbit", "simpletons", "simple_objects.json");
@@ -175,8 +173,8 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
         AtomicReference<String> id = new AtomicReference<>();
-        primary().execute("create", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             coll.drop();
 
@@ -190,10 +188,10 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
             Testing.debug("Document: " + doc);
             id.set(doc.getObjectId("_id").toString());
             Testing.debug("Document ID: " + id.get());
-        });
+        }
 
-        primary().execute("update", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
             // Find the document ...
@@ -205,7 +203,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
 
             doc = coll.find().first();
             Testing.debug("Document: " + doc);
-        });
+        }
 
         // Wait until we can consume the 1 insert and 1 update ...
         SourceRecords insertAndUpdate = consumeRecordsByTopic(2);
@@ -231,12 +229,12 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
         // ---------------------------------------------------------------------------------------------------------------
         // Delete a document
         // ---------------------------------------------------------------------------------------------------------------
-        primary().execute("delete", mongo -> {
-            MongoDatabase db1 = mongo.getDatabase("dbit");
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             Document filter = Document.parse("{\"a\": 1}");
             coll.deleteOne(filter);
-        });
+        }
 
         // Wait until we can consume the 1 delete ...
         SourceRecords delete = consumeRecordsByTopic(2);
@@ -295,22 +293,14 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 
-    @Override
-    protected MongoPrimary primary() {
-        var discovery = new ReplicaSetDiscovery(context);
-        var sets = discovery.getReplicaSets();
-        var replicaSet = sets.all().get(0);
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
-    }
-
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
-        primary().execute("storing documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
-            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoDatabase db1 = client.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collectionName);
             coll.drop();
             storeDocuments(coll, pathOnClasspath);
-        });
+        }
     }
 
     protected void storeDocuments(MongoCollection<Document> collection, String pathOnClasspath) {
@@ -319,42 +309,6 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
             assertThat(doc).isNotNull();
             assertThat(doc.size()).isGreaterThan(0);
             collection.insertOne(doc, insertOptions);
-        });
-    }
-
-    protected void storeDocumentsInTx(String dbName, String collectionName, String pathOnClasspath) {
-        primary().execute("storing documents", mongo -> {
-            Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
-            MongoDatabase db1 = mongo.getDatabase(dbName);
-            MongoCollection<Document> coll = db1.getCollection(collectionName);
-            coll.drop();
-            db1.createCollection(collectionName);
-            final ClientSession session = mongo.startSession();
-
-            MongoDatabase admin = mongo.getDatabase("admin");
-            if (admin != null) {
-                int timeout = Integer.parseInt(System.getProperty("mongo.transaction.lock.request.timeout.ms", "1000"));
-                Testing.debug("Setting MongoDB transaction lock request timeout as '" + timeout + "ms'");
-                admin.runCommand(session, new Document().append("setParameter", 1).append("maxTransactionLockRequestTimeoutMillis", timeout));
-            }
-
-            session.startTransaction();
-            storeDocuments(session, coll, pathOnClasspath);
-            session.commitTransaction();
-        });
-    }
-
-    protected void storeDocuments(ClientSession session, MongoCollection<Document> collection, String pathOnClasspath) {
-        InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
-        loadTestDocuments(pathOnClasspath).forEach(doc -> {
-            assertThat(doc).isNotNull();
-            assertThat(doc.size()).isGreaterThan(0);
-            if (session == null) {
-                collection.insertOne(doc, insertOptions);
-            }
-            else {
-                collection.insertOne(session, doc, insertOptions);
-            }
         });
     }
 

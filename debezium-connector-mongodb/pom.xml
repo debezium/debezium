@@ -54,6 +54,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-testing-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
@@ -90,25 +95,16 @@
         </dependency>
     </dependencies>
     <properties>
-        <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->
-        <docker.image>mongo1,mongo-init</docker.image>
-
-        <!-- The command line args passed to each mongod service -->
-        <mongo.data.replicaset.name>rs0</mongo.data.replicaset.name>
-        <mongo.cfg.replicaset.name>cfg</mongo.cfg.replicaset.name>
-        <mongo.data.runOptions>--replSet ${mongo.data.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.data.runOptions>
-        <mongo.cfg.runOptions>--configsvr --replSet ${mongo.cfg.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.cfg.runOptions>
-        <mongo.router.runOptions>mongos --configdb ${mongo.cfg.replicaset.name}/config:27019</mongo.router.runOptions>
         <!-- 
         Set this property to 'true' in a profile to skip the integration tests and not even run the Docker containers.
         -->
         <docker.skip>false</docker.skip>
         <docker.exposeContainerInfo>docker.container</docker.exposeContainerInfo>
-        <docker.dbs>mongo:${version.mongo.server},debezium/mongo-initiator:${version.mongo.server}</docker.dbs>
-        <docker.filter>${docker.dbs}</docker.filter>
         <!-- Apicurion container properties -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <!-- Mongo test containers -->
+        <mongodb.docker.desktop.ports>27017,27018,27019</mongodb.docker.desktop.ports>
     </properties>
     <build>
         <plugins>
@@ -121,59 +117,6 @@
                     <verbose>true</verbose>
                     <!--autoPull>always</autoPull-->
                     <images>
-                        <!-- A container for the data server replica set -->
-                        <image>
-                            <name>mongo:${version.mongo.server}</name>
-                            <alias>mongo1</alias>
-                            <run>
-                                <namingStrategy>alias</namingStrategy>
-                                <cmd>${mongo.data.runOptions}</cmd>
-                                <ports>
-                                    <!-- We won't use it thru this port, but we don't want to take 27017 on docker host -->
-                                    <port>27017:27017</port>
-                                </ports>
-                                <log>
-                                    <prefix>mongo1</prefix>
-                                    <enabled>true</enabled>
-                                    <color>yellow</color>
-                                </log>
-                                <wait>
-                                    <log>.*[Ww]aiting for connections.*27017</log> <!-- internal port, multiline matching -->
-                                    <time>30000</time> <!-- 30 seconds max -->
-                                </wait>
-                            </run>
-                            <external>
-                                <type>properties</type>
-                                <mode>override</mode>
-                            </external>
-                        </image>
-                        <!-- A container that initiates the data replica set and adds it as shard to router -->
-                        <image>
-                            <name>debezium/mongo-initiator:${version.mongo.server}</name>
-                            <run>
-                                <namingStrategy>none</namingStrategy>
-                                <env>
-                                    <VERBOSE>true</VERBOSE>
-                                    <REPLICASET>${mongo.data.replicaset.name}</REPLICASET>
-                                </env>
-                                <links>
-                                    <link>mongo1:mongo1</link>
-                                </links>
-                                <log>
-                                    <prefix>mongo-init</prefix>
-                                    <enabled>true</enabled>
-                                    <color>green</color>
-                                </log>
-                                <wait>
-                                    <exit>0</exit>
-                                    <time>30000</time> <!-- 30 seconds max -->
-                                </wait>
-                            </run>
-                            <external>
-                                <type>properties</type>
-                                <mode>override</mode>
-                            </external>
-                        </image>
                         <image>
                             <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
                             <run>
@@ -243,13 +186,12 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <connector.mongodb.hosts>${mongo.data.replicaset.name}/${docker.host.address}:27017</connector.mongodb.hosts>
-                        <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
-                        <connector.mongodb.name>mongo1</connector.mongodb.name>
                         <version.mongo.server>${version.mongo.server}</version.mongo.server>
+                        <mongodb.docker.desktop.ports>${mongodb.docker.desktop.ports}</mongodb.docker.desktop.ports>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -383,7 +325,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>

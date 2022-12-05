@@ -18,20 +18,20 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.util.Testing;
 
-public abstract class AbstractMongoIT implements Testing {
+public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
 
     protected final static Logger logger = LoggerFactory.getLogger(AbstractMongoIT.class);
 
     protected Configuration config;
     protected MongoDbTaskContext context;
-    protected ReplicaSet replicaSet;
     protected MongoPrimary primary;
+    protected ReplicaSet replicaSet;
 
     @Before
     public void beforeEach() {
         Testing.Print.disable();
         Testing.Debug.disable();
-        useConfiguration(TestHelper.getConfiguration());
+        useConfiguration(TestHelper.getConfiguration(mongo));
     }
 
     /**
