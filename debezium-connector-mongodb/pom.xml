@@ -244,6 +244,7 @@
                         <version.mongo.server>${version.mongo.server}</version.mongo.server>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

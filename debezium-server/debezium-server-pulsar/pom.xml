@@ -127,6 +127,7 @@
                         <test.type>IT</test.type>
                         <pulsar.port.native>${pulsar.port.native}</pulsar.port.native>
                     </systemProperties>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
         </plugins>

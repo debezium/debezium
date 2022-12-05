@@ -151,6 +151,7 @@
                         <test.type>IT</test.type>
                         <test.apicurio>false</test.apicurio>
                     </systemProperties>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
         </plugins>
@@ -170,6 +171,7 @@
                         <configuration>
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                         <executions>
                             <execution>
@@ -233,6 +235,7 @@
                         <configuration>
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                         <executions>
                             <execution>
@@ -296,6 +299,7 @@
                                 <test.apicurio.converter.format>json</test.apicurio.converter.format>
                                 <test.apicurio>true</test.apicurio>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -315,6 +319,7 @@
                                 <test.apicurio.converter.format>avro</test.apicurio.converter.format>
                                 <test.apicurio>true</test.apicurio>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -334,6 +339,7 @@
                                 <debezium.format.key>protobuf</debezium.format.key>
                                 <debezium.format.value>protobuf</debezium.format.value>
                             </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                     </plugin>
                 </plugins>

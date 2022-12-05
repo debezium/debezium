@@ -443,6 +443,7 @@
               <skipTests>${skipITs}</skipTests>
               <enableAssertions>true</enableAssertions>
               <trimStackTrace>false</trimStackTrace>
+              <runOrder>${runOrder}</runOrder>
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
 

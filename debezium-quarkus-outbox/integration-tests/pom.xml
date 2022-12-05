@@ -137,6 +137,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <runOrder>${runOrder}</runOrder>
+                        </configuration>
                         <executions>
                             <execution>
                                 <goals>

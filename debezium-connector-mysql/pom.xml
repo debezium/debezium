@@ -512,7 +512,7 @@
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
-                    <runOrder>alphabetical</runOrder>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
                 <executions>
                     <execution>
@@ -653,7 +653,7 @@
                                 <database.ssl.mode>disabled</database.ssl.mode>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                             </systemPropertyVariables>
-                            <runOrder>alphabetical</runOrder>
+                            <runOrder>${runOrder}</runOrder>
                         </configuration>
                         <executions>
                             <!-- First run the integration tests with the non-GTID server alone -->

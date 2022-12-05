@@ -55,6 +55,9 @@
         <!-- Skip the API checks by default. Let the modules opt in. -->
         <revapi.skip>true</revapi.skip>
 
+        <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
+        <runOrder>alphabetical</runOrder>
+
     </properties>
 
     <dependencyManagement>
