@@ -1599,7 +1599,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1636,7 +1636,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1826,7 +1826,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     private static Configuration getConfiguration(String fieldRenames, String database, String collection) {
-        Configuration.Builder builder = TestHelper.getConfiguration().edit()
+        Configuration.Builder builder = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
@@ -1847,7 +1847,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(fieldRenames, database, collection);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), database);
+        TestHelper.cleanDatabase(mongo, database);
 
         dropAndInsertDocuments(database, collection, document);
 
@@ -1868,7 +1868,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(fieldRenames, database, collection);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), database);
+        TestHelper.cleanDatabase(mongo, database);
 
         insertDocuments(database, collection, document);
 
@@ -1917,7 +1917,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         dropAndInsertDocuments(DATABASE_NAME, COLLECTION_NAME, snapshot);
 
@@ -1933,7 +1933,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);

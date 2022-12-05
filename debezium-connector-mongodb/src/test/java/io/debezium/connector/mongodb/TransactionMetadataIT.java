@@ -29,7 +29,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
     @Test
     public void transactionMetadata() throws Exception {
         Testing.Print.enable();
-        config = TestHelper.getConfiguration()
+        config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -38,9 +38,9 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
-        if (!TestHelper.transactionsSupported(primary(), "mongo1")) {
+        if (!TestHelper.transactionsSupported()) {
             return;
         }
 
@@ -81,7 +81,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
     @FixFor("DBZ-4077")
     public void transactionMetadataWithCustomTopicName() throws Exception {
         Testing.Print.enable();
-        config = TestHelper.getConfiguration()
+        config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -91,9 +91,9 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
-        if (!TestHelper.transactionsSupported(primary(), "mongo1")) {
+        if (!TestHelper.transactionsSupported()) {
             return;
         }
 

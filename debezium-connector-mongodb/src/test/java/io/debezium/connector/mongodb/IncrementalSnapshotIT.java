@@ -34,7 +34,6 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -66,12 +65,12 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config().build());
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
     @After
     public void after() {
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
     }
 
     protected Class<MongoDbConnector> connectorClass() {
@@ -79,7 +78,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     protected Configuration.Builder config() {
-        return TestHelper.getConfiguration()
+        return TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
@@ -112,7 +111,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return fullDataCollectionNames().stream().map(x -> "mongo1." + x).collect(Collectors.toList());
     }
 
-    protected void populateDataCollection(MongoPrimary connection, String dataCollectionName) {
+    protected void populateDataCollection(String dataCollectionName) {
         final Document[] documents = new Document[ROW_COUNT];
         for (int i = 0; i < ROW_COUNT; i++) {
             final Document doc = new Document();
@@ -122,22 +121,14 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         insertDocumentsInTx(DATABASE_NAME, dataCollectionName, documents);
     }
 
-    protected void populateDataCollection(MongoPrimary connection) {
-        populateDataCollection(connection, dataCollectionName());
-    }
-
-    protected void populateDataCollections(MongoPrimary connection) {
-        for (String dataCollectionName : dataCollectionNames()) {
-            populateDataCollection(connection, dataCollectionName);
-        }
-    }
-
     protected void populateDataCollection() {
-        populateDataCollection(primary());
+        populateDataCollection(dataCollectionName());
     }
 
     protected void populateDataCollections() {
-        populateDataCollections(primary());
+        for (String dataCollectionName : dataCollectionNames()) {
+            populateDataCollection(dataCollectionName);
+        }
     }
 
     protected void insertAdditionalData() {

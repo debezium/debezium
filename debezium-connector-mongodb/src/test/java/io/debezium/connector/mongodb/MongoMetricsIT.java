@@ -29,7 +29,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     @Test
     public void testLifecycle() throws Exception {
         // Setup
-        this.config = TestHelper.getConfiguration()
+        this.config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
@@ -70,14 +70,14 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     @Test
     public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
-        this.config = TestHelper.getConfiguration()
+        this.config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
         storeDocuments("dbit", "restaurants", "restaurants1.json");
 
         // start connector
@@ -112,14 +112,14 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
     @Test
     public void testStreamingOnlyMetrics() throws Exception {
         // Setup
-        this.config = TestHelper.getConfiguration()
+        this.config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
 
         // start connector
         start(MongoDbConnector.class, config);
@@ -154,7 +154,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         final String DOCUMENT_ID = "_id";
         final int NUM_RECORDS = 1_000;
 
-        this.config = TestHelper.getConfiguration()
+        this.config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
@@ -163,7 +163,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
                 .build();
         this.context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbit");
+        TestHelper.cleanDatabase(mongo, "dbit");
         final Document[] documents = new Document[NUM_RECORDS];
         for (int i = 0; i < NUM_RECORDS; i++) {
             final Document doc = new Document();
