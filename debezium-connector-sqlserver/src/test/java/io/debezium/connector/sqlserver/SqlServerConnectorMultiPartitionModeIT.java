@@ -12,7 +12,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,19 +71,19 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
         SourceRecords records = consumeRecordsByTopic(4);
 
         List<SourceRecord> tableA1 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA1.get(0), "colA", "a1");
 
         List<SourceRecord> tableB = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableB"));
-        Assertions.assertThat(tableB).hasSize(1);
+        assertThat(tableB).hasSize(1);
         assertValue(tableB.get(0), "colB", "b");
 
         List<SourceRecord> tableA2 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableA"));
-        Assertions.assertThat(tableA2).hasSize(1);
+        assertThat(tableA2).hasSize(1);
         assertValue(tableA2.get(0), "colA", "a2");
 
         List<SourceRecord> tableC = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableC"));
-        Assertions.assertThat(tableC).hasSize(1);
+        assertThat(tableC).hasSize(1);
         assertValue(tableC.get(0), "colC", "c");
 
         connection.execute(
@@ -98,11 +97,11 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
         records = consumeRecordsByTopic(2);
 
         tableA1 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA1.get(0), "colA", "a1s");
 
         tableA2 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA2.get(0), "colA", "a2s");
     }
 

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
@@ -13,7 +14,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -100,7 +100,7 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.binary_mode_test");
-        Assertions.assertThat(results).hasSize(1);
+        assertThat(results).hasSize(1);
 
         return (Struct) ((Struct) results.get(0).value()).get("after");
     }

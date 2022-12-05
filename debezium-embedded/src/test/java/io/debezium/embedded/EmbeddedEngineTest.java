@@ -41,7 +41,6 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.Callback;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -602,11 +601,11 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
-                    Integer groupCount = records.size() / NUMBER_OF_LINES;
+                    int groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (ChangeEvent<String, String> r : records) {
-                        Assertions.assertThat(r.key()).isNull();
-                        Assertions.assertThat(r.value()).startsWith("\"Generated line number ");
+                        assertThat(r.key()).isNull();
+                        assertThat(r.value()).startsWith("\"Generated line number ");
                         committer.markProcessed(r);
                     }
 

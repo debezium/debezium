@@ -12,7 +12,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,7 +76,7 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.name-adjustment");
-        Assertions.assertThat(results).hasSize(1);
+        assertThat(results).hasSize(1);
 
         return (Struct) results.get(0).value();
     }

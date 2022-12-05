@@ -5,6 +5,8 @@
  */
 package io.debezium.server.pubsub;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -15,7 +17,6 @@ import java.util.concurrent.ExecutionException;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -152,9 +153,12 @@ public class PubSubLiteIT {
     }
 
     @Test
-    public void testPubSubLite() throws Exception {
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> messages.size() >= MESSAGE_COUNT);
-        Assertions.assertThat(messages.size() >= MESSAGE_COUNT);
+    public void testPubSubLite() {
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds()))
+                .until(() -> messages.size() >= MESSAGE_COUNT);
+
+        assertThat(messages.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
     }
 
 }

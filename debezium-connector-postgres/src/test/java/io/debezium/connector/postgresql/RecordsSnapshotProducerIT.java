@@ -31,7 +31,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -426,7 +425,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         int expectedTotalCount = expectedTopicCounts.values().stream().mapToInt(Integer::intValue).sum();
 
         TestConsumer consumer = testConsumer(expectedTotalCount);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS);
 
         Map<String, Integer> actualTopicCounts = new HashMap<>();
         AtomicInteger actualTotalCount = new AtomicInteger(0);
@@ -436,7 +435,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             Struct key = (Struct) record.key();
             if (key != null) {
                 final Integer id = key.getInt32("pk");
-                Assertions.assertThat(ids).doesNotContain(id);
+                assertThat(ids).doesNotContain(id);
                 ids.add(id);
             }
 

@@ -5,12 +5,13 @@
  */
 package io.debezium.pipeline;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceConnector;
-import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -66,7 +67,7 @@ public class ErrorHandlerTest {
             Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
-            Assertions.assertThat(e instanceof RetriableException).isFalse();
+            assertThat(e instanceof RetriableException).isFalse();
         }
     }
 
@@ -92,7 +93,7 @@ public class ErrorHandlerTest {
             Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
-            Assertions.assertThat(e instanceof RetriableException).isTrue();
+            assertThat(e instanceof RetriableException).isTrue();
         }
     }
 
@@ -111,7 +112,7 @@ public class ErrorHandlerTest {
             Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
-            Assertions.assertThat(e instanceof RetriableException).isFalse();
+            assertThat(e instanceof RetriableException).isFalse();
         }
     }
 
@@ -130,7 +131,7 @@ public class ErrorHandlerTest {
             Assert.fail("Exception must be thrown");
         }
         catch (ConnectException e) {
-            Assertions.assertThat(e instanceof RetriableException).isTrue();
+            assertThat(e instanceof RetriableException).isTrue();
         }
     }
 

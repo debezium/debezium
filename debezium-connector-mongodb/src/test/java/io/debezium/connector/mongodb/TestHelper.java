@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
@@ -15,7 +16,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Struct;
-import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.Document;
@@ -129,9 +129,9 @@ public class TestHelper {
 
     public static void assertChangeStreamUpdate(ObjectId oid, Struct value, String after, List<String> removedFields,
                                                 String updatedFields) {
-        Assertions.assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
-        Assertions.assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
-        Assertions.assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
+        assertThat(value.getString("after")).isEqualTo(after.replace("<OID>", oid.toHexString()));
+        assertThat(value.getStruct("updateDescription").getString("updatedFields")).isEqualTo(updatedFields);
+        assertThat(value.getStruct("updateDescription").getArray("removedFields")).isEqualTo(removedFields);
     }
 
     public static void assertChangeStreamUpdateAsDocs(ObjectId oid, Struct value, String after,
@@ -139,27 +139,27 @@ public class TestHelper {
         Document expectedAfter = TestHelper.getDocumentWithoutLanguageVersion(after.replace("<OID>", oid.toHexString()));
         Document actualAfter = TestHelper
                 .getDocumentWithoutLanguageVersion(value.getString("after"));
-        Assertions.assertThat(actualAfter).isEqualTo(expectedAfter);
+        assertThat(actualAfter).isEqualTo(expectedAfter);
         final String actualUpdatedFields = value.getStruct("updateDescription").getString("updatedFields");
         if (actualUpdatedFields != null) {
-            Assertions.assertThat(updatedFields).isNotNull();
+            assertThat(updatedFields).isNotNull();
             try {
-                Assertions.assertThat((Object) mapper.readTree(actualUpdatedFields)).isEqualTo(mapper.readTree(updatedFields));
+                assertThat((Object) mapper.readTree(actualUpdatedFields)).isEqualTo(mapper.readTree(updatedFields));
             }
             catch (JsonProcessingException e) {
                 fail("Failed to parse JSON <" + actualUpdatedFields + "> or <" + updatedFields + ">");
             }
         }
         else {
-            Assertions.assertThat(updatedFields).isNull();
+            assertThat(updatedFields).isNull();
         }
         final List<Object> actualRemovedFields = value.getStruct("updateDescription").getArray("removedFields");
         if (actualRemovedFields != null) {
-            Assertions.assertThat(removedFields).isNotNull();
-            Assertions.assertThat(actualRemovedFields.containsAll(removedFields) && removedFields.containsAll(actualRemovedFields));
+            assertThat(removedFields).isNotNull();
+            assertThat(actualRemovedFields.containsAll(removedFields) && removedFields.containsAll(actualRemovedFields));
         }
         else {
-            Assertions.assertThat(removedFields).isNull();
+            assertThat(removedFields).isNull();
         }
     }
 }

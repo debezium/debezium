@@ -5,6 +5,8 @@
  */
 package io.debezium.server.nats.jetstream;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +14,6 @@ import java.util.List;
 
 import javax.enterprise.event.Observes;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class NatsJetStreamIT {
     protected static JetStream js;
     protected static Dispatcher d;
 
-    {
+    static {
         Testing.Files.delete(NatsJetStreamTestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(NatsJetStreamTestConfigSource.OFFSET_STORE_PATH);
     }
@@ -90,6 +91,6 @@ class NatsJetStreamIT {
     @Test
     void testNatsStreaming() throws Exception {
         Awaitility.await().atMost(Duration.ofSeconds(NatsJetStreamTestConfigSource.waitForSeconds())).until(() -> messages.size() >= MESSAGE_COUNT);
-        Assertions.assertThat(messages.size() >= MESSAGE_COUNT).isTrue();
+        assertThat(messages.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
     }
 }

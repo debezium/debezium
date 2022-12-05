@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -127,7 +126,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             final Pattern p = Pattern.compile(".*:(.*)-.*");
             final Matcher m = p.matcher(gtids);
             m.matches();
-            Assertions.assertThat(m.group(1)).isNotEqualTo("1");
+            assertThat(m.group(1)).isNotEqualTo("1");
         });
 
         stopConnector();
