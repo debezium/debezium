@@ -44,8 +44,7 @@ matrixJob('connector-debezium-sqlserver-matrix-test') {
 
     publishers {
         archiveArtifacts {
-            pattern('**/target/surefire-reports/*.xml')
-            pattern('**/target/failsafe-reports/*.xml')
+            pattern('**/archive.tar.gz')
         }
         archiveJunit('**/target/surefire-reports/*.xml')
         archiveJunit('**/target/failsafe-reports/*.xml')
@@ -54,7 +53,7 @@ matrixJob('connector-debezium-sqlserver-matrix-test') {
 
     logRotator {
         daysToKeep(7)
-        numToKeep(10)
+        numToKeep(5)
     }
     steps {
         shell('''
@@ -97,6 +96,7 @@ mkdir -p $RESULTS_PATH
 cp **/target/surefire-reports/*.xml $RESULTS_PATH
 cp **/target/failsafe-reports/*.xml $RESULTS_PATH
 rm -rf $RESULTS_PATH/failsafe-summary.xml
+tar czf archive.tar.gz $RESULTS_PATH
 
 docker login quay.io -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
 
