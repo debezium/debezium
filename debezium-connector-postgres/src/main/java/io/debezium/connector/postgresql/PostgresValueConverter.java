@@ -1132,6 +1132,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
             return toastPlaceholderString;
         }
+        if ((data instanceof List) && (((List) data).size() > 0) &&
+                (((List) data).get(0) == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE)) {
+            return Arrays.asList(toastPlaceholderString);
+        }
         return super.handleUnknownData(column, fieldDefn, data);
     }
 }
