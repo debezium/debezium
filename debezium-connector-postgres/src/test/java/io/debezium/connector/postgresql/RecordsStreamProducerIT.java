@@ -1601,15 +1601,15 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-4941")
     public void shouldHandleToastedArrayColumn() throws Exception {
         TestHelper.execute(
-                "DROP TABLE IF EXISTS test_table;",
-                "CREATE TABLE test_table (id SERIAL PRIMARY KEY, text TEXT);");
-        startConnector(config -> config, false);
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, text TEXT);");
+        startConnector(Function.identity(), false);
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
-        String statement = "ALTER TABLE test_table ADD COLUMN not_toast integer;"
-                + "ALTER TABLE test_table ADD COLUMN mandatory_text_array TEXT[] NOT NULL;"
-                + "ALTER TABLE test_table ALTER COLUMN mandatory_text_array SET STORAGE EXTENDED;"
-                + "INSERT INTO test_table (not_toast, text, mandatory_text_array) values (10, 'text', ARRAY ['" + toastedValue + "']);";
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN mandatory_text_array TEXT[] NOT NULL;"
+                + "ALTER TABLE test_toast_table ALTER COLUMN mandatory_text_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, text, mandatory_text_array) values (10, 'text', ARRAY ['" + toastedValue + "']);";
         consumer = testConsumer(1);
         executeAndWait(statement);
 
@@ -1620,13 +1620,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
-        statement = "UPDATE test_table SET not_toast = 2;";
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
 
         consumer.expects(1);
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
