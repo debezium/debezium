@@ -1412,8 +1412,7 @@ Set the property to one of the following values:
 When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
 
 `never`::
-When the connector starts, it does not perform a snapshot.
-Instead of running a snapshot, the connector tails the oplog, and emits `read` events for the most recently recorded transactions.
+When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
