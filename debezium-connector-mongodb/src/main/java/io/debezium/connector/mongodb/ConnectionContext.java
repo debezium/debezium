@@ -34,6 +34,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * @author Randall Hauch
@@ -171,12 +172,31 @@ public class ConnectionContext implements AutoCloseable {
 
     /**
      * Initial connection seed which is either a host specification or connection string
+     * 
      * @return hosts or connection string
      */
     public String connectionSeed() {
         return connectionString()
                 .map(ConnectionString::toString)
                 .orElse(config.getString(MongoDbConnectorConfig.HOSTS));
+    }
+
+    /**
+     * Same as {@link #connectionSeed()} but masks sensitive information
+     *
+     * @return masked connection seed
+     */
+    public String maskedConnectionSeed() {
+        var connectionSeed = connectionSeed();
+
+        return connectionString()
+                .map(ConnectionString::getCredential)
+                .map(creds -> Strings.mask(
+                        connectionSeed,
+                        creds.getUserName(),
+                        creds.getSource(),
+                        creds.getPassword() != null ? String.valueOf(creds.getPassword()) : null))
+                .orElse(connectionSeed);
     }
 
     public Optional<ConnectionString> connectionString() {
