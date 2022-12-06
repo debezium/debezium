@@ -51,7 +51,9 @@ import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -108,6 +110,7 @@ import io.debezium.util.Testing;
 public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     private TestConsumer consumer;
+    private static PostgresConnection defaultConnection;
 
     @Rule
     public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
@@ -115,17 +118,27 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws Exception {
         // ensure the slot is deleted for each test
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("init_postgis.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "init_postgis.ddl");
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS test_table;" +
                 "CREATE TABLE test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));" +
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
@@ -173,7 +186,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldReceiveChangesForInsertsWithDifferentDataTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
         startConnector();
 
         consumer = testConsumer(1);
@@ -223,8 +236,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-5014")
     public void shouldReceiveDeletesWithInfinityDate() throws Exception {
         Testing.Print.enable();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute("ALTER TABLE time_table REPLICA IDENTITY FULL");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, "ALTER TABLE time_table REPLICA IDENTITY FULL");
         startConnector();
 
         executeAndWait(INSERT_DATE_TIME_TYPES_STMT);
@@ -237,7 +250,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1498")
     public void shouldReceiveChangesForIntervalAsString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INTERVAL_HANDLING_MODE, IntervalHandlingMode.STRING));
 
@@ -252,14 +265,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-766")
     public void shouldReceiveChangesAfterConnectionRestart() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "postgis"));
 
-        TestHelper.execute("CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
 
         consumer = testConsumer(1);
         waitForStreamingToStart();
@@ -272,8 +285,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         stopConnector();
 
         // Alter schema offline
-        TestHelper.execute("ALTER TABLE t0 ADD COLUMN d2 INTEGER;");
-        TestHelper.execute("ALTER TABLE t0 ALTER COLUMN d SET NOT NULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE t0 ADD COLUMN d2 INTEGER;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE t0 ALTER COLUMN d SET NOT NULL;");
 
         // Start the producer and wait; the wait is to guarantee the stream thread is polling
         // This appears to be a potential race condition problem
@@ -293,7 +306,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-1698")
     public void shouldReceiveUpdateSchemaAfterConnectionRestart() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -301,7 +314,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST));
 
-        TestHelper.execute("CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
 
         consumer = testConsumer(1);
         waitForStreamingToStart();
@@ -315,11 +328,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         Thread.sleep(3000);
 
         // Add record offline
-        TestHelper.execute("INSERT INTO t0 (pk,d) VALUES(2,2);");
+        TestHelper.execute(defaultConnection, "INSERT INTO t0 (pk,d) VALUES(2,2);");
 
         // Alter schema offline
-        TestHelper.execute("ALTER TABLE t0 ADD COLUMN d2 NUMERIC(10,6) DEFAULT 0 NOT NULL;");
-        TestHelper.execute("ALTER TABLE t0 ALTER COLUMN d SET NOT NULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE t0 ADD COLUMN d2 NUMERIC(10,6) DEFAULT 0 NOT NULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE t0 ALTER COLUMN d SET NOT NULL;");
 
         // Start the producer and wait; the wait is to guarantee the stream thread is polling
         // This appears to be a potential race condition problem
@@ -339,12 +352,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
     }
 
     @Test
     public void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
         // custom types + null value
@@ -431,7 +444,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private Struct testProcessNotNullColumns(TemporalPrecisionMode temporalMode) throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -458,7 +471,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
-        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgis_create_tables.ddl");
 
         startConnector();
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a ton of records in the postgis schema
@@ -466,7 +479,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
-        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        TestHelper.execute(defaultConnection, "INSERT INTO public.dummy_table DEFAULT VALUES;");
         consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
         while (true) {
             if (!consumer.isEmpty()) {
@@ -485,7 +498,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
-        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgis_create_tables.ddl");
 
         startConnector();
         consumer = testConsumer(1, "public"); // spatial_ref_sys produces a ton of records in the postgis schema
@@ -493,7 +506,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
-        TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
+        TestHelper.execute(defaultConnection, "INSERT INTO public.dummy_table DEFAULT VALUES;");
         consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
         while (true) {
             if (!consumer.isEmpty()) {
@@ -512,7 +525,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldReceiveChangesForInsertsWithQuotedNames() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector();
 
@@ -522,7 +535,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldReceiveChangesForInsertsWithArrayTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector();
 
@@ -537,22 +550,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector();
 
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         String statement = "INSERT INTO test_table (text) VALUES ('pk_and_default');";
         assertInsert(statement, 2, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_default")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY FULL;");
         statement = "INSERT INTO test_table (text) VALUES ('pk_and_full');";
         assertInsert(statement, 3, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_full")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
         statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
         assertInsert(statement, 4, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
         assertInsert(statement, 5, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
     }
@@ -565,23 +578,23 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector();
 
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         String statement = "INSERT INTO test_table (text) VALUES ('pk_and_default');";
         assertInsert(statement, 2, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_default")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY FULL;");
         statement = "INSERT INTO test_table (text) VALUES ('pk_and_full');";
         assertInsert(statement, 3, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_full")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
         statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
         assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 4),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
 
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
         assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 5),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
@@ -590,7 +603,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-478")
     public void shouldReceiveChangesForNullInsertsWithArrayTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector();
 
@@ -639,7 +652,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // alter the table and set its replica identity to full the issue another update
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY FULL");
         executeAndWait("UPDATE test_table set text='update2' WHERE pk=1");
 
         updatedRecord = consumer.remove();
@@ -654,7 +667,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // without PK and with REPLICA IDENTITY FULL we still getting all fields 'before' and all fields 'after'
-        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
         consumer.expects(1);
         executeAndWait("UPDATE test_table SET text = 'update3' WHERE pk = 1;");
         updatedRecord = consumer.remove();
@@ -667,7 +680,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // without PK and with REPLICA IDENTITY DEFAULT we will get nothing
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         consumer.expects(0);
         executeAndWaitForNoRecords("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
         assertThat(consumer.isEmpty()).isTrue();
@@ -1050,7 +1063,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-4137")
     public void shouldReceiveNumericTypeAsDoubleWithNullDefaults() throws Exception {
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS numeric_table_with_n_defaults;",
                 "CREATE TABLE numeric_table_with_n_defaults (\n" +
                         "    r int4 NOT NULL,\n" +
@@ -1089,7 +1102,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-4137")
     public void shouldReceiveNumericTypeAsDoubleWithDefaults() throws Exception {
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS numeric_table_with_defaults;",
                 "CREATE TABLE numeric_table_with_defaults (\n" +
                         "    r int4 NOT NULL,\n" +
@@ -1125,7 +1138,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldReceiveNumericTypeAsDouble() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE));
 
@@ -1135,7 +1148,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-611")
     public void shouldReceiveNumericTypeAsString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING));
 
@@ -1145,7 +1158,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSingleValueAsMap() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
 
@@ -1155,7 +1168,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithMultipleValuesAsMap() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
 
@@ -1165,7 +1178,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithNullValuesAsMap() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
 
@@ -1175,7 +1188,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSpecialCharactersInValuesAsMap() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
 
@@ -1185,7 +1198,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeAsJsonString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
         consumer = testConsumer(1);
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON));
@@ -1196,7 +1209,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithMultipleValuesAsJsonString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON));
 
@@ -1206,7 +1219,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSpecialValuesInJsonString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON));
 
@@ -1216,7 +1229,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithNullValuesAsJsonString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON));
 
@@ -1226,7 +1239,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveByteaBytes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BYTES));
 
@@ -1236,7 +1249,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveByteaBase64String() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64));
 
@@ -1246,7 +1259,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5544")
     public void shouldReceiveByteaBase64UrlSafeString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64_URL_SAFE));
 
@@ -1256,7 +1269,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveByteaHexString() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.HEX));
 
@@ -1266,7 +1279,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveUnknownTypeAsBytes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
 
@@ -1276,7 +1289,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveUnknownTypeAsBase64() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
@@ -1287,7 +1300,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5544")
     public void shouldReceiveUnknownTypeAsBase64UrlSafe() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
@@ -1298,7 +1311,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldReceiveUnknownTypeAsHex() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
@@ -1337,7 +1350,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-644")
     public void shouldPropagateSourceColumnTypeToSchemaParameter() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config.with("column.propagate.source.type", ".*vc.*"));
 
@@ -1347,7 +1360,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1073")
     public void shouldPropagateSourceColumnTypeScaleToSchemaParameter() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         startConnector(config -> config
                 .with("column.propagate.source.type", ".*(d|dzs)")
@@ -1374,7 +1387,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO s1.b (bb) VALUES (22);";
 
         Testing.print("Executing test statements");
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
 
         try {
             final AtomicInteger heartbeatCount = new AtomicInteger();
@@ -1400,7 +1413,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
 
         final Set<Long> lsn = new HashSet<>();
-        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (11);");
+        TestHelper.execute(defaultConnection, "INSERT INTO s1.a (aa) VALUES (11);");
         try {
             Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS).until(() -> {
                 final SourceRecord record = consumeRecord();
@@ -1438,7 +1451,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
 
         final int filteredCount = 10_100;
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 IntStream.range(0, filteredCount)
                         .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
                         .collect(Collectors.joining()));
@@ -1480,7 +1493,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
         });
 
-        TestHelper.assertNoOpenTransactions();
+        TestHelper.assertNoOpenTransactions(defaultConnection);
     }
 
     @Test
@@ -1601,7 +1614,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1029")
     public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception {
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS test_table;",
                 "CREATE TABLE test_table (id SERIAL, text TEXT);",
                 "ALTER TABLE test_table REPLICA IDENTITY FULL");
@@ -1680,7 +1693,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(Heartbeat.HEARTBEAT_INTERVAL, "100"));
         waitForStreamingToStart();
 
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS test_table;" +
                         "CREATE TABLE test_table (id SERIAL, text TEXT);" +
                         "INSERT INTO test_table (text) VALUES ('mydata');");
@@ -1707,7 +1720,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Expecting one empty DDL change
         String statement = "CREATE SCHEMA s1;";
 
-        TestHelper.execute(statement);
+        TestHelper.execute(defaultConnection, statement);
 
         // Expecting changes for the empty DDL change
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS).until(() -> {
@@ -1725,7 +1738,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldHaveNoXminWhenNotEnabled() throws Exception {
         startConnector(config -> config.with(PostgresConnectorConfig.XMIN_FETCH_INTERVAL, "0"));
 
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         String statement = "INSERT INTO test_table (text) VALUES ('no_xmin');";
         executeAndWait(statement);
 
@@ -1744,7 +1757,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldHaveXminWhenEnabled() throws Exception {
         startConnector(config -> config.with(PostgresConnectorConfig.XMIN_FETCH_INTERVAL, "10"));
 
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         String statement = "INSERT INTO test_table (text) VALUES ('with_xmin');";
         executeAndWait(statement);
 
@@ -1789,7 +1802,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
 
         consumer.expects(numberOfEvents);
-        IntStream.rangeClosed(2, numberOfEvents + 1).forEach(x -> TestHelper.execute("INSERT INTO test_table (text) VALUES ('insert" + x + "')"));
+        IntStream.rangeClosed(2, numberOfEvents + 1).forEach(x -> TestHelper.execute(defaultConnection, "INSERT INTO test_table (text) VALUES ('insert" + x + "')"));
         stopwatch.start();
         // There should be no significant difference between many TX runtime and single large TX
         // We still add generous limits as the runtime is in seconds and we cannot provide
@@ -1912,7 +1925,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.remove();
 
         stopConnector();
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "INSERT INTO test_table (text) VALUES ('insert3');",
                 "INSERT INTO test_table (text) VALUES ('insert4')");
         startConnector(config -> config
@@ -1949,7 +1962,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(record, PK_FIELD, 2);
 
         consumer.expects(1);
-        TestHelper.execute("TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
+        TestHelper.execute(defaultConnection, "TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         assertFalse(consumer.isEmpty());
@@ -1975,7 +1988,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(record, PK_FIELD, 2);
 
         consumer.expects(1);
-        TestHelper.execute("TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
+        TestHelper.execute(defaultConnection, "TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         assertFalse(consumer.isEmpty());
@@ -2000,7 +2013,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(record, PK_FIELD, 2);
 
         consumer.expects(0);
-        TestHelper.execute("TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
+        TestHelper.execute(defaultConnection, "TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         assertTrue(consumer.isEmpty());
@@ -2010,7 +2023,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handled TRUNCATE these messages")
     public void shouldProcessTruncateMessagesForMultipleTableTruncateStatement() throws Exception {
-        TestHelper.execute("CREATE TABLE test_table_2 (pk SERIAL, text TEXT, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE test_table_2 (pk SERIAL, text TEXT, PRIMARY KEY(pk));");
 
         startConnector(builder -> builder.with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "none"));
         waitForStreamingToStart();
@@ -2029,7 +2042,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(record_2, PK_FIELD, 1);
 
         consumer.expects(2);
-        TestHelper.execute("TRUNCATE TABLE public.test_table, public.test_table_2;");
+        TestHelper.execute(defaultConnection, "TRUNCATE TABLE public.test_table, public.test_table_2;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         assertFalse(consumer.isEmpty());
@@ -2054,8 +2067,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamChangesForDataTypeAlias() throws Exception {
-        TestHelper.execute("CREATE DOMAIN money2 AS money DEFAULT 0.0;");
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, salary2 money2, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN money2 AS money DEFAULT 0.0;");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, salary2 money2, PRIMARY KEY(pk));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
@@ -2085,7 +2098,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamChangesForDomainAliasAlterTable() throws Exception {
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, PRIMARY KEY(pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -2097,10 +2110,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // Now that streaming has started, alter the table schema
-        TestHelper.execute("CREATE DOMAIN money2 AS money DEFAULT 0.0;");
-        TestHelper.execute("CREATE DOMAIN money3 AS numeric(8,3) DEFAULT 0.0;");
-        TestHelper.execute("ALTER TABLE alias_table ADD COLUMN salary2 money2 NOT NULL;");
-        TestHelper.execute("ALTER TABLE alias_table ADD COLUMN salary3 money3 NOT NULL;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN money2 AS money DEFAULT 0.0;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN money3 AS numeric(8,3) DEFAULT 0.0;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE alias_table ADD COLUMN salary2 money2 NOT NULL;");
+        TestHelper.execute(defaultConnection, "ALTER TABLE alias_table ADD COLUMN salary3 money3 NOT NULL;");
 
         consumer = testConsumer(1);
         executeAndWait("INSERT INTO alias_table (data, salary, salary2, salary3) values ('hello', 7.25, 8.25, 123.456);");
@@ -2126,7 +2139,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamDomainAliasWithProperModifiers() throws Exception {
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, PRIMARY KEY(pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -2136,8 +2149,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         waitForStreamingToStart();
 
-        TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
-        TestHelper.execute("ALTER TABLE public.alias_table ADD COLUMN value varbit2 NOT NULL;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2 AS varbit(3);");
+        TestHelper.execute(defaultConnection, "ALTER TABLE public.alias_table ADD COLUMN value varbit2 NOT NULL;");
 
         consumer = testConsumer(1);
         executeAndWait("INSERT INTO public.alias_table (value) VALUES (B'101');");
@@ -2156,9 +2169,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamValuesForDomainTypeOfDomainType() throws Exception {
-        TestHelper.execute("CREATE DOMAIN numeric82 as numeric(8,2);");
-        TestHelper.execute("CREATE DOMAIN numericex as numeric82;");
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value numericex, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN numeric82 as numeric(8,2);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN numericex as numeric82;");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, value numericex, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -2190,7 +2203,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamValuesForAliasLikeBaseTypes() throws Exception {
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -2201,40 +2214,40 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // note: skipped macaddr8 as that is only supported on PG10+ but was manually tested
-        TestHelper.execute("CREATE DOMAIN bit2 AS BIT(3);");
-        TestHelper.execute("CREATE DOMAIN smallint2 AS smallint;");
-        TestHelper.execute("CREATE DOMAIN integer2 as integer;");
-        TestHelper.execute("CREATE DOMAIN bigint2 as bigint;");
-        TestHelper.execute("CREATE DOMAIN real2 as real;");
-        TestHelper.execute("CREATE DOMAIN bool2 AS BOOL DEFAULT false;");
-        TestHelper.execute("CREATE DOMAIN float82 as float8;");
-        TestHelper.execute("CREATE DOMAIN numeric2 as numeric(6,2);");
-        TestHelper.execute("CREATE DOMAIN string2 AS varchar(25) DEFAULT NULL;");
-        TestHelper.execute("CREATE DOMAIN date2 AS date;");
-        TestHelper.execute("CREATE DOMAIN time2 as time;");
-        TestHelper.execute("CREATE DOMAIN timetz2 as timetz;");
-        TestHelper.execute("CREATE DOMAIN timestamp2 as timestamp;");
-        TestHelper.execute("CREATE DOMAIN timestamptz2 AS timestamptz;");
-        TestHelper.execute("CREATE DOMAIN timewotz2 as time without time zone;");
-        TestHelper.execute("CREATE DOMAIN box2 as box;");
-        TestHelper.execute("CREATE DOMAIN circle2 as circle;");
-        TestHelper.execute("CREATE DOMAIN interval2 as interval;");
-        TestHelper.execute("CREATE DOMAIN line2 as line;");
-        TestHelper.execute("CREATE DOMAIN lseg2 as lseg;");
-        TestHelper.execute("CREATE DOMAIN path2 as path;");
-        TestHelper.execute("CREATE DOMAIN point2 as point;");
-        TestHelper.execute("CREATE DOMAIN polygon2 as polygon;");
-        TestHelper.execute("CREATE DOMAIN char2 as char;");
-        TestHelper.execute("CREATE DOMAIN text2 as text;");
-        TestHelper.execute("CREATE DOMAIN json2 as json;");
-        TestHelper.execute("CREATE DOMAIN xml2 as xml;");
-        TestHelper.execute("CREATE DOMAIN uuid2 as uuid;");
-        TestHelper.execute("CREATE DOMAIN varbit2 as varbit(3);");
-        TestHelper.execute("CREATE DOMAIN inet2 as inet;");
-        TestHelper.execute("CREATE DOMAIN cidr2 as cidr;");
-        TestHelper.execute("CREATE DOMAIN macaddr2 as macaddr;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bit2 AS BIT(3);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN smallint2 AS smallint;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN integer2 as integer;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bigint2 as bigint;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN real2 as real;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bool2 AS BOOL DEFAULT false;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN float82 as float8;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN numeric2 as numeric(6,2);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN string2 AS varchar(25) DEFAULT NULL;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN date2 AS date;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN time2 as time;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timetz2 as timetz;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timestamp2 as timestamp;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timestamptz2 AS timestamptz;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timewotz2 as time without time zone;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN box2 as box;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN circle2 as circle;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN interval2 as interval;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN line2 as line;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN lseg2 as lseg;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN path2 as path;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN point2 as point;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN polygon2 as polygon;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN char2 as char;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN text2 as text;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN json2 as json;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN xml2 as xml;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN uuid2 as uuid;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2 as varbit(3);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN inet2 as inet;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN cidr2 as cidr;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN macaddr2 as macaddr;");
 
-        TestHelper.execute("ALTER TABLE alias_table "
+        TestHelper.execute(defaultConnection, "ALTER TABLE alias_table "
                 + "ADD COLUMN bit_base bit(3) NOT NULL, ADD COLUMN bit_alias bit2 NOT NULL, "
                 + "ADD COLUMN smallint_base smallint NOT NULL, ADD COLUMN smallint_alias smallint2 NOT NULL, "
                 + "ADD COLUMN integer_base integer NOT NULL, ADD COLUMN integer_alias integer2 NOT NULL, "
@@ -2349,7 +2362,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldStreamEnumAsKnownType() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
-        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
@@ -2359,8 +2372,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // We create the enum type after streaming started to simulate some future schema change
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
-        TestHelper.execute("ALTER TABLE enum_table ADD COLUMN value test_type NOT NULL");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute(defaultConnection, "ALTER TABLE enum_table ADD COLUMN value test_type NOT NULL");
 
         consumer = testConsumer(1);
         executeAndWait("INSERT INTO enum_table (value) VALUES ('V1');");
@@ -2385,7 +2398,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldEmitEnumColumnDefaultValuesInSchema() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
-        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
@@ -2395,9 +2408,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // We create the enum type after streaming started to simulate some future schema change
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
-        TestHelper.execute("ALTER TABLE enum_table ADD COLUMN data varchar(50) NOT NULL");
-        TestHelper.execute("ALTER TABLE enum_table ADD COLUMN value test_type NOT NULL DEFAULT 'V2'::test_type");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute(defaultConnection, "ALTER TABLE enum_table ADD COLUMN data varchar(50) NOT NULL");
+        TestHelper.execute(defaultConnection, "ALTER TABLE enum_table ADD COLUMN value test_type NOT NULL DEFAULT 'V2'::test_type");
 
         consumer = testConsumer(1);
         executeAndWait("INSERT INTO enum_table (data) VALUES ('V1');");
@@ -2423,7 +2436,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldStreamEnumArrayAsKnownType() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
-        TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
@@ -2433,8 +2446,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         waitForStreamingToStart();
 
         // We create the enum type after streaming started to simulate some future schema change
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
-        TestHelper.execute("ALTER TABLE enum_array_table ADD COLUMN value test_type[] NOT NULL;");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute(defaultConnection, "ALTER TABLE enum_array_table ADD COLUMN value test_type[] NOT NULL;");
 
         consumer = testConsumer(1);
 
@@ -2480,7 +2493,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1969")
     public void shouldStreamTimeArrayTypesAsKnownTypes() throws Exception {
-        TestHelper.execute("CREATE TABLE time_array_table (pk SERIAL, "
+        TestHelper.execute(defaultConnection, "CREATE TABLE time_array_table (pk SERIAL, "
                 + "timea time[] NOT NULL, "
                 + "timetza timetz[] NOT NULL, "
                 + "timestampa timestamp[] NOT NULL, "
@@ -2548,8 +2561,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldStreamEnumsWhenIncludeUnknownDataTypesDisabled() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
-        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, data varchar(25) NOT NULL, value test_type NOT NULL DEFAULT 'V1', PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_table (pk SERIAL, data varchar(25) NOT NULL, value test_type NOT NULL DEFAULT 'V1', PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
@@ -2581,7 +2594,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart)
             throws Exception {
         if (tablesBeforeStart) {
-            TestHelper.execute(
+            TestHelper.execute(defaultConnection,
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",
                     "ALTER TABLE test_table REPLICA IDENTITY FULL");
@@ -2596,7 +2609,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
         if (!tablesBeforeStart) {
-            TestHelper.execute(
+            TestHelper.execute(defaultConnection,
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",
                     "ALTER TABLE test_table REPLICA IDENTITY FULL");
@@ -2699,12 +2712,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test()
     @FixFor("DBZ-1815")
     public void testHeartbeatActionQueryExecuted() throws Exception {
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS test_table;" +
                         "CREATE TABLE test_table (id SERIAL, text TEXT);" +
                         "INSERT INTO test_table (text) VALUES ('mydata');");
 
-        TestHelper.execute(
+        TestHelper.execute(defaultConnection,
                 "DROP TABLE IF EXISTS test_heartbeat_table;" +
                         "CREATE TABLE test_heartbeat_table (text TEXT);");
 
@@ -2738,8 +2751,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
-        TestHelper.execute("DROP TABLE IF EXISTS test_table;");
-        TestHelper.execute("CREATE TABLE test_table (id SERIAL, c1 INT, c2 INT, c3a NUMERIC(5,2), c3b VARCHAR(128), f1 float(10), f2 decimal(8,4), primary key (id));");
+        TestHelper.execute(defaultConnection, "DROP TABLE IF EXISTS test_table;");
+        TestHelper.execute(defaultConnection,
+                "CREATE TABLE test_table (id SERIAL, c1 INT, c2 INT, c3a NUMERIC(5,2), c3b VARCHAR(128), f1 float(10), f2 decimal(8,4), primary key (id));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
@@ -2814,7 +2828,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1931")
     public void testStreamMoneyAsDefaultPrecise() throws Exception {
-        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -2841,7 +2855,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1931")
     public void testStreamMoneyAsString() throws Exception {
-        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
@@ -2869,7 +2883,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1931")
     public void testStreamMoneyAsDouble() throws Exception {
-        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
@@ -2897,7 +2911,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1931")
     public void testStreamMoneyPreciseDecimalFraction() throws Exception {
-        TestHelper.execute("CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE TABLE salary (pk SERIAL, name VARCHAR(50), salary money, PRIMARY KEY(pk));");
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE)
@@ -3015,12 +3029,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void executeAndWait(String statements) throws Exception {
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
     }
 
     private void executeAndWaitForNoRecords(String statements) throws Exception {
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         consumer.await(5, TimeUnit.SECONDS);
     }
 }

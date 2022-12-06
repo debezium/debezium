@@ -16,11 +16,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -31,18 +34,30 @@ import io.debezium.junit.logging.LogInterceptor;
 
 public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
         initializeConnectorTestFramework();
 
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
     }
 
     @After
     public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
     }
 
     @Test
@@ -97,7 +112,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
 
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresDefaultValueConverter.class);
 
-        TestHelper.execute(ddl);
+        TestHelper.execute(defaultConnection, ddl);
 
         Configuration config = TestHelper.defaultConfig().build();
         start(PostgresConnector.class, config);
@@ -107,7 +122,7 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsMessage("Cannot parse column default value 's2.tst_generate_random_uuid()' to type 'uuid'")).isFalse();
 
         // Verify default value sets the right schema value
-        TestHelper.execute("INSERT INTO s1.dbz5340 (data) values ('test');");
+        TestHelper.execute(defaultConnection, "INSERT INTO s1.dbz5340 (data) values ('test');");
 
         final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.dbz5340"));
@@ -137,8 +152,8 @@ public class PostgresDefaultValueConverterIT extends AbstractConnectorTest {
                 + "dt2 date DEFAULT CURRENT_DATE, "
                 + "dt3 time DEFAULT CURRENT_TIME, "
                 + "PRIMARY KEY(pk));";
-        TestHelper.execute(ddl);
-        TestHelper.execute(dml);
+        TestHelper.execute(defaultConnection, ddl);
+        TestHelper.execute(defaultConnection, dml);
     }
 
     private void assertDefaultValueChangeRecord(SourceRecord sourceRecord) {

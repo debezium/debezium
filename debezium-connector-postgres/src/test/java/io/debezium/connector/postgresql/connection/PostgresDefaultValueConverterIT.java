@@ -13,8 +13,10 @@ import java.sql.Types;
 import java.util.Optional;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -28,13 +30,25 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 
 public class PostgresDefaultValueConverterIT {
 
+    private static PostgresConnection defaultConnection;
+
     private PostgresConnection postgresConnection;
     private PostgresValueConverter postgresValueConverter;
     private PostgresDefaultValueConverter postgresDefaultValueConverter;
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
 
         postgresConnection = TestHelper.create();
 

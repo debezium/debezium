@@ -32,7 +32,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -40,6 +42,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -61,23 +64,35 @@ import io.debezium.util.Collect;
  */
 public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
+    private static PostgresConnection defaultConnection;
+
     @Rule
     public final SkipTestRule skip = new SkipTestRule();
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
 
     @Before
     public void before() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("init_postgis.ddl");
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "init_postgis.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgis_create_tables.ddl");
     }
 
     @Test
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         // insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
-        TestHelper.execute(statementsBuilder);
+        TestHelper.execute(defaultConnection, statementsBuilder);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig());
@@ -124,7 +139,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1134")
     public void shouldUseCustomConverter() throws Exception {
-        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_CUSTOM_TYPES_STMT);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig()
@@ -141,8 +156,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         waitForSnapshotToBeCompleted();
 
-        TestHelper.execute("CREATE TABLE conv_table (pk serial, i isbn NOT NULL, PRIMARY KEY(pk))");
-        TestHelper.execute("INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
+        TestHelper.execute(defaultConnection, "CREATE TABLE conv_table (pk serial, i isbn NOT NULL, PRIMARY KEY(pk))");
+        TestHelper.execute(defaultConnection, "INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
         final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName2 = Collect.hashMapOf("public.conv_table",
                 Arrays.asList(new SchemaAndValueField("i",
                         SchemaBuilder.string().name("io.debezium.postgresql.type.Isbn").build(), "0-393-04002-X")));
@@ -150,8 +165,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName2));
 
-        TestHelper.execute("ALTER TABLE conv_table ALTER COLUMN i TYPE varchar(32)");
-        TestHelper.execute("INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
+        TestHelper.execute(defaultConnection, "ALTER TABLE conv_table ALTER COLUMN i TYPE varchar(32)");
+        TestHelper.execute(defaultConnection, "INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
         final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName3 = Collect.hashMapOf("public.conv_table",
                 Arrays.asList(new SchemaAndValueField("i",
                         Schema.STRING_SCHEMA, "0-393-04002-X")));
@@ -162,7 +177,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldGenerateSnapshotsForCustomDatatypes() throws Exception {
-        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_CUSTOM_TYPES_STMT);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig()
@@ -178,8 +193,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
         // PostGIS must not be used
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                 "INSERT INTO s2.a (aa) VALUES (1);";
@@ -189,7 +204,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s2.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 insertStmt;
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
 
         buildWithStreamProducer(TestHelper.defaultConfig());
 
@@ -202,7 +217,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // then insert some more data and check that we get it back
         waitForStreamingToStart();
-        TestHelper.execute(insertStmt);
+        TestHelper.execute(defaultConnection, insertStmt);
         consumer.expects(2);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
@@ -221,7 +236,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // now shut down the producers and insert some more records
         stopConnector();
         assertConnectorNotRunning();
-        TestHelper.execute(insertStmt);
+        TestHelper.execute(defaultConnection, insertStmt);
 
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
@@ -246,7 +261,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // now insert two more records and check that we only get those back from the stream
         waitForStreamingToStart();
-        TestHelper.execute(insertStmt);
+        TestHelper.execute(defaultConnection, insertStmt);
         consumer.expects(2);
 
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -265,8 +280,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-1564")
     public void shouldCloseTransactionsAfterSnapshot() throws Exception {
         // PostGIS must not be used
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
                 "INSERT INTO s2.a (aa) VALUES (1);";
@@ -276,7 +291,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s2.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 insertStmt;
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
 
         buildWithStreamProducer(TestHelper.defaultConfig());
 
@@ -289,7 +304,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         waitForStreamingToStart();
 
-        TestHelper.assertNoOpenTransactions();
+        TestHelper.assertNoOpenTransactions(defaultConnection);
 
         stopConnector();
     }
@@ -298,8 +313,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-859")
     public void shouldGenerateSnapshotAndSendHeartBeat() throws Exception {
         // PostGIS must not be used
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE TABLE t1 (pk SERIAL, aa integer, PRIMARY KEY(pk)); INSERT INTO t1 VALUES (default, 11)");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE TABLE t1 (pk SERIAL, aa integer, PRIMARY KEY(pk)); INSERT INTO t1 VALUES (default, 11)");
 
         buildWithStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
@@ -332,7 +347,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotsForDefaultDatatypesAdaptiveMicroseconds() throws Exception {
         // insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
-        TestHelper.execute(statementsBuilder);
+        TestHelper.execute(defaultConnection, statementsBuilder);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig()
@@ -358,11 +373,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-606")
     public void shouldGenerateSnapshotsForDecimalDatatypesUsingStringEncoding() throws Exception {
         // PostGIS must not be used
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert data for each of different supported types
-        TestHelper.execute(INSERT_NUMERIC_DECIMAL_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_NUMERIC_DECIMAL_TYPES_STMT);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig()
@@ -384,7 +399,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-1118")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "Database version is less than 10.0")
     public void shouldGenerateSnapshotsForPartitionedTables() throws Exception {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
 
         String ddl = "CREATE TABLE first_table (pk integer, user_id integer, PRIMARY KEY(pk));" +
 
@@ -398,17 +413,17 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 "(CONSTRAINT p_101_200_pk PRIMARY KEY (pk)) " +
                 "FOR VALUES FROM (101) TO (201);";
 
-        TestHelper.execute(ddl);
+        TestHelper.execute(defaultConnection, ddl);
 
         // add 1 record to `first_table`. To reproduce the bug we must process at
         // least one row before processing the partitioned table.
-        TestHelper.execute("INSERT INTO first_table (pk, user_id) VALUES (1000, 1);");
+        TestHelper.execute(defaultConnection, "INSERT INTO first_table (pk, user_id) VALUES (1000, 1);");
 
         // add 10 random records to the first partition, 20 to the second
-        TestHelper.execute("INSERT INTO partitioned (user_id, aa) " +
+        TestHelper.execute(defaultConnection, "INSERT INTO partitioned (user_id, aa) " +
                 "SELECT RANDOM() * 99 + 1, RANDOM() * 100000 " +
                 "FROM generate_series(1, 10);");
-        TestHelper.execute("INSERT INTO partitioned (user_id, aa) " +
+        TestHelper.execute(defaultConnection, "INSERT INTO partitioned (user_id, aa) " +
                 "SELECT RANDOM() * 99 + 101, RANDOM() * 100000 " +
                 "FROM generate_series(1, 20);");
 
@@ -460,11 +475,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-1162")
     public void shouldGenerateSnapshotsForHstores() throws Exception {
         // PostGIS must not be used
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert data for each of different supported types
-        TestHelper.execute(INSERT_HSTORE_TYPE_STMT);
+        TestHelper.execute(defaultConnection, INSERT_HSTORE_TYPE_STMT);
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig());
@@ -480,7 +495,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1163")
     public void shouldGenerateSnapshotForATableWithoutPrimaryKey() throws Exception {
-        TestHelper.execute("insert into table_without_pk values(1, 1000)");
+        TestHelper.execute(defaultConnection, "insert into table_without_pk values(1, 1000)");
 
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig());
@@ -504,11 +519,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "MACADDR8 data type is only supported since Postgres 10+")
     @FixFor("DBZ-1193")
     public void shouldGenerateSnapshotForMacaddr8Datatype() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE TABLE macaddr8_table(pk SERIAL, m MACADDR8, PRIMARY KEY(pk));");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE TABLE macaddr8_table(pk SERIAL, m MACADDR8, PRIMARY KEY(pk));");
 
         // insert macaddr8 data
-        TestHelper.execute(INSERT_MACADDR8_TYPE_STMT);
+        TestHelper.execute(defaultConnection, INSERT_MACADDR8_TYPE_STMT);
 
         // then start the producer and validate the record are there
         buildNoStreamProducer(TestHelper.defaultConfig());
@@ -524,11 +539,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1164")
     public void shouldGenerateSnapshotForTwentyFourHourTime() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert data and time data
-        TestHelper.execute(INSERT_DATE_TIME_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_DATE_TIME_TYPES_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig());
 
@@ -543,13 +558,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1345")
     public void shouldNotSnapshotMaterializedViews() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE TABLE mv_real_table (pk SERIAL, i integer, s VARCHAR(50), PRIMARY KEY(pk));");
-        TestHelper.execute("CREATE MATERIALIZED VIEW mv (pk, s) AS SELECT mrv.pk, mrv.s FROM mv_real_table mrv WITH DATA;");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE TABLE mv_real_table (pk SERIAL, i integer, s VARCHAR(50), PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "CREATE MATERIALIZED VIEW mv (pk, s) AS SELECT mrv.pk, mrv.s FROM mv_real_table mrv WITH DATA;");
 
         // insert data
-        TestHelper.execute("INSERT INTO mv_real_table (i,s) VALUES (1,'1');");
-        TestHelper.execute("REFRESH MATERIALIZED VIEW mv WITH DATA;");
+        TestHelper.execute(defaultConnection, "INSERT INTO mv_real_table (i,s) VALUES (1,'1');");
+        TestHelper.execute(defaultConnection, "REFRESH MATERIALIZED VIEW mv WITH DATA;");
 
         buildNoStreamProducer(TestHelper.defaultConfig());
 
@@ -563,11 +578,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1755")
     public void shouldGenerateSnapshotForPositiveMoney() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert money
-        TestHelper.execute(INSERT_CASH_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_CASH_TYPES_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig());
 
@@ -581,11 +596,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1755")
     public void shouldGenerateSnapshotForNegativeMoney() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert money
-        TestHelper.execute(INSERT_NEGATIVE_CASH_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_NEGATIVE_CASH_TYPES_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.cash_table"));
 
@@ -599,11 +614,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1755")
     public void shouldGenerateSnapshotForNullMoney() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         // insert money
-        TestHelper.execute(INSERT_NULL_CASH_TYPES_STMT);
+        TestHelper.execute(defaultConnection, INSERT_NULL_CASH_TYPES_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.cash_table"));
 
@@ -617,11 +632,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldSnapshotDomainTypeWithPropagatedSourceTypeAttributes() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE DOMAIN float83 AS numeric(8,3) DEFAULT 0.0;");
-        TestHelper.execute("CREATE DOMAIN money2 AS MONEY DEFAULT 0.0;");
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, salary money, salary2 money2, a numeric(8,3), area float83, PRIMARY KEY(pk));");
-        TestHelper.execute("INSERT INTO alias_table (salary, salary2, a, area) values (7.25, 8.25, 12345.123, 12345.123);");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN float83 AS numeric(8,3) DEFAULT 0.0;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN money2 AS MONEY DEFAULT 0.0;");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, salary money, salary2 money2, a numeric(8,3), area float83, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "INSERT INTO alias_table (salary, salary2, a, area) values (7.25, 8.25, 12345.123, 12345.123);");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
@@ -659,10 +674,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldSnapshotDomainAliasWithProperModifiers() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value varbit2 NOT NULL, PRIMARY KEY(pk));");
-        TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2 AS varbit(3);");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, value varbit2 NOT NULL, PRIMARY KEY(pk));");
+        TestHelper.execute(defaultConnection, "INSERT INTO alias_table (value) values (B'101');");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
@@ -685,45 +700,45 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldSnapshotDomainTypesLikeBaseTypes() throws Exception {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
 
         // Construct domain types
         // note: skipped macaddr8 as that is only supported on PG10+ but was manually tested
-        TestHelper.execute("CREATE DOMAIN bit2 AS BIT(3);");
-        TestHelper.execute("CREATE DOMAIN smallint2 AS smallint;");
-        TestHelper.execute("CREATE DOMAIN integer2 as integer;");
-        TestHelper.execute("CREATE DOMAIN bigint2 as bigint;");
-        TestHelper.execute("CREATE DOMAIN real2 as real;");
-        TestHelper.execute("CREATE DOMAIN bool2 AS BOOL DEFAULT false;");
-        TestHelper.execute("CREATE DOMAIN float82 as float8;");
-        TestHelper.execute("CREATE DOMAIN numeric2 as numeric(6,2);");
-        TestHelper.execute("CREATE DOMAIN string2 AS varchar(25) DEFAULT NULL;");
-        TestHelper.execute("CREATE DOMAIN date2 AS date;");
-        TestHelper.execute("CREATE DOMAIN time2 as time;");
-        TestHelper.execute("CREATE DOMAIN timetz2 as timetz;");
-        TestHelper.execute("CREATE DOMAIN timestamp2 as timestamp;");
-        TestHelper.execute("CREATE DOMAIN timestamptz2 AS timestamptz;");
-        TestHelper.execute("CREATE DOMAIN timewotz2 as time without time zone;");
-        TestHelper.execute("CREATE DOMAIN box2 as box;");
-        TestHelper.execute("CREATE DOMAIN circle2 as circle;");
-        TestHelper.execute("CREATE DOMAIN interval2 as interval;");
-        TestHelper.execute("CREATE DOMAIN line2 as line;");
-        TestHelper.execute("CREATE DOMAIN lseg2 as lseg;");
-        TestHelper.execute("CREATE DOMAIN path2 as path;");
-        TestHelper.execute("CREATE DOMAIN point2 as point;");
-        TestHelper.execute("CREATE DOMAIN polygon2 as polygon;");
-        TestHelper.execute("CREATE DOMAIN char2 as char;");
-        TestHelper.execute("CREATE DOMAIN text2 as text;");
-        TestHelper.execute("CREATE DOMAIN json2 as json;");
-        TestHelper.execute("CREATE DOMAIN xml2 as xml;");
-        TestHelper.execute("CREATE DOMAIN uuid2 as uuid;");
-        TestHelper.execute("CREATE DOMAIN varbit2 as varbit(3);");
-        TestHelper.execute("CREATE DOMAIN inet2 as inet;");
-        TestHelper.execute("CREATE DOMAIN cidr2 as cidr;");
-        TestHelper.execute("CREATE DOMAIN macaddr2 as macaddr;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bit2 AS BIT(3);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN smallint2 AS smallint;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN integer2 as integer;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bigint2 as bigint;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN real2 as real;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN bool2 AS BOOL DEFAULT false;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN float82 as float8;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN numeric2 as numeric(6,2);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN string2 AS varchar(25) DEFAULT NULL;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN date2 AS date;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN time2 as time;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timetz2 as timetz;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timestamp2 as timestamp;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timestamptz2 AS timestamptz;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN timewotz2 as time without time zone;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN box2 as box;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN circle2 as circle;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN interval2 as interval;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN line2 as line;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN lseg2 as lseg;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN path2 as path;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN point2 as point;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN polygon2 as polygon;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN char2 as char;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN text2 as text;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN json2 as json;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN xml2 as xml;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN uuid2 as uuid;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2 as varbit(3);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN inet2 as inet;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN cidr2 as cidr;");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN macaddr2 as macaddr;");
 
         // Create table
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL" +
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL" +
                 ", bit_base bit(3) NOT NULL, bit_alias bit2 NOT NULL" +
                 ", smallint_base smallint NOT NULL, smallint_alias smallint2 NOT NULL" +
                 ", integer_base integer NOT NULL, integer_alias integer2 NOT NULL" +
@@ -759,7 +774,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 ", PRIMARY KEY(pk));");
 
         // Insert the one row we want to snapshot
-        TestHelper.execute("INSERT INTO alias_table (" +
+        TestHelper.execute(defaultConnection, "INSERT INTO alias_table (" +
                 "bit_base, bit_alias, " +
                 "smallint_base, smallint_alias, " +
                 "integer_base, integer_alias, " +
@@ -841,10 +856,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @FixFor("DBZ-1413")
     public void shouldSnapshotNestedDomainAliasTypeModifiersNotPropagated() throws Exception {
-        TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
-        TestHelper.execute("CREATE DOMAIN varbit2b AS varbit2;");
-        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value varbit2b NOT NULL, PRIMARY KEY (pk));");
-        TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2 AS varbit(3);");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN varbit2b AS varbit2;");
+        TestHelper.execute(defaultConnection, "CREATE TABLE alias_table (pk SERIAL, value varbit2b NOT NULL, PRIMARY KEY (pk));");
+        TestHelper.execute(defaultConnection, "INSERT INTO alias_table (value) values (B'101');");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
@@ -862,9 +877,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-920")
     public void shouldSnapshotEnumAsKnownType() throws Exception {
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1', 'V2');");
-        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, value test_type NOT NULL, primary key(pk));");
-        TestHelper.execute("INSERT INTO enum_table (value) values ('V1');");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1', 'V2');");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_table (pk SERIAL, value test_type NOT NULL, primary key(pk));");
+        TestHelper.execute(defaultConnection, "INSERT INTO enum_table (value) values ('V1');");
 
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
@@ -889,9 +904,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1969")
     public void shouldSnapshotEnumArrayAsKnownType() throws Exception {
-        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1', 'V2');");
-        TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, value test_type[] NOT NULL, primary key(pk));");
-        TestHelper.execute("INSERT INTO enum_array_table (value) values ('{V1, V2}');");
+        TestHelper.execute(defaultConnection, "CREATE TYPE test_type AS ENUM ('V1', 'V2');");
+        TestHelper.execute(defaultConnection, "CREATE TABLE enum_array_table (pk SERIAL, value test_type[] NOT NULL, primary key(pk));");
+        TestHelper.execute(defaultConnection, "INSERT INTO enum_array_table (value) values ('{V1, V2}');");
 
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
         // type, length, and scale values are resolved correctly when paired with Enum types.
@@ -916,12 +931,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1969")
     public void shouldSnapshotTimeArrayTypesAsKnownTypes() throws Exception {
-        TestHelper.execute("CREATE TABLE time_array_table (pk SERIAL, "
+        TestHelper.execute(defaultConnection, "CREATE TABLE time_array_table (pk SERIAL, "
                 + "timea time[] NOT NULL, "
                 + "timetza timetz[] NOT NULL, "
                 + "timestampa timestamp[] NOT NULL, "
                 + "timestamptza timestamptz[] NOT NULL, primary key(pk));");
-        TestHelper.execute("INSERT INTO time_array_table (timea, timetza, timestampa, timestamptza) "
+        TestHelper.execute(defaultConnection, "INSERT INTO time_array_table (timea, timetza, timestampa, timestamptza) "
                 + "values ("
                 + "'{00:01:02,01:02:03}', "
                 + "'{13:51:02+0200,14:51:03+0200}', "
@@ -941,9 +956,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForByteaAsBytes() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_BYTEA_BINMODE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig());
 
@@ -958,9 +973,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForByteaAsBase64String() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_BYTEA_BINMODE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64));
@@ -976,9 +991,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5544")
     public void shouldGenerateSnapshotForByteaAsBase64UrlSafeString() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_BYTEA_BINMODE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BASE64_URL_SAFE));
@@ -994,9 +1009,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForByteaAsHexString() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_BYTEA_BINMODE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_BYTEA_BINMODE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.HEX));
@@ -1012,9 +1027,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForUnknownColumnAsBytes() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_CIRCLE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
@@ -1030,9 +1045,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForUnknownColumnAsBase64() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_CIRCLE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1049,9 +1064,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-5544")
     public void shouldGenerateSnapshotForUnknownColumnAsBase64UrlSafe() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_CIRCLE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1068,9 +1083,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1814")
     public void shouldGenerateSnapshotForUnknownColumnAsHex() throws Exception {
-        TestHelper.dropAllSchemas();
-        TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
+        TestHelper.execute(defaultConnection, INSERT_CIRCLE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1090,18 +1105,18 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldIncludePartitionedTableIntoSnapshot() throws Exception {
 
         // create partitioned table
-        TestHelper.dropAllSchemas();
-        TestHelper.execute(
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection,
                 "CREATE SCHEMA s1;"
                         + "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);"
                         + "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);"
                         + "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);");
 
         // insert records
-        TestHelper.execute("INSERT into s1.part VALUES(1, 1)");
-        TestHelper.execute("INSERT into s1.part VALUES(2, 2)");
-        TestHelper.execute("INSERT into s1.part VALUES(3, 700)");
-        TestHelper.execute("INSERT into s1.part VALUES(4, 800)");
+        TestHelper.execute(defaultConnection, "INSERT into s1.part VALUES(1, 1)");
+        TestHelper.execute(defaultConnection, "INSERT into s1.part VALUES(2, 2)");
+        TestHelper.execute(defaultConnection, "INSERT into s1.part VALUES(3, 700)");
+        TestHelper.execute(defaultConnection, "INSERT into s1.part VALUES(4, 800)");
 
         // start connector
         Configuration.Builder configBuilder = TestHelper.defaultConfig()

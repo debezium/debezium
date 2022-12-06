@@ -16,12 +16,15 @@ import java.util.Set;
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
@@ -41,20 +44,32 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             + "CREATE TABLE s1.anumeric (pk numeric, aa integer, PRIMARY KEY(pk));"
             + "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048));";
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
         initializeConnectorTestFramework();
 
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(defaultConnection, SETUP_TABLES_STMT);
     }
 
     @After
     public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
     }
 
     protected Configuration.Builder config() {
@@ -128,7 +143,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @Override
     protected void waitForConnectorToStart() {
         super.waitForConnectorToStart();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
+        TestHelper.waitForDefaultReplicationSlotBeActive(defaultConnection);
     }
 
     @Test
@@ -228,7 +243,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         final String SETUP_TABLES = "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);"
                 + "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);"
                 + "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);";
-        TestHelper.execute(SETUP_TABLES);
+        TestHelper.execute(defaultConnection, SETUP_TABLES);
 
         // insert records
         try (final JdbcConnection connection = databaseConnection()) {

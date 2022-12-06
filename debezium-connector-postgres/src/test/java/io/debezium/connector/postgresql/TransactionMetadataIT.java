@@ -20,6 +20,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -28,6 +29,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.EqualityCheck;
@@ -48,12 +50,20 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             "CREATE TABLE s2.a (pk SERIAL, aa integer, bb varchar(20), PRIMARY KEY(pk));" +
             INSERT_STMT;
 
+    private static PostgresConnection defaultConnection;
+
     @Rule
     public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
-        TestHelper.dropAllSchemas();
+        defaultConnection = TestHelper.create();
+        TestHelper.dropAllSchemas(defaultConnection);
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
     }
 
     @Before
@@ -64,8 +74,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     @After
     public void after() {
         stopConnector();
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        TestHelper.dropPublication(defaultConnection);
+        TestHelper.dropPublication(defaultConnection);
     }
 
     @Test
@@ -73,7 +83,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(defaultConnection, SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
@@ -81,14 +91,14 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
+        TestHelper.waitForDefaultReplicationSlotBeActive(defaultConnection);
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
         // insert and verify 2 new records
-        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute(defaultConnection, INSERT_STMT);
 
         // BEGIN, 2 * data, END
         final List<SourceRecord> records = new ArrayList<>();

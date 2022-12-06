@@ -28,7 +28,9 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -67,6 +69,8 @@ import io.debezium.util.Strings;
  */
 public class PostgresSchemaIT {
 
+    private static PostgresConnection defaultConnection;
+
     @Rule
     public final SkipTestRule skipTest = new SkipTestRule();
 
@@ -80,14 +84,24 @@ public class PostgresSchemaIT {
 
     private PostgresSchema schema;
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
     }
 
     @Test
     public void shouldLoadSchemaForBuiltinPostgresTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
@@ -149,7 +163,7 @@ public class PostgresSchemaIT {
         String tableId = "public.macaddr8_table";
         String ddl = "CREATE TABLE macaddr8_table (pk SERIAL, m MACADDR8, PRIMARY KEY(pk));";
 
-        TestHelper.execute(ddl);
+        TestHelper.execute(defaultConnection, ddl);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
 
@@ -163,7 +177,7 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldLoadSchemaForExtensionPostgresTypes() throws Exception {
-        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgres_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig().with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true).build());
 
@@ -179,8 +193,8 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldLoadSchemaForPostgisTypes() throws Exception {
-        TestHelper.executeDDL("init_postgis.ddl");
-        TestHelper.executeDDL("postgis_create_tables.ddl");
+        TestHelper.executeDDL(defaultConnection, "init_postgis.ddl");
+        TestHelper.executeDDL(defaultConnection, "postgis_create_tables.ddl");
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
 
@@ -207,7 +221,7 @@ public class PostgresSchemaIT {
                 "CREATE TABLE s1.B (pk SERIAL, ba integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s2.A (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s2.B (pk SERIAL, ba integer, PRIMARY KEY(pk));";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(SCHEMA_EXCLUDE_LIST, "s1").build());
         final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
         schema = TestHelper.getSchema(config, typeRegistry);
@@ -273,7 +287,7 @@ public class PostgresSchemaIT {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  PRIMARY KEY(pk));";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
@@ -283,7 +297,7 @@ public class PostgresSchemaIT {
         statements = "DROP TABLE IF EXISTS table1;" +
                 "DROP TABLE IF EXISTS table2;" +
                 "CREATE TABLE table2 (pk SERIAL, strcol VARCHAR, PRIMARY KEY(pk));";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         String tableId = "public.table2";
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, false);
@@ -296,7 +310,7 @@ public class PostgresSchemaIT {
                 "ALTER TABLE table2 ADD COLUMN si SMALLINT;" +
                 "ALTER TABLE table2 DROP COLUMN strcol;";
 
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, TableId.parse(tableId, false), false);
             assertTablesIncluded(tableId);
@@ -312,7 +326,7 @@ public class PostgresSchemaIT {
         String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
                 "DROP TABLE IF EXISTS table1;" +
                 "CREATE TABLE table1 (pk SERIAL,  toasted text, untoasted int, PRIMARY KEY(pk));";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
         TableId tableId = TableId.parse("public.table1", false);
@@ -486,7 +500,7 @@ public class PostgresSchemaIT {
                 + ");\n"
                 + "create unique index uk_including_function on counter(campaign_id, COALESCE(group_id, ''::text));";
 
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
         TableId tableId = TableId.parse("public.counter", false);
@@ -500,7 +514,7 @@ public class PostgresSchemaIT {
 
         statements = "drop index uk_including_function;"
                 + "create unique index uk_including_expression on counter((campaign_id),(sent_cnt/ 2));";
-        TestHelper.execute(statements);
+        TestHelper.execute(defaultConnection, statements);
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, false);
             Table table = schema.tableFor(tableId);

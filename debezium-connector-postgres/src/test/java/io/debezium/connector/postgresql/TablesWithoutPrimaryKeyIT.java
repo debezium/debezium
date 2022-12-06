@@ -14,10 +14,13 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 
 /**
  * Integration test to verify behaviour of tables that do not have primary key
@@ -34,14 +37,26 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
             "INSERT INTO nopk.t2 VALUES (2,20);" +
             "INSERT INTO nopk.t3 VALUES (3,30);";
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
     }
 
     @Test
     public void shouldProcessFromSnapshot() throws Exception {
-        TestHelper.execute(STATEMENTS);
+        TestHelper.execute(defaultConnection, STATEMENTS);
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
@@ -63,7 +78,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldProcessFromSnapshotOld() throws Exception {
-        TestHelper.execute(STATEMENTS);
+        TestHelper.execute(defaultConnection, STATEMENTS);
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
@@ -92,8 +107,8 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
         assertConnectorIsRunning();
         waitForStreamingToStart();
 
-        TestHelper.execute(STATEMENTS);
-        TestHelper.execute("ALTER TABLE nopk.t3 REPLICA IDENTITY FULL");
+        TestHelper.execute(defaultConnection, STATEMENTS);
+        TestHelper.execute(defaultConnection, "ALTER TABLE nopk.t3 REPLICA IDENTITY FULL");
 
         final int expectedRecordsCount = 1 + 1 + 1;
 
@@ -106,8 +121,8 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
         Assertions.assertThat(recordsByTopic.get("test_server.nopk.t2").get(0).keySchema().fields()).hasSize(1);
         Assertions.assertThat(recordsByTopic.get("test_server.nopk.t3").get(0).keySchema()).isNull();
 
-        TestHelper.execute("UPDATE nopk.t3 SET val = 300 WHERE pk = 3;");
-        TestHelper.execute("DELETE FROM nopk.t3;");
+        TestHelper.execute(defaultConnection, "UPDATE nopk.t3 SET val = 300 WHERE pk = 3;");
+        TestHelper.execute(defaultConnection, "DELETE FROM nopk.t3;");
         consumer.expects(2);
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         final Map<String, List<SourceRecord>> recordsByTopic2 = recordsByTopic(2, consumer);
@@ -131,7 +146,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
         assertConnectorIsRunning();
         waitForStreamingToStart();
 
-        TestHelper.execute(STATEMENTS);
+        TestHelper.execute(defaultConnection, STATEMENTS);
 
         final int expectedRecordsCount = 1 + 1 + 1;
 

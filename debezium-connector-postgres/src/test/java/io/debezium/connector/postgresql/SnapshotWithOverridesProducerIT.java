@@ -13,11 +13,14 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.assertj.core.api.Assertions;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 
 /**
  * Integration test for {@link io.debezium.connector.postgresql.PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE}
@@ -42,14 +45,26 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
             "INSERT INTO over.t2 VALUES (102);" +
             "INSERT INTO over.t2 VALUES (103);";
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        TestHelper.dropAllSchemas(defaultConnection);
     }
 
     @Test
     public void shouldUseOverriddenSelectStatementDuringSnapshotting() throws Exception {
-        TestHelper.execute(STATEMENTS);
+        TestHelper.execute(defaultConnection, STATEMENTS);
 
         buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1")
@@ -67,7 +82,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
 
     @Test
     public void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws Exception {
-        TestHelper.execute(STATEMENTS);
+        TestHelper.execute(defaultConnection, STATEMENTS);
 
         buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1,over.t2")

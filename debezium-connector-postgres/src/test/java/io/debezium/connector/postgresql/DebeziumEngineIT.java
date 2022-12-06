@@ -27,13 +27,16 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
 import org.assertj.core.api.Assertions;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -58,19 +61,30 @@ import io.debezium.util.Testing;
 public class DebeziumEngineIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumEngineIT.class);
+    private static PostgresConnection defaultConnection;
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("connector-offsets.txt").toAbsolutePath();
 
     @Rule
     public SkipTestRule skipTest = new SkipTestRule();
 
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
         OFFSET_STORE_PATH.toFile().delete();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropAllSchemas();
-        TestHelper.execute(
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection,
                 "CREATE SCHEMA engine;",
                 "CREATE TABLE engine.test (id INT PRIMARY KEY, val VARCHAR(32));",
                 "INSERT INTO engine.test VALUES(1, 'value1');");
@@ -235,7 +249,7 @@ public class DebeziumEngineIT {
         final AtomicReference<Throwable> exception = new AtomicReference<>();
         DebeziumEngine<ChangeEvent<String, String>> engine;
 
-        TestHelper.execute("DROP TABLE IF EXISTS tests;", "CREATE TABLE tests (id SERIAL PRIMARY KEY);");
+        TestHelper.execute(defaultConnection, "DROP TABLE IF EXISTS tests;", "CREATE TABLE tests (id SERIAL PRIMARY KEY);");
 
         final Properties props = new Properties();
         props.putAll(TestHelper.defaultConfig().build().asMap());
@@ -276,7 +290,7 @@ public class DebeziumEngineIT {
         executor.execute(engine);
 
         while (offsetStoreSetCalls.get() < 1) {
-            TestHelper.execute("INSERT INTO tests VALUES(default)");
+            TestHelper.execute(defaultConnection, "INSERT INTO tests VALUES(default)");
         }
         engine.close();
 
@@ -284,11 +298,11 @@ public class DebeziumEngineIT {
         offsetStoreSetCalls.set(0);
 
         for (int i = 0; i < 100; i++) {
-            TestHelper.execute("INSERT INTO tests VALUES(default)");
+            TestHelper.execute(defaultConnection, "INSERT INTO tests VALUES(default)");
         }
         executor.execute(engine);
         while (offsetStoreSetCalls.get() < 1) {
-            TestHelper.execute("INSERT INTO tests VALUES(default)");
+            TestHelper.execute(defaultConnection, "INSERT INTO tests VALUES(default)");
         }
         engine.close();
 

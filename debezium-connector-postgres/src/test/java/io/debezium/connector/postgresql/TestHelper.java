@@ -92,8 +92,7 @@ public final class TestHelper {
      * @throws SQLException if there is a problem obtaining a replication connection
      */
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose,
-                                                             PostgresConnectorConfig config)
-            throws SQLException {
+                                                             PostgresConnectorConfig config) {
         final PostgresConnectorConfig.LogicalDecoder plugin = decoderPlugin();
         return ReplicationConnection.builder(config)
                 .withPlugin(plugin)
@@ -160,20 +159,14 @@ public final class TestHelper {
         return new PostgresConnection(JdbcConfiguration.adapt(defaultJdbcConfig().edit().with("ApplicationName", appName).build()), CONNECTION_TEST);
     }
 
-    /**
-     * Executes a JDBC statement using the default jdbc config without autocommitting the connection
-     *
-     * @param statement A SQL statement
-     * @param furtherStatements Further SQL statement(s)
-     */
-    public static void execute(String statement, String... furtherStatements) {
+    public static void execute(PostgresConnection connection, String statement, String... furtherStatements) {
         if (furtherStatements != null) {
             for (String further : furtherStatements) {
                 statement = statement + further;
             }
         }
 
-        try (PostgresConnection connection = create()) {
+        try {
             connection.setAutoCommit(false);
             connection.executeWithoutCommitting(statement);
             Connection jdbcConn = connection.connection();
@@ -194,12 +187,12 @@ public final class TestHelper {
 
     /**
      * Drops all the public non system schemas from the DB.
-     *
+     * @param connection Prepared PostgresConnection to use for executing a drop.
      * @throws SQLException if anything fails.
      */
-    public static void dropAllSchemas() throws SQLException {
+    public static void dropAllSchemas(PostgresConnection connection) throws SQLException {
         String lineSeparator = System.lineSeparator();
-        Set<String> schemaNames = schemaNames();
+        Set<String> schemaNames = schemaNames(connection);
         if (!schemaNames.contains(PostgresSchema.PUBLIC_SCHEMA_NAME)) {
             schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
         }
@@ -207,9 +200,9 @@ public final class TestHelper {
                 .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
                 .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
                 .collect(Collectors.joining(lineSeparator));
-        TestHelper.execute(dropStmts);
+        TestHelper.execute(connection, dropStmts);
         try {
-            TestHelper.executeDDL("init_database.ddl");
+            TestHelper.executeDDL(connection, "init_database.ddl");
         }
         catch (Exception e) {
             throw new IllegalStateException("Failed to initialize database", e);
@@ -249,10 +242,8 @@ public final class TestHelper {
                 getPostgresValueConverter(typeRegistry, config));
     }
 
-    protected static Set<String> schemaNames() throws SQLException {
-        try (PostgresConnection connection = create()) {
-            return connection.readAllSchemaNames(((Predicate<String>) Arrays.asList("pg_catalog", "information_schema")::contains).negate());
-        }
+    protected static Set<String> schemaNames(PostgresConnection connection) throws SQLException {
+        return connection.readAllSchemaNames(((Predicate<String>) Arrays.asList("pg_catalog", "information_schema")::contains).negate());
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
@@ -284,15 +275,13 @@ public final class TestHelper {
         return builder;
     }
 
-    protected static void executeDDL(String ddlFile) throws Exception {
+    protected static void executeDDL(PostgresConnection connection, String ddlFile) throws Exception {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
                 .stream()
                 .collect(Collectors.joining(System.lineSeparator()));
-        try (PostgresConnection connection = create()) {
-            connection.execute(statements);
-        }
+        connection.execute(statements);
     }
 
     protected static String topicName(String suffix) {
@@ -315,9 +304,9 @@ public final class TestHelper {
                         .build()));
     }
 
-    protected static void createDefaultReplicationSlot() {
+    protected static void createDefaultReplicationSlot(PostgresConnection connection) {
         try {
-            execute(String.format(
+            execute(connection, String.format(
                     "SELECT * FROM pg_create_logical_replication_slot('%s', '%s')",
                     ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
                     decoderPlugin().getPostgresPluginName()));
@@ -328,8 +317,8 @@ public final class TestHelper {
     }
 
     protected static void dropDefaultReplicationSlot() {
-        try {
-            execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
+        try (PostgresConnection connection = create()) {
+            execute(connection, "SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
         }
         catch (Exception e) {
             if (!Throwables.getRootCause(e).getMessage().equals("ERROR: replication slot \"debezium\" does not exist")) {
@@ -338,14 +327,14 @@ public final class TestHelper {
         }
     }
 
-    protected static void dropPublication() {
-        dropPublication(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+    protected static void dropPublication(PostgresConnection connection) {
+        dropPublication(connection, ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }
 
-    protected static void dropPublication(String publicationName) {
+    protected static void dropPublication(PostgresConnection connection, String publicationName) {
         if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
             try {
-                execute("DROP PUBLICATION " + publicationName);
+                execute(connection, "DROP PUBLICATION " + publicationName);
             }
             catch (Exception e) {
                 LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
@@ -353,49 +342,43 @@ public final class TestHelper {
         }
     }
 
-    protected static boolean publicationExists() {
-        return publicationExists(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+    protected static boolean publicationExists(PostgresConnection connection) {
+        return publicationExists(connection, ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }
 
-    protected static boolean publicationExists(String publicationName) {
+    protected static boolean publicationExists(PostgresConnection connection, String publicationName) {
         if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
-            try (PostgresConnection connection = create()) {
-                String query = String.format("SELECT pubname FROM pg_catalog.pg_publication WHERE pubname = '%s'", publicationName);
-                try {
-                    return connection.queryAndMap(query, ResultSet::next);
-                }
-                catch (SQLException e) {
-                    // ignored
-                }
+            String query = String.format("SELECT pubname FROM pg_catalog.pg_publication WHERE pubname = '%s'", publicationName);
+            try {
+                return connection.queryAndMap(query, ResultSet::next);
+            }
+            catch (SQLException e) {
+                // ignored
             }
         }
         return false;
     }
 
-    protected static void waitForDefaultReplicationSlotBeActive() {
-        try (PostgresConnection connection = create()) {
-            Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> connection.prepareQueryAndMap(
-                    "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
-                        statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
-                        statement.setString(2, "postgres");
-                        statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
-                    },
-                    rs -> rs.next()));
-        }
+    protected static void waitForDefaultReplicationSlotBeActive(PostgresConnection connection) {
+        Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> connection.prepareQueryAndMap(
+                "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
+                    statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+                    statement.setString(2, "postgres");
+                    statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                },
+                rs -> rs.next()));
     }
 
-    protected static void assertNoOpenTransactions() throws SQLException {
-        try (PostgresConnection connection = TestHelper.create()) {
-            connection.setAutoCommit(true);
+    protected static void assertNoOpenTransactions(PostgresConnection connection) throws SQLException {
+        connection.setAutoCommit(true);
 
-            try {
-                Awaitility.await()
-                        .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                        .until(() -> getOpenIdleTransactions(connection).size() == 0);
-            }
-            catch (ConditionTimeoutException e) {
-                fail("Expected no open transactions but there was at least one.");
-            }
+        try {
+            Awaitility.await()
+                    .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                    .until(() -> getOpenIdleTransactions(connection).size() == 0);
+        }
+        catch (ConditionTimeoutException e) {
+            fail("Expected no open transactions but there was at least one.");
         }
     }
 

@@ -19,10 +19,13 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
@@ -32,12 +35,24 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, minor = 0, reason = "Domain type array columns not supported")
 public class DomainTypesIT extends AbstractRecordsProducerTest {
 
+    private static PostgresConnection defaultConnection;
+
+    @BeforeClass
+    public static void beforeClass() {
+        defaultConnection = TestHelper.create();
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        defaultConnection.close();
+    }
+
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
-        TestHelper.execute("CREATE SCHEMA domaintypes");
-        TestHelper.execute("CREATE DOMAIN nmtoken AS text CHECK (VALUE ~* '^[A-Z0-9\\.\\_\\-\\:]+$');");
-        TestHelper.execute("CREATE TABLE domaintypes.t1 (id serial primary key, token nmtoken, tokens nmtoken[]);");
+        TestHelper.dropAllSchemas(defaultConnection);
+        TestHelper.execute(defaultConnection, "CREATE SCHEMA domaintypes");
+        TestHelper.execute(defaultConnection, "CREATE DOMAIN nmtoken AS text CHECK (VALUE ~* '^[A-Z0-9\\.\\_\\-\\:]+$');");
+        TestHelper.execute(defaultConnection, "CREATE TABLE domaintypes.t1 (id serial primary key, token nmtoken, tokens nmtoken[]);");
     }
 
     @Test
@@ -49,7 +64,7 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
                 .build());
         assertConnectorIsRunning();
 
-        TestHelper.execute("INSERT INTO domaintypes.t1 (id, token, tokens) values (default, 'foo', '{\"bar\",\"baz\"}')");
+        TestHelper.execute(defaultConnection, "INSERT INTO domaintypes.t1 (id, token, tokens) values (default, 'foo', '{\"bar\",\"baz\"}')");
 
         final TestConsumer consumer = testConsumer(1, "domaintypes");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -70,7 +85,7 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
                 .build());
         assertConnectorIsRunning();
 
-        TestHelper.execute("INSERT INTO domaintypes.t1 (id, token, tokens) values (default, 'foo', '{\"bar\",\"baz\"}')");
+        TestHelper.execute(defaultConnection, "INSERT INTO domaintypes.t1 (id, token, tokens) values (default, 'foo', '{\"bar\",\"baz\"}')");
 
         final TestConsumer consumer = testConsumer(1, "domaintypes");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);

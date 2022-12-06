@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
 
 public class CustomLifecycleHookTestSnapshot extends AlwaysSnapshotter {
@@ -15,6 +16,8 @@ public class CustomLifecycleHookTestSnapshot extends AlwaysSnapshotter {
 
     @Override
     public void snapshotCompleted() {
-        TestHelper.execute(INSERT_SNAPSHOT_COMPLETE_STATE);
+        try (PostgresConnection connection = TestHelper.create()) {
+            TestHelper.execute(connection, INSERT_SNAPSHOT_COMPLETE_STATE);
+        }
     }
 }
