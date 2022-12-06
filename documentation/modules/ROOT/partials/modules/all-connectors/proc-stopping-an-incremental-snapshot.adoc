@@ -41,7 +41,7 @@ tag::nosql-based-snapshot[]
 +
 [source,bash,indent=0,subs="+attributes,+quotes"]
 ----
-_<signalDataCollection>_.insert({"id" : _<idNumber>_,"type" : "stop-snapshot", "data" : {"data-collections" ["_<collectionName>_", "_<collectionName>_"],"type": "incremental"}});
+_<signalDataCollection>_.insert({"_id" : _<idNumber>_,"type" : "stop-snapshot", "data" : {"data-collections" ["_<collectionName>_", "_<collectionName>_"],"type": "incremental"}});
 ----
 +
 For example,
