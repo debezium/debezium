@@ -1096,6 +1096,20 @@ public final class Strings {
         return null;
     }
 
+    /**
+     * Masks sensitive data in given string
+     *
+     * @param original original string containing possibly sensitive data
+     * @param mask replacement string
+     * @param sensitives sensitive data to be masked
+     * @return original string with sensitive data masked
+     */
+    public static String mask(String original, String mask, String... sensitives) {
+        return Arrays.stream(sensitives)
+                .filter(Objects::nonNull)
+                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
+    }
+
     private Strings() {
     }
 

@@ -42,6 +42,29 @@ import io.debezium.util.Testing;
  */
 public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnectorIT {
 
+    private Configuration getConfig(String connectionString, boolean ssl) {
+        var properties = TestHelper.getConfiguration().asProperties();
+        properties.remove(MongoDbConnectorConfig.HOSTS.name());
+
+        return Configuration.from(properties).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
+                .with(MongoDbConnectorConfig.SSL_ENABLED, ssl)
+                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, true)
+                .build();
+    }
+
+    @Test
+    public void shouldMaskCredentials() {
+        config = getConfig("mongodb://admin:password@localhost:27017/", false);
+        var connectionContext = new ConnectionContext(config);
+
+        var masked = connectionContext.maskedConnectionSeed();
+        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
+    }
+
     @Test
     public void shouldConsumeAllEventsFromSingleReplicaWithMongoProtocol() throws InterruptedException {
         shouldConsumeAllEventsFromDatabase("mongodb://localhost:27017/", false);
@@ -55,18 +78,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
     }
 
     public void shouldConsumeAllEventsFromDatabase(String connectionString, boolean ssl) throws InterruptedException {
-        // Use the DB configuration to define the connector's configuration ...
-        var properties = TestHelper.getConfiguration().asProperties();
-        properties.remove(MongoDbConnectorConfig.HOSTS.name());
-
-        config = Configuration.from(properties).edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
-                .with(MongoDbConnectorConfig.SSL_ENABLED, ssl)
-                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, true)
-                .build();
+        config = getConfig(connectionString, ssl);
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);

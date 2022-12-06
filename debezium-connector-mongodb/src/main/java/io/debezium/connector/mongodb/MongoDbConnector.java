@@ -114,7 +114,7 @@ public class MongoDbConnector extends SourceConnector {
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext("conn");
         try {
-            logger.info("Starting MongoDB connector and discovering replica set(s) at {}", connectionContext.connectionSeed());
+            logger.info("Starting MongoDB connector and discovering replica set(s) at {}", connectionContext.maskedConnectionSeed());
 
             // Set up and start the thread that monitors the members of all of the replica sets ...
             replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, taskContext.serverName(), "replica-set-monitor");
@@ -122,7 +122,7 @@ public class MongoDbConnector extends SourceConnector {
             monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, connectionContext.pollInterval(),
                     Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             replicaSetMonitorExecutor.execute(monitorThread);
-            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.connectionSeed());
+            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
         }
         finally {
             previousLogContext.restore();
@@ -131,7 +131,7 @@ public class MongoDbConnector extends SourceConnector {
 
     protected void replicaSetsChanged(ReplicaSets replicaSets) {
         if (logger.isInfoEnabled()) {
-            logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.connectionSeed());
+            logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.maskedConnectionSeed());
             logger.info("New replica sets include:");
             replicaSets.onEachReplicaSet(replicaSet -> logger.info("  {}", replicaSet));
         }
