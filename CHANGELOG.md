@@ -2,6 +2,65 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.0.1.Final
+December 7th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12397603)
+
+### New features since 2.0.0.Final
+
+* Improve LogMiner query performance by reducing REGEXP_LIKE disjunctions [DBZ-5648](https://issues.redhat.com/browse/DBZ-5648)
+* Replace obsolete DebeziumDownload attribute [DBZ-5835](https://issues.redhat.com/browse/DBZ-5835)
+* Reduce container image sizes by consolidating operations per layer [DBZ-5864](https://issues.redhat.com/browse/DBZ-5864)
+
+
+### Breaking changes since 2.0.0.Final
+
+None
+
+
+### Fixes since 2.0.0.Final
+
+* Using snapshot boundary mode "all" causes DebeziumException on Oracle RAC [DBZ-5302](https://issues.redhat.com/browse/DBZ-5302)
+* ORA-01003: no statement parsed [DBZ-5352](https://issues.redhat.com/browse/DBZ-5352)
+* Missing snapshot pending transactions [DBZ-5482](https://issues.redhat.com/browse/DBZ-5482)
+* Db2 documentation refers to invalid SMALLMONEY and MONEY data types  [DBZ-5504](https://issues.redhat.com/browse/DBZ-5504)
+* UNIQUE INDEX with NULL value throws exception when lob.enabled is true [DBZ-5682](https://issues.redhat.com/browse/DBZ-5682)
+* Oracle SQL parsing error when collation used [DBZ-5726](https://issues.redhat.com/browse/DBZ-5726)
+* Unparseable DDL statement [DBZ-5734](https://issues.redhat.com/browse/DBZ-5734)
+* NullPointerException thrown during snapshot of tables in Oracle source connector [DBZ-5738](https://issues.redhat.com/browse/DBZ-5738)
+* Remove note from snapshot metrics docs file that flags incremental snapshots as TP feature [DBZ-5748](https://issues.redhat.com/browse/DBZ-5748)
+* Exclude Oracle Compression Advisor tables from capture to avoid infinite loop [DBZ-5756](https://issues.redhat.com/browse/DBZ-5756)
+* More Oracle logging  [DBZ-5759](https://issues.redhat.com/browse/DBZ-5759)
+* Oracle should only log row contents at TRACE level [DBZ-5760](https://issues.redhat.com/browse/DBZ-5760)
+* Outbox Router documentation outdated regarding value converter [DBZ-5770](https://issues.redhat.com/browse/DBZ-5770)
+* Using DBMS_LOB.ERASE by itself can lead to an unexpected UPDATE with null BLOB value [DBZ-5773](https://issues.redhat.com/browse/DBZ-5773)
+* PostgreSQL missing metadata info [DBZ-5789](https://issues.redhat.com/browse/DBZ-5789)
+* Oracle connector does not attempt restart when ORA-01089 exception is nested [DBZ-5791](https://issues.redhat.com/browse/DBZ-5791)
+* Message with LSN 'LSN{XYZ}' not present among LSNs seen in the location phase [DBZ-5792](https://issues.redhat.com/browse/DBZ-5792)
+* Mysql connector alter table with database name parse failed [DBZ-5802](https://issues.redhat.com/browse/DBZ-5802)
+* Conflicting documentation for snapshot.mode property in MongoDB connector v2.0 [DBZ-5812](https://issues.redhat.com/browse/DBZ-5812)
+* 'topic.prefix' default value in MongoDB connector v2.0 [DBZ-5817](https://issues.redhat.com/browse/DBZ-5817)
+* Quarkus outbox extention never finishes the open tracing span [DBZ-5821](https://issues.redhat.com/browse/DBZ-5821)
+* fix names of range fields in schema to comply with Avro standard [DBZ-5826](https://issues.redhat.com/browse/DBZ-5826)
+* CREATE/ALTER user does not support COMMENT token [DBZ-5836](https://issues.redhat.com/browse/DBZ-5836)
+* Invalid Java object for schema with type FLOAT64: class java.lang.Float [DBZ-5843](https://issues.redhat.com/browse/DBZ-5843)
+* IllegalStateException is thrown if task is recovering while other tasks are running [DBZ-5855](https://issues.redhat.com/browse/DBZ-5855)
+* CREATE/ALTER user does not support ATTRIBUTE token [DBZ-5876](https://issues.redhat.com/browse/DBZ-5876)
+
+
+### Other changes since 2.0.0.Final
+
+* SQL Server connector docs should mention multi-task support [DBZ-5714](https://issues.redhat.com/browse/DBZ-5714)
+* Debezium connectors ship with an old version of google-protobuf vulnerable to CVE-2022-3171 [DBZ-5747](https://issues.redhat.com/browse/DBZ-5747)
+* Upgrade to Quarkus 2.14.CR1 [DBZ-5774](https://issues.redhat.com/browse/DBZ-5774)
+* Upgrade postgres driver to version 42.5.0 [DBZ-5780](https://issues.redhat.com/browse/DBZ-5780)
+* Upgrade to Quarkus 2.14.0.Final [DBZ-5786](https://issues.redhat.com/browse/DBZ-5786)
+* Doc Typo in cloudevents [DBZ-5788](https://issues.redhat.com/browse/DBZ-5788)
+* Add ORA-01555 to Oracle documentation [DBZ-5816](https://issues.redhat.com/browse/DBZ-5816)
+* GitHub Actions: Deprecating save-state and set-output commands [DBZ-5824](https://issues.redhat.com/browse/DBZ-5824)
+* Upgrade wildfly-elytron to 1.15.5 / 1.16.1 due to CVE-2021-3642 [DBZ-5854](https://issues.redhat.com/browse/DBZ-5854)
+
+
+
 ## 2.0.0.Final
 October 14th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12385340)
 
