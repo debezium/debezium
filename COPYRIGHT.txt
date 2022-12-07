@@ -34,6 +34,7 @@ Andrey Pustovetov
 Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
+Anil Dasari
 Anisha Mohanty
 Anton Kondratev
 Anton Martynov
@@ -48,6 +49,7 @@ Avinash Vishwakarma
 Aykut Farsak
 Babur Duisenov
 Balázs Németh
+Balázs Sipos
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
@@ -58,6 +60,7 @@ Bingqin Zhou
 Björn Häuser
 Blake Peno
 Bob Roldan
+Bobby Tiernay
 Brad Morgan
 Braden Groom
 Braden Staudacher
@@ -118,11 +121,13 @@ Echo Xu
 Ed Laur
 Eduardo Hayashi
 Eero Koplimets
+Egyed Tamas
 Elan Hasson
 Eliran Agranovich
 Emmanuel Brard
 Emrul Islam
 Enzo Cappa
+Erdinç Taşkın
 Eric Slep
 Eric Weaver
 Eric S. Kreiseir
@@ -176,6 +181,7 @@ Himanshu Mishra
 Hoa Le
 Horia Chiorean
 Hossein Torabi
+Hubert Dulay
 Hussain Ansari
 Hyunjin Oh
 Ian Axelrod
@@ -235,6 +241,7 @@ Katerina Galieva
 Kaushik Iyer
 Kazuki MATSUDA / 松田一樹
 Keith Barber
+Keri Harris
 Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
@@ -261,8 +268,9 @@ Marc Zbyszynski
 Marek Winkler
 Mario Mueller
 Mariusz Strzelecki
-Mark Drilling
 Mark Bereznitsky
+Mark Drilling
+Mark Lambert
 Martin Medek
 Martin Sillence
 Masazumi Kobayashi
@@ -299,6 +307,7 @@ Nenad Stojanovikj
 Nick Murray
 Niels Pardon
 Nikhil Benesch
+Nils Hartmann
 Nir Levy
 Nishant Singh
 Nitin Agarwal
@@ -308,6 +317,7 @@ Oliver Weiler
 Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
+Ondrej Babec
 Oren Elias
 Ori Popowski
 Orr Ganani
@@ -328,6 +338,7 @@ Plugaru Tudor
 Poonam Meghnani
 Pradeep Mamillapalli
 Prannoy Mittal
+Praveen Burgu
 Preethi Sadagopan
 pushpavanthar
 Qishang Zhong
@@ -346,6 +357,7 @@ Roman Kuchar
 Rotem Adhoh
 Sagar Rao
 Sahan Dilshan
+Sahap Asci
 René Kerner
 Rich O'Connell
 Richard Kolkovich
@@ -381,6 +393,7 @@ Stathis Souris
 Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
+Subodh Kant Chaturvedi
 Sungho Hwang
 Syed Muhammad Sufyian
 Tapani Moilanen
@@ -404,6 +417,7 @@ Tim Patterson
 Tomaz Lemos Fernandes
 Tommy Karlsson
 Tony Rizko
+tooptoop4
 Tova Cohen
 Travis Elnicky
 Troy Gaines
