@@ -525,7 +525,7 @@ See the next section for more details.
 The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |`additional-condition`
-|Optional.Empty
+|_N/A_
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
 subset of the contents of the {data-collection}(s).
 |===
