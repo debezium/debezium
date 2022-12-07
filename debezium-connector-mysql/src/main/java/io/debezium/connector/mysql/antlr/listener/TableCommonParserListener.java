@@ -38,7 +38,14 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
     @Override
     public void enterColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
         parser.runIfNotNull(() -> {
-            String columnName = parser.parseName(ctx.uid());
+            MySqlParser.FullColumnNameContext fullColumnNameContext = ctx.fullColumnName();
+            List<MySqlParser.DottedIdContext> dottedIdContextList = fullColumnNameContext.dottedId();
+            MySqlParser.UidContext uidContext = fullColumnNameContext.uid();
+            if (!dottedIdContextList.isEmpty()) {
+                uidContext = dottedIdContextList.get(dottedIdContextList.size() - 1).uid();
+            }
+
+            String columnName = parser.parseName(uidContext);
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
