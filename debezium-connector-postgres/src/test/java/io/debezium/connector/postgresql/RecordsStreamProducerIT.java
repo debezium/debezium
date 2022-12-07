@@ -2595,6 +2595,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
         if (!tablesBeforeStart) {
+            waitForStreamingToStart();
             TestHelper.execute(
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",
