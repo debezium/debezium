@@ -128,7 +128,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("Starting {} with configuration:", getClass().getSimpleName());
-                config.withMaskedPasswords().forEach((propName, propValue) -> {
+                withMaskedSensitiveOptions(config).forEach((propName, propValue) -> {
                     LOGGER.info("   {} = {}", propName, propValue);
                 });
             }
@@ -138,6 +138,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         finally {
             stateLock.unlock();
         }
+    }
+
+    protected Configuration withMaskedSensitiveOptions(Configuration config) {
+        return config.withMaskedPasswords();
     }
 
     /**
