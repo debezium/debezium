@@ -455,6 +455,7 @@ public final class TestHelper {
                 config.binaryHandlingMode(),
                 config.intervalHandlingMode(),
                 config.getUnavailableValuePlaceholder(),
+                new UnchangedToastedArrayPlaceholder(config),
                 config.moneyFractionDigits());
     }
 }

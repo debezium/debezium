@@ -473,6 +473,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
+    public static final String DEFAULT_UNAVAILABLE_NUMBER_ARRAY_PLACEHOLDER = "28694827,62948267,94852637,62847362,94837264,73486259,29483726,43827619,84692735,29873462";
+
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 0))
@@ -833,6 +835,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "the original value is a toasted value not provided by the database. " +
                     "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
 
+    public static final Field UNAVAILABLE_NUMBER_ARRAY_PLACEHOLDER = Field.create("unavailable.number.array.placeholder")
+            .withDisplayName("Unavailable number array placeholder")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 20))
+            .withWidth(Width.MEDIUM)
+            .withDefault(DEFAULT_UNAVAILABLE_NUMBER_ARRAY_PLACEHOLDER)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify the numbers separated by comma that will be provided by Debezium to indicate that " +
+                    "the original value is int/bigint array and not provided by the database.");
+
     public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
             .withDisplayName("Money fraction digits")
             .withType(Type.SHORT)
@@ -974,6 +986,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return Strings.hexStringToByteArray(placeholder.substring(4));
         }
         return placeholder.getBytes();
+    }
+
+    public String getUnavailableNumberArrayPlaceholder() {
+        return getConfig().getString(UNAVAILABLE_NUMBER_ARRAY_PLACEHOLDER);
     }
 
     protected int moneyFractionDigits() {
