@@ -181,4 +181,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
         return replicaSets;
     }
+
+    @Override
+    protected Configuration withMaskedSensitiveOptions(Configuration config) {
+        return super.withMaskedSensitiveOptions(config).withMasked(MongoDbConnectorConfig.CONNECTION_STRING.name());
+    }
 }
