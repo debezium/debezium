@@ -44,3 +44,9 @@ insert INTO `wptests_posts` (`post_author`, `post_date`, `post_date_gmt`, `post_
 #end
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user,now());
 insert into sql_log values(retGUID,log_type,log_text,0,0,current_user(),now());
+#begin
+CREATE TABLE tbl (tbl.a BIGINT);
+CREATE TABLE tbl (.a BIGINT);
+INSERT INTO tbl (tbl.a) SELECT * FROM another_table;
+INSERT INTO tbl (.tbl.a) SELECT * FROM another_table;
+#end
