@@ -37,6 +37,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -1635,6 +1636,88 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
                 new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(),
                         Arrays.asList(DecoderDifferences.mandatoryToastedValuePlaceholder()))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-5936")
+    public void shouldHandleToastedIntegerArrayColumn() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
+        startConnector(Function.identity(), false);
+        List<Integer> intList = IntStream.range(1, 10000).boxed().collect(Collectors.toList());
+        final String toastedValue = intList.stream().map(String::valueOf)
+                .collect(Collectors.joining(","));
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN int_array int[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN int_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, int_array) values (10, ARRAY [" + toastedValue + "]);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), intList)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "not_toast", "int_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueIntPlaceholder())),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-5936")
+    public void shouldHandleToastedBigIntArrayColumn() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
+        startConnector(Function.identity(), false);
+        List<Long> bigintList = LongStream.range(1, 10000).boxed().collect(Collectors.toList());
+        final String toastedValue = bigintList.stream().map(String::valueOf)
+                .collect(Collectors.joining(","));
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN bigint_array bigint[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN bigint_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, bigint_array) values (10, ARRAY [" + toastedValue + "]);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(), bigintList)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "not_toast", "bigint_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueBigintPlaceholder())),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
     }

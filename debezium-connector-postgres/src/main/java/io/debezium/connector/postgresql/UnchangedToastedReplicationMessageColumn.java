@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.util.Arrays;
-
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 
 /**
@@ -24,15 +22,15 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
      * Marker value indicating an unchanged TOAST column value.
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_TEXT_ARRAY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_INT_ARRAY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
 
-    private boolean isStringArrayColumn = false;
+    private Object unchangedToastValue;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
         super(columnName, type, typeWithModifiers, optional);
-        if (typeWithModifiers.equals("text[]") || typeWithModifiers.equals("_text") ||
-                typeWithModifiers.equals("character varying[]") || typeWithModifiers.equals("_varchar")) {
-            isStringArrayColumn = true;
-        }
+        setUnchangedToastValue(typeWithModifiers);
     }
 
     @Override
@@ -42,9 +40,27 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
 
     @Override
     public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-        if (isStringArrayColumn) {
-            return Arrays.asList(UNCHANGED_TOAST_VALUE);
+        return unchangedToastValue;
+    }
+
+    private void setUnchangedToastValue(String typeWithModifiers) {
+        switch (typeWithModifiers) {
+            case "text[]":
+            case "_text":
+            case "character varying[]":
+            case "_varchar":
+                unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
+                break;
+            case "integer[]":
+            case "_int4":
+                unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
+                break;
+            case "bigint[]":
+            case "_int8":
+                unchangedToastValue = UNCHANGED_BIGINT_ARRAY_TOAST_VALUE;
+                break;
+            default:
+                unchangedToastValue = UNCHANGED_TOAST_VALUE;
         }
-        return UNCHANGED_TOAST_VALUE;
     }
 }
