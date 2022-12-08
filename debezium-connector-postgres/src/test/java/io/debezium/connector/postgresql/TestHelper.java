@@ -395,6 +395,21 @@ public final class TestHelper {
         }
     }
 
+    protected static void setReplicaIdentityForTable(String table, String identity) {
+        execute(String.format("ALTER TABLE %s REPLICA IDENTITY %s;", table, identity));
+        try (PostgresConnection connection = create()) {
+            Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> connection
+                    .prepareQueryAndMap("SELECT relreplident FROM pg_class WHERE oid = ?::regclass;", statement -> {
+                        statement.setString(1, table);
+                    }, rs -> {
+                        if (!rs.next()) {
+                            return false;
+                        }
+                        return identity.toLowerCase().startsWith(rs.getString(1));
+                    }));
+        }
+    }
+
     protected static void assertNoOpenTransactions() throws SQLException {
         try (PostgresConnection connection = TestHelper.create()) {
             connection.setAutoCommit(true);

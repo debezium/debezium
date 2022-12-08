@@ -639,7 +639,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // alter the table and set its replica identity to full the issue another update
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL");
+        TestHelper.setReplicaIdentityForTable("test_table", "FULL");
         executeAndWait("UPDATE test_table set text='update2' WHERE pk=1");
 
         updatedRecord = consumer.remove();
@@ -667,7 +667,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // without PK and with REPLICA IDENTITY DEFAULT we will get nothing
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.setReplicaIdentityForTable("test_table", "DEFAULT");
         consumer.expects(0);
         executeAndWaitForNoRecords("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
         assertThat(consumer.isEmpty()).isTrue();
@@ -1026,11 +1026,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(record, PK_FIELD, 1);
 
         // Without PK we should get delete event with REPLICA IDENTITY FULL
-        statement = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
-                "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
+        statement = "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
                 "INSERT INTO test_table (pk, text) VALUES (2, 'insert2');" +
                 "DELETE FROM test_table WHERE pk = 2;";
         consumer.expects(2);
+        TestHelper.setReplicaIdentityForTable("test_table", "FULL");
         executeAndWait(statement);
         assertRecordInserted("public.test_table", PK_FIELD, 2);
         record = consumer.remove();
@@ -1038,10 +1038,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(record, PK_FIELD, 2);
 
         // Without PK and without REPLICA IDENTITY FULL we will not get delete event
-        statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
-                "INSERT INTO test_table (pk, text) VALUES (3, 'insert3');" +
+        statement = "INSERT INTO test_table (pk, text) VALUES (3, 'insert3');" +
                 "DELETE FROM test_table WHERE pk = 3;";
         consumer.expects(1);
+        TestHelper.setReplicaIdentityForTable("test_table", "DEFAULT");
         executeAndWait(statement);
         assertRecordInserted("public.test_table", PK_FIELD, 3);
         assertThat(consumer.isEmpty()).isTrue();
