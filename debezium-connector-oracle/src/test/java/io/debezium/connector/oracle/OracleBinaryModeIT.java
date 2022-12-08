@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
