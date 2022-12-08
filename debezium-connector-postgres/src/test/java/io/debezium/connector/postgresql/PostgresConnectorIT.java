@@ -2435,8 +2435,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.createDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
 
-        final SlotState slotAtTheBeginning = getDefaultReplicationSlot();
-
         final Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
@@ -2449,9 +2447,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
 
         stopConnector();
-
         final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
-        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
 
         TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
         TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");

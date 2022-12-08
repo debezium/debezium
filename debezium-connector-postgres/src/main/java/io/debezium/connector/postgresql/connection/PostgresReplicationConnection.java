@@ -353,7 +353,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
         Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
-        if (lsn == null) {
+        if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
             return;
         }
         try (Statement stmt = pgConnection().createStatement()) {
