@@ -26,12 +26,28 @@ public class ErrorHandler {
     private final ChangeEventQueue<?> queue;
     private final AtomicReference<Throwable> producerThrowable;
     private final CommonConnectorConfig connectorConfig;
+    private final int maxRetries;
+    private int retries;
 
     public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
                         ChangeEventQueue<?> queue) {
         this.connectorConfig = connectorConfig;
         this.queue = queue;
         this.producerThrowable = new AtomicReference<>();
+        this.maxRetries = -1;
+        this.retries = 0;
+    }
+
+    /**
+     * Allows a connector that supports setting maximum retries to set the current retries attempts and the maximum retries
+     */
+    public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
+                        ChangeEventQueue<?> queue, int retries, int maxRetries) {
+        this.connectorConfig = connectorConfig;
+        this.queue = queue;
+        this.producerThrowable = new AtomicReference<>();
+        this.retries = retries;
+        this.maxRetries = maxRetries;
     }
 
     public void setProducerThrowable(Throwable producerThrowable) {
@@ -45,7 +61,7 @@ public class ErrorHandler {
         }
 
         if (first) {
-            if (retriable) {
+            if (retriable && hasMoreRetries()) {
                 queue.producerException(
                         new RetriableException("An exception occurred in the change event producer. This connector will be restarted.", producerThrowable));
             }
@@ -97,5 +113,34 @@ public class ErrorHandler {
             throwable = throwable.getCause();
         }
         return false;
+    }
+
+    /**
+     * Whether the maximum number of retries has been reached
+     *
+     * @return true if maxRetries is -1 or retries < maxRetries
+     */
+    protected boolean hasMoreRetries() {
+        boolean doRetry = maxRetries == -1 || retries < maxRetries;
+        if (doRetry) {
+            retries++;
+            LOGGER.info("{} of {} retries will be attempted", retries,
+                    maxRetries);
+        }
+        else {
+            String errorMsg = String.format(
+                    "The maximum number of retries: %d has been attempted", maxRetries);
+            LOGGER.error(errorMsg);
+        }
+
+        return doRetry;
+    }
+
+    public int getRetries() {
+        return retries;
+    }
+
+    public void resetRetries() {
+        this.retries = 0;
     }
 }

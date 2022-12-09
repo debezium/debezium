@@ -99,7 +99,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new SqlServerErrorHandler(connectorConfig, queue);
+        int retries = (errorHandler == null) ? 0 : errorHandler.getRetries();
+        errorHandler = new SqlServerErrorHandler(connectorConfig, queue, retries, connectorConfig.getMaxRetries());
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
@@ -136,6 +137,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final List<SourceRecord> sourceRecords = records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+
+        // Reset the retries if all partitions have streamed without exceptions at least once after a restart
+        if (coordinator.getErrorHandler().getRetries() > 0 && ((SqlServerChangeEventSourceCoordinator) coordinator).firstStreamingIterationCompletedSuccessfully()) {
+            coordinator.getErrorHandler().resetRetries();
+        }
 
         return sourceRecords;
     }

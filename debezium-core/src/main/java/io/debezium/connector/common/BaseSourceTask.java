@@ -73,7 +73,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * The change event source coordinator for those connectors adhering to the new
      * framework structure, {@code null} for legacy-style connectors.
      */
-    private ChangeEventSourceCoordinator<P, O> coordinator;
+    protected ChangeEventSourceCoordinator<P, O> coordinator;
 
     /**
      * The latest offsets that have been acknowledged by the Kafka producer. Will be

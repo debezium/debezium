@@ -222,6 +222,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
+    public ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
     public class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
 
         @Override
