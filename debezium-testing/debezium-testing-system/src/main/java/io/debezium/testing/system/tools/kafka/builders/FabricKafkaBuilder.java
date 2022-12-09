@@ -119,17 +119,18 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
                 .withTls(true)
                 .build();
 
-        GenericKafkaListener loadBalancerExternal = new GenericKafkaListenerBuilder()
+        GenericKafkaListener routeExternal = new GenericKafkaListenerBuilder()
                 .withName("external")
                 .withPort(9094)
-                .withType(KafkaListenerType.LOADBALANCER)
+                .withType(KafkaListenerType.ROUTE)
+                .withTls(true)
                 .build();
 
         // External services not needed when running from inside OCP
         if (isRunningFromOcp()) {
             return Arrays.asList(plainInternal, tlsInternal);
         }
-        return Arrays.asList(plainInternal, tlsInternal, loadBalancerExternal);
+        return Arrays.asList(plainInternal, tlsInternal, routeExternal);
     }
 
     private static Map<String, Object> defaultKafkaConfig() {
