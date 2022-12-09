@@ -3011,7 +3011,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with("column.exclude.list", "s1.dbz5783.data")
-                .with(PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.PGOUTPUT.getValue())
                 .build();
         start(PostgresConnector.class, config);
 
