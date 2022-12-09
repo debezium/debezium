@@ -11,8 +11,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.net.ServerSocket;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,9 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseController.class);
 
     private static final String FORWARDED_HOST = "localhost";
+    private static final int MAX_PORT_SEARCH_ATTEMPTS = 20;
+    private static final int MIN_PORT = 32768;
+    private static final int MAX_PORT = 60999;
 
     protected final OpenShiftClient ocp;
     protected final String project;
@@ -40,7 +44,9 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     protected Deployment deployment;
     protected String name;
     protected List<Service> services;
-    protected List<PortForward> portForwards = new LinkedList<>();
+    protected PortForward portForward;
+
+    private int localPort;
 
     public AbstractOcpDatabaseController(
                                          Deployment deployment, List<Service> services, OpenShiftClient ocp) {
@@ -61,7 +67,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     @Override
-    public void reload() throws InterruptedException {
+    public void reload() throws InterruptedException, IOException {
+        if (!isRunningFromOcp()) {
+            closeDatabasePortForwards();
+        }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
         await()
@@ -80,16 +89,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public int getDatabasePort() {
-        return getService().getSpec().getPorts().stream()
-                .filter(p -> p.getName().equals("db"))
-                .findAny()
-                .get().getPort();
+        return getOriginalDatabasePort();
     }
 
     @Override
     public String getPublicDatabaseHostname() {
         if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database hostname");
             return getDatabaseHostname();
         }
         return FORWARDED_HOST;
@@ -97,37 +102,76 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public int getPublicDatabasePort() {
-        return getDatabasePort();
+        if (isRunningFromOcp()) {
+            return getDatabasePort();
+        }
+        return localPort;
+    }
+
+    @Override
+    public void initialize() throws InterruptedException, IOException {
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
     }
 
     @Override
     public void forwardDatabasePorts() {
-        String dbName = deployment.getMetadata().getLabels().get("app");
-        ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(dbName);
+        if (portForward != null) {
+            LOGGER.warn("Calling port forward when forward already on " + getOriginalDatabasePort() + "->" + localPort);
+            return;
+        }
+        String serviceName = getService().getMetadata().getName();
+        ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(serviceName);
+        int dbPort = getOriginalDatabasePort();
+        localPort = getAvailablePort();
 
-        serviceResource.get().getSpec().getPorts().forEach(port -> {
-            int servicePort = port.getPort();
-            PortForward forward = serviceResource
-                    .portForward(servicePort, servicePort);
+        LOGGER.info("Forwarding ports " + dbPort + "->" + localPort + " on service: " + serviceName);
 
-            for (Throwable e : forward.getClientThrowables()) {
-                LOGGER.error("Client error when forwarding DB port " + servicePort, e);
-            }
+        PortForward forward = serviceResource
+                .portForward(dbPort, localPort);
 
-            for (Throwable e : forward.getServerThrowables()) {
-                LOGGER.error("Server error when forwarding DB port" + servicePort, e);
-            }
-            portForwards.add(forward);
-        });
+        for (Throwable e : forward.getClientThrowables()) {
+            LOGGER.error("Client error when forwarding DB port " + deployment, e);
+        }
 
-        LOGGER.info("Forwarding ports on service: " + dbName);
+        for (Throwable e : forward.getServerThrowables()) {
+            LOGGER.error("Server error when forwarding DB port" + dbPort, e);
+        }
+        portForward = forward;
     }
 
     @Override
     public void closeDatabasePortForwards() throws IOException {
         LOGGER.info("Closing port forwards");
-        for (PortForward portForward : portForwards) {
-            portForward.close();
+        portForward.close();
+        portForward = null;
+    }
+
+    private int getOriginalDatabasePort() {
+        return getService().getSpec().getPorts().stream()
+                .filter(p -> p.getName().equals("db"))
+                .findAny()
+                .get().getPort();
+    }
+
+    private int getAvailablePort() {
+        for (int i = 0; i < MAX_PORT_SEARCH_ATTEMPTS; i++) {
+            int portNum = ThreadLocalRandom.current().nextInt(MIN_PORT, MAX_PORT);
+            if (isLocalPortFree(portNum)) {
+                return portNum;
+            }
+        }
+        throw new IllegalStateException("Couldn't find free port for forwarding");
+    }
+
+    private boolean isLocalPortFree(int port) {
+        try {
+            new ServerSocket(port).close();
+            return true;
+        }
+        catch (IOException e) {
+            return false;
         }
     }
 }

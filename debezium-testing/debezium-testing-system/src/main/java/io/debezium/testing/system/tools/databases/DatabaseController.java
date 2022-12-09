@@ -48,7 +48,7 @@ public interface DatabaseController<C extends DatabaseClient<?, ?>> {
      *
      * @throws InterruptedException on timing issue
      */
-    void reload() throws InterruptedException;
+    void reload() throws InterruptedException, IOException;
 
     /**
      * Database initialisation
