@@ -281,6 +281,7 @@ jobs:
     strategy:
       matrix:
         version-mongo-server: ["4.0", "4.4", "5.0", "6.0"]
+      fail-fast: false
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
@@ -350,6 +351,7 @@ jobs:
     strategy:
       matrix:
         postgres-plugin: ["assembly", "assembly,postgres-15,pgoutput-decoder"]
+      fail-fast: false
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
