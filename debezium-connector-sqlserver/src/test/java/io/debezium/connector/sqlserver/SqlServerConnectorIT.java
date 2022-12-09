@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.util.TestHelper.TEST_DATABASE_2;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
@@ -33,6 +34,8 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import javax.management.InstanceNotFoundException;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -55,6 +58,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -2816,6 +2820,61 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringSnapshot() throws Exception {
+        shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
+            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET OFFLINE");
+            TestHelper.waitForDatabaseSnapshotToBeCompleted(TestHelper.TEST_DATABASE_1);
+        });
+    }
+
+    @Test
+    public void shouldStopRetriableRestartsAtConfiguredMaximumDuringStreaming() throws Exception {
+        shouldStopRetriableRestartsAtConfiguredMaximum(() -> {
+            TestHelper.waitForStreamingStarted();
+            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2
+                    + " SET OFFLINE WITH ROLLBACK IMMEDIATE");
+        });
+    }
+
+    private void shouldStopRetriableRestartsAtConfiguredMaximum(SqlRunnable scenario) throws Exception {
+        TestHelper.createTestDatabase(TestHelper.TEST_DATABASE_2);
+        connection = TestHelper.testConnection(TEST_DATABASE_2);
+        connection.execute(
+                "CREATE TABLE tablea (id int primary key, cola varchar(30))",
+                "CREATE TABLE tableb (id int primary key, colb varchar(30))",
+                "INSERT INTO tablea VALUES(1, 'a')");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tableb");
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+
+        final Configuration config1 = TestHelper.defaultConnectorConfig()
+                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TestHelper.TEST_DATABASE_1 + "," + TestHelper.TEST_DATABASE_2)
+                .with("errors.max.retries", 1)
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        try {
+            start(SqlServerConnector.class, config1);
+            assertConnectorIsRunning();
+            scenario.run();
+
+            final String message1 = "1 of 1 retries will be attempted";
+            final String message2 = "The maximum number of retries: 1 has been attempted";
+            Awaitility.await()
+                    .alias("Checking for maximum restart messages")
+                    .pollInterval(100, TimeUnit.MILLISECONDS)
+                    .atMost(5, TimeUnit.SECONDS)
+                    .ignoreException(InstanceNotFoundException.class)
+                    .until(() -> logInterceptor.containsMessage(message1) && logInterceptor.containsMessage(message2));
+        }
+        finally {
+            // Set the database back online, since otherwise, it will be impossible to create it again
+            // https://docs.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql?view=sql-server-ver15#general-remarks
+            connection.execute("ALTER DATABASE " + TestHelper.TEST_DATABASE_2 + " SET ONLINE");
+        }
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
@@ -2892,5 +2951,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         public boolean skipUnparseableDdlStatements() {
             return false;
         }
+    }
+
+    @FunctionalInterface
+    interface SqlRunnable {
+        void run() throws SQLException;
     }
 }
