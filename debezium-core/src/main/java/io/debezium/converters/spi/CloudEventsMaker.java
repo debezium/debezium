@@ -42,6 +42,8 @@ public abstract class CloudEventsMaker {
         public static final String DATACONTENTTYPE = "datacontenttype";
         public static final String DATASCHEMA = "dataschema";
 
+        public static final String PARTITIONKEY = "partitionkey";
+
         // TODO DBZ-1701 not used
         public static final String SUBJECT = "subject";
         public static final String TIME = "time";
@@ -170,5 +172,14 @@ public abstract class CloudEventsMaker {
         return recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
                 + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
                 + "CloudEvents.Envelope";
+    }
+
+    /**
+     * Construct the CloudEvent partitionKey following the format of: "id:1234;sub-id:56".
+     *
+     * @return the partitionKey of record.
+     */
+    public String cePartitionKey() {
+        return null;
     }
 }

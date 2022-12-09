@@ -95,6 +95,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.PARTITIONKEY)).isNullOrEmpty();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
             msg = "inspecting required CloudEvents extension attributes for Debezium";
             assertThat(valueJson.get("iodebeziumop")).isNotNull();
@@ -190,6 +191,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/avro");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA).asText()).startsWith("http://fake-url/schemas/ids/");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.PARTITIONKEY)).isNullOrEmpty();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
@@ -281,6 +283,8 @@ public class CloudEventsConverterTest {
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("application/avro");
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.DATASCHEMA)).startsWith("http://fake-url/schemas/ids/");
+            assertThat(avroValue.get(CloudEventsMaker.FieldName.PARTITIONKEY)).isNull();
+
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
             msg = "inspecting required CloudEvents extension attributes in the value";

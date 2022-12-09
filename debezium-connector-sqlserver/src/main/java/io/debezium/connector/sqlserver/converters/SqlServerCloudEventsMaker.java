@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.sqlserver.converters;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.sqlserver.SqlServerPartition;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
@@ -27,5 +31,14 @@ public class SqlServerCloudEventsMaker extends CloudEventsMaker {
                 + ";change_lsn:" + recordParser.getMetadata(SqlServerRecordParser.CHANGE_LSN_KEY)
                 + ";commit_lsn:" + recordParser.getMetadata(SqlServerRecordParser.COMMIT_LSN_KEY)
                 + ";event_serial_no:" + recordParser.getMetadata(SqlServerRecordParser.EVENT_SERIAL_NO_KEY);
+    }
+
+    @Override
+    public String cePartitionKey() {
+        Map<String, String> partitionKeys = new SqlServerPartition(
+                recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY).toString(),
+                recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY).toString()).getSourcePartition();
+
+        return partitionKeys.keySet().stream().sorted().map(k -> k + ":" + partitionKeys.get(k)).collect(Collectors.joining(";"));
     }
 }
