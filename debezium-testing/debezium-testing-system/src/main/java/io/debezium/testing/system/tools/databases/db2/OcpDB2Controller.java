@@ -9,7 +9,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_USERNAME;
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.util.List;
 
@@ -37,7 +36,7 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
     }
 
     @Override
-    public void initialize() throws IOException {
+    public void initialize() {
         if (!isRunningFromOcp()) {
             forwardDatabasePorts();
         }

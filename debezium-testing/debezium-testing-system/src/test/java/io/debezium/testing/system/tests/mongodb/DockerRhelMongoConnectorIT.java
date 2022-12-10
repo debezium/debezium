@@ -25,7 +25,7 @@ import fixture5.annotations.Fixture;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("acceptance")
 @Tag("mongo")
-@Tag("openshift")
+@Tag("rhel")
 @Tag("docker")
 @Fixture(DockerNetwork.class)
 @Fixture(DockerKafka.class)

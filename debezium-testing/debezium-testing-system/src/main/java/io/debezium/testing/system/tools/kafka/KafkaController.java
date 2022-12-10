@@ -10,7 +10,6 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
 
-import java.io.IOException;
 import java.util.Properties;
 
 /**
@@ -47,7 +46,7 @@ public interface KafkaController {
     /**
      * @return default kafka consumer configuration
      */
-    default Properties getDefaultConsumerProperties() throws IOException {
+    default Properties getDefaultConsumerProperties() {
         Properties consumerProps = new Properties();
         consumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
         consumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");

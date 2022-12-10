@@ -13,7 +13,6 @@ import static org.awaitility.Awaitility.await;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,9 +66,14 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     @Override
-    public void reload() throws InterruptedException, IOException {
+    public void reload() throws InterruptedException {
         if (!isRunningFromOcp()) {
-            closeDatabasePortForwards();
+            try {
+                closeDatabasePortForwards();
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
@@ -109,7 +113,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     @Override
-    public void initialize() throws InterruptedException, IOException {
+    public void initialize() throws InterruptedException {
         if (!isRunningFromOcp()) {
             forwardDatabasePorts();
         }
@@ -124,7 +128,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         String serviceName = getService().getMetadata().getName();
         ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(serviceName);
         int dbPort = getOriginalDatabasePort();
-        localPort = getAvailablePort();
+        try {
+            localPort = getAvailablePort();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         LOGGER.info("Forwarding ports " + dbPort + "->" + localPort + " on service: " + serviceName);
 
@@ -155,14 +164,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .get().getPort();
     }
 
-    private int getAvailablePort() {
-        for (int i = 0; i < MAX_PORT_SEARCH_ATTEMPTS; i++) {
-            int portNum = ThreadLocalRandom.current().nextInt(MIN_PORT, MAX_PORT);
-            if (isLocalPortFree(portNum)) {
-                return portNum;
-            }
+    private int getAvailablePort() throws IOException {
+        try (var socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
         }
-        throw new IllegalStateException("Couldn't find free port for forwarding");
     }
 
     private boolean isLocalPortFree(int port) {
