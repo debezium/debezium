@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
-import io.debezium.testing.system.tests.SqlConnectorTest;
+import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -27,7 +27,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public abstract class Db2Tests extends SqlConnectorTest {
+public abstract class Db2Tests extends ConnectorTest {
 
     public Db2Tests(
                     KafkaController kafkaController,

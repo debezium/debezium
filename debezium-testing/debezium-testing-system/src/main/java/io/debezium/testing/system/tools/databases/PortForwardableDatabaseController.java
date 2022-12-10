@@ -8,7 +8,7 @@ package io.debezium.testing.system.tools.databases;
 import java.io.IOException;
 
 public interface PortForwardableDatabaseController {
-    void forwardDatabasePorts();
+    void forwardDatabasePorts() throws IOException;
 
     void closeDatabasePortForwards() throws IOException;
 }

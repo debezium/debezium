@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.system.tools.databases;
 
-import java.io.IOException;
-
 public interface DatabaseController<C extends DatabaseClient<?, ?>> {
 
     /**
@@ -48,13 +46,13 @@ public interface DatabaseController<C extends DatabaseClient<?, ?>> {
      *
      * @throws InterruptedException on timing issue
      */
-    void reload() throws InterruptedException, IOException;
+    void reload() throws InterruptedException;
 
     /**
      * Database initialisation
      * @throws InterruptedException on timing issue
      */
-    default void initialize() throws InterruptedException, IOException {
+    default void initialize() throws InterruptedException {
         // no-op
     }
 

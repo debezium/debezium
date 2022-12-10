@@ -86,9 +86,9 @@
     <database.sqlserver.port>5432</database.sqlserver.port>
     <database.sqlserver.username>sa</database.sqlserver.username>
     <database.sqlserver.password>Debezium1$</database.sqlserver.password>
-    <database.sqlserver.dbz.username>${database.db2.username}</database.sqlserver.dbz.username>
-    <database.sqlserver.dbz.password>${database.db2.password}</database.sqlserver.dbz.password>
-    <database.sqlserver.dbnames>TestDB</database.sqlserver.dbnames>
+    <database.sqlserver.dbz.username>${database.sqlserver.username}</database.sqlserver.dbz.username>
+    <database.sqlserver.dbz.password>${database.sqlserver.password}</database.sqlserver.dbz.password>
+    <database.sqlserver.dbnames>testDB</database.sqlserver.dbnames>
 
     <!--MongoDB configuration-->
     <database.mongo.port>27017</database.mongo.port>

@@ -9,16 +9,13 @@ import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_FILENAME;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Base64;
@@ -118,7 +115,7 @@ public class OcpKafkaController implements KafkaController {
         LOGGER.info("Waiting for Kafka cluster '" + name + "'");
         kafka = kafkaOperation()
                 .withName(name)
-                .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
+                .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(7), MINUTES);
     }
 
     /**
@@ -143,14 +140,18 @@ public class OcpKafkaController implements KafkaController {
     }
 
     @Override
-    public Properties getDefaultConsumerProperties() throws IOException {
+    public Properties getDefaultConsumerProperties() {
         Properties kafkaConsumerProps = new Properties();
+        try {
+            kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, getKafkaCaCertificate().getAbsolutePath());
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         kafkaConsumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
         kafkaConsumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
         kafkaConsumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
         kafkaConsumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
-
-        kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, getKafkaCaCertificate().getAbsolutePath());
         kafkaConsumerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
         kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "PEM");
         return kafkaConsumerProps;
@@ -170,10 +171,7 @@ public class OcpKafkaController implements KafkaController {
 
         // save to local file
         File crtFile = Files.createTempFile("kafka-cert-", null).toFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(crtFile, UTF_8))) {
-            writer.write(cert);
-            writer.flush();
-        }
+        Files.writeString(crtFile.toPath(), cert);
         return crtFile;
     }
 }

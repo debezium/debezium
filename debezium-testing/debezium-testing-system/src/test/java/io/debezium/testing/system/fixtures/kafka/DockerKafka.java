@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
-import java.io.IOException;
-
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.Network;
@@ -35,7 +33,7 @@ public class DockerKafka extends TestFixture {
     }
 
     @Override
-    public void setup() throws IOException {
+    public void setup() {
         DockerKafkaDeployer kafkaDeployer = new DockerKafkaDeployer.Builder()
                 .withNetwork(network)
                 .build();
