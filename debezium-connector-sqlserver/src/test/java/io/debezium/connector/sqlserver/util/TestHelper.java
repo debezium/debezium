@@ -238,7 +238,7 @@ public class TestHelper {
     public static SqlServerConnection adminConnection() {
         return new SqlServerConnection(TestHelper.defaultJdbcConfig(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), false);
+                Collections.emptySet(), false, null);
     }
 
     public static SqlServerConnection testConnection() {
@@ -264,7 +264,7 @@ public class TestHelper {
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
         return new SqlServerConnection(config,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), false);
+                Collections.emptySet(), false, null);
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
@@ -275,7 +275,7 @@ public class TestHelper {
 
         return new SqlServerConnection(config,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), true);
+                Collections.emptySet(), true, null, true);
     }
 
     /**
