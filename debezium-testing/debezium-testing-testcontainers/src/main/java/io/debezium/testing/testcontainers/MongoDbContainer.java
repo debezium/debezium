@@ -9,7 +9,6 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.range;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -23,8 +22,12 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.utility.DockerImageName;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.SyncDockerCmd;
 import com.github.dockerjava.api.model.ContainerNetwork;
+
+import io.debezium.testing.testcontainers.util.PortResolver;
+import io.debezium.testing.testcontainers.util.RandomPortResolver;
 
 /**
  * A container for running a single MongoDB {@code mongod} or {@code mongos} process.
@@ -49,6 +52,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     private final String name;
     private final int port;
     private final String replicaSet;
+    private final PortResolver portResolver;
 
     public static Builder node() {
         return new Builder();
@@ -58,6 +62,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
         private String name;
         private int port = 27017;
+        private PortResolver portResolver = new RandomPortResolver();
         private String replicaSet;
         private Network network = Network.SHARED;
 
@@ -68,6 +73,11 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
         public Builder port(int port) {
             this.port = port;
+            return this;
+        }
+
+        public Builder portResolver(PortResolver portResolver) {
+            this.portResolver = portResolver;
             return this;
         }
 
@@ -91,10 +101,10 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         super(IMAGE_NAME);
         this.name = builder.name;
         this.replicaSet = builder.replicaSet;
+        this.portResolver = builder.portResolver;
 
         if (isDockerDesktop()) {
-            // See class-level Java Docs
-            this.port = findFreePort();
+            this.port = portResolver.resolveFreePort();
             addFixedExposedPort(port, port);
         }
         else {
@@ -253,23 +263,19 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         }
     }
 
-    private static boolean isDockerDesktop() {
+    @Override
+    protected void containerIsStopped(InspectContainerResponse containerInfo) {
+        super.containerIsStopped(containerInfo);
+        portResolver.releasePort(port);
+    }
+
+    public static boolean isDockerDesktop() {
         var info = DockerClientFactory.instance().getInfo();
         return "docker-desktop".equals(info.getName());
     }
 
     private static boolean isLegacy() {
         return IMAGE_VERSION.equals("4.0") || IMAGE_VERSION.equals("4.4");
-    }
-
-    private static int findFreePort() {
-        try (var serverSocket = new ServerSocket(0)) {
-            serverSocket.setReuseAddress(true);
-            return serverSocket.getLocalPort();
-        }
-        catch (IOException e) {
-            return -1;
-        }
     }
 
     public static class Address {

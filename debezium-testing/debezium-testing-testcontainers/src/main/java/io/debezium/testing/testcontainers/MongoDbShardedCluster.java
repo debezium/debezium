@@ -24,6 +24,8 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 
 import io.debezium.testing.testcontainers.util.MoreStartables;
+import io.debezium.testing.testcontainers.util.PortResolver;
+import io.debezium.testing.testcontainers.util.RandomPortResolver;
 
 /**
  * A MongoDB sharded cluster.
@@ -36,6 +38,7 @@ public class MongoDbShardedCluster implements Startable {
     private final int replicaCount;
     private final int routerCount;
     private final Network network;
+    private final PortResolver portResolver;
 
     private final MongoDbReplicaSet configServers;
     private final List<MongoDbReplicaSet> shards;
@@ -54,6 +57,7 @@ public class MongoDbShardedCluster implements Startable {
         private int routerCount = 1;
 
         private Network network = Network.newNetwork();
+        private PortResolver portResolver = new RandomPortResolver();
 
         public Builder shardCount(int shardCount) {
             this.shardCount = shardCount;
@@ -75,6 +79,11 @@ public class MongoDbShardedCluster implements Startable {
             return this;
         }
 
+        public Builder portResolver(PortResolver portResolver) {
+            this.portResolver = portResolver;
+            return this;
+        }
+
         public MongoDbShardedCluster build() {
             return new MongoDbShardedCluster(this);
         }
@@ -85,6 +94,7 @@ public class MongoDbShardedCluster implements Startable {
         this.replicaCount = builder.replicaCount;
         this.routerCount = builder.routerCount;
         this.network = builder.network;
+        this.portResolver = builder.portResolver;
 
         this.shards = createShards();
         this.configServers = createConfigServers();
@@ -161,6 +171,7 @@ public class MongoDbShardedCluster implements Startable {
                 .namespace("test-mongo-shard" + i + "-replica")
                 .name("shard" + i)
                 .memberCount(replicaCount)
+                .portResolver(portResolver)
                 .build();
 
         shard.getMembers().forEach(node -> node.setCommand(
@@ -179,6 +190,7 @@ public class MongoDbShardedCluster implements Startable {
                 .namespace("test-mongo-configdb")
                 .name("configdb")
                 .memberCount(replicaCount)
+                .portResolver(portResolver)
                 .configServer(true)
                 .build();
 
@@ -202,6 +214,7 @@ public class MongoDbShardedCluster implements Startable {
         var router = node()
                 .network(network)
                 .name("test-mongos" + i)
+                .portResolver(portResolver)
                 .build();
 
         router.setCommand(

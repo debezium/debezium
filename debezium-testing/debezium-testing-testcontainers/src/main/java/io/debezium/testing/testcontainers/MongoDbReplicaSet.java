@@ -28,6 +28,8 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 import io.debezium.testing.testcontainers.util.MoreStartables;
+import io.debezium.testing.testcontainers.util.PortResolver;
+import io.debezium.testing.testcontainers.util.RandomPortResolver;
 
 /**
  * A MongoDB replica set.
@@ -40,6 +42,7 @@ public class MongoDbReplicaSet implements Startable {
     private final int memberCount;
     private final boolean configServer;
     private final Network network;
+    private final PortResolver portResolver;
 
     private final List<MongoDbContainer> members = new ArrayList<>();
 
@@ -57,6 +60,7 @@ public class MongoDbReplicaSet implements Startable {
         private boolean configServer = false;
 
         private Network network = Network.newNetwork();
+        private PortResolver portResolver = new RandomPortResolver();
 
         public Builder name(String name) {
             this.name = name;
@@ -83,6 +87,11 @@ public class MongoDbReplicaSet implements Startable {
             return this;
         }
 
+        public Builder portResolver(PortResolver portResolver) {
+            this.portResolver = portResolver;
+            return this;
+        }
+
         public MongoDbReplicaSet build() {
             return new MongoDbReplicaSet(this);
         }
@@ -93,12 +102,14 @@ public class MongoDbReplicaSet implements Startable {
         this.memberCount = builder.memberCount;
         this.configServer = builder.configServer;
         this.network = builder.network;
+        this.portResolver = builder.portResolver;
 
         for (int i = 1; i <= memberCount; i++) {
             members.add(node()
                     .network(network)
                     .name(builder.namespace + i)
                     .replicaSet(name)
+                    .portResolver(portResolver)
                     .build());
         }
     }
