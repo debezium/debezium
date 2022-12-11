@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.testcontainers;
 
+import static io.debezium.testing.testcontainers.util.DockerUtils.addFakeDnsEntry;
 import static io.debezium.testing.testcontainers.util.DockerUtils.isDockerDesktop;
 import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.stream.Collectors.joining;
@@ -29,6 +30,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.SyncDockerCmd;
 import com.github.dockerjava.api.model.ContainerNetwork;
 
+import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.testing.testcontainers.util.PortResolver;
 import io.debezium.testing.testcontainers.util.RandomPortResolver;
 
@@ -275,8 +277,15 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     }
 
     @Override
+    protected void containerIsStarted(InspectContainerResponse containerInfo) {
+        super.containerIsStarted(containerInfo);
+        addFakeDnsEntry(name);
+    }
+
+    @Override
     protected void containerIsStopped(InspectContainerResponse containerInfo) {
         super.containerIsStopped(containerInfo);
+        DockerUtils.removeFakeDnsEntry(name);
         portResolver.releasePort(port);
     }
 

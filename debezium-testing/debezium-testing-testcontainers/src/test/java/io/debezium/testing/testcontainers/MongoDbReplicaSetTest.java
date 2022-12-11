@@ -15,7 +15,9 @@ import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -32,6 +34,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.connection.ServerDescription;
 import com.mongodb.internal.selector.ReadPreferenceServerSelector;
 
+import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.testing.testcontainers.util.ParsingPortResolver;
 import io.debezium.testing.testcontainers.util.PooledPortResolver;
 
@@ -43,6 +46,16 @@ public class MongoDbReplicaSetTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetTest.class);
 
     public static final String MONGO_DOCKER_DESKTOP_PORT_PROPERTY = "mongodb.docker.desktop.ports";
+
+    @BeforeAll
+    static void setupAll() {
+        DockerUtils.enableFakeDnsIfRequired();
+    }
+
+    @AfterAll
+    static void tearDownAll() {
+        DockerUtils.disableFakeDns();
+    }
 
     @AfterEach
     void tearDown() {
