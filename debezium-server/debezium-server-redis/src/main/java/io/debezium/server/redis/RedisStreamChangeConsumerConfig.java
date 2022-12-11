@@ -41,11 +41,17 @@ public class RedisStreamChangeConsumerConfig extends RedisCommonConfig {
             .withDefault(DEFAULT_MEMORY_THRESHOLD_PERCENTAGE)
             .withValidation(RangeValidator.between(0, 100));
 
+    private static final int DEFAULT_MEMORY_LIMIT_MB = 0;
+    private static final Field PROP_MEMORY_LIMIT_MB = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "memory.limit.mb")
+            .withDefault(DEFAULT_MEMORY_LIMIT_MB)
+            .withValidation(RangeValidator.atLeast(0));
+
     private int batchSize;
     private String nullKey;
     private String nullValue;
     private String messageFormat;
     private int memoryThreshold;
+    private int memoryLimitMb;
 
     public RedisStreamChangeConsumerConfig(Configuration config) {
         super(config, PROP_PREFIX);
@@ -59,6 +65,7 @@ public class RedisStreamChangeConsumerConfig extends RedisCommonConfig {
         nullValue = config.getString(PROP_NULL_VALUE);
         messageFormat = config.getString(PROP_MESSAGE_FORMAT);
         memoryThreshold = config.getInteger(PROP_MEMORY_THRESHOLD_PERCENTAGE);
+        memoryLimitMb = config.getInteger(PROP_MEMORY_LIMIT_MB);
     }
 
     @Override
@@ -86,6 +93,10 @@ public class RedisStreamChangeConsumerConfig extends RedisCommonConfig {
 
     public int getMemoryThreshold() {
         return memoryThreshold;
+    }
+
+    public int getMemoryLimitMb() {
+        return memoryLimitMb;
     }
 
 }
