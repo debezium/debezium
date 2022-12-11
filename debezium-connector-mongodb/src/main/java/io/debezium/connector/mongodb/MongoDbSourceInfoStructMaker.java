@@ -18,7 +18,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
     public MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
-                .name(connectorConfig.schemaNameAdjustmentMode().createAdjuster().adjust("io.debezium.connector.mongo.Source"))
+                .name(connectorConfig.schemaNameAdjuster().adjust("io.debezium.connector.mongo.Source"))
                 .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COLLECTION, Schema.STRING_SCHEMA)
                 .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)

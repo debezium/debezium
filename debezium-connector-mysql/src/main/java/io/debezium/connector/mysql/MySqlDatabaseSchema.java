@@ -43,11 +43,11 @@ import io.debezium.relational.ddl.DdlParserListener.TableIndexEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableTruncatedEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -86,7 +86,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames(),
+                        connectorConfig.getFieldNamer(),
                         false),
                 tableIdCaseInsensitive, connectorConfig.getKeyMapper());
 

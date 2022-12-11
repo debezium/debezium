@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.util;
+package io.debezium.schema;
 
 import java.util.Collections;
 import java.util.Map;
@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.schema.UnicodeReplacementFunction;
 import io.debezium.spi.common.ReplacementFunction;
 
 /**
@@ -115,6 +114,10 @@ public interface SchemaNameAdjuster {
     SchemaNameAdjuster AVRO = create();
 
     SchemaNameAdjuster AVRO_UNICODE = create(new UnicodeReplacementFunction());
+
+    SchemaNameAdjuster AVRO_FIELD_NAMER = create(new FieldNameUnderscoreReplacementFunction());
+
+    SchemaNameAdjuster AVRO_UNICODE_FIELD_NAMER = create(new FieldNameUnicodeReplacementFunction());
 
     /**
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced

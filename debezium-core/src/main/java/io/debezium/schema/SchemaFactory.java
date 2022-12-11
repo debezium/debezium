@@ -25,7 +25,6 @@ import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A factory for creating {@link SchemaBuilder} structs.

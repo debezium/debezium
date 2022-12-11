@@ -61,6 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
@@ -1424,7 +1425,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             // Start connector
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.COLUMNS_TEST")
-                    .with(OracleConnectorConfig.SANITIZE_FIELD_NAMES, "true")
+                    .with(OracleConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, CommonConnectorConfig.SchemaNameAdjustmentMode.AVRO)
                     .build();
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
