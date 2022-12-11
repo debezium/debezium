@@ -912,8 +912,14 @@ Read more about the message format xref:#p-redis-message-format[below].
 
 |[[redis-memory-threshold-percentage]]<<redis-memory-threshold-percentage, `debezium.sink.redis.memory.threshold.percentage`>>
 |`85`
-|The sink will stop consuming records if the used memory percentage (out of Redis configured maxmemory) is higher than this threshold.
-If Redis configured maxmemory is `0` (unlimited) then this threshold is disabled (same as if configuring it with `0`)
+|The sink will stop consuming records if the `used_memory` percentage (out of Redis configured `maxmemory`) is higher or equal to this threshold.
+If the configured value is `0` then this threshold is disabled.
+
+|[[redis-memory-limit-mb]]<<redis-memory-limit-mb, `debezium.sink.redis.memory.limit.mb`>>
+|`0`
+|If Redis `maxmemory` is not available or `0`, the `xref:#redis-memory-threshold-percentage[debezium.sink.redis.memory.threshold.percentage]`
+will apply to this value (if this value is positive).
+By default it is `0` (disabled).
 
 |===
 

@@ -8,19 +8,14 @@ package io.debezium.server.redis;
 import static io.debezium.server.redis.RedisStreamChangeConsumerConfig.MESSAGE_FORMAT_COMPACT;
 import static io.debezium.server.redis.RedisStreamChangeConsumerConfig.MESSAGE_FORMAT_EXTENDED;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -44,7 +39,6 @@ import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.DelayStrategy;
-import io.debezium.util.IoUtil;
 
 /**
  * Implementation of the consumer that delivers the messages into Redis (stream) destination.
@@ -64,15 +58,11 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
     private static final String EXTENDED_MESSAGE_KEY_KEY = "key";
     private static final String EXTENDED_MESSAGE_VALUE_KEY = "value";
 
-    private static final String INFO_MEMORY = "memory";
-    private static final String INFO_MEMORY_SECTION_MAXMEMORY = "maxmemory";
-    private static final String INFO_MEMORY_SECTION_USEDMEMORY = "used_memory";
-
     private RedisClient client;
 
     private BiFunction<String, String, Map<String, String>> recordMapFunction;
 
-    private Supplier<Boolean> isMemoryOk;
+    private RedisMemoryThreshold isMemoryOk;
 
     private RedisStreamChangeConsumerConfig config;
 
@@ -93,13 +83,12 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
             recordMapFunction = Collections::singletonMap;
         }
 
-        int memoryThreshold = config.getMemoryThreshold();
-        isMemoryOk = memoryThreshold > 0 ? () -> isMemoryOk(memoryThreshold) : () -> true;
-
         RedisConnection redisConnection = new RedisConnection(config.getAddress(), config.getUser(), config.getPassword(), config.getConnectionTimeout(),
                 config.getSocketTimeout(), config.isSslEnabled());
         client = redisConnection.getRedisClient(DEBEZIUM_REDIS_SINK_CLIENT_NAME, config.isWaitEnabled(), config.getWaitTimeout(), config.isWaitRetryEnabled(),
                 config.getWaitRetryDelay());
+
+        isMemoryOk = new RedisMemoryThreshold(client, config);
     }
 
     @PreDestroy
@@ -159,7 +148,7 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
                         LOGGER.error("Can't connect to Redis", e);
                     }
                 }
-                else if (canHandleBatch()) {
+                else if (isMemoryOk.check()) {
                     try {
                         LOGGER.trace("Preparing a Redis Pipeline of {} records", clonedBatch.size());
 
@@ -225,34 +214,4 @@ public class RedisStreamChangeConsumer extends BaseChangeConsumer
         committer.markBatchFinished();
     }
 
-    private boolean canHandleBatch() {
-        return isMemoryOk.get();
-    }
-
-    private boolean isMemoryOk(int memoryThreshold) {
-        String memory = client.info(INFO_MEMORY);
-        Map<String, String> infoMemory = new HashMap<>();
-        try {
-            IoUtil.readLines(new ByteArrayInputStream(memory.getBytes(StandardCharsets.UTF_8)), line -> {
-                String[] pair = line.split(":");
-                if (pair.length == 2) {
-                    infoMemory.put(pair[0], pair[1]);
-                }
-            });
-        }
-        catch (IOException e) {
-            LOGGER.error("Cannot parse Redis info memory {}", memory, e);
-            return true;
-        }
-        long maxMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_MAXMEMORY));
-        if (maxMemory > 0) {
-            long usedMemory = Long.parseLong(infoMemory.get(INFO_MEMORY_SECTION_USEDMEMORY));
-            long percentage = 100 * usedMemory / maxMemory;
-            if (percentage >= memoryThreshold) {
-                LOGGER.warn("Used memory percentage of {}% is higher than configured threshold of {}%", percentage, memoryThreshold);
-                return false;
-            }
-        }
-        return true;
-    }
 }
