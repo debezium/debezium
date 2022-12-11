@@ -6,6 +6,7 @@
 package io.debezium.testing.testcontainers;
 
 import static io.debezium.testing.testcontainers.MongoDbContainer.node;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -61,6 +63,7 @@ public class MongoDbReplicaSet implements Startable {
 
         private Network network = Network.newNetwork();
         private PortResolver portResolver = new RandomPortResolver();
+        private boolean skipDockerDesktopLogWarning = false;
 
         public Builder name(String name) {
             this.name = name;
@@ -87,6 +90,11 @@ public class MongoDbReplicaSet implements Startable {
             return this;
         }
 
+        public Builder skipDockerDesktopLogWarning(boolean skipDockerDesktopLogWarning) {
+            this.skipDockerDesktopLogWarning = skipDockerDesktopLogWarning;
+            return this;
+        }
+
         public Builder portResolver(PortResolver portResolver) {
             this.portResolver = portResolver;
             return this;
@@ -110,8 +118,11 @@ public class MongoDbReplicaSet implements Startable {
                     .name(builder.namespace + i)
                     .replicaSet(name)
                     .portResolver(portResolver)
+                    .skipDockerDesktopLogWarning(true)
                     .build());
         }
+
+        logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
     public String getName() {
@@ -226,6 +237,13 @@ public class MongoDbReplicaSet implements Startable {
     private JsonNode getStatus() {
         var arbitraryNode = members.get(0);
         return arbitraryNode.eval("rs.status()");
+    }
+
+    public List<String> getHostNames() {
+        return members.stream()
+                .map(MongoDbContainer::getNamedAddress)
+                .map(Address::getHost)
+                .collect(Collectors.toList());
     }
 
     @Override
