@@ -12,9 +12,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster.ReplacementOccurred;
 import io.debezium.schema.UnicodeReplacementFunction;
 import io.debezium.spi.common.ReplacementFunction;
-import io.debezium.util.SchemaNameAdjuster.ReplacementOccurred;
 
 /**
  * @author Randall Hauch
@@ -74,8 +75,8 @@ public class SchemaNameAdjusterTest {
     @Test
     public void shouldConvertInvalidCharactersToUnicode() {
         SchemaNameAdjuster unicodeAdjuster = SchemaNameAdjuster.AVRO_UNICODE;
-        String originName = "_hello_语言";
-        String expectedName = "_u005fhello_u005f_u8bed_u8a00";
+        String originName = "_hello_语言.";
+        String expectedName = "_u005fhello_u005f_u8bed_u8a00.";
         assertThat(unicodeAdjuster.adjust(originName)).isEqualTo(expectedName);
     }
 

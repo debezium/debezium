@@ -23,9 +23,9 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * @author Randall Hauch

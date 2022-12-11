@@ -50,10 +50,11 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
@@ -81,7 +82,8 @@ public class MySqlAntlrDdlParserTest {
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 new MySqlDefaultValueConverter(converters),
-                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         properties = new Properties();
         properties.put("topic.prefix", "test");
     }
