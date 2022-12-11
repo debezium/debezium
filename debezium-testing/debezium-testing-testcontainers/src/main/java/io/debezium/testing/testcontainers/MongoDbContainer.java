@@ -5,10 +5,13 @@
  */
 package io.debezium.testing.testcontainers;
 
+import static io.debezium.testing.testcontainers.util.DockerUtils.isDockerDesktop;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.range;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -65,6 +68,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         private PortResolver portResolver = new RandomPortResolver();
         private String replicaSet;
         private Network network = Network.SHARED;
+        private boolean skipDockerDesktopLogWarning = false;
 
         public Builder name(String name) {
             this.name = name;
@@ -91,6 +95,11 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
             return this;
         }
 
+        public Builder skipDockerDesktopLogWarning(boolean skipDockerDesktopLogWarning) {
+            this.skipDockerDesktopLogWarning = skipDockerDesktopLogWarning;
+            return this;
+        }
+
         public MongoDbContainer build() {
             return new MongoDbContainer(this);
         }
@@ -110,6 +119,8 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         else {
             this.port = builder.port;
         }
+
+        logDockerDesktopBanner(LOGGER, List.of(name), builder.skipDockerDesktopLogWarning);
 
         withNetwork(builder.network);
         withNetworkAliases(name);
@@ -267,11 +278,6 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     protected void containerIsStopped(InspectContainerResponse containerInfo) {
         super.containerIsStopped(containerInfo);
         portResolver.releasePort(port);
-    }
-
-    public static boolean isDockerDesktop() {
-        var info = DockerClientFactory.instance().getInfo();
-        return "docker-desktop".equals(info.getName());
     }
 
     private static boolean isLegacy() {
