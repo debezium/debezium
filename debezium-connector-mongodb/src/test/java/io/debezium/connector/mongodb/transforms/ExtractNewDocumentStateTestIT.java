@@ -256,7 +256,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final Map<String, String> transformationConfig = new HashMap<>();
         transformationConfig.put("array.encoding", "array");
         transformationConfig.put("operation.header", "true");
-        transformationConfig.put("sanitize.field.names", "true");
+        transformationConfig.put("field.name.adjustment.mode", "avro");
         transformation.configure(transformationConfig);
 
         try (var client = connect()) {
@@ -282,7 +282,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final Map<String, String> transformationConfig = new HashMap<>();
         transformationConfig.put("array.encoding", "array");
         transformationConfig.put("operation.header", "true");
-        transformationConfig.put("sanitize.field.names", "true");
+        transformationConfig.put("field.name.adjustment.mode", "avro");
         transformation.configure(transformationConfig);
         final String doc = "{" +
                 "  \"_id\": \"222\"," +
@@ -1418,7 +1418,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     public void testEmptyArray() throws InterruptedException, IOException {
         final Map<String, String> transformationConfig = new HashMap<>();
         transformationConfig.put("array.encoding", "array");
-        transformationConfig.put("sanitize.field.names", "true");
+        transformationConfig.put("field.name.adjustment.mode", "avro");
         transformation.configure(transformationConfig);
 
         // Test insert

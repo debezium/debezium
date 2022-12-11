@@ -25,7 +25,7 @@ public interface ReplacementFunction {
 
     /**
      * Determine if the supplied character is a valid first character for Avro fullnames.
-     * Legal characters are [a-zA-Z_] for the first character.
+     * Default legal characters are [a-zA-Z_] for the first character.
      *
      * @param c the character
      * @return {@code true} if the character is a valid first character of an Avro fullname, or {@code false} otherwise
@@ -36,7 +36,7 @@ public interface ReplacementFunction {
 
     /**
      * Determine if the supplied character is a valid non-first character for Avro fullnames.
-     * Legal characters are [a-zA-Z0-9_.] for the non-first character.
+     * Default legal characters are [a-zA-Z0-9_.] for the non-first character.
      *
      * @param c the character
      * @return {@code true} if the character is a valid non-first character of an Avro fullname, or {@code false} otherwise

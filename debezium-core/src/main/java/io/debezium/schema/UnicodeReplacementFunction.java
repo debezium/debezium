@@ -8,6 +8,11 @@ package io.debezium.schema;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.spi.common.ReplacementFunction;
 
+/**
+ * An unicode replacement implementation of {@link ReplacementFunction}
+ *
+ * @author Harvey Yue
+ */
 @Incubating
 public class UnicodeReplacementFunction implements ReplacementFunction {
 
@@ -24,6 +29,7 @@ public class UnicodeReplacementFunction implements ReplacementFunction {
     /**
      * Use underscore as escape sequence instead of backslash in UnicodeReplacementFunction, so treat underscore as an
      * invalid character is expected.
+     * Legal characters are [a-zA-Z] for the first character and [a-zA-Z0-9.] thereafter.
      */
     @Override
     public boolean isValidFirstCharacter(char c) {
