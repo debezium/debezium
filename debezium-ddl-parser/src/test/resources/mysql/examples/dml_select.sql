@@ -174,7 +174,20 @@ SELECT SCHEMA();
 -- Non Aggregate Functions
 SELECT pk, LEAD(pk) OVER (ORDER BY pk) AS l;
 SELECT COALESCE(LAG(last_eq.end_variation) OVER (PARTITION BY eq.account_id, eq.execution_name_id, eq.currency ORDER BY eq.start_date), 0) AS start_variation FROM t1;
+
+#begin
 -- Window Functions
+SELECT
+  year, country, product, profit,
+  SUM(profit) OVER() AS total_profit,
+  SUM(profit) OVER(PARTITION BY country) AS country_profit
+FROM sales
+  ORDER BY country, year, product, profit;
+SELECT
+  year, country, product, profit,
+  ROW_NUMBER() OVER(PARTITION BY country) AS row_num1,
+  ROW_NUMBER() OVER(PARTITION BY country ORDER BY year, product) AS row_num2
+FROM sales;
 SELECT
     e.id,
     SUM(e.bin_volume) AS bin_volume,
@@ -197,6 +210,7 @@ SELECT
 FROM table2
     WINDOW w AS (PARTITION BY id, bin_volume ORDER BY id ROWS UNBOUNDED PRECEDING),
            w2 AS (PARTITION BY id, bin_volume ORDER BY id DESC ROWS 10 PRECEDING);
+#end
 
 #begin
 -- https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
