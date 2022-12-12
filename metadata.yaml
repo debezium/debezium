@@ -1,0 +1,11 @@
+# See http://go/metadata-yaml for information on supported keys and values
+---
+responsible_team: change-data-capture
+change_notifications:
+  slack: true
+review_requirements:
+- assignees: # usernames/LDAP groups on rotation to be autoassigned reviews
+  - codeowners-change-data-capture
+  reviewers:  # Additional usernames/LDAP groups trusted to approve/unblock, but who are not autoassigned reviews
+  - codeowners-change-data-capture
+
