@@ -7,6 +7,8 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -14,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -169,7 +170,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a4",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -191,7 +192,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a42",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -215,7 +216,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.anumeric",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -269,11 +270,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
 
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).contains(Assertions.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
         for (int i = 0; i < expectedPartRecordCount; i++) {
-            Assertions.assertThat(dbChangesPart1).contains(Assertions.entry(i + 1, i));
-            Assertions.assertThat(dbChangesPart2).contains(Assertions.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
+            assertThat(dbChangesPart1).contains(entry(i + 1, i));
+            assertThat(dbChangesPart2).contains(entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
         }
     }
 
@@ -292,7 +293,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null,
                 topicName());
         Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
-        Assertions.assertThat(ROW_COUNT == entries.size());
+        assertThat(ROW_COUNT == entries.size());
         for (Map.Entry<Integer, Struct> e : entries) {
             Assert.assertTrue(e.getValue().getInt64("xmin") == null);
             Assert.assertTrue(e.getValue().getInt64("lsn") == null);

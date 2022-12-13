@@ -145,6 +145,18 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
 ====
 
+// Type: procedure
+[id="oracle-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="oracle-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} Oracle change event records

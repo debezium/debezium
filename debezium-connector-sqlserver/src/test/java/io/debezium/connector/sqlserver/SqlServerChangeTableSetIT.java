@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -16,7 +18,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,8 +88,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Enable CDC for already existing table
         TestHelper.enableTableCdc(connection, "tablec");
@@ -106,8 +107,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tabled VALUES(" + id + ", 'd')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tablec").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -153,8 +154,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Disable CDC for a table
         TestHelper.disableTableCdc(connection, "tableb");
@@ -167,8 +168,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b2')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNullOrEmpty();
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).isNullOrEmpty();
     }
 
     @Test
@@ -228,8 +229,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -252,8 +253,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b2', 2)");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -279,8 +280,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b3', 3)");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -302,8 +303,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b4', 4)");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -341,8 +342,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -366,8 +367,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ")");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -387,8 +388,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ")");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -427,7 +428,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb2")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb2")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb2").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -463,8 +464,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -498,8 +499,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb", "after_change");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         final AtomicInteger beforeChangeCount = new AtomicInteger();
         final AtomicInteger afterChangeCount = new AtomicInteger();
@@ -509,11 +510,11 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             }
             else {
                 beforeChangeCount.incrementAndGet();
-                Assertions.assertThat(afterChangeCount.intValue()).isZero();
+                assertThat(afterChangeCount.intValue()).isZero();
             }
         });
-        Assertions.assertThat(beforeChangeCount.intValue()).isPositive();
-        Assertions.assertThat(afterChangeCount.intValue()).isPositive();
+        assertThat(beforeChangeCount.intValue()).isPositive();
+        assertThat(afterChangeCount.intValue()).isPositive();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_3 + i;
@@ -523,8 +524,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b1', 'b2')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -562,8 +563,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Enable a second capture instance
         connection.execute("ALTER TABLE dbo.tableb DROP COLUMN colb");
@@ -577,8 +578,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ")");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         stopConnector();
         start(SqlServerConnector.class, config);
@@ -592,8 +593,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ")");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -616,19 +617,19 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             }
         });
         // 3 tables from snapshot + 1 ALTER
-        Assertions.assertThat(changes).hasSize(3 + 1);
+        assertThat(changes).hasSize(3 + 1);
         changes.subList(0, 3).forEach(change -> {
             final Array changeArray = change.getArray("tableChanges");
-            Assertions.assertThat(changeArray.size()).isEqualTo(1);
+            assertThat(changeArray.size()).isEqualTo(1);
             final String type = changeArray.get(0).asDocument().getString("type");
-            Assertions.assertThat(type).isEqualTo("CREATE");
+            assertThat(type).isEqualTo("CREATE");
         });
         final Array changeArray = changes.get(3).getArray("tableChanges");
-        Assertions.assertThat(changeArray.size()).isEqualTo(1);
+        assertThat(changeArray.size()).isEqualTo(1);
         final String type = changeArray.get(0).asDocument().getString("type");
         final String tableIid = changeArray.get(0).asDocument().getString("id");
-        Assertions.assertThat(type).isEqualTo("ALTER");
-        Assertions.assertThat(tableIid).isEqualTo("\"testDB1\".\"dbo\".\"tableb\"");
+        assertThat(type).isEqualTo("ALTER");
+        assertThat(tableIid).isEqualTo("\"testDB1\".\"dbo\".\"tableb\"");
     }
 
     @Test
@@ -655,8 +656,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -682,8 +683,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb(id,newcolb) VALUES(" + id + ", 'b2')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -704,8 +705,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b3')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -742,8 +743,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -756,7 +757,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final String colb = value.getString("colb");
-            Assertions.assertThat(Integer.toString(id)).isEqualTo(colb);
+            assertThat(Integer.toString(id)).isEqualTo(colb);
         });
 
         // Enable a second capture instance
@@ -771,8 +772,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", '" + id + " ')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
@@ -786,7 +787,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final int colb = value.getInt32("colb");
-            Assertions.assertThat(id).isEqualTo(colb);
+            assertThat(id).isEqualTo(colb);
         });
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -797,8 +798,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", '" + id + " ')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
@@ -811,7 +812,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final int colb = value.getInt32("colb");
-            Assertions.assertThat(id).isEqualTo(colb);
+            assertThat(id).isEqualTo(colb);
         });
     }
 
@@ -836,7 +837,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         TestHelper.waitForCdcRecord(connection, "tableb", "after_change", rs -> rs.getInt("id") == 1);
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.testDB1.dbo.tableb");
-        Assertions.assertThat(records).hasSize(1);
+        assertThat(records).hasSize(1);
         Testing.debug("Records: " + records);
         Testing.debug("Value Schema: " + records.get(0).valueSchema());
         Testing.debug("Fields: " + records.get(0).valueSchema().fields());
@@ -846,8 +847,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
         Testing.debug("ColumnB Schema: " + colbSchema);
         Testing.debug("ColumnB Schema Default Value: " + colbSchema.defaultValue());
-        Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
-        Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("default_value");
+        assertThat(colbSchema.defaultValue()).isNotNull();
+        assertThat(colbSchema.defaultValue()).isEqualTo("default_value");
     }
 
     @Test
@@ -875,10 +876,10 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO table_dv VALUES('2', 'some_value2')");
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.testDB1.dbo.table_dv");
-        Assertions.assertThat(records).hasSize(1);
+        assertThat(records).hasSize(1);
 
         Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
-        Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
-        Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("new_default_value");
+        assertThat(colbSchema.defaultValue()).isNotNull();
+        assertThat(colbSchema.defaultValue()).isEqualTo("new_default_value");
     }
 }

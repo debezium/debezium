@@ -5,6 +5,8 @@
  */
 package io.debezium.server.nats.streaming;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +14,6 @@ import java.util.List;
 
 import javax.enterprise.event.Observes;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ public class NatsStreamingIT {
     protected static StreamingConnection sc;
     protected static Subscription subscription;
 
-    {
+    static {
         Testing.Files.delete(NatsStreamingTestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(NatsStreamingTestConfigSource.OFFSET_STORE_PATH);
     }
@@ -82,7 +83,7 @@ public class NatsStreamingIT {
         }
     }
 
-    void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
+    void connectorCompleted(@Observes final ConnectorCompletedEvent event) throws Exception {
         if (!event.isSuccess()) {
             throw (Exception) event.getError().get();
         }
@@ -97,8 +98,11 @@ public class NatsStreamingIT {
     }
 
     @Test
-    public void testNatsStreaming() throws Exception {
-        Awaitility.await().atMost(Duration.ofSeconds(NatsStreamingTestConfigSource.waitForSeconds())).until(() -> messages.size() >= MESSAGE_COUNT);
-        Assertions.assertThat(messages.size() >= MESSAGE_COUNT);
+    public void testNatsStreaming() {
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(NatsStreamingTestConfigSource.waitForSeconds()))
+                .until(() -> messages.size() >= MESSAGE_COUNT);
+
+        assertThat(messages.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
     }
 }

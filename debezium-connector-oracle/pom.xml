@@ -232,6 +232,7 @@
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

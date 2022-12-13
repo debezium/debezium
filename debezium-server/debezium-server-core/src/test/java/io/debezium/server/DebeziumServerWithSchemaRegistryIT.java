@@ -12,7 +12,6 @@ import java.time.Duration;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -59,9 +58,9 @@ public class DebeziumServerWithSchemaRegistryIT {
         final TestConsumer testConsumer = (TestConsumer) server.getConsumer();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds()))
                 .until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
-        Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
-        Assertions.assertThat(testConsumer.getValues().get(0)).isInstanceOf(byte[].class);
-        Assertions.assertThat(testConsumer.getValues().get(0)).isNotNull();
+        assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
+        assertThat(testConsumer.getValues().get(0)).isInstanceOf(byte[].class);
+        assertThat(testConsumer.getValues().get(0)).isNotNull();
         assertThat(((byte[]) testConsumer.getValues().get(0))[0]).isEqualTo((byte) 0);
     }
 }

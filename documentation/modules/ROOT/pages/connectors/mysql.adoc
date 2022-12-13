@@ -467,6 +467,17 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+// Type: procedure
+[id="mysql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="mysql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
 
 ifdef::community[]
 [id="mysql-read-only-incremental-snapshots"]
@@ -514,7 +525,7 @@ See the next section for more details.
 The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |`additional-condition`
-|Optional.Empty
+|_N/A_
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
 subset of the contents of the {data-collection}(s).
 |===

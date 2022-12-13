@@ -5,6 +5,8 @@
  */
 package io.debezium.server;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
@@ -14,7 +16,6 @@ import java.util.Properties;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
@@ -52,25 +53,25 @@ public class DebeziumServerTest {
     @Test
     public void testProps() {
         Properties properties = server.getProps();
-        Assertions.assertThat(properties.getProperty(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST.name())).isNotNull();
-        Assertions.assertThat(properties.getProperty(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST.name())).isEqualTo("public.table_name");
+        assertThat(properties.getProperty(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST.name())).isNotNull();
+        assertThat(properties.getProperty(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST.name())).isEqualTo("public.table_name");
 
-        Assertions.assertThat(properties.getProperty("offset.flush.interval.ms.test")).isNotNull();
-        Assertions.assertThat(properties.getProperty("offset.flush.interval.ms.test")).isEqualTo("0");
+        assertThat(properties.getProperty("offset.flush.interval.ms.test")).isNotNull();
+        assertThat(properties.getProperty("offset.flush.interval.ms.test")).isEqualTo("0");
 
-        Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isNotNull();
-        Assertions.assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isEqualTo("SELECT * FROM table_name WHERE 1>2");
+        assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isNotNull();
+        assertThat(properties.getProperty("snapshot.select.statement.overrides.public.table_name")).isEqualTo("SELECT * FROM table_name WHERE 1>2");
 
-        Assertions.assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isNotNull();
-        Assertions.assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isEqualTo("true");
+        assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isNotNull();
+        assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isEqualTo("true");
     }
 
     @Test
     public void testJson() throws Exception {
         final TestConsumer testConsumer = (TestConsumer) server.getConsumer();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
-        Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
-        Assertions.assertThat(testConsumer.getValues().get(MESSAGE_COUNT - 1)).isEqualTo("{\"line\":\"" + MESSAGE_COUNT + "\"}");
+        assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
+        assertThat(testConsumer.getValues().get(MESSAGE_COUNT - 1)).isEqualTo("{\"line\":\"" + MESSAGE_COUNT + "\"}");
     }
 
     static void appendLinesToSource(int numberOfLines) {

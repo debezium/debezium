@@ -48,7 +48,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Before;
@@ -356,13 +355,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldProcessNotNullColumnsConnectDateTypes() throws Exception {
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.CONNECT);
         if (before != null) {
-            Assertions.assertThat(before.get("created_at")).isEqualTo(new java.util.Date(0));
-            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
-            Assertions.assertThat(before.get("ctime")).isEqualTo(new java.util.Date(0));
-            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
-            Assertions.assertThat(before.get("cdate")).isEqualTo(new java.util.Date(0));
-            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
-            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+            assertThat(before.get("created_at")).isEqualTo(new java.util.Date(0));
+            assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            assertThat(before.get("ctime")).isEqualTo(new java.util.Date(0));
+            assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            assertThat(before.get("cdate")).isEqualTo(new java.util.Date(0));
+            assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            assertThat(before.get("cbits")).isEqualTo(new byte[0]);
         }
     }
 
@@ -371,13 +370,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldProcessNotNullColumnsAdaptiveDateTypes() throws Exception {
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
         if (before != null) {
-            Assertions.assertThat(before.get("created_at")).isEqualTo(0L);
-            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
-            Assertions.assertThat(before.get("ctime")).isEqualTo(0L);
-            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
-            Assertions.assertThat(before.get("cdate")).isEqualTo(0);
-            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
-            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+            assertThat(before.get("created_at")).isEqualTo(0L);
+            assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            assertThat(before.get("ctime")).isEqualTo(0L);
+            assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            assertThat(before.get("cdate")).isEqualTo(0);
+            assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            assertThat(before.get("cbits")).isEqualTo(new byte[0]);
         }
     }
 
@@ -386,13 +385,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldProcessNotNullColumnsAdaptiveMsDateTypes() throws Exception {
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
         if (before != null) {
-            Assertions.assertThat(before.get("created_at")).isEqualTo(0L);
-            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
-            Assertions.assertThat(before.get("ctime")).isEqualTo(0L);
-            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
-            Assertions.assertThat(before.get("cdate")).isEqualTo(0);
-            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
-            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+            assertThat(before.get("created_at")).isEqualTo(0L);
+            assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            assertThat(before.get("ctime")).isEqualTo(0L);
+            assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            assertThat(before.get("cdate")).isEqualTo(0);
+            assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            assertThat(before.get("cbits")).isEqualTo(new byte[0]);
         }
     }
 
@@ -402,31 +401,31 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Use adaptive here as its the connector default
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
         if (before != null) {
-            Assertions.assertThat(before.get("csmallint")).isEqualTo((short) 0);
-            Assertions.assertThat(before.get("cinteger")).isEqualTo(0);
-            Assertions.assertThat(before.get("cbigint")).isEqualTo(0L);
-            Assertions.assertThat(before.get("creal")).isEqualTo(0.f);
-            Assertions.assertThat(before.get("cbool")).isEqualTo(false);
-            Assertions.assertThat(before.get("cfloat8")).isEqualTo(0.0);
-            Assertions.assertThat(before.get("cnumeric")).isEqualTo(new BigDecimal("0.00"));
-            Assertions.assertThat(before.get("cvarchar")).isEqualTo("");
-            Assertions.assertThat(before.get("cbox")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("ccircle")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("cinterval")).isEqualTo(0L);
-            Assertions.assertThat(before.get("cline")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("clseg")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("cpath")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("cpoint")).isEqualTo(Point.createValue(Point.builder().build(), 0, 0));
-            Assertions.assertThat(before.get("cpolygon")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("cchar")).isEqualTo("");
-            Assertions.assertThat(before.get("ctext")).isEqualTo("");
-            Assertions.assertThat(before.get("cjson")).isEqualTo("");
-            Assertions.assertThat(before.get("cxml")).isEqualTo("");
-            Assertions.assertThat(before.get("cuuid")).isEqualTo("");
-            Assertions.assertThat(before.get("cvarbit")).isEqualTo(new byte[0]);
-            Assertions.assertThat(before.get("cinet")).isEqualTo("");
-            Assertions.assertThat(before.get("ccidr")).isEqualTo("");
-            Assertions.assertThat(before.get("cmacaddr")).isEqualTo("");
+            assertThat(before.get("csmallint")).isEqualTo((short) 0);
+            assertThat(before.get("cinteger")).isEqualTo(0);
+            assertThat(before.get("cbigint")).isEqualTo(0L);
+            assertThat(before.get("creal")).isEqualTo(0.f);
+            assertThat(before.get("cbool")).isEqualTo(false);
+            assertThat(before.get("cfloat8")).isEqualTo(0.0);
+            assertThat(before.get("cnumeric")).isEqualTo(new BigDecimal("0.00"));
+            assertThat(before.get("cvarchar")).isEqualTo("");
+            assertThat(before.get("cbox")).isEqualTo(new byte[0]);
+            assertThat(before.get("ccircle")).isEqualTo(new byte[0]);
+            assertThat(before.get("cinterval")).isEqualTo(0L);
+            assertThat(before.get("cline")).isEqualTo(new byte[0]);
+            assertThat(before.get("clseg")).isEqualTo(new byte[0]);
+            assertThat(before.get("cpath")).isEqualTo(new byte[0]);
+            assertThat(before.get("cpoint")).isEqualTo(Point.createValue(Point.builder().build(), 0, 0));
+            assertThat(before.get("cpolygon")).isEqualTo(new byte[0]);
+            assertThat(before.get("cchar")).isEqualTo("");
+            assertThat(before.get("ctext")).isEqualTo("");
+            assertThat(before.get("cjson")).isEqualTo("");
+            assertThat(before.get("cxml")).isEqualTo("");
+            assertThat(before.get("cuuid")).isEqualTo("");
+            assertThat(before.get("cvarbit")).isEqualTo(new byte[0]);
+            assertThat(before.get("cinet")).isEqualTo("");
+            assertThat(before.get("ccidr")).isEqualTo("");
+            assertThat(before.get("cmacaddr")).isEqualTo("");
         }
     }
 
@@ -639,7 +638,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // alter the table and set its replica identity to full the issue another update
         consumer.expects(1);
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL");
+        TestHelper.setReplicaIdentityForTable("test_table", "FULL");
         executeAndWait("UPDATE test_table set text='update2' WHERE pk=1");
 
         updatedRecord = consumer.remove();
@@ -667,7 +666,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // without PK and with REPLICA IDENTITY DEFAULT we will get nothing
-        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        TestHelper.setReplicaIdentityForTable("test_table", "DEFAULT");
         consumer.expects(0);
         executeAndWaitForNoRecords("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
         assertThat(consumer.isEmpty()).isTrue();
@@ -1026,11 +1025,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(record, PK_FIELD, 1);
 
         // Without PK we should get delete event with REPLICA IDENTITY FULL
-        statement = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
-                "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
+        statement = "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
                 "INSERT INTO test_table (pk, text) VALUES (2, 'insert2');" +
                 "DELETE FROM test_table WHERE pk = 2;";
         consumer.expects(2);
+        TestHelper.setReplicaIdentityForTable("test_table", "FULL");
         executeAndWait(statement);
         assertRecordInserted("public.test_table", PK_FIELD, 2);
         record = consumer.remove();
@@ -1038,10 +1037,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(record, PK_FIELD, 2);
 
         // Without PK and without REPLICA IDENTITY FULL we will not get delete event
-        statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
-                "INSERT INTO test_table (pk, text) VALUES (3, 'insert3');" +
+        statement = "INSERT INTO test_table (pk, text) VALUES (3, 'insert3');" +
                 "DELETE FROM test_table WHERE pk = 3;";
         consumer.expects(1);
+        TestHelper.setReplicaIdentityForTable("test_table", "DEFAULT");
         executeAndWait(statement);
         assertRecordInserted("public.test_table", PK_FIELD, 3);
         assertThat(consumer.isEmpty()).isTrue();
@@ -1741,7 +1740,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             if (record == null) {
                 return false;
             }
-            Assertions.assertThat(record.valueSchema().name()).endsWith(".Heartbeat");
+            assertThat(record.valueSchema().name()).endsWith(".Heartbeat");
             lsns.add((Long) record.sourceOffset().get("lsn"));
             return true;
         });
@@ -1754,7 +1753,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Expecting changes for the empty DDL change
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
-            Assertions.assertThat(record.valueSchema().name()).endsWith(".Heartbeat");
+            assertThat(record.valueSchema().name()).endsWith(".Heartbeat");
             lsns.add((Long) record.sourceOffset().get("lsn"));
             // CREATE SCHEMA should change LSN
             return lsns.size() == 2;
@@ -1967,10 +1966,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // After loss of offset and not doing snapshot we always stream the first record available in replication slot
         // even if we have seen it as it is not possible to make a difference from plain snapshot never mode
-        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert2");
+        assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert2");
 
-        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert3");
-        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert4");
+        assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert3");
+        assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert4");
 
         stopConnector();
     }
@@ -2638,6 +2637,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
         if (!tablesBeforeStart) {
+            waitForStreamingToStart();
             TestHelper.execute(
                     "DROP TABLE IF EXISTS test_table;",
                     "CREATE TABLE test_table (id SERIAL, not_toast int, text TEXT);",

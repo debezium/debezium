@@ -30,7 +30,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -964,7 +963,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         final SourceRecord record = consumeRecord();
-        Assertions.assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
+        assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
     }
 
     @Test
@@ -2175,8 +2174,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
     }
 
@@ -2205,8 +2204,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
     }
 
@@ -2233,8 +2232,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get("id")).isNotNull();
-            Assertions.assertThat(key.get("name")).isNotNull();
+            assertThat(key.get("id")).isNotNull();
+            assertThat(key.get("name")).isNotNull();
         });
 
     }

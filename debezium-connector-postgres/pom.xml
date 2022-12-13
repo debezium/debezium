@@ -263,6 +263,7 @@
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.getDefaultReplicationSlot;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
@@ -46,10 +47,10 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -76,6 +77,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -360,7 +362,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(recordCount);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
     }
 
     @Test
@@ -381,7 +383,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(recordCount);
-        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+        assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
     }
 
     @Test
@@ -1268,7 +1270,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecord record = records.get(0);
         VerifyRecord.isValidInsert(record, PK_FIELD, 1);
         final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
-        Assertions.assertThat(isbn).isEqualTo("0-393-04002-X");
+        assertThat(isbn).isEqualTo("0-393-04002-X");
 
         TestHelper.assertNoOpenTransactions();
     }
@@ -1362,7 +1364,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         // Theoretically the LSN should change for each record but in reality there can be
         // unfortunate timings so let's suppose the change will happen in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+        assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
     @Test
@@ -1387,7 +1389,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         final SourceRecords firstRecords = consumeDmlRecordsByTopic(1);
         assertThat(firstRecords.topics().size()).isEqualTo(2);
         assertThat(firstRecords.recordsForTopic(txTopic).size()).isGreaterThanOrEqualTo(2);
-        Assertions.assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
+        assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
         stopConnector();
         assertConnectorNotRunning();
 
@@ -1419,7 +1421,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         // Theoretically the LSN should change for each record but in reality there can be
         // unfortunate timings so let's suppose the change will happen in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+        assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
     @Test
@@ -2130,14 +2132,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(2);
         records.recordsForTopic("test_server.s1.a").forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
-            Assertions.assertThat(key.get("aa")).isNotNull();
+            assertThat(key.get(PK_FIELD)).isNotNull();
+            assertThat(key.get("aa")).isNotNull();
         });
         records.recordsForTopic("test_server.s2.a").forEach(record -> {
             Struct key = (Struct) record.key();
-            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
-            Assertions.assertThat(key.get("pk")).isNotNull();
-            Assertions.assertThat(key.schema().field("aa")).isNull();
+            assertThat(key.get(PK_FIELD)).isNotNull();
+            assertThat(key.get("pk")).isNotNull();
+            assertThat(key.schema().field("aa")).isNull();
         });
 
         stopConnector();
@@ -2424,6 +2426,85 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         if (value.getStruct("after") != null) {
             assertThat(value.getStruct("after").getString("bb")).isEqualTo("hel");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-5811")
+    public void shouldAckLsnOnSourceByDefault() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        stopConnector();
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
+
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+        stopConnector();
+
+        final SlotState slotAfterIncremental = getDefaultReplicationSlot();
+        Assert.assertEquals(1, slotAfterIncremental.slotLastFlushedLsn().compareTo(slotAfterSnapshot.slotLastFlushedLsn()));
+    }
+
+    @Test
+    @FixFor("DBZ-5811")
+    public void shouldNotAckLsnOnSource() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        final SlotState slotAtTheBeginning = getDefaultReplicationSlot();
+
+        final Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB, "false")
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        stopConnector();
+
+        final SlotState slotAfterSnapshot = getDefaultReplicationSlot();
+        Assert.assertEquals(slotAtTheBeginning.slotLastFlushedLsn(), slotAfterSnapshot.slotLastFlushedLsn());
+
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+        stopConnector();
+
+        final SlotState slotAfterIncremental = getDefaultReplicationSlot();
+        Assert.assertEquals(slotAfterSnapshot.slotLastFlushedLsn(), slotAfterIncremental.slotLastFlushedLsn());
     }
 
     @Test
@@ -2925,7 +3006,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with("column.exclude.list", "s1.dbz5783.data")
-                .with(PostgresConnectorConfig.PLUGIN_NAME, LogicalDecoder.PGOUTPUT.getValue())
                 .build();
         start(PostgresConnector.class, config);
 

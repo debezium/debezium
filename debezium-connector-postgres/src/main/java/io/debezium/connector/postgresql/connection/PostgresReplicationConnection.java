@@ -353,7 +353,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
         Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
-        if (lsn == null) {
+        if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
             return;
         }
         try (Statement stmt = pgConnection().createStatement()) {
@@ -545,7 +545,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void flushLsn(Lsn lsn) throws SQLException {
-                doFlushLsn(lsn);
+                if (connectorConfig.isFlushLsnOnSource()) {
+                    doFlushLsn(lsn);
+                }
             }
 
             private void doFlushLsn(Lsn lsn) throws SQLException {

@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
-import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -95,14 +94,14 @@ public class DebeziumEngineIT {
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {
-                        Assertions.assertThat(r.key()).isNotNull();
-                        Assertions.assertThat(r.value()).isNotNull();
+                        assertThat(r.key()).isNotNull();
+                        assertThat(r.value()).isNotNull();
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
                             final Document value = DocumentReader.defaultReader().read(r.value());
-                            Assertions.assertThat(key.getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("after").getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(key.getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getString("val")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -147,8 +146,8 @@ public class DebeziumEngineIT {
 
                     @Override
                     public void handle(boolean success, String message, Throwable error) {
-                        Assertions.assertThat(success).isFalse();
-                        Assertions.assertThat(message).contains("Failed to serialize Avro data from topic test_server.engine.test");
+                        assertThat(success).isFalse();
+                        assertThat(message).contains("Failed to serialize Avro data from topic test_server.engine.test");
                         allLatch.countDown();
                     }
                 })
@@ -184,13 +183,13 @@ public class DebeziumEngineIT {
                     for (ChangeEvent<String, String> r : records) {
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
-                            Assertions.assertThat(key.getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(r.value()).isNotNull();
+                            assertThat(key.getInteger("id")).isEqualTo(1);
+                            assertThat(r.value()).isNotNull();
 
                             final Document value = DocumentReader.defaultReader().read(r.value());
-                            Assertions.assertThat(value.getString("id")).contains("txId");
-                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(value.getString("id")).contains("txId");
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -280,7 +279,7 @@ public class DebeziumEngineIT {
         }
         engine.close();
 
-        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
+        assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
         offsetStoreSetCalls.set(0);
 
         for (int i = 0; i < 100; i++) {
@@ -292,7 +291,7 @@ public class DebeziumEngineIT {
         }
         engine.close();
 
-        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
-        Assertions.assertThat(exception.get()).isNull();
+        assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
+        assertThat(exception.get()).isNull();
     }
 }

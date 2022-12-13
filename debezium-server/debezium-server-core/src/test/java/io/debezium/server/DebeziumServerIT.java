@@ -5,12 +5,13 @@
  */
 package io.debezium.server;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.time.Duration;
 
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
@@ -66,8 +67,8 @@ public class DebeziumServerIT {
         final TestConsumer testConsumer = (TestConsumer) server.getConsumer();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds()))
                 .until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
-        Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
-        Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
+        assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
+        assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
                 "\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
     }
 

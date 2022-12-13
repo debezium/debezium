@@ -186,6 +186,18 @@ The {prodname} connector for PostgreSQL does not support schema changes while an
 If a schema change is performed _before_ the incremental snapshot start but _after_ sending the signal then passthrough config option `database.autosave` is set to `conservative` to correctly process the schema change.
 ====
 
+// Type: procedure
+[id="postgresql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="postgresql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
 ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
@@ -3213,6 +3225,10 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
+
+|[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
+|`true`
+|Determines whether the connector should commit the LSN of the processed records in the source postgres database so that the WAL logs can be deleted. Specify `false` if you don't want the connector to do this. Please note that if set to `false` LSN will not be acknowledged by Debezium and as a result WAL logs will not be cleared which might result in disk space issues. User is expected to handle the acknowledgement of LSN outside Debezium.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)

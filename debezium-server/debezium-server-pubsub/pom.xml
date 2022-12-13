@@ -138,6 +138,7 @@
                     <systemProperties>
                         <test.type>IT</test.type>
                     </systemProperties>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
         </plugins>

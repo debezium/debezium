@@ -39,6 +39,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -323,7 +324,17 @@ public final class TestHelper {
                     decoderPlugin().getPostgresPluginName()));
         }
         catch (Exception e) {
-            LOGGER.debug("Error while dropping default replication slot", e);
+            LOGGER.debug("Error while creating default replication slot", e);
+        }
+    }
+
+    protected static SlotState getDefaultReplicationSlot() {
+        try (PostgresConnection connection = create()) {
+            return connection.getReplicationSlotState(ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
+                    decoderPlugin().getPostgresPluginName());
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -381,6 +392,21 @@ public final class TestHelper {
                         statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
                     },
                     rs -> rs.next()));
+        }
+    }
+
+    protected static void setReplicaIdentityForTable(String table, String identity) {
+        execute(String.format("ALTER TABLE %s REPLICA IDENTITY %s;", table, identity));
+        try (PostgresConnection connection = create()) {
+            Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> connection
+                    .prepareQueryAndMap("SELECT relreplident FROM pg_class WHERE oid = ?::regclass;", statement -> {
+                        statement.setString(1, table);
+                    }, rs -> {
+                        if (!rs.next()) {
+                            return false;
+                        }
+                        return identity.toLowerCase().startsWith(rs.getString(1));
+                    }));
         }
     }
 

@@ -242,6 +242,18 @@ This limitation will be removed in the next version.
 endif::community[]
 ====
 
+// Type: procedure
+[id="mongodb-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!sql-based-snapshot]
+
+// Type: procedure
+[id="mongodb-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!sql-based-snapshot]
+
 // Type: concept
 // ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records
 // Title: How the {prodname} MongoDB connector streams change event records
@@ -1405,7 +1417,14 @@ If you include this property in the configuration, do not set the `collection.in
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
-|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies that the connector reads a snapshot when either no offset is found or if the change stream no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
+|Specifies the criteria for performing a snapshot when the connector starts.
+Set the property to one of the following values:
+
+`initial`::
+When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+
+`never`::
+When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
@@ -1817,21 +1836,22 @@ Because there is a chance that some events may be duplicated during a recovery f
 As the connector generates change events, the Kafka Connect framework records those events in Kafka using the Kafka producer API. Kafka Connect will also periodically record the latest offset that appears in those change events, at a frequency that you have specified in the Kafka Connect worker configuration. If the Kafka brokers become unavailable, the Kafka Connect worker process running the connectors will simply repeatedly attempt to reconnect to the Kafka brokers. In other words, the connector tasks will simply pause until a connection can be reestablished, at which point the connectors will resume exactly where they left off.
 
 [id="debezium-mongodb-connector-is-stopped-for-a-long-interval"]
-=== Connector is stopped for a long interval
+=== Connector fails after it is stopped for a long interval if `snapshot.mode` is set to `initial`
 
-If the connector is gracefully stopped, the replica sets can continue to be used and any new changes are recorded in MongoDB's oplog.
-When the connector is restarted, it will resume streaming changes for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped.
-If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform a snapshot.
+If the connector is gracefully stopped, users might continue to perform operations on replica set members.
+Changes that occur while the connector is offline continue to be recorded in MongoDB's oplog.
+In most cases, after the connector is restarted, it reads the offset value in the oplog to determine the last operation that it streamed for each replica set, and then resumes streaming changes from that point.
+After the restart, database operations that occurred while the connector was stopped are emitted to Kafka as usual, and after some time, the connector catches up with the database.
+The amount of time required for the connector to catch up depends on the capabilities and performance of Kafka and the volume of changes that occurred in the database.
 
-A properly configured Kafka cluster is capable of massive throughput.
-Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events.
-Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in MongoDB.
+However, if the connector remains stopped for a long enough interval, it can occur that MongoDB purges the oplog during the time that the connector is inactive, resulting in the loss of information about the connector's last position.
+After the connector restarts, it cannot resume streaming, because the oplog no longer contains the previous offset value that marks the last operation that the connector processed.
+The connector also cannot perform a snapshot, as it typically would when the `snapshot.mode` property is set to `initial`, and no offset value is present.
+In this case, a mismatch exists, because the oplog does not contain the value of the previous offset, but the offset value is present in the connector's internal Kafka offsets topic.
+An error results and the connector fails.
 
-[NOTE]
-====
-If the connector remains stopped for long enough, MongoDB might purge older oplog files and the connector's last position may be lost.
-In this case, when the connector configured with _initial_ snapshot mode (the default) is finally restarted, the MongoDB server will no longer have the starting point and the connector will fail with an error.
-====
+To recover from the failure, delete the failed connector, and create a new connector with the same configuration but with a different connector name.
+When you start the new connector, it performs a snapshot to ingest the state of database, and then resumes streaming.
 
 [id="mongodb-crash-results-in-lost-commits"]
 === MongoDB loses writes

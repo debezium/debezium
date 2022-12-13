@@ -226,6 +226,7 @@
                         <database.trustServerCertificate>true</database.trustServerCertificate>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

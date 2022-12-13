@@ -45,7 +45,7 @@ The format of the names is the same as for the `signal.data.collection` configur
 
 ifeval::['{context}' != 'mongodb']
 |`additional-condition`
-|Optional.Empty
+|_N/A_
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
 subset of the contents of the {data-collection}(s).
 endif::[]
