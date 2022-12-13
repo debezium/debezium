@@ -1132,6 +1132,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
             return toastPlaceholderString;
         }
+        // Check if Unknown Data is TOASTed text array and return toast placeholder as a list of strings
         if ((data instanceof List) && (((List) data).size() > 0) &&
                 (((List) data).get(0) == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE)) {
             return Arrays.asList(toastPlaceholderString);
