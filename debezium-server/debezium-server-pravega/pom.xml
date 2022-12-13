@@ -10,7 +10,7 @@
   <name>Debezium Server Pravega Sink Adapter</name>
   <properties>
     <!-- IMPORTANT: This must be aligned with the netty shipped with Quarkus, specified in debezium-build-parent -->
-    <netty.version>4.1.82.Final</netty.version>
+    <netty.version>4.1.86.Final</netty.version>
   </properties>
   <dependencyManagement>
     <dependencies>
