@@ -15,6 +15,7 @@ import org.assertj.core.api.ListAssert;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
+@Disabled
 public class MongoDbShardedClusterTest {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterTest.class);
