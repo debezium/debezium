@@ -386,14 +386,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    public JdbcConfiguration getJdbcConfig() {
+    public SqlServerJdbcConfiguration getJdbcConfig() {
         JdbcConfiguration config = super.getJdbcConfig();
         if (useSingleDatabase()) {
-            config = JdbcConfiguration.adapt(config.edit()
-                    .with(JdbcConfiguration.DATABASE, databaseNames.get(0))
-                    .build());
+            config = JdbcConfiguration.copy(config)
+                    .withDatabase(databaseNames.get(0))
+                    .build();
         }
-        return config;
+        SqlServerJdbcConfiguration sqlServerconfig = SqlServerJdbcConfiguration.adapt(config);
+        if (getInstanceName() != null) {
+            sqlServerconfig = SqlServerJdbcConfiguration.copy(config)
+                    .withInstance(getInstanceName())
+                    .build();
+        }
+        return sqlServerconfig;
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {
