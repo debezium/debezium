@@ -95,7 +95,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
-    protected ReplicationConnection createReplicationConnection(boolean doSnapshot, PostgresConnection jdbcConnection) throws SQLException {
+    protected ReplicationConnection createReplicationConnection(PostgresConnection jdbcConnection) throws SQLException {
         final boolean dropSlotOnStop = config.dropSlotOnStop();
         if (dropSlotOnStop) {
             LOGGER.warn(
@@ -114,7 +114,6 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())
                 .withTypeRegistry(jdbcConnection.getTypeRegistry())
-                .doSnapshot(doSnapshot)
                 .withSchema(schema)
                 .jdbcMetadataConnection(jdbcConnection)
                 .build();
