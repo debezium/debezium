@@ -91,7 +91,7 @@ public interface ReplicationConnection extends AutoCloseable {
         return new PostgresReplicationConnection.ReplicationConnectionBuilder(config);
     }
 
-    public void reconnect() throws SQLException;
+    void reconnect() throws SQLException;
 
     /**
      * A builder for {@link ReplicationConnection}
@@ -186,13 +186,6 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #STREAM_PARAMS
          */
         Builder streamParams(final String streamParams);
-
-        /**
-         * Whether or not the snapshot is executed
-         * @param doSnapshot true if a snapshot is going to be executed, false if otherwise
-         * @return this instance
-         */
-        Builder doSnapshot(final boolean doSnapshot);
 
         /**
          * Provides a JDBC connection used to query metadata, database information, ...
