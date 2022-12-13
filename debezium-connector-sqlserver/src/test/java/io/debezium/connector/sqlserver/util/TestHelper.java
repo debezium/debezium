@@ -35,6 +35,7 @@ import io.debezium.connector.sqlserver.Lsn;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
+import io.debezium.connector.sqlserver.SqlServerJdbcConfiguration;
 import io.debezium.connector.sqlserver.SqlServerValueConverters;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -236,9 +237,9 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(),
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(defaultJdbcConfig()),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), false, null);
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnection() {
@@ -262,9 +263,9 @@ public class TestHelper {
     }
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
-        return new SqlServerConnection(config,
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), false, null);
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
@@ -273,9 +274,9 @@ public class TestHelper {
                 .with(JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
 
-        return new SqlServerConnection(config,
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
-                Collections.emptySet(), true, null, true);
+                Collections.emptySet(), true, true);
     }
 
     /**
