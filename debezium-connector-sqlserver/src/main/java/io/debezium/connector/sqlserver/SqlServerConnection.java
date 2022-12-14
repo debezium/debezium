@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -205,7 +206,8 @@ public class SqlServerConnection extends JdbcConnection {
                 JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
     }
 
-    private static String createUrlPattern(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
+    @VisibleForTesting
+    protected static String createUrlPattern(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
         String pattern = URL_PATTERN;
         if (config.getInstance() != null) {
             pattern += "\\" + config.getInstance();
