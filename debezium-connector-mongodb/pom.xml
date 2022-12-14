@@ -115,6 +115,7 @@
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <!-- Mongo test containers -->
         <mongodb.docker.desktop.ports>27017,27018,27019</mongodb.docker.desktop.ports>
+        <mongodb.replica.size>1</mongodb.replica.size>
     </properties>
     <build>
         <plugins>
@@ -198,6 +199,7 @@
                         <!-- Make these available to the tests via system properties -->
                         <version.mongo.server>${version.mongo.server}</version.mongo.server>
                         <mongodb.docker.desktop.ports>${mongodb.docker.desktop.ports}</mongodb.docker.desktop.ports>
+                        <mongodb.replica.size>${mongodb.replica.size}</mongodb.replica.size>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
