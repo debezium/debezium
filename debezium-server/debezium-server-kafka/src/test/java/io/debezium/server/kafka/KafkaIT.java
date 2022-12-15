@@ -7,6 +7,7 @@ package io.debezium.server.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +21,7 @@ import javax.enterprise.event.Observes;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -96,5 +98,10 @@ public class KafkaIT {
                     return actual.size() >= MESSAGE_COUNT;
                 });
         assertThat(actual.size()).isGreaterThanOrEqualTo(MESSAGE_COUNT);
+        Headers headers = actual.get(0).headers();
+        assertThat(headers.headers("headerKey")).isNotEmpty();
+        assertThat(headers.headers("headerKey"))
+                .allMatch(h -> h.key().equals("headerKey") && Arrays.equals(h.value(), "\"headerValue\"".getBytes(StandardCharsets.UTF_8)));
+
     }
 }

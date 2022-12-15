@@ -14,6 +14,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
+import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
@@ -45,6 +48,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.base.Charsets;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -52,9 +56,11 @@ import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.Header;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.JsonByteArray;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -150,7 +156,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch firstLatch = new CountDownLatch(1);
 
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class, Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
@@ -363,9 +369,14 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("offset.flush.interval.ms", "0");
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
+
+        Headers expectedHeaders = new ConnectHeaders();
+        expectedHeaders.addString("headerKey", "headerValue");
 
         // create an engine with our custom class
         final DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
@@ -375,6 +386,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (RecordChangeEvent<SourceRecord> r : records) {
+                        assertThat(r.record().headers()).isEqualTo(expectedHeaders);
                         committer.markProcessed(r);
                     }
 
@@ -592,12 +604,16 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
         props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
 
+        EmbeddedEngineHeader<String> expectedHeader = new EmbeddedEngineHeader<>("headerKey", "\"headerValue\"");
+
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, Json.class, Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
@@ -606,6 +622,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     for (ChangeEvent<String, String> r : records) {
                         assertThat(r.key()).isNull();
                         assertThat(r.value()).startsWith("\"Generated line number ");
+
+                        List<Header<String>> headers = r.headers();
+                        assertThat(headers).allMatch(h -> h.getKey().equals(expectedHeader.getKey()) && h.getValue().equals(expectedHeader.getValue()));
+
                         committer.markProcessed(r);
                     }
 
@@ -639,39 +659,74 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         stopConnector();
     }
 
-    protected void appendLinesToSource(int numberOfLines) throws IOException {
-        CharSequence[] lines = new CharSequence[numberOfLines];
-        for (int i = 0; i != numberOfLines; ++i) {
-            lines[i] = generateLine(linesAdded + i + 1);
+    @Test
+    @FixFor("DBZ-5926")
+    public void shouldRunDebeziumEngineWithMismatchedTypes() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("transforms", "header");
+        props.setProperty("transforms.header.type", AddHeaderTransform.class.getName());
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        EmbeddedEngineHeader<byte[]> expectedHeader = new EmbeddedEngineHeader<>("headerKey", "\"headerValue\"".getBytes(StandardCharsets.UTF_8));
+
+        // create an engine with our custom class
+        final DebeziumEngine<ChangeEvent<String, byte[]>> engine = DebeziumEngine.create(Json.class, JsonByteArray.class, JsonByteArray.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    int groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (ChangeEvent<String, byte[]> r : records) {
+                        assertThat(r.key()).isNull();
+                        assertThat(new String(r.value(), Charsets.UTF_8)).startsWith("\"Generated line number ");
+
+                        List<Header<byte[]>> headers = r.headers();
+                        assertThat(headers).hasSize(1);
+                        assertThat(headers).allMatch(h -> h.getKey().equals(expectedHeader.getKey()) && Arrays.equals(h.getValue(), expectedHeader.getValue()));
+
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
         }
-        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
-        linesAdded += numberOfLines;
-    }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
 
-    protected void appendLinesToSource(String linePrefix, int numberOfLines) throws IOException {
-        CharSequence[] lines = new CharSequence[numberOfLines];
-        for (int i = 0; i != numberOfLines; ++i) {
-            lines[i] = generateLine(linePrefix, linesAdded + i + 1);
-        }
-        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
-        linesAdded += numberOfLines;
-    }
-
-    protected String generateLine(int lineNumber) {
-        return generateLine("Generated line number ", lineNumber);
-    }
-
-    protected String generateLine(String linePrefix, int lineNumber) {
-        return linePrefix + lineNumber;
-    }
-
-    protected void consumeLines(int numberOfLines) throws InterruptedException {
-        consumeRecords(numberOfLines, 3, record -> {
-            String line = record.value().toString();
-            assertThat(line).isEqualTo(generateLine(nextConsumedLineNumber));
-            ++nextConsumedLineNumber;
-        },
-                false);
+        // Stop the connector ...
+        stopConnector();
     }
 
     @Test
@@ -724,6 +779,68 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         assertThat(errorReference.get()).isNotNull();
         assertThat(errorReference.get()).contains("Connector configuration is not valid. ");
         assertThat(this.engine.isRunning()).isFalse();
+    }
+
+    protected void appendLinesToSource(int numberOfLines) throws IOException {
+        CharSequence[] lines = new CharSequence[numberOfLines];
+        for (int i = 0; i != numberOfLines; ++i) {
+            lines[i] = generateLine(linesAdded + i + 1);
+        }
+        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
+        linesAdded += numberOfLines;
+    }
+
+    protected void appendLinesToSource(String linePrefix, int numberOfLines) throws IOException {
+        CharSequence[] lines = new CharSequence[numberOfLines];
+        for (int i = 0; i != numberOfLines; ++i) {
+            lines[i] = generateLine(linePrefix, linesAdded + i + 1);
+        }
+        java.nio.file.Files.write(inputFile.toPath(), Collect.arrayListOf(lines), UTF8, StandardOpenOption.APPEND);
+        linesAdded += numberOfLines;
+    }
+
+    protected String generateLine(int lineNumber) {
+        return generateLine("Generated line number ", lineNumber);
+    }
+
+    protected String generateLine(String linePrefix, int lineNumber) {
+        return linePrefix + lineNumber;
+    }
+
+    protected void consumeLines(int numberOfLines) throws InterruptedException {
+        consumeRecords(numberOfLines, 3, record -> {
+            String line = record.value().toString();
+            assertThat(line).isEqualTo(generateLine(nextConsumedLineNumber));
+            ++nextConsumedLineNumber;
+        },
+                false);
+    }
+
+    public static class AddHeaderTransform implements Transformation<SourceRecord> {
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+        }
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            Headers headers = new ConnectHeaders();
+            headers.addString("headerKey", "headerValue");
+
+            record = record.newRecord(
+                    record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(), record.timestamp(), headers);
+
+            return record;
+        }
+
+        @Override
+        public ConfigDef config() {
+            return new ConfigDef();
+        }
+
+        @Override
+        public void close() {
+        }
     }
 }
 
