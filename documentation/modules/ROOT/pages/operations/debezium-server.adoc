@@ -328,7 +328,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`avro`/`protobuf`.
+|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -336,11 +336,19 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`avro`/`protobuf`/`cloudevents`.
+|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
 |Configuration properties passed to the value converter.
+
+|[[debezium-format-header]]<<debezium-format-header, `debezium.format.header`>>
+|`json`
+|The name of the output format for value, one of `json`/`jsonbytearray`.
+
+|[[debezium-format-header-props]]<<debezium-format-header-props, `debezium.format.header.*`>>
+|
+|Configuration properties passed to the header converter.
 
 |===
 

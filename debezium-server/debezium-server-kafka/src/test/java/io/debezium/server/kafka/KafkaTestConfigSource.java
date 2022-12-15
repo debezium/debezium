@@ -29,8 +29,12 @@ public class KafkaTestConfigSource extends TestConfigSource {
         kafkaConfig.put("debezium.source.topic.prefix", "testc");
         kafkaConfig.put("debezium.source.schema.include.list", "inventory");
         kafkaConfig.put("debezium.source.table.include.list", "inventory.customers");
+        kafkaConfig.put("debezium.format.header.schemas.enable", "false");
         // DBZ-5105
         kafkaConfig.put("debezium.sink.kafka.producer.ssl.endpoint.identification.algorithm", "");
+
+        kafkaConfig.put("debezium.transforms", "addheader");
+        kafkaConfig.put("debezium.transforms.addheader.type", "io.debezium.server.kafka.AddHeaderTransform");
 
         config = kafkaConfig;
     }
