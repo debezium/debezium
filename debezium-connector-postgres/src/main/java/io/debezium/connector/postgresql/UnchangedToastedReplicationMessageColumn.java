@@ -25,12 +25,13 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
 
-    private boolean isArrayColumn = false;
+    private boolean isStringArrayColumn = false;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
         super(columnName, type, typeWithModifiers, optional);
-        if (typeWithModifiers.equals("text[]") || typeWithModifiers.equals("_text")) {
-            isArrayColumn = true;
+        if (typeWithModifiers.equals("text[]") || typeWithModifiers.equals("_text") ||
+                typeWithModifiers.equals("character varying[]") || typeWithModifiers.equals("_varchar")) {
+            isStringArrayColumn = true;
         }
     }
 
@@ -41,7 +42,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
 
     @Override
     public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-        if (isArrayColumn) {
+        if (isStringArrayColumn) {
             return Arrays.asList(UNCHANGED_TOAST_VALUE);
         }
         return UNCHANGED_TOAST_VALUE;
