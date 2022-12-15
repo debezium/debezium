@@ -36,6 +36,7 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
