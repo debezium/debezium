@@ -194,8 +194,6 @@ public final class FieldSelector {
             List<Path> pathsApplyingToCollection = paths.stream()
                     .filter(path -> path.matches(namespace))
                     .collect(Collectors.toList());
-            final Map<String, Path> pathsByAddress = paths.stream()
-                    .collect(Collectors.toMap(Path::toString, Function.identity()));
             if (pathsApplyingToCollection.size() == 1) {
                 return new FieldFilter() {
                     final Path path = pathsApplyingToCollection.get(0);
