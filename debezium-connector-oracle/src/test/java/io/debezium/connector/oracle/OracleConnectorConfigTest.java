@@ -10,9 +10,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Connection;
 import java.time.Duration;
 import java.util.Collections;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,6 +227,44 @@ public class OracleConnectorConfigTest {
 
         connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
+    }
+
+    @Test
+    public void testDefaultTransactionIsolationMode() {
+        OracleConnectorConfig oracleConnectorConfig = new OracleConnectorConfig(Configuration.create().build());
+        assertThat(oracleConnectorConfig.getDefaultTransactionIsolationLevel()).isEqualTo(Connection.TRANSACTION_REPEATABLE_READ);
+    }
+
+    @Test
+    public void testReadCommittedSnapshotIsolationConfig() {
+        Configuration configuration = Configuration.create().with("incremental.snapshot.isolation.mode", "read_committed").build();
+        OracleConnectorConfig oracleConnectorConfig = new OracleConnectorConfig(configuration);
+        Assertions.assertThat(oracleConnectorConfig.getIncrementalSnapshotTransactionIsolationLevel())
+                .isEqualTo(Connection.TRANSACTION_READ_COMMITTED);
+    }
+
+    @Test
+    public void testReadUncommittedSnapshotIsolationConfig() {
+        Configuration configuration = Configuration.create().with("incremental.snapshot.isolation.mode", "read_uncommitted").build();
+        OracleConnectorConfig oracleConnectorConfig = new OracleConnectorConfig(configuration);
+        Assertions.assertThat(oracleConnectorConfig.getIncrementalSnapshotTransactionIsolationLevel())
+                .isEqualTo(Connection.TRANSACTION_READ_UNCOMMITTED);
+    }
+
+    @Test
+    public void testRepeatedReadSnapshotIsolationConfig() {
+        Configuration configuration = Configuration.create().with("incremental.snapshot.isolation.mode", "repeated_read").build();
+        OracleConnectorConfig oracleConnectorConfig = new OracleConnectorConfig(configuration);
+        Assertions.assertThat(oracleConnectorConfig.getIncrementalSnapshotTransactionIsolationLevel())
+                .isEqualTo(Connection.TRANSACTION_REPEATABLE_READ);
+    }
+
+    @Test
+    public void testSerializableSnapshotIsolationConfig() {
+        Configuration configuration = Configuration.create().with("incremental.snapshot.isolation.mode", "serializable").build();
+        OracleConnectorConfig oracleConnectorConfig = new OracleConnectorConfig(configuration);
+        Assertions.assertThat(oracleConnectorConfig.getIncrementalSnapshotTransactionIsolationLevel())
+                .isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
     }
 
     @Test
