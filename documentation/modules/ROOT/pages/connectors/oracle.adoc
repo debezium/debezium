@@ -1504,6 +1504,21 @@ When the `decimal.handling.mode` property is set to `string`, the connector repr
 
 |===
 
+As mention above, Oracle allows negative scales in `NUMBER` type.
+This can cause an issue during conversion to the Avro format when the number is represented as the `Decimal`.
+`Decimal` type includes scale information, but https://avro.apache.org/docs/1.11.1/specification/#decimal[Avro specification] allows only positive values for the scale.
+Depending on the schema registry used, it may result into Avro serialization failure.
+To avoid this issue, you can use `NumberToZeroScaleConverter`, which converts sufficiently high numbers (P - S >= 19) with negative scale into `Decimal` type with zero scale.
+It can be configured as follows:
+[source]
+----
+converters=zero_scale
+zero_scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
+zero_scale.decimal.mode=precise
+----
+
+By default, the number is converted to `Decimal` type (`zero_scale.decimal.mode=precise`), but for completeness remaining two supported types (`double` and `string`) are supported as well.
+
 [id="oracle-boolean-types"]
 === Boolean types
 
