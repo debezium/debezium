@@ -32,6 +32,8 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
+import io.debezium.connector.oracle.junit.SkipWhenRunWithApicurio;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
@@ -286,6 +288,9 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
+    @Rule
+    public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();
+
     private static OracleConnection connection;
 
     @BeforeClass
@@ -476,6 +481,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     @Test
+    @SkipWhenRunWithApicurio
     public void intTypes() throws Exception {
         int expectedRecordCount = 0;
 
