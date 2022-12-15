@@ -64,6 +64,18 @@ public class DebeziumServerTest {
 
         assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isNotNull();
         assertThat(properties.getProperty("database.allowPublicKeyRetrieval")).isEqualTo("true");
+
+        assertThat(properties.getProperty("transforms.hoist.predicate")).isNotNull();
+        assertThat(properties.getProperty("transforms.hoist.predicate")).isEqualTo("topicNameMatch");
+
+        assertThat(properties.getProperty("predicates")).isNotNull();
+        assertThat(properties.getProperty("predicates")).isEqualTo("topicNameMatch");
+
+        assertThat(properties.getProperty("predicates.topicNameMatch.type")).isNotNull();
+        assertThat(properties.getProperty("predicates.topicNameMatch.type")).isEqualTo("org.apache.kafka.connect.transforms.predicates.TopicNameMatches");
+
+        assertThat(properties.getProperty("predicates.topicNameMatch.pattern")).isNotNull();
+        assertThat(properties.getProperty("predicates.topicNameMatch.pattern")).isEqualTo(".*");
     }
 
     @Test
