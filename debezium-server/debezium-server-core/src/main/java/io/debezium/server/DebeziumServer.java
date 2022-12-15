@@ -65,11 +65,13 @@ public class DebeziumServer {
     private static final String PROP_SOURCE_PREFIX = PROP_PREFIX + "source.";
     private static final String PROP_SINK_PREFIX = PROP_PREFIX + "sink.";
     private static final String PROP_FORMAT_PREFIX = PROP_PREFIX + "format.";
+    private static final String PROP_PREDICATES_PREFIX = PROP_PREFIX + "predicates.";
     private static final String PROP_TRANSFORMS_PREFIX = PROP_PREFIX + "transforms.";
     private static final String PROP_KEY_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "key.";
     private static final String PROP_VALUE_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "value.";
     private static final String PROP_OFFSET_STORAGE_PREFIX = "offset.storage.";
 
+    private static final String PROP_PREDICATES = PROP_PREFIX + "predicates";
     private static final String PROP_TRANSFORMS = PROP_PREFIX + "transforms";
     private static final String PROP_SINK_TYPE = PROP_SINK_PREFIX + "type";
     private static final String PROP_KEY_FORMAT = PROP_FORMAT_PREFIX + "key";
@@ -131,11 +133,19 @@ public class DebeziumServer {
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", PROP_OFFSET_STORAGE_PREFIX + name + ".", false);
+
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
             configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.", true);
         }
+
+        final Optional<String> predicates = config.getOptionalValue(PROP_PREDICATES, String.class);
+        if (predicates.isPresent()) {
+            props.setProperty("predicates", predicates.get());
+            configToProperties(config, props, PROP_PREDICATES_PREFIX, "predicates.", true);
+        }
+
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
