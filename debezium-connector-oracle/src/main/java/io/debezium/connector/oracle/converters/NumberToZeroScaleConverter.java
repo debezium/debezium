@@ -61,8 +61,10 @@ public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder
         // Kafka BigDecimal type. Smaller numbers we provide as INT64 or smaller so there's no need to fix the scale.
         if ("NUMBER".equalsIgnoreCase(field.typeName()) && (scale < 0) && ((field.length().getAsInt() - scale) >= 19)) {
             final SchemaBuilder schemaBuilder = SpecialValueDecimal.builder(decimalMode, field.length().getAsInt(), 0);
-            registration.register(schemaBuilder, x -> SpecialValueDecimal
-                    .fromLogical(new SpecialValueDecimal((BigDecimal) x), decimalMode, field.name()));
+            registration.register(schemaBuilder,
+                    x -> x == null ? null
+                            : SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal) x), decimalMode,
+                                    field.name()));
         }
     }
 }
