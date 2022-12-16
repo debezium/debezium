@@ -60,17 +60,9 @@ public class NumberToZeroScaleConverter implements CustomConverter<SchemaBuilder
         // Converter applies only for Oracle NUMBER type with negative scale and sufficiently big numbers which we provide as
         // Kafka BigDecimal type. Smaller numbers we provide as INT64 or smaller so there's no need to fix the scale.
         if ("NUMBER".equalsIgnoreCase(field.typeName()) && (scale < 0) && ((field.length().getAsInt() - scale) >= 19)) {
-            registration.register(SpecialValueDecimal.builder(decimalMode, field.length().getAsInt(), 0), x -> {
-                switch (decimalMode) {
-                    case DOUBLE:
-                        return ((BigDecimal) x).doubleValue();
-                    case PRECISE:
-                        return x;
-                    case STRING:
-                        return ((BigDecimal) x).toPlainString();
-                }
-                throw new IllegalArgumentException("Unknown decimalMode");
-            });
+            final SchemaBuilder schemaBuilder = SpecialValueDecimal.builder(decimalMode, field.length().getAsInt(), 0);
+            registration.register(schemaBuilder, x -> SpecialValueDecimal
+                    .fromLogical(new SpecialValueDecimal((BigDecimal) x), decimalMode, field.name()));
         }
     }
 }
