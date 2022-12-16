@@ -265,7 +265,9 @@ Maciej Bryński
 Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
+Marcelo Avancini
 Marek Winkler
+Mario Fiore Vitale
 Mario Mueller
 Mariusz Strzelecki
 Mark Bereznitsky
@@ -439,6 +441,7 @@ WenZe Hu
 William Pursell
 Willie Cheong
 Willie Zhu
+Wu Zhenhua
 Wout Scheepers
 Xiao Fu
 Xiaopu Zhu
@@ -453,6 +456,7 @@ Yilong Chang
 Yiming Liu
 Yingying Tang
 Yoann Rodière
+Yohei Yoshimuta
 Yossi Shirizli
 Yuan Zhang
 Yuiham Chan

@@ -174,3 +174,7 @@ mkobayas,Masazumi Kobayashi
 Skezzowski,Balázs Sipos
 subodh,Subodh Kant Chaturvedi
 sahapasci,Sahap Asci
+mfvitale,Mario Fiore Vitale
+Raul Estrada,Raúl Estrada
+xiaowu,Wu Zhenhua
+yoheimuta,Yohei Yoshimuta
