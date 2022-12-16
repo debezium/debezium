@@ -2,6 +2,65 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.0.Beta1
+December 16th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12399345)
+
+### New features since 2.1.0.Alpha2
+
+* Postgres: Disable LSN confirmation to database [DBZ-5811](https://issues.redhat.com/browse/DBZ-5811)
+* Realize data distribution according to specified fields [DBZ-5847](https://issues.redhat.com/browse/DBZ-5847)
+* Support predicate parameters in Debezium Server [DBZ-5940](https://issues.redhat.com/browse/DBZ-5940)
+* Use the Patternfly database icon as a placeholder for Oracle Database [DBZ-5941](https://issues.redhat.com/browse/DBZ-5941)
+
+
+### Breaking changes since 2.1.0.Alpha2
+
+* Replace simple string for range tombstones for JSON object [DBZ-5912](https://issues.redhat.com/browse/DBZ-5912)
+* Cassandra TimeUUID values should be encoded as string [DBZ-5923](https://issues.redhat.com/browse/DBZ-5923)
+
+
+### Fixes since 2.1.0.Alpha2
+
+* Handle toasted String array [DBZ-4941](https://issues.redhat.com/browse/DBZ-4941)
+* Cassandra deletes log files on exit when real time processing is enabled [DBZ-5776](https://issues.redhat.com/browse/DBZ-5776)
+* ReplicationConnectionIT test fails [DBZ-5800](https://issues.redhat.com/browse/DBZ-5800)
+* MongoDB docs for incremental snapshots is SQL specific [DBZ-5804](https://issues.redhat.com/browse/DBZ-5804)
+* Conflicting documentation for snapshot.mode property in MongoDB connector v2.0 [DBZ-5812](https://issues.redhat.com/browse/DBZ-5812)
+* IllegalStateException is thrown if task is recovering while other tasks are running [DBZ-5855](https://issues.redhat.com/browse/DBZ-5855)
+* Negative decimal number scale is not supported by Avro [DBZ-5880](https://issues.redhat.com/browse/DBZ-5880)
+* Connector deployment instructions provide incorrect Maven path for Debezium scripting component  [DBZ-5882](https://issues.redhat.com/browse/DBZ-5882)
+* Incorrect Streams Kafka version in connector deployment instructions for creating a custom image [DBZ-5883](https://issues.redhat.com/browse/DBZ-5883)
+* Run postgres connector RecordsStreamProducerIT failed [DBZ-5895](https://issues.redhat.com/browse/DBZ-5895)
+* Suppport INSERT INTO statements with dots in column names  [DBZ-5904](https://issues.redhat.com/browse/DBZ-5904)
+* Incorrect default value for additional-condition docs [DBZ-5906](https://issues.redhat.com/browse/DBZ-5906)
+* ConnectorLifecycle is not logging anymore the exception stacktrace when startup fails [DBZ-5908](https://issues.redhat.com/browse/DBZ-5908)
+* Debezium Server stops with NPE when Redis does not report the "maxmemory" field in "info memory" command [DBZ-5911](https://issues.redhat.com/browse/DBZ-5911)
+* PostgresConnectorIT#shouldAckLsnOnSourceByDefault and #shouldNotAckLsnOnSource fails [DBZ-5914](https://issues.redhat.com/browse/DBZ-5914)
+* SQL Server connector database.instance config option is ignored [DBZ-5924](https://issues.redhat.com/browse/DBZ-5924)
+* Wrong java version in Installing Debezium documentation [DBZ-5928](https://issues.redhat.com/browse/DBZ-5928)
+* Toasted varchar array is not correctly processed [DBZ-5944](https://issues.redhat.com/browse/DBZ-5944)
+
+
+### Other changes since 2.1.0.Alpha2
+
+* Use static import for Assertions in all tests [DBZ-2432](https://issues.redhat.com/browse/DBZ-2432)
+* Test window function in MySQL parser [DBZ-3576](https://issues.redhat.com/browse/DBZ-3576)
+* Run test against Apicurio registry [DBZ-5838](https://issues.redhat.com/browse/DBZ-5838)
+* Add tests against multinode RS and (ideally) sharded cluster  [DBZ-5857](https://issues.redhat.com/browse/DBZ-5857)
+* Update documentation for Debezium Server with Cassandra Connector [DBZ-5885](https://issues.redhat.com/browse/DBZ-5885)
+* Allow CI deploy clusters to PSI [DBZ-5887](https://issues.redhat.com/browse/DBZ-5887)
+* Mariadb and Mysql have different syntax [DBZ-5888](https://issues.redhat.com/browse/DBZ-5888)
+* Execute IT tests in alphabetical order [DBZ-5889](https://issues.redhat.com/browse/DBZ-5889)
+* Migrate debezium-server-nats-jetstream to AssertJ [DBZ-5901](https://issues.redhat.com/browse/DBZ-5901)
+* Reduce jenkins jobs footprint [DBZ-5905](https://issues.redhat.com/browse/DBZ-5905)
+* Move Debezium Cassandra connector out from incubation [DBZ-5922](https://issues.redhat.com/browse/DBZ-5922)
+* Clean up "doSnapshot" config code [DBZ-5931](https://issues.redhat.com/browse/DBZ-5931)
+* Version badge on README in Cassandra connector is stuck [DBZ-5932](https://issues.redhat.com/browse/DBZ-5932)
+* Make startup of Cassandra container faster [DBZ-5933](https://issues.redhat.com/browse/DBZ-5933)
+* Fix logging for tests for Cassandra connector [DBZ-5934](https://issues.redhat.com/browse/DBZ-5934)
+
+
+
 ## 2.1.0.Alpha2
 November 30th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12398904)
 
