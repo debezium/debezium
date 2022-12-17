@@ -8,22 +8,32 @@ package io.debezium.connector.mongodb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Randall Hauch
  */
 public class FiltersTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FiltersTest.class);
 
     private Configurator build;
     private Filters filters;
+    private Field.Set configFields;
 
     @Before
     public void beforeEach() {
         build = new Configurator();
         filters = null;
+        configFields = Field.setOf(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, MongoDbConnectorConfig.FIELD_RENAMES);
     }
 
     @Test
@@ -190,6 +200,7 @@ public class FiltersTest {
     @Test
     public void excludeFilterShouldRemoveMatchingField() {
         filters = build.excludeFields("db1.collectionA.key1").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value2\" }"),
@@ -199,6 +210,18 @@ public class FiltersTest {
     @Test
     public void excludeFilterShouldRemoveMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.excludeFields(" *.collectionA.key1").createFilters();
+        validateConfigFields();
+        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        assertEquals(
+                Document.parse(" { \"key2\" : \"value2\" }"),
+                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"value1\", \"key2\" : \"value2\" }")));
+    }
+
+    @Test
+    @FixFor("DBZ-5818")
+    public void excludeFilterShouldRemoveMatchingFieldWithLeadingMultipleAsterisks() {
+        filters = build.excludeFields(" *.*.key1").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value2\" }"),
@@ -208,6 +231,7 @@ public class FiltersTest {
     @Test
     public void excludeFilterShouldRemoveMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.excludeFields("db.collectionA.key1 ,db.collectionA.key2 ").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", "db.collectionA");
         assertEquals(
                 Document.parse(" { \"key3\" : \"value3\" }"),
@@ -217,6 +241,7 @@ public class FiltersTest {
     @Test
     public void renameFilterShouldRenameMatchingField() {
         filters = build.renameFields("db1.collectionA.key1:key2").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", "db1.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"value1\" }"),
@@ -226,6 +251,18 @@ public class FiltersTest {
     @Test
     public void renameFilterShouldRenameMatchingFieldWithLeadingWhiteSpaces() {
         filters = build.renameFields(" *.collectionA.key2:key3").createFilters();
+        validateConfigFields();
+        CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
+        assertEquals(
+                Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }"),
+                filters.fieldFilterFor(id).apply(Document.parse(" { \"key1\" : \"valueA\", \"key2\" : \"valueB\" }")));
+    }
+
+    @Test
+    @FixFor("DBZ-5818")
+    public void renameFilterShouldRenameMatchingFieldWithLeadingMultipleAsterisks() {
+        filters = build.renameFields(" *.*.key2:key3").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", " *.collectionA");
         assertEquals(
                 Document.parse(" { \"key1\" : \"valueA\", \"key3\" : \"valueB\" }"),
@@ -235,6 +272,7 @@ public class FiltersTest {
     @Test
     public void renameFilterShouldRenameMatchingFieldWithTrailingWhiteSpaces() {
         filters = build.renameFields("db2.collectionA.key1:key2 ,db2.collectionA.key3:key4 ").createFilters();
+        validateConfigFields();
         CollectionId id = CollectionId.parse("rs1.", "db2.collectionA");
         assertEquals(
                 Document.parse(" { \"key2\" : \"valueA\", \"key4\" : \"valueB\" }"),
@@ -253,4 +291,10 @@ public class FiltersTest {
         assertThat(filters.collectionFilter().test(id)).isFalse();
     }
 
+    private void validateConfigFields() {
+        Configuration config = build.config();
+        if (!config.validateAndRecord(configFields, LOGGER::error)) {
+            throw new ConnectException("Unable to validate config.");
+        }
+    }
 }
