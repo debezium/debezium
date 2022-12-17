@@ -83,4 +83,8 @@ public class Configurator {
         return new Filters(configBuilder.build());
     }
 
+    public Configuration config() {
+        return configBuilder.build();
+    }
+
 }

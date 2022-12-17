@@ -47,9 +47,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
 
-    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern.compile("^[*|\\w|\\-|\\s*]+(?:\\.[\\w|\\-]+\\.[\\w|\\-]+)+(\\.[\\w|\\-]+)*\\s*$");
+    protected static final Pattern FIELD_EXCLUDE_LIST_PATTERN = Pattern
+            .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*\\s*$");
     protected static final String QUALIFIED_FIELD_EXCLUDE_LIST_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>";
-    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern.compile("^[*|\\w|\\-|\\s*]+(?:\\.[\\w|\\-]+\\.[\\w|\\-]+)+(\\.[\\w|\\-]+)*:(?:[\\w|\\-]+)+\\s*$");
+    protected static final Pattern FIELD_RENAMES_PATTERN = Pattern
+            .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*:(?:[*|\\w|\\-]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
 
     /**
