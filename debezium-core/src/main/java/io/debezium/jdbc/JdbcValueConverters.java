@@ -1276,17 +1276,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        Class<?> dataClass = data.getClass();
+        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
-            Class<?> dataClass = data.getClass();
+
             if (logger.isWarnEnabled()) {
                 logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                // sensitive
+                        clazzName); // don't include value in case its sensitive
             }
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                ": class=" + data.getClass()); // don't include value in case its sensitive
+                ": class=" + clazzName); // don't include value in case its sensitive
     }
 
     protected int getTimePrecision(Column column) {
