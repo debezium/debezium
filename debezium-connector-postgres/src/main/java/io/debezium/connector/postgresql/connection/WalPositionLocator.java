@@ -71,6 +71,12 @@ public class WalPositionLocator {
             // We can resume streaming from it
             if (currentLsn.equals(lastEventStoredLsn)) {
                 // BEGIN and first message after change have the same LSN
+                if (txStartLsn != null) {
+                    // start from the BEGIN tx; prevent skipping of unprocessed event after BEGIN
+                    // may reprocess the event after the BEGIN
+                    startStreamingLsn = txStartLsn;
+                    return Optional.of(startStreamingLsn);
+                }
                 return Optional.empty();
             }
             lsnAfterLastEventStoredLsn = currentLsn;
