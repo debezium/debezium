@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1168,6 +1169,46 @@ public class EventRouterTest {
         assertThat(numbers.get(0)).isEqualTo(null);
         assertThat(numbers.get(1)).isEqualTo(2);
         assertThat(numbers.get(2)).isEqualTo(3);
+    }
+
+    @Test
+    public void canExpandJsonArrayWithComplexElements() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "59875832-7f44-11ed-954e-1a5354ab5dd0|",
+                "UserCreated",
+                "6a3f12a0",
+                "User",
+                "{\"id\":\"1028cbab-c55b-4dab-a367-7d9471466a59\",\"attributes\":[{\"id\":\"10911586\",\"adr\":null,\"eans\":[{\"code\":\"2007000013656\",\"createdAt\":\"2022-06-08T11:33:16.465Z\"}],\"purchaseBusinessStatus\":\"BLOCOM\",\"isCanBeReturnToSupplier\":false,\"purchaseWarehouseStatus\":\"NONAUT\"}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        SourceRecord eventRouted = router.apply(eventRecord);
+        assertThat(eventRouted).isNotNull();
+        Struct valueStruct = (Struct) eventRouted.value();
+        List<Struct> eans = (ArrayList) ((Struct) ((ArrayList) valueStruct.get("attributes")).get(0)).get("eans");
+        assertThat(eans.size()).isEqualTo(1);
+
+        final SourceRecord eventRecord2 = createEventRecord(
+                "59875832-7f44-11ed-954e-1a5354ab5dd0|",
+                "UserCreated",
+                "6a3f12a0",
+                "User",
+                "{\"id\":\"1028cbab-c55b-4dab-a367-7d9471466a59\",\"attributes\":[{\"id\":\"10911586\",\"adr\":null,\"eans\":[{\"code\":\"2007000013656\",\"createdAt\":\"2022-06-08T11:33:16.465Z\"},{\"code\":\"2000630108556\",\"createdAt\":\"2022-06-23T07:57:54.717Z\"}],\"purchaseBusinessStatus\":\"BLOCOM\",\"isCanBeReturnToSupplier\":false,\"purchaseWarehouseStatus\":\"NONAUT\"}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        SourceRecord eventRouted2 = router.apply(eventRecord2);
+        assertThat(eventRouted2).isNotNull();
+        Struct valueStruct2 = (Struct) eventRouted2.value();
+        List<Struct> eans2 = (ArrayList) ((Struct) ((ArrayList) valueStruct2.get("attributes")).get(0)).get("eans");
+        assertThat(eans2.size()).isEqualTo(2);
+
+        assertThat(eventRouted.valueSchema()).isEqualTo(eventRouted2.valueSchema());
     }
 
     private SourceRecord createEventRecord() {
