@@ -2701,7 +2701,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3921")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
-    public void shouldUpdateConfiguredTables() throws Exception {
+    public void shouldUpdatePublicationForConfiguredTables() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -2757,6 +2757,52 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         List<SourceRecord> afterUpdateS2recs = actualRecordsAfterUpdate.recordsForTopic(topicName("s2.a"));
         assertThat(afterUpdateS1recs).hasSize(1);
         assertThat(afterUpdateS2recs).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-5949")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 13, reason = "Publication with 'publish_via_partition_root' parameter is supported only on Postgres 13+")
+    public void shouldUpdateExistingPublicationForConfiguredPartitionedTables() throws Exception {
+        String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);" +
+                "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);" +
+                "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);" +
+                "INSERT INTO s1.part (pk, aa) VALUES (0, 0);";
+        TestHelper.execute(setupStmt);
+
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute("CREATE PUBLICATION cdc FOR TABLE s1.part WITH (publish_via_partition_root = true);");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // snapshot record s1.part
+        consumeRecordsByTopic(1);
+
+        String insertStmt = "INSERT INTO s1.part (pk, aa) VALUES (1, 1);" +
+                "INSERT INTO s1.part (pk, aa) VALUES (501, 501);";
+        TestHelper.execute(insertStmt);
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.topics()).hasSize(1);
+
+        // there should be no records for s1.part1 and s1.part2
+        List<SourceRecord> recs = actualRecords.recordsForTopic(topicName("s1.part"));
+        List<SourceRecord> part1recs = actualRecords.recordsForTopic(topicName("s1.part1"));
+        List<SourceRecord> part2recs = actualRecords.recordsForTopic(topicName("s1.part2"));
+        assertThat(recs).hasSize(2);
+        assertThat(part1recs).isNull();
+        assertThat(part2recs).isNull();
+
+        VerifyRecord.isValidInsert(recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidInsert(recs.get(1), PK_FIELD, 501);
     }
 
     @Test

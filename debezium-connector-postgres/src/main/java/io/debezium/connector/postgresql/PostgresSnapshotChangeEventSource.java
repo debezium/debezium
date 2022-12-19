@@ -94,11 +94,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> ctx)
             throws Exception {
-        return jdbcConnection.readTableNames(
-                ctx.catalogName,
-                null,
-                null,
-                new String[]{ "TABLE", "PARTITIONED TABLE" });
+        return jdbcConnection.getAllTableIds(ctx.catalogName);
     }
 
     @Override
