@@ -1042,6 +1042,7 @@ tableSources
 tableSource
     : tableSourceItem joinPart*                                     #tableSourceBase
     | '(' tableSourceItem joinPart* ')'                             #tableSourceNested
+    | jsonTable                                                     #tableJson
     ;
 
 tableSourceItem
@@ -1115,8 +1116,40 @@ unionStatement
     ;
 
 lateralStatement
-    : LATERAL (querySpecificationNointo | queryExpressionNointo)
-    | LATERAL '(' (querySpecificationNointo | queryExpressionNointo) ')' (AS? uid)?
+    : LATERAL (querySpecificationNointo |
+               queryExpressionNointo |
+               ('(' (querySpecificationNointo | queryExpressionNointo) ')' (AS? uid)?)
+              )
+    ;
+
+// JSON
+
+// https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
+jsonTable
+    : JSON_TABLE '('
+        STRING_LITERAL ','
+        STRING_LITERAL
+        COLUMNS '(' jsonColumnList ')'
+      ')' (AS? uid)?
+    ;
+
+jsonColumnList
+    : jsonColumn (',' jsonColumn)*
+    ;
+
+jsonColumn
+    : fullColumnName FOR ORDINALITY
+    | fullColumnName dataType PATH STRING_LITERAL jsonOnEmpty? jsonOnError?
+    | fullColumnName dataType EXISTS PATH STRING_LITERAL
+    | NESTED PATH? STRING_LITERAL COLUMNS '(' jsonColumnList ')'
+    ;
+
+jsonOnEmpty
+    : (NULL_LITERAL | ERROR | (DEFAULT defaultValue)) ON EMPTY
+    ;
+
+jsonOnError
+    : (NULL_LITERAL | ERROR | (DEFAULT defaultValue)) ON ERROR
     ;
 
 // details
@@ -2257,11 +2290,7 @@ dataType
     ;
 
 collectionOptions
-    : '(' collectionOption (',' collectionOption)* ')'
-    ;
-
-collectionOption
-    : STRING_LITERAL
+    : '(' STRING_LITERAL (',' STRING_LITERAL)* ')'
     ;
 
 convertedDataType
@@ -2483,8 +2512,8 @@ specificFunction
       '(' expression
        ',' expression
          (RETURNING convertedDataType)?
-         ((NULL_LITERAL | ERROR | (DEFAULT defaultValue)) ON EMPTY)?
-         ((NULL_LITERAL | ERROR | (DEFAULT defaultValue)) ON ERROR)?
+         jsonOnEmpty?
+         jsonOnError?
        ')'                                                          #jsonValueFunctionCall
     ;
 
@@ -2760,9 +2789,9 @@ keywordsCanBeId
     | VALIDATION | VALUE | VAR_POP | VAR_SAMP | VARIABLES | VARIANCE | VERSION_TOKEN_ADMIN | VIEW | VIRTUAL
     | WAIT | WARNINGS | WITHOUT | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     // MariaDB-specific only
-    | BINLOG_MONITOR | BINLOG_REPLAY | CURRENT_ROLE | CYCLE | ENCRYPTED | ENCRYPTION_KEY_ID | FEDERATED_ADMIN 
-    | INCREMENT | LASTVAL | LOCKED | MAXVALUE | MINVALUE | NEXTVAL | NOCACHE | NOCYCLE | NOMAXVALUE | NOMINVALUE 
-    | PERSISTENT | PREVIOUS | READ_ONLY_ADMIN | REPLICA | REPLICATION_MASTER_ADMIN | RESTART | SEQUENCE | SETVAL | SKIP_ | STATEMENT | VIA 
+    | BINLOG_MONITOR | BINLOG_REPLAY | CURRENT_ROLE | CYCLE | ENCRYPTED | ENCRYPTION_KEY_ID | FEDERATED_ADMIN
+    | INCREMENT | LASTVAL | LOCKED | MAXVALUE | MINVALUE | NEXTVAL | NOCACHE | NOCYCLE | NOMAXVALUE | NOMINVALUE
+    | PERSISTENT | PREVIOUS | READ_ONLY_ADMIN | REPLICA | REPLICATION_MASTER_ADMIN | RESTART | SEQUENCE | SETVAL | SKIP_ | STATEMENT | VIA
     ;
 
 functionNameBase
@@ -2856,4 +2885,3 @@ functionNameBase
     // MariaDB
     | LASTVAL | NEXTVAL | SETVAL
     ;
-
