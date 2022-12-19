@@ -49,6 +49,10 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             case "_text":
             case "character varying[]":
             case "_varchar":
+            case "json[]":
+            case "_json":
+            case "jsonb[]":
+            case "_jsonb":
                 unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
                 break;
             case "integer[]":
