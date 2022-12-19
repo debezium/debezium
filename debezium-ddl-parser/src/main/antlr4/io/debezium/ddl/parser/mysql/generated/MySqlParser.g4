@@ -2290,7 +2290,11 @@ dataType
     ;
 
 collectionOptions
-    : '(' STRING_LITERAL (',' STRING_LITERAL)* ')'
+    : '(' collectionOption (',' collectionOption)* ')'
+    ;
+
+collectionOption
+    : STRING_LITERAL
     ;
 
 convertedDataType
