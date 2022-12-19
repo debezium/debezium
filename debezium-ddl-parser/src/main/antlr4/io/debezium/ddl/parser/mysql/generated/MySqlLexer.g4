@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 lexer grammar MySqlLexer;
 
+options { caseInsensitive = true; }
+
 channels { MYSQLCOMMENT, ERRORCHANNEL }
 
 // SKIP
@@ -35,7 +37,7 @@ SPACE:                               [ \t\r\n]+    -> channel(HIDDEN);
 SPEC_MYSQL_COMMENT:                  '/*!' .+? '*/' -> channel(MYSQLCOMMENT);
 COMMENT_INPUT:                       '/*' .*? '*/' -> channel(HIDDEN);
 LINE_COMMENT:                        (
-                                       ('--' [ \t] | '#') ~[\r\n]* ('\r'? '\n' | EOF)
+                                       ('--' [ \t]* | '#') ~[\r\n]* ('\r'? '\n' | EOF)
                                        | '--' ('\r'? '\n' | EOF)
                                      ) -> channel(HIDDEN);
 
@@ -122,7 +124,6 @@ INDEX:                               'INDEX';
 INFILE:                              'INFILE';
 INNER:                               'INNER';
 INOUT:                               'INOUT';
-IN_OUT:                              'IN OUT';
 INSERT:                              'INSERT';
 INTERVAL:                            'INTERVAL';
 INTO:                                'INTO';
@@ -329,6 +330,9 @@ JSON_STORAGE_FREE:                   'JSON_STORAGE_FREE';
 JSON_STORAGE_SIZE:                   'JSON_STORAGE_SIZE';
 JSON_ARRAYAGG:                       'JSON_ARRAYAGG';
 JSON_OBJECTAGG:                      'JSON_OBJECTAGG';
+NESTED:                              'NESTED';
+ORDINALITY:                          'ORDINALITY';
+PATH:                                'PATH';
 
 // Group function Keywords
 
@@ -426,7 +430,7 @@ COMMIT:                              'COMMIT';
 COMPACT:                             'COMPACT';
 COMPLETION:                          'COMPLETION';
 COMPRESSED:                          'COMPRESSED';
-COMPRESSION:                         QUOTE_SYMB? 'COMPRESSION' QUOTE_SYMB?;
+COMPRESSION:                         'COMPRESSION' | QUOTE_SYMB? 'COMPRESSION' QUOTE_SYMB?;
 CONCURRENT:                          'CONCURRENT';
 CONNECT:                             'CONNECT';
 CONNECTION:                          'CONNECTION';

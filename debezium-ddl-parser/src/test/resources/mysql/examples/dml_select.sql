@@ -239,3 +239,20 @@ SELECT * FROM table1 USE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 A
 SELECT * FROM table1 FORCE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
 SELECT * FROM t1 USE INDEX (PRIMARY) ORDER BY a;
 SELECT * FROM t1 FORCE INDEX (PRIMARY) ORDER BY a;
+
+-- JSON_TABLE
+-- https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
+SELECT *
+    FROM
+        JSON_TABLE (
+           '[{"a":"3"},{"a":2},{"b":1},{"a":0},{"a":[1,2]}]',
+           "$[*]"
+         COLUMNS (
+           rowid FOR ORDINALITY,
+           ac VARCHAR(100) PATH "$.a" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR,
+           aj JSON PATH "$.a" DEFAULT '{"x": 333}' ON EMPTY,
+           bx INT EXISTS PATH "$.b",
+           NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$')
+         )
+        ) AS tt;
+
