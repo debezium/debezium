@@ -15,6 +15,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
@@ -677,6 +678,21 @@ public class PostgresConnection extends JdbcConnection {
                     && !EXPRESSION_DEFAULT_PATTERN.matcher(columnName).matches();
         }
         return false;
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in a given database catalog, including partitioned tables.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return readTableNames(
+                catalogName,
+                null,
+                null,
+                new String[]{ "TABLE", "PARTITIONED TABLE" });
     }
 
     @FunctionalInterface
