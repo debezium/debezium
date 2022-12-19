@@ -68,6 +68,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig connectorConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
+    private final PostgresConnection jdbcConnection;
     private final TypeRegistry typeRegistry;
     private final Properties streamParams;
 
@@ -87,7 +88,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param doSnapshot                whether the connector is doing snapshot
-     * @param jdbcConnection            general POstgreSQL JDBC connection
+     * @param jdbcConnection            general PostgreSQL JDBC connection
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
@@ -118,6 +119,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema), jdbcConnection);
+        this.jdbcConnection = jdbcConnection;
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -215,7 +217,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private Set<TableId> determineCapturedTables() throws Exception {
-        Set<TableId> allTableIds = this.connect().readTableNames(pgConnection().getCatalog(), null, null, new String[]{ "TABLE" });
+        Set<TableId> allTableIds = jdbcConnection.getAllTableIds(connectorConfig.databaseName());
 
         Set<TableId> capturedTables = new HashSet<>();
 
