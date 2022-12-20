@@ -18,7 +18,7 @@ import java.util.stream.Stream;
  */
 public class DecoderDifferences {
     static final String TOASTED_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
-    static final String TOASTED_VALUE_NUMBER_STRING = "28694827,62948267,94852637,62847362,94837264,73486259,29483726,43827619,84692735,29873462";
+    static final String TOASTED_VALUE_NUMBER_STRING = "95, 95, 100, 101, 98, 101, 122, 105, 117, 109, 95, 117, 110, 97, 118, 97, 105, 108, 97, 98, 108, 101, 95, 118, 97, 108, 117, 101";
 
     private static boolean pgoutput() {
         return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT;
