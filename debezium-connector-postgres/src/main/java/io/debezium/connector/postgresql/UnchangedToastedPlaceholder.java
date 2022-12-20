@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class UnchangedToastedPlaceholder {
 
@@ -19,22 +19,19 @@ public class UnchangedToastedPlaceholder {
     private final String toastPlaceholderString;
 
     public UnchangedToastedPlaceholder(PostgresConnectorConfig connectorConfig) {
-        String toastPlaceholderNumberArrayString = connectorConfig.getUnavailableNumberArrayPlaceholder();
         toastPlaceholderBinary = connectorConfig.getUnavailableValuePlaceholder();
         toastPlaceholderString = new String(toastPlaceholderBinary);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
                 Arrays.asList(toastPlaceholderString));
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE,
-                Stream.of(toastPlaceholderNumberArrayString.split(","))
-                        .map(String::trim)
-                        .map(Integer::parseInt)
-                        .collect(Collectors.toList()));
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE,
-                Stream.of(toastPlaceholderNumberArrayString.split(","))
-                        .map(String::trim)
-                        .map(Long::parseLong)
-                        .collect(Collectors.toList()));
+        final List<Integer> toastedIntArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
+        final List<Long> toastedLongArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
+        for (byte b : toastPlaceholderBinary) {
+            toastedIntArrayPlaceholder.add((int) b);
+            toastedLongArrayPlaceholder.add((long) b);
+        }
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE, toastedIntArrayPlaceholder);
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE, toastedLongArrayPlaceholder);
     }
 
     public Optional<Object> getValue(Object obj) {
