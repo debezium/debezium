@@ -1723,6 +1723,52 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-5936")
+    public void shouldHandleToastedJsonArrayColumn() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, text TEXT);");
+        startConnector(Function.identity(), false);
+        final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN json_array json[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN json_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, text, json_array) "
+                + "VALUES (10, 'text', ARRAY [ '{\"key\": \"" + toastedValue + "\" }'::json ]);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
+                new SchemaAndValueField("json_array", SchemaBuilder.array(
+                        io.debezium.data.Json.builder().optional().build()).optional().build(),
+                        Arrays.asList("{\"key\": \"" + toastedValue + "\" }"))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "text", "not_toast", "json_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
+                new SchemaAndValueField("json_array", SchemaBuilder.array(
+                        io.debezium.data.Json.builder().optional().build()).optional().build(),
+                        Arrays.asList(DecoderDifferences.mandatoryToastedValuePlaceholder()))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
     @FixFor("DBZ-1029")
     public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception {
         TestHelper.execute(
