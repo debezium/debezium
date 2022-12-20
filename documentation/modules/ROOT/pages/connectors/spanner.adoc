@@ -1091,7 +1091,11 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[spanner-property-credentials]]<<spanner-property-credentials, `+gcp.spanner.credentials.path+`>>
 |No default
-|The GCP service account key JSON.
+|The file path to the GCP service account key JSON.
+
+|[[spanner-property-credentials]]<<spanner-property-credentials, `+gcp.spanner.credentials.json+`>>
+|No default
+|The GCP service account key JSON. Required if gcp.spanner.credentials.path is not provided.
 
 |===
 
@@ -1127,23 +1131,69 @@ The following _advanced_ configuration properties have defaults that work in mos
 
 |[[spanner-property-eventqueuecapacity]]<<spanner-property-eventqueuecapacity, `+gcp.spanner.stream.event.queue.capacity+`>>
 |`10000`
-|The Spanner event queue capacity
+|The Spanner event queue capacity. Increase this capacity if the remaining stream event queue capacity approaches zero during connector runtime.
 
 |[[spanner-property-taskstatechangequeuecapacity]]<<spanner-property-taskstatechangequeuecapacity, `+connector.spanner.task.state.change.event.queue.capacity+`>>
 |`1000`
-|The task state change event queue capacity
+|The task state change event queue capacity. Increase this capacity if the remaining task state change event queue capacity approaches zero during connector runtime.
 
 |[[spanner-property-missedheartbeatsmax]]<<spanner-property-missedheartbeatsmax, `+connector.spanner.max.missed.heartbeats+`>>
-|`5000`
+|`5`
 |The maximum number of missed heartbeats for a change stream query before an exception is thrown
 
 |[[spanner-property-scalermonitorenabled]]<<spanner-property-scalermonitorenabled, `+scaler.monitor.enabled+`>>
 |`false`
 |Whether or not task autoscaling is enabled
 
-|[[spanner-property-taskdesiredpartitions]]<<spanner-property-taskdesiredpartitions, `+tasks.desired.partitions+`>>
-|`2`
-|The desired number of change stream partitions per task.
+|[[spanner-property-synctopicname]]<<spanner-property-synctopicname, `+connector.spanner.sync.topic+`>>
+|`_sync_topic_spanner_connector_<connectorname>`
+|The name for the Sync topic. The Sync topic is an internal connector topic used to store communication between tasks.
+
+|[[spanner-property-syncpollduration]]<<spanner-property-syncpollduration, `+connector.spanner.sync.poll.duration+`>>
+|`500 ms`
+|The poll duration for the sync topic.
+
+|[[spanner-property-syncrequesttimeout]]<<spanner-property-syncrequesttimeout, `+connector.spanner.sync.request.timeout.ms+`>>
+|`5000 ms`
+|The timeout for requests to the sync topic.
+
+|[[spanner-property-syncdeliverytimeout]]<<spanner-property-syncdeliverytimeout, `+connector.spanner.sync.delivery.timeout.ms+`>>
+|`15000 ms`
+|The timeout for publishing to the sync topic.
+
+|[[spanner-property-synccommitoffsetstimeout]]<<spanner-property-synccommitoffsetstimeout, `+connector.spanner.sync.commit.offsets.timeout.ms+`>>
+|`5000 ms`
+|The timeout for committing offsets for the sync topic.
+
+|[[spanner-property-synccommitoffsetsinterval]]<<spanner-property-synccommitoffsetsinterval, `+connector.spanner.sync.commit.offsets.interval.ms+`>>
+|`60000 ms`
+|The interval at which offsets are committed for the sync topic.
+
+|[[spanner-property-syncpublishwaitingtimeout]]<<spanner-property-syncpublishwaitingtimeout, `+connector.spanner.sync.publisher.wait.timeout+`>>
+|`5 ms`
+|The interval at which messages are published to the sync topic.
+
+|[[spanner-property-rebalancetopicname]]<<spanner-property-rebalancetopicname, `+connector.spanner.rebalancing.topic+`>>
+|`_rebalancing_topic_spanner_connector_<connectorname>`
+|The name for the rebalancing topic. The rebalancing topic is an internal connector topic used to determine task aliveness.
+
+|[[spanner-property-rebalancepollduration]]<<spanner-property-rebalancepollduration, `+connector.spanner.rebalancing.poll.duration+`>>
+|`5000`
+|The poll duration for the rebalancing topic.
+
+|[[spanner-property-rebalancecommitoffsetstimeout]]<<spanner-property-rebalancecommitoffsetstimeout, `+connector.spanner.rebalancing.commit.offsets.timeout+`>>
+|`5000`
+|The timeout for committing offsets for the rebalance topic.
+
+|[[spanner-property-rebalancecommitoffsetsinterval]]<<spanner-property-rebalancecommitoffsetsinterval, `+connector.spanner.rebalancing.commit.offsets.interval.ms+`>>
+|`60000 ms`
+|The interval at which offsets are committed for the sync topic.
+
+|[[spanner-property-rebalanceetaskwaitingtimeout]]<<spanner-property-rebalancetaskwaitingtimeout, `+connector.spanner.rebalancing.task.waiting.timeout+`>>
+|`1000 ms`
+|The duration of time a task waits before processing a rebalancing event.
+
+For a more complete list of advanced configuration, see link:https://github.com/debezium/debezium-connector-spanner/blob/main/src/main/java/io/debezium/connector/spanner/config/BaseSpannerConnectorConfig.java[Github code].
 
 |===
 
