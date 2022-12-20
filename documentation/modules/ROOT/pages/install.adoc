@@ -50,6 +50,7 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
 endif::[]
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
