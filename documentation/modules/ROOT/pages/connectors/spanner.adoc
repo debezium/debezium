@@ -17,19 +17,19 @@ toc::[]
 This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
 ====
 
-{prodname}'s Cloud Spanner connector consumes and outputs Cloud Spanner change streams data into a Kafka topic.
+{prodname}'s Cloud Spanner connector consumes and outputs Spanner change streams data into a Kafka topic.
 
-A Cloud Spanner link:https://cloud.google.com/spanner/docs/change-streams[change stream] watches and streams out a Cloud Spanner database's data changes - inserts, updates, deletes - in near-real-time. The Cloud Spanner connector abstracts away the details of querying the Cloud Spanner change streams. With this connector, you don't have to manage the change streams partition lifecycle, which is necessary when you link:https://cloud.devsite.corp.google.com/spanner/docs/change-streams/details#query[use the Spanner API directly].
+A Spanner link:https://cloud.google.com/spanner/docs/change-streams[change stream] watches and streams out a Spanner database's data changes - inserts, updates, deletes - in near-real-time. The Spanner connector abstracts away the details of querying the Spanner change streams. With this connector, you don't have to manage the change streams partition lifecycle, which is necessary when you link:https://cloud.devsite.corp.google.com/spanner/docs/change-streams/details#query[use the Spanner API directly].
 
-The connector does not support the snapshot feature at the moment. The first time it connects to a Cloud Spanner database, it will start streaming changes from either the user-provided start timestamp or the current time, if the user did not provide a start timestamp.
+The connector does not support the snapshot feature at the moment. The first time the Kafka connector connects to a Spanner database, it will stream changes from either the provided timestamp, or the current timestamp if a timestamp is not provided.
 
 // Type: concept
-// Title: Overview of {prodname} Cloud Spanner connector
+// Title: Overview of {prodname} Spanner connector
 // ModuleID: overview-of-debezium-spanner-connector
 [[spanner-overview]]
 == Overview
 
-To read and process database changes, the Debezium connector queries from a change stream. 
+To read and process database changes, the connector queries from a change stream. 
 
 The connector produces a change event for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
@@ -37,7 +37,7 @@ The connector is tolerant of failures. As the connector reads changes and produc
 
 // Type: assembly
 // ModuleID: how-debezium-spanner-connectors-work
-// Title: How {prodname} Cloud Spanner connectors work
+// Title: How {prodname} Spanner connectors work
 [[how-the-spanner-connector-works]]
 == How the connector works
 
@@ -45,11 +45,11 @@ To optimally configure and run a {prodname} Spanner connector, it is helpful to 
 
 // Type: concept
 // ModuleID: how-debezium-spanner-connectors-stream-change-event-records
-// Title: How {prodname} Cloud Spanner connectors stream change event records
+// Title: How {prodname} Spanner connectors stream change event records
 [[spanner-streaming-changes]]
 === Streaming changes
 
-The {prodname} Spanner connector spends all its time streaming changes from the change stream to which it is subscribed. When a change occurs on a table, Spanner writes a corresponding change stream record in the database, synchronously in the same transaction as the data change. To enable change streams writes and reads to scale, Spanner splits and merges the internal change stream storage along with the database data. To support reading change stream records in near real-time as database writes scale, the Spanner API is designed for a change steram to be queried concurrently using the change stream partitions. See about Cloud Spanner change stream's link:https://cloud.google.com/spanner/docs/change-streams/details[partitioning model].
+The {prodname} Spanner connector spends all its time streaming changes from the change stream to which it is subscribed. When a change occurs on a table, Spanner writes a corresponding change stream record in the database, synchronously in the same transaction as the data change. To scale change streams writes and reads, Spanner splits and merges the internal change stream storage along with the database data. To support reading change stream records in near real-time as database writes scale, the Spanner API is designed for a change stream to be queried concurrently using the change stream partitions. See about Spanner change stream's link:https://cloud.google.com/spanner/docs/change-streams/details[partitioning model].
 
 The connector offers an abstraction over the Spanner API for querying change streams. With this connector, you don't have to manage the change stream partition lifecycle. The connector provides you with a stream of data change records so that you are free to focus more on application logic and less on specific API details and dynamic change stream partitioning.
 
@@ -57,7 +57,7 @@ When subscribing to a change stream, the connector needs to provide the the proj
 
 When the connector receives changes it transforms the events into {prodname} _create_, _update_, or _delete_ events. The connector forwards these change events in records to the Kafka Connect framework, which is running in the same process. The Kafka Connect process asynchronously writes the change event records in the same order in which they were generated to the appropriate Kafka topic.
 
-Periodically, Kafka Connect records the most recent _offset_ in another Kafka topic. The offset indicates source-specific position information that {prodname} includes with each event. For the Cloud Spanner connector, the last processed commit timestamps for the change stream partitions is the offset.
+Periodically, Kafka Connect records the most recent _offset_ in another Kafka topic. The offset indicates source-specific position information that {prodname} includes with each event. For the Spanner connector, the last processed commit timestamps for the change stream partitions is the offset.
 
 When Kafka Connect gracefully shuts down, it stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector. When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset.
 
@@ -75,7 +75,7 @@ The Spanner connector also records metadata information in the following metadat
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-spanner-change-event-records
-// Title: Default names of Kafka topics that receive {prodname} Cloud Spanner change event records
+// Title: Default names of Kafka topics that receive {prodname} Spanner change event records
 [[spanner-topic-names]]
 === Topic names
 
@@ -85,7 +85,7 @@ The Spanner connector writes events for all insert, update, and delete operation
 * _connectorName_ is the user-specified name of the connector.
 * _tableName_ is the name of the database table in which the operation occurred.
 
-For example, suppose that `spanner` is the logical name in the configuration for a connector that is capturing changes from a Cloud Spanner change stream that tracks changes in a database that contains four tables: `table1`, `table2`, `table3`, and `table4`. The connector would stream records to these four Kafka topics:
+For example, suppose that `spanner` is the logical name in the configuration for a connector that is capturing changes from a Spanner change stream that tracks changes in a database that contains four tables: `table1`, `table2`, `table3`, and `table4`. The connector would stream records to these four Kafka topics:
 
 * `spanner.table1`
 * `spanner.table2`
@@ -98,27 +98,32 @@ For example, suppose that `spanner` is the logical name in the configuration for
 [[spanner-events]]
 == Data change events
 
-The {prodname} Spanner connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
+The {prodname} Spanner connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The key and value are separate documents. The structure of the key and the value depends on the table that was changed.
 
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. The schema for the key will never change. Please note that the schema for the value is an amalgamation of all the columns in the table that the change stream has tracked since the start time of the connector.
 
-The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
+The following skeleton JSON documents show the basic structure for the key and value documents. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of the key and value documents. A `schema` field is in a change event key or change event value only when you configure the converter to produce it. Likewise, the event key and event payload are present only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce schemas, change events have this structure:
 
 [source,json,index=0]
 ----
+// Key
 {
  "schema": { // <1>
    ...
   },
  "payload": { // <2>
    ...
- },
+ }
+}
+
+// Value
+{
  "schema": { // <3>
    ...
  },
  "payload": { // <4>
    ...
- },
+ }
 }
 ----
 
@@ -246,7 +251,7 @@ PRIMARY KEY (id);
 [[spanner-create-events]]
 === _create_ events
 
-The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `Users` table. Note that even if a column is marked as non-optional in Spanner, it will be marked as optional in the schema. Only primary key columns are marked as non-optional.
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `Users` table. If a Spanner column is marked is non-optional, its value is required for all mutations that insert a row. All primary key columns in Spanner will be marked as non-optional. Note that even if a non-key column is marked as non-optional in Spanner, it will be shown as optional in the schema. Only primary key columns are marked as non-optional in the schema. 
 
 [source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
@@ -538,7 +543,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
 * The timestamp at which the connnector processed the change 
-* The number of records in the originatig transaction 
+* The number of records in the originating transaction 
 * The transaction tag 
 * Whether or not the transaction was a system transaction 
 * The value capture type 
@@ -647,7 +652,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
 * The timestamp at which the connnector processed the change 
-* The number of records in the originatig transaction 
+* The number of records in the originating transaction 
 * The transaction tag 
 * Whether or not the transaction was a system transaction 
 * The value capture type 
@@ -746,7 +751,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
 * The timestamp at which the connnector processed the change 
-* The number of records in the originatig transaction 
+* The number of records in the originating transaction 
 * The transaction tag 
 * Whether or not the transaction was a system transaction 
 * The value capture type 
@@ -782,7 +787,7 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 [[spanner-data-types]]
 == Data type mappings
 
-The Cloud Spanner connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Spanner data type of the column. This section describes these mappings.
+The Spanner connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Spanner data type of the column. This section describes these mappings.
 
 [id="spanner-types"]
 === Spanner types
@@ -823,7 +828,7 @@ The Cloud Spanner connector represents changes to rows with events that are stru
 
 // Type: assembly
 // ModuleID: running-debezium-spanner-connector
-// Title: Running a {prodname} Cloud Spanner connector
+// Title: Running a {prodname} Spanner connector
 [[setting-up-spanner]]
 == Setting up Spanner
 .Checklist
@@ -839,13 +844,13 @@ See the following section on how to configure a {prodname} Spanner connector.
 [[spanner-deploying-a-connector]]
 == Deployment
 
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Cloud Spanner connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Spanner connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Cloud Spanner connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Spanner connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 // Type: concept
 // ModuleID:debezium-spanner-connector-configuration-example
-// Title: {prodname} Cloud Spanner connector configuration example
+// Title: {prodname} Spanner connector configuration example
 [[spanner-example-configuration]]
 === Connector configuration example
 
@@ -869,11 +874,11 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 }
 ----
 <1> The name of the connector when registered with a Kafka Connect service.
-<2> The name of this Cloud Spanner connector class.
+<2> The name of this Spanner connector class.
 <3> The change stream name.
 <4> The GCP Project ID.
-<5> The Cloud Spanner Instance ID.
-<6> The Cloud Spanner Database ID.
+<5> The Spanner Instance ID.
+<6> The Spanner Database ID.
 <7> The GCP service account key JSON. 
 <8> The maximum number of tasks.
 
@@ -881,7 +886,7 @@ See the xref:spanner-connector-properties[complete list of Spanner connector pro
 
 // Type: procedure
 // ModuleID: adding-debezium-spanner-connector-configuration-to-kafka-connect
-// Title: Adding {prodname} Cloud Spanner connector configuration to Kafka Connect
+// Title: Adding {prodname} Spanner connector configuration to Kafka Connect
 [[spanner-adding-connector-configuration]]
 === Adding connector configuration
 
@@ -889,13 +894,13 @@ To start running a Spanner connector, create a connector configuration and add t
 
 .Prerequisites
 
-* The Cloud Spanner change stream is created and available.
+* The Spanner change stream is created and available.
 
-* The Cloud Spanner connector is installed.
+* The Spanner connector is installed.
 
 .Procedure
 
-. Create a configuration for the Cloud Spanner connector.
+. Create a configuration for the Spanner connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
 
@@ -905,7 +910,7 @@ When the connector starts, it starts generating data change events for row-level
 
 // Type: assembly
 // ModuleID: monitoring-debezium-spanner-connector-performance
-// Title: Monitoring {prodname} Cloud Spanner connector performance
+// Title: Monitoring {prodname} Spanner connector performance
 [[spanner-monitoring]]
 === Monitoring
 
@@ -917,7 +922,7 @@ xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring docume
 
 // Type: reference
 // ModuleID: monitoring-debezium-spanner-connector-record-streaming
-// Title: Monitoring {prodname} Cloud Spanner connector record streaming
+// Title: Monitoring {prodname} Spanner connector record streaming
 [[spanner-streaming-metrics]]
 ==== Streaming metrics
 
@@ -972,33 +977,41 @@ The values will incoporate any differences between the clocks on the machines wh
 |`long`
 |The current low watermark of the connector task. The low watermark describes the time T at which the connector is guaranteed to have streamed out all events with timestamp < T.
 
-|[[connectors-strm-metric-latencylowwatermarklag]]<<connectors-strm-metric-latencylowwatermarklag, `+LatencyLowWatermarkLag+`>>
+|[[connectors-strm-metric-millisecondslowwatermark]]<<connectors-strm-metric-lowwatermark, `+MilliSecondsLowWatermark+`>>
 |`long`
-|The lag of the low watermark behind the current time in milliseconds. P50, P95, P99, Average, Min, Max metrics are provided.
+|The current low watermark of the connector task in milliseconds. The low watermark describes the time T at which the connector is guaranteed to have streamed out all events with timestamp < T.
 
-|[[connectors-strm-metric-latencyspanner]]<<connectors-strm-metric-latencyspanner, `+LatencySpanner+`>>
+|[[connectors-strm-metric-millisecondslowwatermark]]<<connectors-strm-metric-lowwatermark, `+MilliSecondsLowWatermarkLag+`>>
 |`long`
-|The Spanner commit timestamp to connector read latency. P50, P95, P99, Average, Min, Max metrics are provided.
+|The lag of the low watermark behind the current time in milliseconds. The low watermark describes the time T at which the connector is guaranteed to have streamed out all events with timestamp < T.
 
-|[[connectors-strm-metric-latencyreadtoemit]]<<connectors-strm-metric-latencyreadtoemit, `+LatencyReadToEmit+`>>
+|[[connectors-strm-metric-latencylowwatermarklag]]<<connectors-strm-metric-latencylowwatermarklag, `+LatencyLowWatermarkLag<variant>MilliSeconds+`>>
 |`long`
-|The Spanner read timestamp to connector emit latency. P50, P95, P99, Average, Min, Max metrics are provided.
+|The distribution of the lag of the low watermark behind the current time in milliseconds. The variant will include P50, P95, P99, Average, Min, Max calculations.
 
-|[[connectors-strm-metric-latencycommittoemit]]<<connectors-strm-metric-latencycommittoemit, `+LatencyCommitToEmit+`>>
+|[[connectors-strm-metric-latencyspanner]]<<connectors-strm-metric-latencyspanner, `+LatencySpanner<variant>MilliSeconds+`>>
 |`long`
-|The Spanner commit timestamp to connector emit latency. P50, P95, P99, Average, Min, Max metrics are provided.
+|The distribution of the Spanner commit timestamp to connector read latency. The variant will include P50, P95, P99, Average, Min, Max calculations.
 
-|[[connectors-strm-metric-latencycommittopublish]]<<connectors-strm-metric-latencycommittopublish, `+LatencyCommitToPublish+`>>
+|[[connectors-strm-metric-latencyreadtoemit]]<<connectors-strm-metric-latencyreadtoemit, `+LatencyReadToEmit<variant>MilliSeconds+`>>
 |`long`
-|The Spanner commit timestamp to Kafka publish timestamp latency. P50, P95, P99, Average, Min, Max metrics are provided.
+|The distribution of the Spanner read timestamp to connector emit latency. The variant will include P50, P95, P99, Average, Min, Max calculations.
 
-|[[connectors-strm-metric-latencyemittopublish]]<<connectors-strm-metric-latencyemittopublish, `+LatencyEmitToPublish+`>>
+|[[connectors-strm-metric-latencycommittoemit]]<<connectors-strm-metric-latencycommittoemit, `+LatencyCommitToEmit<Variant>MilliSeconds+`>>
 |`long`
-|The connector emit timestamp to Kafka publish timestamp latency. P50, P95, P99, Average, Min, Max metrics are provided.
+|The distribution of the Spanner commit timestamp to connector emit latency. The variant will include P50, P95, P99, Average, Min, Max calculations.
+
+|[[connectors-strm-metric-latencycommittopublish]]<<connectors-strm-metric-latencycommittopublish, `+LatencyCommitToPublish<variant>MilliSeconds+`>>
+|`long`
+|The distribution of the Spanner commit timestamp to Kafka publish timestamp latency. The variant will include P50, P95, P99, Average, Min, Max calculations.
+
+|[[connectors-strm-metric-latencyemittopublish]]<<connectors-strm-metric-latencyemittopublish, `+LatencyEmitToPublish<variant>MilliSeconds+`>>
+|`long`
+|The distribution of the connector emit timestamp to Kafka publish timestamp latency. The variant will include P50, P95, P99, Average, Min, Max calculations.
 
 |[[connectors-strm-metric-spannereventqueuecapacity]]<<connectors-strm-metric-spannereventqueuecapacity, `+SpannerEventQueueCapacity+`>>
 |`long`
-|The total Spanner event queue capacity.
+|The total Spanner event queue capacity. This queue indicates the total capacity of StreamEventQueue, a Spanner-specific queue that stores elements received from change stream queries.
 
 |[[connectors-strm-metric-remainingspannereventqueuecapacity]]<<connectors-strm-metric-remainingspannereventqueuecapacity, `+RemainingSpannerEventQueueCapacity+`>>
 |`long`
@@ -1006,7 +1019,7 @@ The values will incoporate any differences between the clocks on the machines wh
 
 |[[connectors-strm-metric-taskstatechangeeventqueuecapacity]]<<connectors-strm-metric-taskstatechangeeventqueuecapacity, `+TaskStateChangeEventQueueCapacity+`>>
 |`long`
-|The total task state change event queue capacity.
+|The total task state change event queue capacity. This queue indicates the total capacity of the TaskStateChangeEventQueue, a Spanner-specific queue that stores events happening in the connector.
 
 |[[connectors-strm-metric-remainingtaskstatechangeeventqueuecapacity]]<<connectors-strm-metric-remainingtaskstatechangeeventqueuecapacity, `+RemainingTaskStateChangeEventQueueCapacity+`>>
 |`long`
@@ -1028,7 +1041,7 @@ The values will incoporate any differences between the clocks on the machines wh
 
 // Type: reference
 // ModuleID: descriptions-of-debezium-spanner-connector-configuration-properties
-// Title: Description of {prodname} Cloud Spanner connector configuration properties
+// Title: Description of {prodname} Spanner connector configuration properties
 [[spanner-connector-properties]]
 === Connector configuration properties
 
@@ -1054,11 +1067,11 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[spanner-property-connector-class]]<<spanner-property-connector-class, `+connector.class+`>>
 |No default
-|The name of the Java class for the connector. Always use a value of `io.debezium.connector.spanner.SpannerConnector` for the Cloud Spanner connector.
+|The name of the Java class for the connector. Always use a value of `io.debezium.connector.spanner.SpannerConnector` for the Spanner connector.
 
 |[[spanner-property-tasks-max]]<<spanner-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that should be created for this connector. The Cloud Spanner connector can use more than 1 tasks if you enable offset.storage.per.task mode.
+|The maximum number of tasks that should be created for this connector. The Spanner connector can use more than 1 tasks if you enable offset.storage.per.task mode.
 
 |[[spanner-property-project]]<<spanner-property-project, `+gcp.spanner.project.id+`>>
 |No default
@@ -1066,15 +1079,15 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[spanner-property-instance]]<<spanner-property-instance, `+gcp.spanner.instance.id+`>>
 |No default
-|The Cloud Spanner instance ID
+|The Spanner instance ID
 
 |[[spanner-property-database]]<<spanner-property-database, `+gcp.spanner.database.id+`>>
 |No default
-|The Cloud Spanner database ID
+|The Spanner database ID
 
 |[[spanner-property-changestream]]<<spanner-property-changestream, `+gcp.spanner.change.stream+`>>
 |No default
-|The Cloud Spanner change stream
+|The Spanner change stream
 
 |[[spanner-property-credentials]]<<spanner-property-credentials, `+gcp.spanner.credentials.path+`>>
 |No default
@@ -1142,7 +1155,7 @@ Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of th
 
 // Type: assembly
 // ModuleID: how-debezium-spanner-connectors-handle-faults-and-problems
-// Title: How {prodname} Cloud Spanner connectors handle faults and problems
+// Title: How {prodname} Spanner connectors handle faults and problems
 [[spanner-when-things-go-wrong]]
 == Behavior when things go wrong
 
@@ -1160,12 +1173,12 @@ In the following situations, the connector fails when trying to start, reports a
 * The connector's configuration is invalid.
 * The connector cannot successfully connect to Spanner by using the specified connection parameters.
 
-In these cases, the error message has details about the problem and possibly a suggested workaround. After you correct the configuration or address the Cloud Spanner problem, restart the connector.
+In these cases, the error message has details about the problem and possibly a suggested workaround. After you correct the configuration or address the Spanner problem, restart the connector.
 
 [id="spanner-becomes-unavailable"]
 === Spanner becomes unavailable
 
-When the connector is running, Spanner could become unavailable for any number of reasons. The connector will continue running and will be able to stream events once Cloud Spanner becomes available again.
+When the connector is running, Spanner could become unavailable for any number of reasons. The connector will continue running and will be able to stream events once Spanner becomes available again.
 
 [id="spanner-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
