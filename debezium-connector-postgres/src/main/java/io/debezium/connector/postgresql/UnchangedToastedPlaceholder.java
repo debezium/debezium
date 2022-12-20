@@ -12,6 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Helper that returns placeholder values for unchanged toasted columns.
+ *
+ * The configured placeholder is converted to a data type that is compatible with the given column type.
+ *
+ * @author Praveen Burgu
+ */
 public class UnchangedToastedPlaceholder {
 
     private final Map<Object, Object> placeholderValues = new HashMap<Object, Object>();
