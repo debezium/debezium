@@ -1127,7 +1127,7 @@ lateralStatement
 // https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
 jsonTable
     : JSON_TABLE '('
-        STRING_LITERAL ','
+        expression ','
         STRING_LITERAL
         COLUMNS '(' jsonColumnList ')'
       ')' (AS? uid)?
