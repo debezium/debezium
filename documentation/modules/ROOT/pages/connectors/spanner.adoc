@@ -1193,9 +1193,10 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`1000 ms`
 |The duration of time a task waits before processing a rebalancing event.
 
+|===
+
 For a more complete list of advanced configuration, see link:https://github.com/debezium/debezium-connector-spanner/blob/main/src/main/java/io/debezium/connector/spanner/config/BaseSpannerConnectorConfig.java[Github code].
 
-|===
 
 [id="spanner-pass-through-properties"]
 .Pass-through connector configuration properties
