@@ -48,6 +48,11 @@ public interface JdbcConfiguration extends Configuration {
     public static final Field HOSTNAME = Field.create("hostname", "IP address of the database");
 
     /**
+     * A field for the instance name of the database server. This field has no default value.
+     */
+    public static final Field INSTANCE = Field.create("instance", "Instance name");
+
+    /**
      * A field for the port of the database server. There is no default value.
      */
     public static final Field PORT = Field.create("port", "Port of the database");
@@ -148,6 +153,16 @@ public interface JdbcConfiguration extends Configuration {
          */
         default Builder withHostname(String hostname) {
             return with(HOSTNAME, hostname);
+        }
+
+        /**
+         * Use the given instance name in the resulting configuration.
+         *
+         * @param instance the hostname
+         * @return this builder object so methods can be chained together; never null
+         */
+        default Builder withInstance(String instance) {
+            return with(INSTANCE, instance);
         }
 
         /**
@@ -319,6 +334,15 @@ public interface JdbcConfiguration extends Configuration {
      */
     default String getHostname() {
         return getString(HOSTNAME);
+    }
+
+    /**
+    * Get the instance name property from the configuration.
+    *
+    * @return the specified or default instance name, or null if there is none.
+    */
+    default String getInstance() {
+        return getString(INSTANCE);
     }
 
     /**

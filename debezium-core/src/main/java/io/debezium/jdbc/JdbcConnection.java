@@ -220,6 +220,7 @@ public class JdbcConnection implements AutoCloseable {
             Properties props = config.asProperties();
             Field[] varsWithDefaults = combineVariables(variables,
                     JdbcConfiguration.HOSTNAME,
+                    JdbcConfiguration.INSTANCE,
                     JdbcConfiguration.PORT,
                     JdbcConfiguration.USER,
                     JdbcConfiguration.PASSWORD,

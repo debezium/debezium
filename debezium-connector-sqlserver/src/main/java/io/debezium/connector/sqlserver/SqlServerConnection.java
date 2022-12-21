@@ -102,6 +102,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
 
+    private final JdbcConfiguration config;
     private final boolean useSingleDatabase;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
@@ -125,7 +126,7 @@ public class SqlServerConnection extends JdbcConnection {
     public SqlServerConnection(JdbcConfiguration config, SqlServerValueConverters valueConverters,
                                Set<Envelope.Operation> skippedOperations,
                                boolean useSingleDatabase) {
-        super(config, createConnectionFactory(useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+        super(config, createConnectionFactory(config, useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
@@ -161,6 +162,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
                 Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
+        this.config = config;
         this.useSingleDatabase = useSingleDatabase;
 
         this.optionRecompile = false;
@@ -196,15 +198,21 @@ public class SqlServerConnection extends JdbcConnection {
         return false;
     }
 
-    private static ConnectionFactory createConnectionFactory(boolean useSingleDatabase) {
-        return JdbcConnection.patternBasedFactory(createUrlPattern(useSingleDatabase),
+    private static ConnectionFactory createConnectionFactory(JdbcConfiguration config, boolean useSingleDatabase) {
+        return JdbcConnection.patternBasedFactory(createUrlPattern(config, useSingleDatabase),
                 SQLServerDriver.class.getName(),
                 SqlServerConnection.class.getClassLoader(),
                 JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
     }
 
-    private static String createUrlPattern(boolean useSingleDatabase) {
+    private static String createUrlPattern(JdbcConfiguration config, boolean useSingleDatabase) {
         String pattern = URL_PATTERN;
+        if (config.getInstance() != null && !config.getInstance().isEmpty()) {
+            pattern += ";instanceName=${" + JdbcConfiguration.INSTANCE + "};";
+        }
+        else {
+            pattern += ":${" + JdbcConfiguration.PORT + "}";
+        }
         if (useSingleDatabase) {
             pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
         }
@@ -218,7 +226,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(createUrlPattern(useSingleDatabase));
+        return connectionString(createUrlPattern(config, useSingleDatabase));
     }
 
     @Override
