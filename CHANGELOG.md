@@ -2,6 +2,30 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.1.Final
+December 22nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400296)
+
+### New features since 2.1.0.Final
+
+None
+
+
+### Breaking changes since 2.1.0.Final
+
+None
+
+
+### Fixes since 2.1.0.Final
+
+* Spanner connector is missing JSR-310 dependency [DBZ-5959](https://issues.redhat.com/browse/DBZ-5959)
+
+
+### Other changes since 2.1.0.Final
+
+None
+
+
+
 ## 2.1.0.Final
 December 22nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400034)
 
