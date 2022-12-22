@@ -2,6 +2,37 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.0.Final
+December 22nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400034)
+
+### New features since 2.1.0.Beta1
+
+* Implement support for JSON_TABLE in MySQL parser [DBZ-3575](https://issues.redhat.com/browse/DBZ-3575)
+* Provide Debezium Spanner connector [DBZ-5937](https://issues.redhat.com/browse/DBZ-5937)
+* Print the readable data class name in JdbcValueConverters.handleUnknownData [DBZ-5946](https://issues.redhat.com/browse/DBZ-5946)
+
+
+### Breaking changes since 2.1.0.Beta1
+
+* MongoDB connector to use secondary node [DBZ-4339](https://issues.redhat.com/browse/DBZ-4339)
+* Vitess: Support snapshot feature [DBZ-5930](https://issues.redhat.com/browse/DBZ-5930)
+
+
+### Fixes since 2.1.0.Beta1
+
+* Cannot expand JSON payload with nested arrays of objects [DBZ-5344](https://issues.redhat.com/browse/DBZ-5344)
+* field.exclude.list in MongoDB Connector v2.0 doesn't accept * as a wildcard for collectionName [DBZ-5818](https://issues.redhat.com/browse/DBZ-5818)
+* Debezium UI documentation link is not accessible to the user via documentation side navigation menu. [DBZ-5900](https://issues.redhat.com/browse/DBZ-5900)
+* Toasted json/int/bigint arrays are not properly processed [DBZ-5936](https://issues.redhat.com/browse/DBZ-5936)
+* No table filters found for filtered publication [DBZ-5949](https://issues.redhat.com/browse/DBZ-5949)
+
+
+### Other changes since 2.1.0.Beta1
+
+None
+
+
+
 ## 2.1.0.Beta1
 December 16th 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12399345)
 
