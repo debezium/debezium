@@ -19,6 +19,7 @@
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.16.3</version.nats>
         <version.stan>2.2.3</version.stan>
+        <version.rocketmq>4.9.4</version.rocketmq>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
@@ -135,6 +136,13 @@
                 <artifactId>debezium-server-nats-jetstream</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-server-rocketmq</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-core</artifactId>
@@ -187,6 +195,7 @@
                 <artifactId>java-nats-streaming</artifactId>
                 <version>${version.stan}</version>
             </dependency>
+
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-testing-testcontainers</artifactId>
@@ -198,6 +207,18 @@
                 <artifactId>pravega-client</artifactId>
                 <version>${version.pravega}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-client</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-tools</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 </project>

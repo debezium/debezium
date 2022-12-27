@@ -25,6 +25,7 @@
         <module>debezium-server-pravega</module>
         <module>debezium-server-nats-streaming</module>
         <module>debezium-server-nats-jetstream</module>
+        <module>debezium-server-rocketmq</module>
     </modules>
 
     <dependencyManagement>
