@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 
 /**
  * This class is responsible for finding out a LSN from which Debezium should
@@ -30,6 +31,7 @@ public class WalPositionLocator {
 
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
+    private final Operation lastProcessedMessageType;
     private Lsn txStartLsn = null;
     private Lsn lsnAfterLastEventStoredLsn = null;
     private Lsn firstLsnReceived = null;
@@ -38,9 +40,10 @@ public class WalPositionLocator {
     private boolean storeLsnAfterLastEventStoredLsn = false;
     private Set<Lsn> lsnSeen = new HashSet<>(1_000);
 
-    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn) {
+    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
         this.lastEventStoredLsn = lastEventStoredLsn;
+        this.lastProcessedMessageType = lastProcessedMessageType;
 
         LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}'",
                 lastCommitStoredLsn, lastEventStoredLsn);
@@ -49,6 +52,7 @@ public class WalPositionLocator {
     public WalPositionLocator() {
         this.lastCommitStoredLsn = null;
         this.lastEventStoredLsn = null;
+        this.lastProcessedMessageType = null;
 
         LOGGER.info("WAL position will not be searched");
     }
@@ -71,9 +75,9 @@ public class WalPositionLocator {
             // We can resume streaming from it
             if (currentLsn.equals(lastEventStoredLsn)) {
                 // BEGIN and first message after change have the same LSN
-                if (txStartLsn != null) {
+                if (txStartLsn != null && (lastProcessedMessageType == null || lastProcessedMessageType == Operation.BEGIN)) {
                     // start from the BEGIN tx; prevent skipping of unprocessed event after BEGIN
-                    // may reprocess the event after the BEGIN
+                    LOGGER.info("Will restart from LSN '{}' corresponding to the event following the BEGIN event", txStartLsn);
                     startStreamingLsn = txStartLsn;
                     return Optional.of(startStreamingLsn);
                 }
@@ -184,9 +188,9 @@ public class WalPositionLocator {
     @Override
     public String toString() {
         return "WalPositionLocator [lastCommitStoredLsn=" + lastCommitStoredLsn + ", lastEventStoredLsn="
-                + lastEventStoredLsn + ", txStartLsn=" + txStartLsn + ", lsnAfterLastEventStoredLsn="
-                + lsnAfterLastEventStoredLsn + ", firstLsnReceived=" + firstLsnReceived + ", passMessages="
-                + passMessages + ", startStreamingLsn=" + startStreamingLsn + ", storeLsnAfterLastEventStoredLsn="
-                + storeLsnAfterLastEventStoredLsn + "]";
+                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType + ", txStartLsn="
+                + txStartLsn + ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn + ", firstLsnReceived="
+                + firstLsnReceived + ", passMessages=" + passMessages + ", startStreamingLsn=" + startStreamingLsn
+                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + "]";
     }
 }
