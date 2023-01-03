@@ -135,6 +135,29 @@ public class ComputePartitionTest {
                                 "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different tables defined");
     }
 
+    @Test
+    public void negativeHashCodeValueWillBeCorrectlyManaged() {
+
+        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:3");
+
+        final SourceRecord eventRecord1 = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "orange"), CREATE);
+
+        SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
+
+        assertThat(transformed1.kafkaPartition()).isEqualTo(1);
+    }
+
+    @Test
+    public void zeroAsPartitionNumberWillThrowConnectionException() {
+
+        assertThatThrownBy(
+                () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
+                        "inventory.products:0,inventory.orders:2"))
+                                .isInstanceOf(ConnectException.class)
+                                .hasMessageContaining(
+                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number cannot be 0");
+    }
+
     private SourceRecord buildSourceRecord(String connector, String db, String schema, String tableName, Struct row, Envelope.Operation operation) {
 
         String dataCollectionFieldName = "mongodb".equals(connector) ? "collection" : "table";

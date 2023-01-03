@@ -102,6 +102,9 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
                     FIELD_TABLE_FIELD_NAME_MAPPINGS_CONF));
         }
 
+        if (numberOfPartitionsByTable.containsValue(0)) {
+            throw new ConnectException(String.format("Unable to validate config. %s: partition number cannot be 0", FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF));
+        }
     }
 
     @Override
@@ -193,8 +196,9 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     }
 
     private int computePartition(Object fieldValue, String table) {
-
-        return fieldValue.hashCode() % numberOfPartitionsByTable.get(table);
+        // hashCode can be negative due to overflow. Since Math.abs(Integer.MIN_INT) will still return a negative number
+        // we use bitwise operation to remove the sign
+        return (fieldValue.hashCode() & Integer.MAX_VALUE) % numberOfPartitionsByTable.get(table);
     }
 
     private Optional<Struct> extractPayload(Struct envelope) {
