@@ -41,7 +41,7 @@ public final class GtidSet {
      * @param gtids the string representation of the GTIDs.
      */
     public GtidSet(String gtids) {
-        gtids = gtids.replaceAll("\n", "").replaceAll("\r", "");
+        gtids = gtids.replace("\n", "").replace("\r", "");
         new com.github.shyiko.mysql.binlog.GtidSet(gtids).getUUIDSets().forEach(uuidSet -> {
             uuidSetsByServerId.put(uuidSet.getUUID(), new UUIDSet(uuidSet));
         });
