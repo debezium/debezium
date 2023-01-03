@@ -221,7 +221,7 @@ public class MySqlConnection extends JdbcConnection {
         try {
             return queryAndMap("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
                 if (rs.next()) {
-                    return !"OFF".equalsIgnoreCase(rs.getString(2));
+                    return "ON".equalsIgnoreCase(rs.getString(2));
                 }
                 return false;
             });
