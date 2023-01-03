@@ -405,7 +405,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
-        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replaceAll("''", "'");
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
     }
 
     public MySqlValueConverters getConverters() {

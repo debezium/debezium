@@ -267,7 +267,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
     public void setCompletedGtidSet(String gtidSet) {
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
-            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
             this.currentGtidSet = trimmedGtidSet;
             this.restartGtidSet = trimmedGtidSet;
         }
@@ -292,7 +292,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.startGtid(gtid);
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
-            String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
+            String trimmedGtidSet = gtidSet.replace("\n", "").replace("\r", "");
             // Set the GTID set that we'll use if restarting BEFORE successful completion of the events in this GTID ...
             this.restartGtidSet = this.currentGtidSet != null ? this.currentGtidSet : trimmedGtidSet;
             // Record the GTID set that includes the current transaction ...
