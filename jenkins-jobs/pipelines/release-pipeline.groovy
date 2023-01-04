@@ -270,7 +270,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
 }
 
 node('Slave') {
-    try {
+    catchError {
         stage('Validate parameters') {
             if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
                 error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
@@ -743,7 +743,7 @@ node('Slave') {
             }
         }
 
-    } finally {
-        mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
+
+    mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
 }

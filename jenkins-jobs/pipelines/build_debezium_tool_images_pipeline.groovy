@@ -7,7 +7,7 @@ DOCKER_CREDENTIALS_ID = 'debezium-dockerhub'
 QUAYIO_CREDENTIALS_ID = 'debezium-quay'
 
 node('Slave') {
-    try {
+    catchError {
         stage('Initialize') {
             dir('.') {
                 deleteDir()
@@ -39,7 +39,7 @@ node('Slave') {
                 sh "PUSH_IMAGES=true TAG=$TAG ./build-tool-images.sh"
             }
         }
-    } finally {
-        mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
+
+    mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
 }

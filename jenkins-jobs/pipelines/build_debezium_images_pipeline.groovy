@@ -138,7 +138,7 @@ def initVersions(username, password) {
 }
 
 node('Slave') {
-    try {
+    catchError {
         stage('Initialize') {
             dir('.') {
                 deleteDir()
@@ -198,7 +198,7 @@ node('Slave') {
                 }
             }
         }
-    } finally {
-        mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
+
+    mail to: params.MAIL_TO, subject: "${env.JOB_NAME} run #${env.BUILD_NUMBER} finished", body: "Run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}"
 }
