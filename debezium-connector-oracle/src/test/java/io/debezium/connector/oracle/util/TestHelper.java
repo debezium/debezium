@@ -140,6 +140,11 @@ public class TestHelper {
             // Tests will always use the online catalog strategy due to speed.
             builder.withDefault(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog");
 
+            final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
+            if (readOnly) {
+                builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);
+            }
+
             final String bufferTypeName = System.getProperty(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE.name());
             final LogMiningBufferType bufferType = LogMiningBufferType.parse(bufferTypeName);
             if (bufferType.isInfinispan()) {

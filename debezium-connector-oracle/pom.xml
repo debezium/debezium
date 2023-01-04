@@ -127,6 +127,7 @@
     <properties>
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
+        <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
 
         <!--
@@ -206,6 +207,10 @@
                             <name>log.mining.buffer.type</name>
                             <value>${log.mining.buffer.type.name}</value>
                         </property>
+                        <property>
+                            <name>internal.log.mining.read.only</name>
+                            <value>${log.mining.read.only.mode}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>
@@ -234,6 +239,7 @@
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
+                        <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
@@ -630,6 +636,15 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>oracle-read-only</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.read.only.mode>true</log.mining.read.only.mode>
+            </properties>
         </profile>
     </profiles>
 </project>
