@@ -52,7 +52,7 @@ pipeline {
 
     post {
         always {
-            mail to: params.MAIL_TO, subject: "Rhel downstream preparation #${env.BUILD_NUMBER} finished", body: """
+            mail to: params.MAIL_TO, subject: "Rhel downstream preparation #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
             ${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
             """
         }
