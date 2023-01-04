@@ -129,7 +129,7 @@ pipeline {
         }
         always {
             script {
-                mail to: 'debezium-qe@redhat.com', subject: "ARO cluster deployment #${env.BUILD_NUMBER} finished",
+                mail to: 'debezium-qe@redhat.com', subject: "ARO cluster deployment #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}",
                         body: """
                         ${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
                         """

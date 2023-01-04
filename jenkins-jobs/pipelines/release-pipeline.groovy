@@ -741,5 +741,5 @@ node('Slave') {
 
     }
 
-    mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+    mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
 }

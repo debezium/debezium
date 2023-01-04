@@ -114,7 +114,7 @@ pipeline {
 
     post {
         always {
-            mail to: 'debezium-qe@redhat.com', subject: "OCP cluster deployment/removal #${env.BUILD_NUMBER} finished", body: """
+            mail to: 'debezium-qe@redhat.com', subject: "OCP cluster deployment/removal #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
                 ${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
             """
         }

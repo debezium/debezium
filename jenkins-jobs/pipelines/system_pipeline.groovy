@@ -272,7 +272,7 @@ pipeline {
             archiveArtifacts '**/target/failsafe-reports/*.xml'
             junit '**/target/failsafe-reports/*.xml'
 
-            mail to: params.MAIL_TO, subject: "Debezium OpenShift test run #${env.BUILD_NUMBER} finished", body: """
+            mail to: params.MAIL_TO, subject: "Debezium OpenShift test run #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
 OpenShift interoperability test run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
             withCredentials([
