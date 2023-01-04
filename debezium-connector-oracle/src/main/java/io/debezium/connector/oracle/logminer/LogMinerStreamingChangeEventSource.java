@@ -40,6 +40,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
+import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
@@ -850,6 +851,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
      */
     private LogWriterFlushStrategy resolveFlushStrategy() {
+        if (connectorConfig.isLogMiningReadOnly()) {
+            return new ReadOnlyLogWriterFlushStrategy();
+        }
         if (connectorConfig.isRacSystem()) {
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }

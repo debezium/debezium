@@ -461,6 +461,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "Recently committed transactions near the flashback query SCN won't be included in the snapshot nor streaming." + System.lineSeparator() +
                     "skip - Skips gathering any in-progress transactions.");
 
+    public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
+            .withDisplayName("Runs the connector in read-only mode")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(Boolean.FALSE)
+            .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
+            .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -514,7 +523,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
-                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE)
+                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
+                    LOG_MINING_READ_ONLY)
             .create();
 
     /**
@@ -571,6 +581,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningMaxDelay;
     private final Duration logMiningMaximumSession;
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
+    private final Boolean logMiningReadOnly;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -623,6 +634,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
         this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
         this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
+        this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
     }
 
     private static String toUpperCase(String property) {
@@ -1473,6 +1485,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningTransactionSnapshotBoundaryMode;
     }
 
+    /**
+     * @return true if log mining should operate in read-only mode.
+     */
+    public boolean isLogMiningReadOnly() {
+        return logMiningReadOnly;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -1561,5 +1580,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             errors = Field.isRequired(config, field, problems);
         }
         return errors;
+    }
+
+    public static int validateLogMiningReadOnly(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
+            LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Oracle background LogMiner process; however, " +
+                    "the connector itself will not perform any write operations against the database.", LOG_MINING_READ_ONLY.name());
+            final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+            if (!racNodes.isEmpty()) {
+                LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+            }
+        }
+        return 0;
     }
 }
