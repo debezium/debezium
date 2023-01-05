@@ -9,6 +9,9 @@ package io.debezium.transforms.partitions;
 import io.debezium.DebeziumException;
 
 public class ComputePartitionException extends DebeziumException {
+
+    private static final long serialVersionUID = -1317267303694502915L;
+
     public ComputePartitionException() {
         super();
     }

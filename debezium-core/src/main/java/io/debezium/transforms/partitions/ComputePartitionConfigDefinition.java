@@ -6,6 +6,8 @@
 
 package io.debezium.transforms.partitions;
 
+import static io.debezium.transforms.partitions.ComputePartitionConfigDefinition.FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,7 @@ public class ComputePartitionConfigDefinition {
         return 0;
     }
 
-    static Map<String, Integer> parseIntMappings(List<String> mappings) {
+    static Map<String, Integer> parseParititionMappings(List<String> mappings) {
 
         final Map<String, Integer> m = new HashMap<>();
         for (String mapping : mappings) {
@@ -82,7 +84,12 @@ public class ComputePartitionConfigDefinition {
                 throw new ComputePartitionException("Invalid mapping: " + mapping);
             }
             try {
-                int value = Integer.parseInt(parts[1]);
+                final int value = Integer.parseInt(parts[1]);
+                if (value <= 0) {
+                    throw new ComputePartitionException(
+                            String.format("Unable to validate config. %s: partition number for '%s' must be positive",
+                                    FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF, parts[0]));
+                }
                 m.put(parts[0], value);
             }
             catch (NumberFormatException e) {
