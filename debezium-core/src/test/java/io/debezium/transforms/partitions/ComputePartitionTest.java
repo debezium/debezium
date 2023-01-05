@@ -18,7 +18,6 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -120,7 +119,7 @@ public class ComputePartitionTest {
     public void notConsistentConfigurationSizeWillThrowConnectionException() {
 
         assertThatThrownBy(() -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:product", "purchaser:2"))
-                .isInstanceOf(ConnectException.class)
+                .isInstanceOf(ComputePartitionException.class)
                 .hasMessageContaining(
                         "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different number of table defined");
     }
@@ -130,7 +129,7 @@ public class ComputePartitionTest {
 
         assertThatThrownBy(
                 () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:product", "prod:2,purchaser:2"))
-                        .isInstanceOf(ConnectException.class)
+                        .isInstanceOf(ComputePartitionException.class)
                         .hasMessageContaining(
                                 "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different tables defined");
     }
@@ -149,13 +148,22 @@ public class ComputePartitionTest {
 
     @Test
     public void zeroAsPartitionNumberWillThrowConnectionException() {
-
         assertThatThrownBy(
                 () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
                         "inventory.products:0,inventory.orders:2"))
-                                .isInstanceOf(ConnectException.class)
+                                .isInstanceOf(ComputePartitionException.class)
                                 .hasMessageContaining(
-                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number cannot be 0");
+                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
+    }
+
+    @Test
+    public void negativeAsPartitionNumberWillThrowConnectionException() {
+        assertThatThrownBy(
+                () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
+                        "inventory.products:-3,inventory.orders:2"))
+                                .isInstanceOf(ComputePartitionException.class)
+                                .hasMessageContaining(
+                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
     }
 
     private SourceRecord buildSourceRecord(String connector, String db, String schema, String tableName, Struct row, Envelope.Operation operation) {
