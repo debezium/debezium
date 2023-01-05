@@ -80,7 +80,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
         smtManager.validate(config, Field.setOf(PARTITION_TABLE_FIELD_NAME_MAPPINGS_FIELD, FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD));
 
         fieldNameByTable = ComputePartitionConfigDefinition.parseMappings(config.getStrings(PARTITION_TABLE_FIELD_NAME_MAPPINGS_FIELD, LIST_SEPARATOR));
-        numberOfPartitionsByTable = ComputePartitionConfigDefinition.parseIntMappings(config.getStrings(FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD, LIST_SEPARATOR));
+        numberOfPartitionsByTable = ComputePartitionConfigDefinition.parseParititionMappings(config.getStrings(FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD, LIST_SEPARATOR));
 
         checkConfigurationConsistency();
 
@@ -90,7 +90,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     private void checkConfigurationConsistency() {
 
         if (numberOfPartitionsByTable.size() != fieldNameByTable.size()) {
-            throw new ConnectException(String.format("Unable to validate config. %s and %s has different number of table defined",
+            throw new ComputePartitionException(String.format("Unable to validate config. %s and %s has different number of table defined",
                     FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF, FIELD_TABLE_FIELD_NAME_MAPPINGS_CONF));
         }
 
@@ -98,8 +98,9 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
         intersection.retainAll(fieldNameByTable.keySet());
 
         if (intersection.size() != numberOfPartitionsByTable.size()) {
-            throw new ConnectException(String.format("Unable to validate config. %s and %s has different tables defined", FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF,
-                    FIELD_TABLE_FIELD_NAME_MAPPINGS_CONF));
+            throw new ComputePartitionException(
+                    String.format("Unable to validate config. %s and %s has different tables defined", FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF,
+                            FIELD_TABLE_FIELD_NAME_MAPPINGS_CONF));
         }
 
         if (numberOfPartitionsByTable.containsValue(0)) {
