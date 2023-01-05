@@ -87,6 +87,17 @@ public class ExtractNewRecordStateTest {
         }
     }
 
+    @Test
+    public void testTruncateDroppedByDefault() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            transform.configure(props);
+
+            final SourceRecord truncate = createTruncateRecord();
+            assertThat(transform.apply(truncate)).isNull();
+        }
+    }
+
     private SourceRecord createDeleteRecord() {
         final Schema deleteSourceSchema = SchemaBuilder.struct()
                 .field("lsn", SchemaBuilder.int32())
@@ -112,6 +123,14 @@ public class ExtractNewRecordStateTest {
 
     private SourceRecord createTombstoneRecord() {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
+    }
+
+    private SourceRecord createTruncateRecord() {
+        final Struct source = new Struct(sourceSchema);
+        source.put("lsn", 1234);
+        source.put("ts_ms", 12836);
+        final Struct truncate = envelope.truncate(source, Instant.ofEpochMilli(System.currentTimeMillis()));
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), truncate);
     }
 
     private SourceRecord createCreateRecord() {

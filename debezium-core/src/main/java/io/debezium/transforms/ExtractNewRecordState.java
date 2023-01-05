@@ -86,7 +86,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Configuration config = Configuration.from(configs);
         smtManager = new SmtManager<>(config);
 
-        final Field.Set configFields = Field.setOf(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES);
+        final Field.Set configFields = Field.setOf(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
+                ExtractNewRecordStateConfigDefinition.HANDLE_DELETES);
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
@@ -147,6 +148,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         R newRecord = afterDelegate.apply(record);
+        if (newRecord.value() == null && beforeDelegate.apply(record).value() == null) {
+            LOGGER.trace("Truncate event arrived and requested to be dropped");
+            return null;
+        }
         if (newRecord.value() == null) {
             if (routeByField != null) {
                 Struct recordValue = requireStruct(record.value(), "Read record to set topic routing for DELETE");
