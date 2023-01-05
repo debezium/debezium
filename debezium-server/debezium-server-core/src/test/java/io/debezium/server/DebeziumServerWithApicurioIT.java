@@ -16,6 +16,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import io.debezium.DebeziumException;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
@@ -46,7 +47,7 @@ public class DebeziumServerWithApicurioIT {
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
         if (!event.isSuccess()) {
-            throw (Exception) event.getError().get();
+            throw new DebeziumException(event.getError().get());
         }
     }
 
