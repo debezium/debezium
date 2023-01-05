@@ -528,8 +528,12 @@ node('Slave') {
                     it.replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
                 }
             }
+            echo "Modifying container images build scripts"
             dir("$IMAGES_DIR") {
                 modifyFile('build-all-multiplatform.sh') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$IMAGE_TAG\"")
+                }
+                modifyFile('build-all.sh') {
                     it.replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$IMAGE_TAG\"")
                 }
             }
@@ -676,7 +680,7 @@ node('Slave') {
                         it.replaceFirst('FROM \\S+', "FROM debezium/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile") {
-                        it.replaceFirst('FROM \\S+', "FROM debezium/connect-base:$nextTag")
+                        it.replaceFirst('FROM \\S+', "FROM \$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile.local") {
                         it
@@ -684,7 +688,7 @@ node('Slave') {
                                 .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=${DEVELOPMENT_VERSION - '-SNAPSHOT'}")
                     }
                     modifyFile("connect-base/$nextTag/Dockerfile") {
-                        it.replaceFirst('FROM \\S+', "FROM debezium/kafka:$nextTag")
+                        it.replaceFirst('FROM \\S+', "FROM \$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$nextTag")
                     }
                 }
                 if (!DRY_RUN) {
