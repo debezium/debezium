@@ -84,6 +84,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private final Map<Map<String, ?>, Map<String, ?>> lastOffsets = new HashMap<>();
 
     private Duration retriableRestartWait;
+    private Integer retriableRestartMaxRetries;
+    private Integer retriableRestartTotalRetries = CommonConnectorConfig.DEFAULT_RETRIABLE_MAX_RETRIES;
 
     private final ElapsedTimeStrategy pollOutputDelay;
     private final Clock clock = Clock.system();
@@ -119,6 +121,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             this.props = props;
             Configuration config = Configuration.from(props);
+            retriableRestartMaxRetries = config.getInteger(CommonConnectorConfig.RETRIABLE_RESTART_MAX_RETRIES);
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -224,15 +227,19 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
      */
-    private boolean startIfNeededAndPossible() {
+    private boolean startIfNeededAndPossible() throws InterruptedException {
         stateLock.lock();
 
         try {
             if (state.get() == State.RUNNING) {
                 return true;
             }
+            else if (retriableRestartTotalRetries >= retriableRestartMaxRetries) {
+                throw new InterruptedException("Max limit of retries to start the connector has reached");
+            }
             else if (restartDelay != null && restartDelay.hasElapsed()) {
                 start(props);
+                retriableRestartTotalRetries++;
                 return true;
             }
             else {

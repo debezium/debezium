@@ -313,6 +313,7 @@ public abstract class CommonConnectorConfig {
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
+    public static final int DEFAULT_RETRIABLE_MAX_RETRIES = -1;
 
     public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withDisplayName("Topic prefix")
@@ -337,6 +338,16 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "Time to wait before restarting connector after retriable exception occurs. Defaults to " + DEFAULT_RETRIABLE_RESTART_WAIT + "ms.")
             .withValidation(Field::isPositiveLong);
+
+    public static final Field RETRIABLE_RESTART_MAX_RETRIES = Field.create("errors.max.retries")
+            .withDisplayName("The maximum number of retries")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DEFAULT_RETRIABLE_MAX_RETRIES)
+            .withValidation(Field::isInteger)
+            .withDescription("The maximum number of retries upon retriable exception before failing (-1 = no " +
+                    "limit, 0 = disabled, > 0 = num of retries).");
 
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
