@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mysql.cj.CharsetMapping;
+import com.mysql.cj.jdbc.Driver;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -525,8 +526,7 @@ public class MySqlConnection extends JdbcConnection {
             jdbcConfigBuilder.with(JDBC_PROPERTY_CONNECTION_TIME_ZONE, determineConnectionTimeZone(dbConfig));
 
             this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
-            String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
-            factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
+            factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, Driver.class.getName(), getClass().getClassLoader());
         }
 
         private static String determineConnectionTimeZone(final Configuration dbConfig) {
