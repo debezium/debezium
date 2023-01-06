@@ -580,7 +580,10 @@ For example, the following illustrates what an embedded configuration would look
 ----
 <local-cache name="transactions">
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" path="./data" />
+    <file-store read-only="false" preload="true" shared="false">
+      <data path="./data"/>
+      <index path="./index"/>
+    </file-store>
   </persistence>
 </local-cache>
 ----
@@ -601,7 +604,10 @@ Another example, the following illustrates the same cache configured with an Inf
 <distributed-cache name="transactions" statistics="true">
   <encoding media-type="application/x-protostream" />
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" />
+   <file-store read-only="false" preload="true" shared="false">
+     <data path="./data"/>
+     <index path="./index"/>
+   </file-store>
   </persistence>
 </distributed-cache>
 ----
