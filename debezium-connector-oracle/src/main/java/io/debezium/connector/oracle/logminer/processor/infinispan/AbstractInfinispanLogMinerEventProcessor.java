@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
@@ -101,6 +102,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             LOGGER.debug("Checking all transactions with prefix '{}'", transactionPrefix);
             eventKeys = getTransactionKeysWithPrefix(transactionPrefix);
             if (!eventKeys.isEmpty()) {
+                // Enforce that the keys are always reverse sorted.
+                eventKeys.sort(EventKeySortComparator.INSTANCE.reversed());
+
                 for (String eventKey : eventKeys) {
                     final LogMinerEvent event = getEventCache().get(eventKey);
                     if (event != null && event.getRowId().equals(row.getRowId())) {
@@ -118,6 +122,9 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             }
         }
         else {
+            // Enforce that the keys are always reverse sorted.
+            eventKeys.sort(EventKeySortComparator.INSTANCE.reversed());
+
             for (String eventKey : eventKeys) {
                 final LogMinerEvent event = getEventCache().get(eventKey);
                 if (event != null && event.getRowId().equals(row.getRowId())) {
@@ -335,6 +342,35 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
         // Clear the event queue for the transaction
         for (int i = 0; i < transaction.getNumberOfEvents(); ++i) {
             getEventCache().remove(transaction.getEventId(i));
+        }
+    }
+
+    /**
+     * A comparator that guarantees that the sort order applied to event keys is such that
+     * they are treated as numerical values, sorted as numeric values rather than strings
+     * which would allow "100" to come before "9".
+     */
+    private static class EventKeySortComparator implements Comparator<String> {
+
+        public static EventKeySortComparator INSTANCE = new EventKeySortComparator();
+
+        @Override
+        public int compare(String o1, String o2) {
+            if (o1 == null || !o1.contains("-")) {
+                throw new IllegalStateException("Event Key must be in the format of <transaction>-<event>");
+            }
+            if (o2 == null || !o2.contains("-")) {
+                throw new IllegalStateException("Event Key must be in the format of <transaction>-<event>");
+            }
+            final String[] s1 = o1.split("-");
+            final String[] s2 = o2.split("-");
+
+            // Compare transaction ids, these should generally be identical.
+            int result = s1[0].compareTo(s2[0]);
+            if (result == 0) {
+                result = Long.compare(Long.parseLong(s1[1]), Long.parseLong(s2[1]));
+            }
+            return result;
         }
     }
 }
