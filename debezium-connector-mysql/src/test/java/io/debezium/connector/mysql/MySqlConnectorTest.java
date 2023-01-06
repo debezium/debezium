@@ -36,9 +36,8 @@ public class MySqlConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.equals(MySqlConnectorConfig.SCHEMA_HISTORY) || expected.equals(MySqlConnectorConfig.JDBC_DRIVER)
-                    || expected.equals(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY)) {
-                assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
+            if (expected.equals(MySqlConnectorConfig.SCHEMA_HISTORY) || expected.equals(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY)) {
+                assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo(expected.defaultValue());
             }
             else if (expected.type() == ConfigDef.Type.LIST && key.defaultValue != null) {
                 assertThat(key.defaultValue).isEqualTo(Arrays.asList(expected.defaultValue()));
