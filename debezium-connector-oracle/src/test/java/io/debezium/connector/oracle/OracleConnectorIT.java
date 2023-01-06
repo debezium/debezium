@@ -73,6 +73,7 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogMinerAdapter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -4553,6 +4554,135 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "DBZ5738");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5907")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner only")
+    public void shouldUndoOnlyLastEventWithSavepoint() throws Exception {
+        TestHelper.dropTable(connection, "dbz5907");
+        try {
+
+            connection.execute("CREATE TABLE dbz5907 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5907");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5907")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz5907 (id,data) values (1, 'insert')");
+
+            // Assert initial inserted record
+            SourceRecords tableRecords = consumeRecordsByTopic(1);
+            assertThat(tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907")).hasSize(1);
+            SourceRecord record = tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907").get(0);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA")).isEqualTo("insert");
+
+            // Perform an update insert, followed by savepoint and an update that gets rolled back to savepoint
+            connection.execute("BEGIN " +
+                    "UPDATE dbz5907 SET data = 'update' WHERE id = 1;" +
+                    "INSERT INTO dbz5907 (id,data) values (2, 'insert');" +
+                    "SAVEPOINT a;" +
+                    "UPDATE dbz5907 SET data = 'updateb' WHERE id = 1;" +
+                    "ROLLBACK TO SAVEPOINT a;" +
+                    "COMMIT;" +
+                    "END;");
+
+            // Assert update record
+            tableRecords = consumeRecordsByTopic(2);
+            assertThat(tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907")).hasSize(2);
+            record = tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907").get(0);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA")).isEqualTo("update");
+
+            // Assert insert record
+            record = tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907").get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+            assertThat(getAfter(record).get("DATA")).isEqualTo("insert");
+
+            // There should be no records left to consume
+            assertNoRecordsToConsume();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5907");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5907")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner only")
+    public void shouldCorrectlyUndoWithMultipleSavepoints() throws Exception {
+        TestHelper.dropTable(connection, "dbz5907");
+        try {
+
+            connection.execute("CREATE TABLE dbz5907 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz5907");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5907")
+                    .build();
+
+            final LogInterceptor interceptor;
+            if (config.getString(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE).equals("memory")) {
+                interceptor = new LogInterceptor(MemoryLogMinerEventProcessor.class.getName());
+            }
+            else {
+                interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class.getName());
+            }
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz5907 (id,data) values (1, 'insert')");
+
+            // Assert initial inserted record
+            SourceRecords tableRecords = consumeRecordsByTopic(1);
+            assertThat(tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907")).hasSize(1);
+            SourceRecord record = tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907").get(0);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA")).isEqualTo("insert");
+
+            // Perform an update insert, followed by savepoint and an update that gets rolled back to savepoint
+            connection.execute("BEGIN " +
+                    "SAVEPOINT a;" +
+                    "UPDATE dbz5907 SET data = 'update' WHERE id = 1;" +
+                    "INSERT INTO dbz5907 (id,data) values (2, 'insert');" +
+                    "SAVEPOINT b;" +
+                    "UPDATE dbz5907 SET data = 'updateb' WHERE id = 1;" +
+                    "ROLLBACK TO SAVEPOINT b;" +
+                    "ROLLBACK TO SAVEPOINT a;" +
+                    "UPDATE dbz5907 SET data = 'updatea' WHERE id = 1;" +
+                    "COMMIT;" +
+                    "END;");
+
+            // Assert update record
+            tableRecords = consumeRecordsByTopic(1);
+            assertThat(tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907")).hasSize(1);
+            record = tableRecords.recordsForTopic("server1.DEBEZIUM.DBZ5907").get(0);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA")).isEqualTo("updatea");
+
+            // There should be no records left to consume
+            assertNoRecordsToConsume();
+
+            stopConnector();
+
+            assertThat(interceptor.containsMessage("Cannot undo change on table"))
+                    .as("Unable to correctly undo operation within transaction")
+                    .isFalse();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5907");
         }
     }
 
