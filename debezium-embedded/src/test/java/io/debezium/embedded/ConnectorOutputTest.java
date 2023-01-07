@@ -190,7 +190,7 @@ public abstract class ConnectorOutputTest {
     }
 
     @FunctionalInterface
-    public static interface TestData extends AutoCloseable {
+    public interface TestData extends AutoCloseable {
         /**
          * Read the records that are expected by the test.
          *
@@ -574,17 +574,17 @@ public abstract class ConnectorOutputTest {
     }
 
     @FunctionalInterface
-    protected static interface VariableSupplier {
+    protected interface VariableSupplier {
         Map<String, String> get(Configuration config) throws Exception;
     }
 
     @FunctionalInterface
-    protected static interface InputStreamSupplier {
+    protected interface InputStreamSupplier {
         InputStream get() throws IOException;
     }
 
     @FunctionalInterface
-    protected static interface OutputStreamSupplier {
+    protected interface OutputStreamSupplier {
         OutputStream get() throws IOException;
     }
 

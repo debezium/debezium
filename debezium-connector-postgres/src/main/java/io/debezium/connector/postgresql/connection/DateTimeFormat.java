@@ -34,23 +34,23 @@ import io.debezium.connector.postgresql.PostgresValueConverter;
  *
  */
 public interface DateTimeFormat {
-    public Instant timestampToInstant(final String s);
+    Instant timestampToInstant(final String s);
 
-    public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(final String s);
+    OffsetDateTime timestampWithTimeZoneToOffsetDateTime(final String s);
 
-    public Instant systemTimestampToInstant(final String s);
+    Instant systemTimestampToInstant(final String s);
 
-    public LocalDate date(final String s);
+    LocalDate date(final String s);
 
-    public LocalTime time(final String s);
+    LocalTime time(final String s);
 
-    public OffsetTime timeWithTimeZone(final String s);
+    OffsetTime timeWithTimeZone(final String s);
 
-    public static DateTimeFormat get() {
+    static DateTimeFormat get() {
         return new ISODateTimeFormat();
     }
 
-    public static class ISODateTimeFormat implements DateTimeFormat {
+    class ISODateTimeFormat implements DateTimeFormat {
         private static final Logger LOGGER = LoggerFactory.getLogger(ISODateTimeFormat.class);
 
         // This formatter is similar to standard Java's ISO_LOCAL_DATE. But this one is

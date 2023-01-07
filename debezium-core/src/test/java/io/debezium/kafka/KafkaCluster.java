@@ -457,7 +457,7 @@ public class KafkaCluster {
      * @param <K> the type of key
      * @param <V> the type of value
      */
-    public static interface InteractiveConsumer<K, V> extends Closeable {
+    public interface InteractiveConsumer<K, V> extends Closeable {
         /**
          * Block until a record can be read from this consumer's topic, and return the value in that record.
          *

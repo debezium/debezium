@@ -19,7 +19,7 @@ import org.postgresql.replication.PGReplicationStream;
 public interface ReplicationStream extends AutoCloseable {
 
     @FunctionalInterface
-    public interface ReplicationMessageProcessor {
+    interface ReplicationMessageProcessor {
 
         /**
          * Processes the given replication message.

@@ -101,7 +101,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     @FunctionalInterface
     @ThreadSafe
-    public static interface ConnectionFactory {
+    public interface ConnectionFactory {
         /**
          * Establish a connection to the database denoted by the given configuration.
          *
@@ -136,7 +136,7 @@ public class JdbcConnection implements AutoCloseable {
      * Defines multiple JDBC operations.
      */
     @FunctionalInterface
-    public static interface Operations {
+    public interface Operations {
         /**
          * Apply a series of operations against the given JDBC statement.
          *
@@ -150,7 +150,7 @@ public class JdbcConnection implements AutoCloseable {
      * Extracts a data of resultset..
      */
     @FunctionalInterface
-    public static interface ResultSetExtractor<T> {
+    public interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
@@ -434,36 +434,36 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
-    public static interface ResultSetConsumer {
+    public interface ResultSetConsumer {
         void accept(ResultSet rs) throws SQLException;
     }
 
-    public static interface ResultSetMapper<T> {
+    public interface ResultSetMapper<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
-    public static interface BlockingResultSetConsumer {
+    public interface BlockingResultSetConsumer {
         void accept(ResultSet rs) throws SQLException, InterruptedException;
     }
 
-    public static interface ParameterResultSetConsumer {
+    public interface ParameterResultSetConsumer {
         void accept(List<?> parameters, ResultSet rs) throws SQLException;
     }
 
-    public static interface MultiResultSetConsumer {
+    public interface MultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException;
     }
 
-    public static interface BlockingMultiResultSetConsumer {
+    public interface BlockingMultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException, InterruptedException;
     }
 
-    public static interface StatementPreparer {
+    public interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
 
     @FunctionalInterface
-    public static interface CallPreparer {
+    public interface CallPreparer {
         void accept(CallableStatement statement) throws SQLException;
     }
 

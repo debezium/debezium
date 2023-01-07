@@ -36,7 +36,7 @@ public final class FieldSelector {
      * This filter is designed to exclude or rename fields in a document.
      */
     @ThreadSafe
-    public static interface FieldFilter {
+    public interface FieldFilter {
 
         /**
          * Applies this filter to the given document to exclude or rename fields.

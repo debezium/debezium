@@ -141,7 +141,7 @@ public final class Envelope {
     /**
      * A builder of an envelope schema.
      */
-    public static interface Builder {
+    public interface Builder {
         /**
          * Define the {@link Schema} used in the {@link FieldName#BEFORE} and {@link FieldName#AFTER} fields.
          *

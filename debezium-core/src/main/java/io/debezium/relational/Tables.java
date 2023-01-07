@@ -48,14 +48,14 @@ public final class Tables {
         /**
          * Creates a {@link TableFilter} from the given predicate.
          */
-        public static TableFilter fromPredicate(Predicate<TableId> predicate) {
+        static TableFilter fromPredicate(Predicate<TableId> predicate) {
             return t -> predicate.test(t);
         }
 
         /**
          * Creates a {@link TableFilter} that includes all tables.
          */
-        public static TableFilter includeAll() {
+        static TableFilter includeAll() {
             return t -> true;
         }
     }

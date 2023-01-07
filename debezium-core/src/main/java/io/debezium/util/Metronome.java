@@ -23,7 +23,7 @@ public interface Metronome {
      *
      * @throws InterruptedException if the thread was interrupted while pausing
      */
-    public void pause() throws InterruptedException;
+    void pause() throws InterruptedException;
 
     /**
      * Create a new metronome that starts ticking immediately and that uses {@link Thread#sleep(long)} to wait.
@@ -42,7 +42,7 @@ public interface Metronome {
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome sleeper(Duration period, Clock timeSystem) {
+    static Metronome sleeper(Duration period, Clock timeSystem) {
         long periodInMillis = period.toMillis();
         return new Metronome() {
             private long next = timeSystem.currentTimeInMillis() + periodInMillis;
@@ -81,7 +81,7 @@ public interface Metronome {
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome parker(Duration period, Clock timeSystem) {
+    static Metronome parker(Duration period, Clock timeSystem) {
         long periodInNanos = period.toNanos();
         return new Metronome() {
             private long next = timeSystem.currentTimeInNanos() + periodInNanos;

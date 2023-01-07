@@ -50,7 +50,7 @@ public class Threads {
      * Expires after defined time period.
      *
      */
-    public static interface Timer {
+    public interface Timer {
 
         /**
          * @return true if current time is greater than start time plus requested time period
