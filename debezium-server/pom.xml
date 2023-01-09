@@ -26,6 +26,7 @@
         <module>debezium-server-nats-streaming</module>
         <module>debezium-server-nats-jetstream</module>
         <module>debezium-server-rocketmq</module>
+        <module>debezium-server-infinispan</module>
     </modules>
 
     <dependencyManagement>

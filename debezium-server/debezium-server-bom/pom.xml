@@ -20,7 +20,7 @@
         <version.nats>2.16.3</version.nats>
         <version.stan>2.2.3</version.stan>
         <version.rocketmq>4.9.4</version.rocketmq>
-
+        <version.infinispan>14.0.4.Final</version.infinispan>
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
 
@@ -145,6 +145,11 @@
 
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-server-infinispan</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-core</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -207,7 +212,6 @@
                 <artifactId>pravega-client</artifactId>
                 <version>${version.pravega}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>
                 <artifactId>rocketmq-client</artifactId>
@@ -219,6 +223,13 @@
                 <version>${version.rocketmq}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-bom</artifactId>
+                <version>${version.infinispan}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
