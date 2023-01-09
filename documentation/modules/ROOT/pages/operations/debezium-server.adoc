@@ -1142,6 +1142,61 @@ By default the same name is used.
 
 |===
 
+==== Infinispan
+
+https://infinispan.org/[Infinispan] is open-source in-memory data grid that offers rich set of caches types as well as cache stores.
+Due to very fast data access, Infinispan can be used, besides others, as a data source for various data processing and analytical tools.
+
+The Infinispan sink expects that the destination cache is already defined and created within the Infinispan cluster.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[infinispan-type]]<<infinispan-type, `debezium.sink.type`>>
+|
+|Must be set to `infinispan`.
+
+|[[infisnipan-server-host]]<<infisnipan-server-host, `debezium.sink.infinispan.server.host`>>
+|
+|The host name of one of the servers of the Infinispan cluster (can be also a comma-separated list of servers).
+
+|[[infisnipan-server-port]]<<infisnipan-server-port, `debezium.sink.infinispan.server.port`>>
+| 11222
+|The port of the Infinispan server.
+
+|[[infisnipan-cache]]<<infisnipan-cache, `debezium.sink.infinispan.cache`>>
+|
+|The name of the (exiting) cache where the records will be stored.
+
+|[[infisnipan-user]]<<infisnipan-user, `debezium.sink.infinispan.user`>>
+|
+|(Optional) The user name used for connecting to Infinispan cluster.
+
+|[[infisnipan-password]]<<infisnipan-password, `debezium.sink.infinispan.password`>>
+|
+|(Optional) The password used for connecting to Infinispan cluster.
+
+|===
+
+===== Injection points
+
+The Infinispan sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[infinispan-ext-hotrod-cache]]<<infinispan-ext-hotrod-cache, `org.infinispan.client.hotrod.RemoteCache`>>
+|`@CustomConsumerBuilder`
+|Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
+|===
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
