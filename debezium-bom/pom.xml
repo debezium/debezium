@@ -50,7 +50,7 @@
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.17.5</version.testcontainers>
+        <version.testcontainers>1.17.6</version.testcontainers>
         <version.jsonpath>2.7.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
