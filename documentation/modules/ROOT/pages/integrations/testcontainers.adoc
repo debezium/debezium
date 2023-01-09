@@ -77,7 +77,9 @@ public class DebeziumContainerTest {
             .withNetwork(network); // <2>
 
     public static PostgreSQLContainer<?> postgresContainer =
-            new PostgreSQLContainer<>("debezium/postgres:11")
+            new PostgreSQLContainer<>(
+                    DockerImageName.parse("debezium/postgres:11")
+                        .asCompatibleSubstituteFor("postgres"))
                 .withNetwork(network)
                 .withNetworkAliases("postgres"); // <3>
 
