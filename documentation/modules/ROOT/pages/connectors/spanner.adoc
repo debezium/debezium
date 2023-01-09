@@ -981,7 +981,7 @@ The values will incoporate any differences between the clocks on the machines wh
 |`long`
 |The current low watermark of the connector task in milliseconds. The low watermark describes the time T at which the connector is guaranteed to have streamed out all events with timestamp < T.
 
-|[[connectors-strm-metric-millisecondslowwatermark]]<<connectors-strm-metric-lowwatermark, `+MilliSecondsLowWatermarkLag+`>>
+|[[connectors-strm-metric-millisecondslowwatermarklag]]<<connectors-strm-metric-lowwatermarklag, `+MilliSecondsLowWatermarkLag+`>>
 |`long`
 |The lag of the low watermark behind the current time in milliseconds. The low watermark describes the time T at which the connector is guaranteed to have streamed out all events with timestamp < T.
 
@@ -1093,7 +1093,7 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |The file path to the GCP service account key JSON.
 
-|[[spanner-property-credentials]]<<spanner-property-credentials, `+gcp.spanner.credentials.json+`>>
+|[[spanner-property-credentialsjson]]<<spanner-property-credentialsjson, `+gcp.spanner.credentials.json+`>>
 |No default
 |The GCP service account key JSON. Required if gcp.spanner.credentials.path is not provided.
 
