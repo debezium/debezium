@@ -19,6 +19,7 @@
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.16.3</version.nats>
         <version.stan>2.2.3</version.stan>
+        <version.infinispan>14.0.4.Final</version.infinispan>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
@@ -137,6 +138,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-server-infinispan</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-core</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
@@ -197,6 +203,13 @@
                 <groupId>io.pravega</groupId>
                 <artifactId>pravega-client</artifactId>
                 <version>${version.pravega}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-bom</artifactId>
+                <version>${version.infinispan}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
