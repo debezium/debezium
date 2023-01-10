@@ -467,6 +467,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected OptionalLong rowCountForTable(TableId tableId) {
+        if (getSnapshotSelectOverridesByTable(tableId) != null) {
+            return super.rowCountForTable(tableId);
+        }
         return connection.getEstimatedTableSize(tableId);
     }
 
