@@ -184,7 +184,7 @@ public class MySqlValueConvertersTest {
     @FixFor("DBZ-5996")
     public void testZonedDateTimeWithMicrosecondPrecision() {
         String zonedDateTimeTable = "ZONED_DATE_TIME_TABLE";
-        String sql = "CREATE TABLE " + zonedDateTimeTable + " (A TIMESTAMP(6) NOT NULL, B TIMESTAMP(3) NOT NULL, C TIMESTAMP(5) NOT NULL);";
+        String sql = "CREATE TABLE " + zonedDateTimeTable + " (A TIMESTAMP(6) NOT NULL, B TIMESTAMP(3) NOT NULL, C TIMESTAMP(5) NOT NULL, D TIMESTAMP NOT NULL);";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
@@ -229,6 +229,17 @@ public class MySqlValueConvertersTest {
         assertEquals("2023-01-11T00:34:10.12300Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
         assertEquals("2023-01-11T00:34:10.12345Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123456Z")));
         assertEquals("2023-01-11T00:34:10.00000Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
+
+        // Check with timestamp, output should always contain minimum number of digits in nanosecond part
+        Column colD = table.columnWithName("D");
+        Field fieldD = new Field(colD.name(), -1, converters.schemaBuilder(colD).build());
+
+        ValueConverter colDConverter = converters.converter(colD, fieldD);
+        assertEquals("2023-01-11T00:34:10Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.000000Z")));
+        assertEquals("2023-01-11T00:34:10.12345Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.12345Z")));
+        assertEquals("2023-01-11T00:34:10.123Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
+        assertEquals("2023-01-11T00:34:10.123456Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123456Z")));
+        assertEquals("2023-01-11T00:34:10Z", colDConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
     }
 
     protected LocalDate localDateWithYear(int year) {
