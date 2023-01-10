@@ -1092,8 +1092,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
-                    !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
+            return t.schema() != null && !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
+                    t.table() != null && !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
                     !t.schema().startsWith(TEMP_TABLE_SCHEMA_PREFIX);
         }
     }
