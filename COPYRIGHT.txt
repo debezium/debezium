@@ -162,6 +162,7 @@ Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
 Jacob Gminder
+Jakub Zalas
 Jan Doms
 Jan Hendrik Dolling
 Jan Werner
