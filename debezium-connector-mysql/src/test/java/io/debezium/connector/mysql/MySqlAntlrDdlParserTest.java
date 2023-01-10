@@ -3122,7 +3122,7 @@ public class MySqlAntlrDdlParserTest {
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
         ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
 
         assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
@@ -3277,7 +3277,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private String toIsoString(String timestamp) {
-        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null);
+        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
 
     /**
