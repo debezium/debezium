@@ -199,18 +199,18 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         if (storeOnlyCapturedTables) {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(1);
+                    .isEqualTo(1);
         }
         else {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(useGlobalLock ? 1 : 5);
         }
 
         if (!useGlobalLock) {

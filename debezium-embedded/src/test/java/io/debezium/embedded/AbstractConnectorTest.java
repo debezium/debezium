@@ -1131,7 +1131,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
         assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
                 .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
-                        .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
+                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
         assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 

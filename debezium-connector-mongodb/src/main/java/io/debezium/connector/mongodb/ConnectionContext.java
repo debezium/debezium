@@ -173,7 +173,7 @@ public class ConnectionContext implements AutoCloseable {
 
     /**
      * Initial connection seed which is either a host specification or connection string
-     * 
+     *
      * @return hosts or connection string
      */
     public String connectionSeed() {
