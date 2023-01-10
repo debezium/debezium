@@ -214,7 +214,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (schemaHistory.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
+                LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
             }
             else {
                 throw e;
