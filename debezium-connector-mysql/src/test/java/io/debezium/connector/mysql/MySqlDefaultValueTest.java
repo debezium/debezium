@@ -392,11 +392,11 @@ public class MySqlDefaultValueTest {
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
         assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
         assertThat(getColumnSchema(table, "D").defaultValue())
-                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null, null));
         assertThat(getColumnSchema(table, "E").defaultValue())
-                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null, null));
         assertThat(getColumnSchema(table, "F").defaultValue())
-                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null));
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null, null));
         assertThat(getColumnSchema(table, "G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
         assertThat(getColumnSchema(table, "H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
         assertThat(getColumnSchema(table, "I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));

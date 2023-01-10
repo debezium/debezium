@@ -5,6 +5,9 @@
  */
 package io.debezium.time;
 
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.temporal.ChronoField.NANO_OF_SECOND;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -13,7 +16,10 @@ import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAdjuster;
+import java.util.Locale;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -38,6 +44,50 @@ public class ZonedTimestamp {
      * '2011-12-03T10:15:30.030431+01:00'.
      */
     public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+
+    /**
+     * Returns a {@link DateTimeFormatter} that ensures that exactly fractionalWidth number of digits are present
+     * in the nanosecond part of the datetime. If fractionWidth is null, then
+     * {@link DateTimeFormatter.ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere from 0-9 digits in the
+     * nanosecond part.
+     *
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     *                        formatted string.
+     * @return {@link DateTimeFormatter} containing exactly fractionalWidth number of digits in nanosecond part of the
+     * datetime. If null, {@link DateTimeFormatter.ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere
+     * from 0-9 digits in the nanosecond part.
+     */
+    private static DateTimeFormatter getDateTimeFormatter(Integer fractionalWidth) {
+        if (fractionalWidth == null || fractionalWidth == 0) {
+            return FORMATTER;
+        }
+
+        final DateTimeFormatter timeFormatter = new DateTimeFormatterBuilder()
+                .appendValue(ChronoField.HOUR_OF_DAY, 2)
+                .appendLiteral(':')
+                .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
+                .optionalStart()
+                .appendLiteral(':')
+                .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
+                .optionalStart()
+                .appendFraction(NANO_OF_SECOND, fractionalWidth, fractionalWidth, true)
+                .toFormatter(Locale.ENGLISH);
+
+        final DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .append(ISO_LOCAL_DATE)
+                .appendLiteral('T')
+                .append(timeFormatter)
+                .toFormatter(Locale.ENGLISH);
+
+        return new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .append(dateTimeFormatter)
+                .parseLenient()
+                .appendOffsetId()
+                .parseStrict()
+                .toFormatter(Locale.ENGLISH);
+    }
 
     public static final String SCHEMA_NAME = "io.debezium.time.ZonedTimestamp";
 
@@ -74,10 +124,12 @@ public class ZonedTimestamp {
      *            null
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     *                        formatted string.
      * @return the microseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster) {
+    public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster, Integer fractionalWidth) {
         if (value instanceof String) {
             return (String) value;
         }
@@ -85,7 +137,7 @@ public class ZonedTimestamp {
             return toIsoString((OffsetDateTime) value, adjuster);
         }
         if (value instanceof ZonedDateTime) {
-            return toIsoString((ZonedDateTime) value, adjuster);
+            return toIsoString((ZonedDateTime) value, adjuster, fractionalWidth);
         }
         if (value instanceof OffsetTime) {
             return toIsoString((OffsetTime) value, adjuster);
@@ -118,13 +170,15 @@ public class ZonedTimestamp {
      * @param timestamp the timestamp value
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     *                        formatted string.
      * @return the ISO 8601 formatted string
      */
-    public static String toIsoString(ZonedDateTime timestamp, TemporalAdjuster adjuster) {
+    public static String toIsoString(ZonedDateTime timestamp, TemporalAdjuster adjuster, Integer fractionalWidth) {
         if (adjuster != null) {
             timestamp = timestamp.with(adjuster);
         }
-        return timestamp.format(FORMATTER);
+        return timestamp.format(getDateTimeFormatter(fractionalWidth));
     }
 
     /**

@@ -689,7 +689,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         String value2 = "2018-01-03 00:00:10";
@@ -716,7 +716,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaM.defaultValue()).isEqualTo(Duration.ofHours(123).plus(123456, ChronoUnit.MICROS).toNanos() / 1_000);
         // current timestamp will be replaced with epoch timestamp
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
         assertThat(schemaJ.defaultValue()).isEqualTo(
                 MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())
                         .databaseAsserts()
@@ -758,7 +758,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value1 = "1970-01-01 00:00:01";
         ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
+        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal, null);
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
