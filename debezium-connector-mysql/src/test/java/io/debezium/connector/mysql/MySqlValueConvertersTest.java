@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,10 +25,7 @@ import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.relational.Column;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
+import io.debezium.relational.*;
 import io.debezium.relational.ddl.DdlParser;
 
 /**
@@ -180,6 +178,57 @@ public class MySqlValueConvertersTest {
         Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
 
         assertEquals(BigDecimal.ZERO.setScale(scale), converters.converter(colA, fieldA).convert(null));
+    }
+
+    @Test
+    @FixFor("DBZ-5996")
+    public void testZonedDateTimeWithMicrosecondPrecision() {
+        String zonedDateTimeTable = "ZONED_DATE_TIME_TABLE";
+        String sql = "CREATE TABLE " + zonedDateTimeTable + " (A TIMESTAMP(6) NOT NULL, B TIMESTAMP(3) NOT NULL, C TIMESTAMP(5) NOT NULL);";
+
+        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
+                x -> x, (message, exception) -> {
+                    throw new DebeziumException(message, exception);
+                });
+
+        DdlParser parser = new MySqlAntlrDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+
+        Table table = tables.forTable(new TableId(null, null, zonedDateTimeTable));
+
+        // Check with timestamp(6), output should always contain 6 digits in nanosecond part
+        Column colA = table.columnWithName("A");
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
+
+        ValueConverter colAConverter = converters.converter(colA, fieldA);
+        assertEquals("2023-01-11T00:34:10.000000Z", colAConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.000000Z")));
+        assertEquals("2023-01-11T00:34:10.123456Z", colAConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123456Z")));
+        assertEquals("2023-01-11T00:34:10.123000Z", colAConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
+        assertEquals("2023-01-11T00:34:10.000000Z", colAConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
+
+        // Check with timestamp(3), output should always contain 3 digits in nanosecond part
+        Column colB = table.columnWithName("B");
+        Field fieldB = new Field(colB.name(), -1, converters.schemaBuilder(colB).build());
+
+        ValueConverter colBConverter = converters.converter(colB, fieldB);
+        assertEquals("2023-01-11T00:34:10.000Z", colBConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.000000Z")));
+        assertEquals("2023-01-11T00:34:10.123Z", colBConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.1234Z")));
+        assertEquals("2023-01-11T00:34:10.123Z", colBConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
+        assertEquals("2023-01-11T00:34:10.010Z", colBConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.01Z")));
+        assertEquals("2023-01-11T00:34:10.000Z", colBConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
+
+        // Check with timestamp(5), output should always contain 5 digits in nanosecond part
+        Column colC = table.columnWithName("C");
+        Field fieldC = new Field(colC.name(), -1, converters.schemaBuilder(colC).build());
+
+        ValueConverter colCConverter = converters.converter(colC, fieldC);
+        assertEquals("2023-01-11T00:34:10.00000Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.000000Z")));
+        assertEquals("2023-01-11T00:34:10.12345Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.12345Z")));
+        assertEquals("2023-01-11T00:34:10.12300Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123Z")));
+        assertEquals("2023-01-11T00:34:10.12345Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10.123456Z")));
+        assertEquals("2023-01-11T00:34:10.00000Z", colCConverter.convert(ZonedDateTime.parse("2023-01-11T00:34:10Z")));
     }
 
     protected LocalDate localDateWithYear(int year) {

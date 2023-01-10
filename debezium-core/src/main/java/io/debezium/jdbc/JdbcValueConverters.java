@@ -139,7 +139,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
-                adjuster);
+                adjuster,
+                null);
         this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
@@ -389,7 +390,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
-                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster, column.length()));
             }
             catch (IllegalArgumentException e) {
             }
