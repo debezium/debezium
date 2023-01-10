@@ -63,7 +63,7 @@ public interface KafkaAssertions<K, V> {
             consumer.seekToBeginning(consumer.assignment());
             assertThat(
                     records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
-                            .isGreaterThanOrEqualTo(count);
+                    .isGreaterThanOrEqualTo(count);
         }
     }
 

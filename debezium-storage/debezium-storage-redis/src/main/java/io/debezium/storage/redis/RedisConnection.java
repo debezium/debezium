@@ -34,7 +34,7 @@ public class RedisConnection {
     private boolean sslEnabled;
 
     /**
-     * 
+     *
      * @param address
      * @param user
      * @param password
@@ -52,7 +52,7 @@ public class RedisConnection {
     }
 
     /**
-     * 
+     *
      * @param clientName
      * @param waitEnabled
      * @param waitTimeout

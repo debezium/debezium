@@ -2083,7 +2083,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorNotRunning();
         assertThat(logInterceptor.containsStacktraceElement(
                 "The db history topic or its content is fully or partially missing. Please check database schema history topic configuration and re-execute the snapshot."))
-                        .isTrue();
+                .isTrue();
     }
 
     @Test

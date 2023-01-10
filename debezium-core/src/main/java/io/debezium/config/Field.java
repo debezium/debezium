@@ -764,7 +764,7 @@ public final class Field {
     public Field required() {
         return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
                 defaultValueGenerator, validator, recommender, true, group, allowedValues)
-                        .withValidation(Field::isRequired);
+                .withValidation(Field::isRequired);
     }
 
     public Field optional() {

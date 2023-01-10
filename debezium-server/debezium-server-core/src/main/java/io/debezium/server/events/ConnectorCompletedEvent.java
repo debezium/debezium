@@ -27,7 +27,7 @@ public class ConnectorCompletedEvent {
     }
 
     /**
-     * 
+     *
      * @return true if the connector was completed successfully
      */
     public boolean isSuccess() {
@@ -35,7 +35,7 @@ public class ConnectorCompletedEvent {
     }
 
     /**
-     * 
+     *
      * @return message associated with connection completion
      */
     public String getMessage() {
@@ -43,7 +43,7 @@ public class ConnectorCompletedEvent {
     }
 
     /**
-     * 
+     *
      * @return optional error in case the connector has not started successfully or was terminated with an error
      */
     public Optional<Throwable> getError() {

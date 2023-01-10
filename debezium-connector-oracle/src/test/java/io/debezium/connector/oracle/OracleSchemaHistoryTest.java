@@ -30,7 +30,7 @@ import oracle.jdbc.OracleTypes;
 
 /**
  * Unit tests for Oracle's database schema history.
- * 
+ *
  * @author Chris Cranford
  */
 public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {

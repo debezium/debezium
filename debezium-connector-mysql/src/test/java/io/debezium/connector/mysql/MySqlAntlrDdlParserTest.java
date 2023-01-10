@@ -1653,7 +1653,7 @@ public class MySqlAntlrDdlParserTest {
                 .stream()
                 .map(TableId::table)
                 .collect(Collectors.toSet()))
-                        .containsOnly("t1", "t2", "t3", "t4");
+                .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test
