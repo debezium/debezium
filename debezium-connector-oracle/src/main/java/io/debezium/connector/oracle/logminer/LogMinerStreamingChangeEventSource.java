@@ -256,7 +256,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     /**
      * Computes the start SCN for the first mining session.
      *
-     * Normally, this would be the snapshot SCN, but if there were pending transactions at the time 
+     * Normally, this would be the snapshot SCN, but if there were pending transactions at the time
      * the snapshot was taken, we'd miss the events in those transactions that have an SCN smaller
      * than the snapshot SCN.
      *

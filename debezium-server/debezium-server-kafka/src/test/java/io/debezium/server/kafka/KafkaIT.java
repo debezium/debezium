@@ -35,7 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 /**
  * Integration test for verifying that the Kafka sink adapter can stream change events from a PostgreSQL database
  * to a configured Apache Kafka broker.
- * 
+ *
  * @author Alfusainey Jallow
  */
 @QuarkusTest

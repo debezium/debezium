@@ -12,19 +12,19 @@ import java.util.Map;
 public interface RedisClient {
 
     /**
-     * 
+     *
      * @throws RedisClientConnectionException
      */
     void disconnect();
 
     /**
-     * 
+     *
      * @throws RedisClientConnectionException
      */
     void close();
 
     /**
-     * 
+     *
      * @param key
      * @param hash
      * @return
@@ -33,7 +33,7 @@ public interface RedisClient {
     String xadd(String key, Map<String, String> hash);
 
     /**
-     * 
+     *
      * @param hashes
      * @return
      * @throws RedisClientConnectionException
@@ -41,7 +41,7 @@ public interface RedisClient {
     List<String> xadd(List<SimpleEntry<String, Map<String, String>>> hashes);
 
     /**
-     * 
+     *
      * @param key
      * @return
      * @throws RedisClientConnectionException
@@ -49,7 +49,7 @@ public interface RedisClient {
     List<Map<String, String>> xrange(String key);
 
     /**
-     * 
+     *
      * @param key
      * @return
      * @throws RedisClientConnectionException
@@ -57,7 +57,7 @@ public interface RedisClient {
     long xlen(String key);
 
     /**
-     * 
+     *
      * @param key
      * @return
      * @throws RedisClientConnectionException
@@ -65,7 +65,7 @@ public interface RedisClient {
     Map<String, String> hgetAll(String key);
 
     /**
-     * 
+     *
      * @param key
      * @param field
      * @param value
@@ -75,7 +75,7 @@ public interface RedisClient {
     long hset(byte[] key, byte[] field, byte[] value);
 
     /**
-     * 
+     *
      * @param replicas
      * @param timeout
      * @return
@@ -84,7 +84,7 @@ public interface RedisClient {
     long waitReplicas(int replicas, long timeout);
 
     /**
-     * 
+     *
      * @return
      * @throws RedisClientConnectionException
      */
