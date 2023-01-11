@@ -29,15 +29,22 @@ jobs:
             if ! grep -qi "$AUTHOR" COPYRIGHT.txt; then
               if ! grep -qi "$AUTHOR" ALIASES.txt; then
                 if ! grep -qi "$AUTHOR" FILTEREDNAMES.txt; then
-                  echo "name=NOT_FOUND::true" >> $GITHUB_OUTPUT
+                  echo "USER_NOT_FOUND=true" >> $GITHUB_OUTPUT
                 fi
               fi
             fi
           done < AUTHOR_NAME.txt
       - name: Create comment
-        if: ${{ steps.check.outputs.NOT_FOUND == 'true' }}
+        if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Welcome as a new contributor to Debezium, @${{ github.event.pull_request.user.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/main/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/main/jenkins-jobs/scripts/config/Aliases.txt) respectively.
+      - name: Check failure
+        if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
+        uses: actions/github-script@v5
+        continue-on-error: false
+        with:
+          script: |
+            throw new Error('Add new user, @${{ github.event.pull_request.user.login }} to COPYRIGHT.txt and Aliases.txt')

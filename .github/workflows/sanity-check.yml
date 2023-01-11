@@ -35,20 +35,19 @@ jobs:
             echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
             echo "========================================================================"
             echo -e "$NON_PREFIX_COMMITS"
-            echo "name=PREFIX::false" >> $GITHUB_OUTPUT
+            echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
           fi
       - name: Create Comment
-        if: ${{ steps.check.outputs.PREFIX == 'false' }}
+        if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md#making-changes).
       - name: Check failure
-        if: ${{ steps.check.outputs.PREFIX == 'false' }}
+        if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
         uses: actions/github-script@v5
         continue-on-error: false
         with:
           script: |
             throw new Error('Commit has no DBZ-xxx prefiix')
-            
