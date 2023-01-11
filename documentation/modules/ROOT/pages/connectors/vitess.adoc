@@ -15,7 +15,11 @@ toc::[]
 {prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace].
 For information about the Vitess versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 
-The first time it connects to a Vitess cluster, the connector takes a consistent snapshot of the keyspace. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a Vitess keyspace. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
+When the connector first connects to a Vitess cluster, it takes a consistent snapshot of the keyspace. 
+After that snapshot is complete, the connector continuously captures row-level changes that are committed to a Vitess keyspace to insert, update, or delete database content. 
+The connector generates data change event records and streams them to Kafka topics. 
+For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. 
+Applications and services can then consume data change event records from the resulting topic.
 
 // Type: concept
 // Title: Overview of {prodname} Vitess connector
