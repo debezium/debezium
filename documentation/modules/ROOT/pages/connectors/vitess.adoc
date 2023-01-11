@@ -35,7 +35,11 @@ The connector gives you the flexibility to choose to subscribe to the `MASTER` n
 
 The connector produces a change event for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
-The underlying MySQL normally purges binary logs after some period of time. This means that the connector does not have the complete history of all changes that have been made to the database. Therefore, when the connector first connects to a particular database, it starts by performing a consistent snapshot of each of the database. After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. This way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
+The underlying MySQL implementation in Vitess purges binary logs based on some configurable period of time. 
+Because the contents of the binlog might not be complete, the connector requires another mechanism to ensure that it captures the complete content of a particular database.
+Thus, when the connector connects to a database for the first time, it performs a consistent snapshot of the database. 
+After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. 
+In this way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
 
 The connector is tolerant of failures. As the connector reads changes and produces events, it records the VGTID position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This does not include snapshots. If the connector stops during a snapshot, upon restart the connector does not continue performing snapshots where it last left off.
 We'll talk later about how the connector behaves xref:{link-vitess-connector}#vitess-when-things-go-wrong[when things go wrong].
