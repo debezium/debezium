@@ -29,7 +29,7 @@ jobs:
       - name: Get Date
         id: get-date
         run: |
-          echo "name=date::$(/bin/date -u "+%Y-%m")" >> $GITHUB_OUTPUT
+          echo "date=$(/bin/date -u "+%Y-%m")" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Set up Java 17
