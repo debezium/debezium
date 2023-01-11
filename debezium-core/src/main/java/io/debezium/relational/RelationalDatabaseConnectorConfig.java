@@ -150,7 +150,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     /**
      * The set of predefined snapshot isolation mode options.
      */
-    public static enum SnapshotIsolationMode implements EnumeratedValue {
+    public enum SnapshotIsolationMode implements EnumeratedValue {
 
         /**
          * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
@@ -182,7 +182,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         private final String value;
 
-        private SnapshotIsolationMode(String value) {
+        SnapshotIsolationMode(String value) {
             this.value = value;
         }
 
