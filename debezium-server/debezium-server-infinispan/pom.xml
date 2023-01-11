@@ -89,6 +89,7 @@
                     <enableAssertions>true</enableAssertions>
                     <systemProperties>
                         <test.type>IT</test.type>
+                        <tag.infinispan>${version.infinispan}</tag.infinispan>
                     </systemProperties>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
