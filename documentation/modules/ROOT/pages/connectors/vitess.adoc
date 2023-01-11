@@ -61,7 +61,10 @@ To optimally configure and run a {prodname} Vitess connector, it is helpful to u
 [[vitess-snapshot]]
 === Snapshot
 
-Most MySQL servers are configured to not retain the complete history of the database in the binary logs. This means that the connector would be unable to see the entire history of the database by reading only the binary logs. Consequently, the first time that the connector starts, it performs an initial consistent snapshot of the database. You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
+Typically, a MySQL servers is not configured to retain the complete history of the database in the binary logs. 
+As a result, the connector is unable to read the entire history of the database from the binary logs. 
+For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database. 
+You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
 
 [NOTE]
