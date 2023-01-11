@@ -1553,7 +1553,7 @@ A properly configured Kafka cluster is able to handle massive throughput. Kafka 
 [id="vitess-connector-failed-before-finishing-the-snapshot"]
 === Connector fails before finishing the snapshot
 
-The connector does not support retrying the snapshot automatically at the moment.
+If a snapshot fails to complete, the connector does not automatically reattempt the snapshot.
 If the connector is restarted with the previous offset, the connector skips the snapshot process and immediately begins to stream change events.
 
 Consequently, to recover from the failure, link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector/[remove the connector offsets manually] and start the connector.
