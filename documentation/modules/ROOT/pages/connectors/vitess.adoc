@@ -41,7 +41,10 @@ Thus, when the connector connects to a database for the first time, it performs 
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. 
 In this way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
 
-The connector is tolerant of failures. As the connector reads changes and produces events, it records the VGTID position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This does not include snapshots. If the connector stops during a snapshot, upon restart the connector does not continue performing snapshots where it last left off.
+The connector is tolerant of failures. 
+As the connector reads changes and produces events, it records the VGTID position for each event. 
+If the connector stops for any reason (including communication failures, network problems, or crashes), after the connectors restarts, it continues reading the WAL from the point at which it stopped. 
+This behavior does not apply to snapshots. If the connector stops during a snapshot, after a restart, the connector does not continue performing snapshots where it last left off.
 We'll talk later about how the connector behaves xref:{link-vitess-connector}#vitess-when-things-go-wrong[when things go wrong].
 
 // Type: assembly
