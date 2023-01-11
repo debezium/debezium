@@ -23,12 +23,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
-import org.apache.kafka.connect.transforms.RegexRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
@@ -56,7 +57,6 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private static final String ENVELOPE_PAYLOAD = "payload";
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
-    private final RegexRouter<R> regexRouter = new RegexRouter<>();
     private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
     private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
 
@@ -70,6 +70,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private Schema defaultValueSchema;
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
+    private Pattern routeTopicRegex;
+    private String routTopicReplacement;
 
     private boolean onlyHeadersInOutputMessage = false;
 
@@ -228,7 +230,19 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         LOGGER.debug("Message emitted with event id: \"{}\", event key: \"{}\"", eventId, recordKey);
 
-        return regexRouter.apply(newRecord);
+        final Matcher matcher = routeTopicRegex.matcher(newRecord.topic());
+        if (matcher.matches()) {
+            final String topic = matcher.replaceFirst(routTopicReplacement);
+            return newRecord.newRecord(topic,
+                    newRecord.kafkaPartition(),
+                    newRecord.keySchema(),
+                    newRecord.key(),
+                    newRecord.valueSchema(),
+                    newRecord.value(),
+                    newRecord.timestamp());
+        }
+
+        return newRecord;
     }
 
     /**
@@ -355,11 +369,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         fieldSchemaVersion = config.getString(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION);
         routeTombstoneOnEmptyPayload = config.getBoolean(EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
 
-        final Map<String, String> regexRouterConfig = new HashMap<>();
-        regexRouterConfig.put("regex", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX));
-        regexRouterConfig.put("replacement", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REPLACEMENT));
-
-        regexRouter.configure(regexRouterConfig);
+        routeTopicRegex = Pattern.compile(config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX));
+        routTopicReplacement = config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REPLACEMENT);
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
