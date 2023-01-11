@@ -20,7 +20,7 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 public class InfinispanTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinispanTestResourceLifecycleManager.class);
-    public static final String INFINISPAN_IMAGE = "quay.io/infinispan/server:14.0.4.Final";
+    public static final String INFINISPAN_IMAGE = "quay.io/infinispan/server:" + System.getProperty("tag.infinispan", "latest");
     public static final int PORT = ConfigurationProperties.DEFAULT_HOTROD_PORT;
     public static final String CONFIG_PATH = "/etc/infinispan-local.xml";
     private static final GenericContainer<?> container = new GenericContainer<>(INFINISPAN_IMAGE)

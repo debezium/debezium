@@ -19,7 +19,6 @@
         <version.pravega>0.9.1</version.pravega>
         <version.nats>2.16.3</version.nats>
         <version.stan>2.2.3</version.stan>
-        <version.infinispan>14.0.4.Final</version.infinispan>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
