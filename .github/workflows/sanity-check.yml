@@ -18,8 +18,9 @@ jobs:
         id: check
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
+          github_repository: ${{ github.repository }}
         run: |
-          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
+          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
           NON_PREFIX_COMMITS=""
           while IFS= read -r line ;
           do
