@@ -19,7 +19,6 @@ import java.util.Arrays;
 
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
-import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,9 +242,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
-    public PGmoney asMoney() {
+    public Object asMoney() {
         if (value.hasDatumInt64()) {
-            return new PGmoney(value.getDatumInt64() / 100.0);
+            return new BigDecimal(value.getDatumInt64()).divide(new BigDecimal(100.0));
         }
         return super.asMoney();
     }
