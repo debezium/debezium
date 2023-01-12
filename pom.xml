@@ -139,6 +139,7 @@
         <!-- Infinispan version for Oracle and Debezium Server sink -->
         <version.infinispan>14.0.4.Final</version.infinispan>
         <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
+
     </properties>
 
     <modules>
