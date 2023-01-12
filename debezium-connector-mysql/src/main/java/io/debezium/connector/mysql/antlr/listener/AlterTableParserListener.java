@@ -301,7 +301,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
         parser.runIfNotNull(() -> {
             if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 // this may eventually get overwritten by a real PK
-                parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+                parser.parseUniqueIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
         }, tableEditor);
         super.enterAlterByAddUniqueKey(ctx);
