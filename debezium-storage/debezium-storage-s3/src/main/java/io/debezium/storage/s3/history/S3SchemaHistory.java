@@ -75,6 +75,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
     public static final String SECRET_ACCESS_KEY_CONFIG = "s3.secret.access.key";
     public static final String REGION_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.region.name";
     public static final String BUCKET_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.bucket.name";
+    public static final String OBJECT_NAME_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.object.name";
     public static final String ENDPOINT_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.endpoint";
     public static final String OBJECT_CONTENT_TYPE = "text/plain";
 
@@ -101,6 +102,12 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             .withType(Type.STRING)
             .withImportance(Importance.HIGH);
 
+    public static final Field OBJECT_NAME = Field.create(OBJECT_NAME_CONFIG)
+            .withDisplayName("S3 Object name")
+            .withType(Type.STRING)
+            .withImportance(Importance.HIGH)
+            .withDescription("The name of the object under which the history is stored.");
+
     public static final Field ENDPOINT = Field.create(ENDPOINT_CONFIG)
             .withDisplayName("S3 endpoint")
             .withType(Type.STRING)
@@ -112,9 +119,9 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
-    private final String objectName = String.format("db-history-%s.log", Thread.currentThread().getName());
 
     private String bucket = null;
+    private String objectName = null;
     private Region region = null;
     private URI endpoint = null;
     private AwsCredentialsProvider credentialsProvider = null;
@@ -134,12 +141,19 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             throw new DebeziumException(BUCKET + " is required to be set");
         }
 
-        // Unknown value is mapped to aws-global internally
+        objectName = config.getString(OBJECT_NAME);
+        if (objectName == null) {
+            throw new DebeziumException(OBJECT_NAME + " is required to be set");
+        }
+
+        // Unknown value is not detected by Region.of
         final var regionName = config.getString(REGION);
         if (regionName == null) {
             throw new DebeziumException(REGION + " is required to be set");
         }
         region = Region.of(regionName);
+
+        LOGGER.info("Database history will be stored in bucket '{}' under key '{}' using region '{}'", bucket, objectName, region);
 
         final var uriString = config.getString(ENDPOINT);
         if (uriString != null) {
@@ -186,7 +200,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
                     // do nothing
                 }
                 catch (S3Exception e) {
-                    throw new SchemaHistoryException("Can not retrieve history object from S3", e);
+                    throw new SchemaHistoryException("Can't retrieve history object from S3", e);
                 }
 
                 if (objectInputStream != null) {
