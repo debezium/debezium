@@ -1691,7 +1691,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1437")
-    public void shouldPeformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
+    public void shouldPerformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(InitialOnlySnapshotter.class);
 
