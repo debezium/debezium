@@ -66,21 +66,4 @@ public class TableCommonParserListener extends MySqlParserBaseListener {
         super.exitColumnDeclaration(ctx);
     }
 
-    @Override
-    public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
-        parser.runIfNotNull(() -> {
-            parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-        }, tableEditor);
-        super.enterPrimaryKeyTableConstraint(ctx);
-    }
-
-    @Override
-    public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
-                parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-            }
-        }, tableEditor);
-        super.enterUniqueKeyTableConstraint(ctx);
-    }
 }

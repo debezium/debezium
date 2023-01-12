@@ -87,6 +87,24 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-6003")
+    public void shouldProcessCreateUniqueBeforePrimaryKeyDefinitions() {
+        String ddl = "CREATE TABLE `dd2` (\n"
+                + "`id` INT ( 11 ) NOT NULL,\n"
+                + "`name` VARCHAR ( 255 ),\n"
+                + "UNIQUE KEY `test` ( `name` ),\n"
+                + "PRIMARY KEY ( `id` )\n"
+                + ") ENGINE = INNODB;";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "dd2");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-5623")
     public void shouldProcessAlterAddDefinitions() {
         String ddl = "create table `some_table` (id bigint(20) not null);"

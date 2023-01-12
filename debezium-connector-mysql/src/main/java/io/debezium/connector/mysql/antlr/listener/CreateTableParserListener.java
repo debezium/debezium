@@ -6,6 +6,7 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,6 +14,7 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.IndexColumnNamesContext;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -23,6 +25,11 @@ import io.debezium.relational.TableId;
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
 public class CreateTableParserListener extends TableCommonParserListener {
+
+    protected boolean primaryKeyConstraint;
+    protected boolean uniqueKeyConstraint;
+    protected IndexColumnNamesContext primaryKeyColumnContext;
+    protected List<IndexColumnNamesContext> uniqueKeyColumnContexts = new ArrayList<>();
 
     public CreateTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
         super(parser, listeners);
@@ -59,6 +66,20 @@ public class CreateTableParserListener extends TableCommonParserListener {
                             })
                     .map(ColumnEditor::create)
                     .collect(Collectors.toList()));
+            // parse primary key according primary/unique key constraint
+            if (primaryKeyConstraint && primaryKeyColumnContext != null) {
+                parser.parsePrimaryIndexColumnNames(primaryKeyColumnContext, tableEditor);
+            }
+            else if (uniqueKeyConstraint && uniqueKeyColumnContexts.size() > 0) {
+                if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(uniqueKeyColumnContexts.get(0), tableEditor)) {
+                    parser.parsePrimaryIndexColumnNames(uniqueKeyColumnContexts.get(0), tableEditor);
+                }
+            }
+            primaryKeyConstraint = false;
+            uniqueKeyConstraint = false;
+            primaryKeyColumnContext = null;
+            uniqueKeyColumnContexts.clear();
+
             parser.databaseTables().overwriteTable(tableEditor.create());
             parser.signalCreateTable(tableEditor.tableId(), ctx);
         }, tableEditor);
@@ -97,6 +118,24 @@ public class CreateTableParserListener extends TableCommonParserListener {
             }, tableEditor);
         }
         super.enterTableOptionComment(ctx);
+    }
+
+    @Override
+    public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
+        parser.runIfNotNull(() -> {
+            primaryKeyConstraint = true;
+            primaryKeyColumnContext = ctx.indexColumnNames();
+        }, tableEditor);
+        super.enterPrimaryKeyTableConstraint(ctx);
+    }
+
+    @Override
+    public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
+        parser.runIfNotNull(() -> {
+            uniqueKeyConstraint = true;
+            uniqueKeyColumnContexts.add(ctx.indexColumnNames());
+        }, tableEditor);
+        super.enterUniqueKeyTableConstraint(ctx);
     }
 
 }
