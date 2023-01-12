@@ -1197,6 +1197,71 @@ When the alternative implementations are not available then the default ones are
 |Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
 |===
 
+==== Apache RocketMQ
+
+https://rocketmq.apache.org/[Apache RocketMQ] is a distributed messaging and streaming platform with low latency, high
+performance and reliability, trillion-level capacity and flexible scalability.Debezium server supports publishing
+captured change events to a configured RocketMQ.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rocketmq-type]]<<rocketmq-type, `debezium.sink.type`>>
+|
+|Must be set to `rocketmq`.
+
+|[[rocketmq-namesrv-addr]]<<rocketmq-namesrv-addr, `debezium.sink.rocketmq.producer.name.srv.addr`>>
+|
+|Name server address of Apache RocketMQ .
+
+|[[rocketmq-producer-group]]<<rocketmq-producer-group, `debezium.sink.rocketmq.producer.group`>>
+|
+|Producer group of Apache RocketMQ.
+
+|[[rocketmq-max-message-size]]<<rocketmq-max-message-size, `debezium.sink.rocketmq.producer.max.message.size`>>
+| 4M, Suggest less than 4 MB.
+|(Optional)Maximum number of bytes of sent message body.
+
+|[[rocketmq-send-timeout]]<<rocketmq-send-timeout, `debezium.sink.rocketmq.producer.send.msg.timeout`>>
+| 3000ms
+|(Optional) The send message timeout duration is the waiting time for local synchronous invocation of clients. Set a
+proper value based on the actual application to avoid long thread blocking time.
+
+|[[rocketmq-acl-enabled]]<<rocketmq-acl-enabled, `debezium.sink.rocketmq.producer.acl.enabled`>>
+| false
+|(Optional) The configuration is used to enable access authorization.
+
+|[[rocketmq-access-key]]<<rocketmq-access-key, `debezium.sink.rocketmq.producer.access.key`>>
+|
+|(Optional) The access key used for connecting to Apache RocketMQ cluster .
+
+|[[rocketmq-secret-key]]<<rocketmq-secret-key, `debezium.sink.rocketmq.producer.secret.key`>>
+|
+|(Optional) The access secret used for connecting to Apache RocketMQ cluster .
+
+|===
+
+===== Injection points
+
+The rocketmq sink behaviour can be modified by a custom logic providing alternative implementations for specific
+functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[rocketmq-producer]]<<rocketmq-producer, `org.apache.rocketmq.client.producer.DefaultMQProducer`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a RocketMQ used to publish messages to target topic.
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
