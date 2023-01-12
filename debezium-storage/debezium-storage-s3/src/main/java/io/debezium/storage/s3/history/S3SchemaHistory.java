@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -40,6 +39,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.util.FunctionalReadWriteLock;
+import io.debezium.util.Loggings;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -117,7 +117,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
 
     private final AtomicBoolean running = new AtomicBoolean();
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final DocumentWriter writer = DocumentWriter.defaultWriter();
+    private final DocumentWriter documentWriter = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
 
     private String bucket = null;
@@ -253,29 +253,18 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             records.add(record);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             try (BufferedWriter historyWriter = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-                records.forEach(r -> {
+                for (HistoryRecord r : records) {
                     String line = null;
-                    try {
-                        line = writer.write(r.document());
-                    }
-                    catch (IOException e) {
-                        LOGGER.error("Failed to convert record to string: {}", r, e);
-                    }
-
+                    line = documentWriter.write(r.document());
                     if (line != null) {
-                        try {
-                            historyWriter.newLine();
-                            historyWriter.append(line);
-                        }
-                        catch (IOException e) {
-                            LOGGER.error("Failed to add record {} to history", r, e);
-                            return;
-                        }
+                        historyWriter.newLine();
+                        historyWriter.append(line);
                     }
-                });
+                }
             }
             catch (IOException e) {
-                LOGGER.error("Failed to convert record to string: {}", record, e);
+                Loggings.logErrorAndTraceRecord(logger, record, "Failed to convert record", e);
+                throw new SchemaHistoryException("Failed to convert record", e);
             }
 
             try {
@@ -287,7 +276,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
                 client.putObject(request, RequestBody.fromBytes(outputStream.toByteArray()));
             }
             catch (S3Exception e) {
-                throw new SchemaHistoryException("can not store record to S3", e);
+                throw new SchemaHistoryException("Can not store record to S3", e);
             }
 
         });
@@ -305,11 +294,20 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public boolean storageExists() {
-        return client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(config.getString(bucket));
+        final boolean bucketExists = client.listBuckets().buckets().stream().map(Bucket::name).anyMatch(bucket::equals);
+        if (bucketExists) {
+            LOGGER.info("Bucket '{}' used to store database history exists", bucket);
+        }
+        else {
+            LOGGER.info("Bucket '{}' used to store database history does not exist yet", bucket);
+        }
+        return bucketExists;
     }
 
     @Override
     public void initializeStorage() {
+        super.initializeStorage();
+        LOGGER.info("Creating S3 bucket '{}' used to store database history", bucket);
         client.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
     }
 

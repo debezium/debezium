@@ -5,6 +5,10 @@
  */
 package io.debezium.storage.s3.history;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,7 +21,6 @@ import java.util.stream.Collectors;
 
 import org.apache.http.entity.ContentType;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -39,6 +42,7 @@ import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
@@ -91,22 +95,37 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
 
     @Test
     public void initializeStorageShouldCreateBucket() {
-        if (client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET)) {
+        try {
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+        }
+        catch (NoSuchBucketException e) {
         }
         history.initializeStorage();
 
-        Assert.assertTrue(client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET));
+        assertTrue(client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET));
+    }
+
+    @Test
+    public void shouldDetectExistingBucket() {
+        try {
+            client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
+        }
+        catch (NoSuchBucketException e) {
+        }
+
+        assertFalse(history.storageExists());
+        history.initializeStorage();
+        assertTrue(history.storageExists());
     }
 
     @Test
     public void storeRecordShouldSaveRecordsInS3() throws IOException {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
         List<S3Object> s3ObjectList = client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build()).contents();
-        Assert.assertEquals(1, s3ObjectList.size());
+        assertEquals(1, s3ObjectList.size());
 
         S3Object s3Object = s3ObjectList.get(0);
-        Assert.assertEquals(OBJECT_NAME, s3Object.key());
+        assertEquals(OBJECT_NAME, s3Object.key());
 
         InputStream objectInputStream = client.getObject(
                 GetObjectRequest.builder().bucket(BUCKET)
@@ -125,10 +144,10 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
             historyRecords.add(new HistoryRecord(reader.read(historyReader.readLine())));
         }
 
-        Assert.assertEquals(1, historyRecords.size());
+        assertEquals(1, historyRecords.size());
 
-        Assert.assertEquals("CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", historyRecords.get(0).document().getString("ddl"));
-        Assert.assertEquals(1, historyRecords.get(0).document().getDocument("position").getInteger("position").intValue());
-        Assert.assertEquals(0, historyRecords.get(0).document().getDocument("position").getInteger("entry").intValue());
+        assertEquals("CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", historyRecords.get(0).document().getString("ddl"));
+        assertEquals(1, historyRecords.get(0).document().getDocument("position").getInteger("position").intValue());
+        assertEquals(0, historyRecords.get(0).document().getDocument("position").getInteger("entry").intValue());
     }
 }
