@@ -59,7 +59,7 @@ public class ZonedTimestamp {
      */
     private static DateTimeFormatter getDateTimeFormatter(Integer fractionalWidth) {
         // TIMESTAMP type passes fractionalWidth as -1.
-        if (fractionalWidth == null || fractionalWidth <= 0) {
+        if (fractionalWidth == null || fractionalWidth <= 0 || fractionalWidth > 9) {
             return FORMATTER;
         }
 
