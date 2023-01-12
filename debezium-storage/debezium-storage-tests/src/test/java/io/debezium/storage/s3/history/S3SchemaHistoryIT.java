@@ -23,7 +23,6 @@ import org.junit.Test;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.history.AbstractSchemaHistoryTest;
@@ -81,7 +80,8 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
                 .with(S3SchemaHistory.ACCESS_KEY_ID, "aa")
                 .with(S3SchemaHistory.SECRET_ACCESS_KEY, "bb")
                 .with(S3SchemaHistory.BUCKET_CONFIG, BUCKET)
-                .with(S3SchemaHistory.REGION_CONFIG, Region.AWS_GLOBAL)
+                .with(S3SchemaHistory.OBJECT_NAME, OBJECT_NAME)
+                .with(S3SchemaHistory.REGION_CONFIG, Region.AWS_GLOBAL.id())
                 .with(S3SchemaHistory.ENDPOINT_CONFIG, container.getHttpEndpoint())
                 .build();
         history.configure(config, null, SchemaHistoryListener.NOOP, true);
