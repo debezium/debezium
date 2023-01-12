@@ -27,6 +27,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -81,14 +82,12 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             .withDisplayName("S3 access key id")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
-            .withDefault("")
             .withImportance(Importance.HIGH);
 
     public static final Field SECRET_ACCESS_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + SECRET_ACCESS_KEY_CONFIG)
             .withDisplayName("S3 secret access key")
             .withType(Type.PASSWORD)
             .withWidth(Width.LONG)
-            .withDefault("")
             .withImportance(Importance.HIGH);
 
     public static final Field REGION = Field.create(REGION_CONFIG)
@@ -98,12 +97,12 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             .withImportance(Importance.MEDIUM);
 
     public static final Field BUCKET = Field.create(BUCKET_CONFIG)
-            .withDisplayName("S3 object")
+            .withDisplayName("S3 bucket")
             .withType(Type.STRING)
             .withImportance(Importance.HIGH);
 
     public static final Field ENDPOINT = Field.create(ENDPOINT_CONFIG)
-            .withDefault("S3 endpoint")
+            .withDisplayName("S3 endpoint")
             .withType(Type.STRING)
             .withImportance(Importance.LOW);
 
@@ -131,13 +130,29 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
         }
 
         bucket = config.getString(BUCKET);
-        region = Region.of(config.getString(REGION));
-        endpoint = URI.create(config.getString(ENDPOINT));
+        if (bucket == null) {
+            throw new DebeziumException(BUCKET + " is required to be set");
+        }
 
-        if (config.getString(ACCESS_KEY_ID).isEmpty() && config.getString(SECRET_ACCESS_KEY).isEmpty()) {
+        // Unknown value is mapped to aws-global internally
+        final var regionName = config.getString(REGION);
+        if (regionName == null) {
+            throw new DebeziumException(REGION + " is required to be set");
+        }
+        region = Region.of(regionName);
+
+        final var uriString = config.getString(ENDPOINT);
+        if (uriString != null) {
+            LOGGER.info("Using explicitly configured endpoint " + uriString);
+            endpoint = URI.create(uriString);
+        }
+
+        if (config.getString(ACCESS_KEY_ID) == null && config.getString(SECRET_ACCESS_KEY) == null) {
+            LOGGER.info("DefaultCreadentialsProvider is used for authentication");
             credentialsProvider = DefaultCredentialsProvider.create();
         }
         else {
+            LOGGER.info("StaticCredentialsProvider is used for authentication");
             AwsCredentials credentials = AwsBasicCredentials.create(config.getString(ACCESS_KEY_ID), config.getString(SECRET_ACCESS_KEY));
             credentialsProvider = StaticCredentialsProvider.create(credentials);
         }

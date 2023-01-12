@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.history.AbstractSchemaHistoryTest;
@@ -42,7 +43,7 @@ import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
-    final public static String IMAGE_TAG = System.getProperty("tag.smock");
+    final public static String IMAGE_TAG = System.getProperty("tag.smock", "latest");
     final public static String BUCKET = "debezium";
 
     final public static String OBJECT_NAME = String.format("db-history-%s.log", Thread.currentThread().getName());
@@ -77,8 +78,8 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
     protected SchemaHistory createHistory() {
         SchemaHistory history = new S3SchemaHistory();
         Configuration config = Configuration.create()
-                .with(S3SchemaHistory.ACCESS_KEY_ID, "")
-                .with(S3SchemaHistory.SECRET_ACCESS_KEY, "")
+                .with(S3SchemaHistory.ACCESS_KEY_ID, "aa")
+                .with(S3SchemaHistory.SECRET_ACCESS_KEY, "bb")
                 .with(S3SchemaHistory.BUCKET_CONFIG, BUCKET)
                 .with(S3SchemaHistory.REGION_CONFIG, Region.AWS_GLOBAL)
                 .with(S3SchemaHistory.ENDPOINT_CONFIG, container.getHttpEndpoint())
@@ -89,7 +90,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
     }
 
     @Test
-    public void InitializeStorageShouldCreateBucket() {
+    public void initializeStorageShouldCreateBucket() {
         if (client.listBuckets().buckets().stream().map(Bucket::name).collect(Collectors.toList()).contains(BUCKET)) {
             client.deleteBucket(DeleteBucketRequest.builder().bucket(BUCKET).build());
         }
@@ -99,7 +100,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
     }
 
     @Test
-    public void StoreRecordShouldSaveRecordsInS3() throws IOException {
+    public void storeRecordShouldSaveRecordsInS3() throws IOException {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
         List<S3Object> s3ObjectList = client.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build()).contents();
         Assert.assertEquals(1, s3ObjectList.size());
