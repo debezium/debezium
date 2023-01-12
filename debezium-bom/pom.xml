@@ -37,10 +37,11 @@
         <version.graalvm.js>20.0.0</version.graalvm.js>
 
         <!-- Storages -->
-	<!-- Redis -->
+
+        <!-- Redis -->
         <version.jedis>4.1.1</version.jedis>
 
-	<!-- S3 -->
+        <!-- S3 -->
         <version.s3>2.17.241</version.s3>
 
         <!-- Testing -->
@@ -433,6 +434,17 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-client</artifactId>
+                <version>${version.rocketmq}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-tools</artifactId>
+                <version>${version.rocketmq}</version>
             </dependency>
 
             <!-- S3 Storage -->
