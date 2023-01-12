@@ -132,8 +132,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
+                final Operation lastProcessedMessageType = offsetContext.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn);
+                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn, lastProcessedMessageType);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -233,7 +234,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                             taskContext.getSlotXmin(connection),
-                            null);
+                            null,
+                            message.getOperation());
                     if (message.getOperation() == Operation.BEGIN) {
                         dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext);
                     }
@@ -245,7 +247,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 else if (message.getOperation() == Operation.MESSAGE) {
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                            taskContext.getSlotXmin(connection));
+                            taskContext.getSlotXmin(connection),
+                            message.getOperation());
 
                     // non-transactional message that will not be followed by a COMMIT message
                     if (message.isLastEventForLsn()) {
@@ -270,7 +273,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                             taskContext.getSlotXmin(connection),
-                            tableId);
+                            tableId,
+                            message.getOperation());
 
                     boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
                             partition,
