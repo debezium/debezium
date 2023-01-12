@@ -50,7 +50,7 @@ public class LegacyV1SourceInfoTest {
     @Test
     @FixFor("DBZ-934")
     public void canHandleNullValues() {
-        source.update(null, null, null, null, null);
+        source.update(null, null, null, null, null, null);
     }
 
     @Test
