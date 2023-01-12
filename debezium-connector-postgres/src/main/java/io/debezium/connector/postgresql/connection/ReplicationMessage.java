@@ -19,7 +19,6 @@ import org.postgresql.geometric.PGline;
 import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
-import org.postgresql.util.PGmoney;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
@@ -60,8 +59,7 @@ public interface ReplicationMessage {
         PostgresType getType();
 
         /**
-         * Returns additional metadata about this column's type. May only be called
-         * after checking {@link ReplicationMessage#hasMetadata()}.
+         * Returns additional metadata about this column's type.
          */
         ColumnTypeMetadata getTypeMetadata();
 
@@ -123,7 +121,7 @@ public interface ReplicationMessage {
 
         Object asLseg();
 
-        PGmoney asMoney();
+        Object asMoney();
 
         PGpath asPath();
 
