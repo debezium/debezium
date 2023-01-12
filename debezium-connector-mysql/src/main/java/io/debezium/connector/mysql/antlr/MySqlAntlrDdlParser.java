@@ -326,6 +326,23 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Parse column names for unique index from {@link MySqlParser.IndexColumnNamesContext}. This method will set
+     * unique key column names to table if there are no optional.
+     *
+     * @param indexColumnNamesContext unique key index column names context.
+     * @param tableEditor editor for table where primary key index is parsed.
+     */
+    public void parseUniqueIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        List<Column> indexColumns = getIndexColumns(indexColumnNamesContext, tableEditor);
+        if (indexColumns.stream().filter(col -> Objects.isNull(col) || col.isOptional()).count() > 0) {
+            logger.warn("Skip to set unique index columns {} to primary key which including optional columns", indexColumns);
+        }
+        else {
+            tableEditor.setPrimaryKeyNames(indexColumns.stream().map(Column::name).collect(Collectors.toList()));
+        }
+    }
+
+    /**
      * Determine if a table's unique index should be included when parsing relative unique index statement.
      *
      * @param indexColumnNamesContext unique index column names context.
@@ -333,6 +350,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return true if the index is to be included; false otherwise.
      */
     public boolean isTableUniqueIndexIncluded(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return getIndexColumns(indexColumnNamesContext, tableEditor).stream().filter(Objects::isNull).count() == 0;
+    }
+
+    private List<Column> getIndexColumns(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
         return indexColumnNamesContext.indexColumnName().stream()
                 .map(indexColumnNameContext -> {
                     String columnName;
@@ -347,7 +368,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     }
                     return tableEditor.columnWithName(columnName);
                 })
-                .filter(Objects::isNull).count() == 0;
+                .collect(Collectors.toList());
     }
 
     /**
