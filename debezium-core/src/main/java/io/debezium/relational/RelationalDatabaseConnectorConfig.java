@@ -6,7 +6,6 @@
 package io.debezium.relational;
 
 import java.math.BigDecimal;
-import java.sql.Connection;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,7 +18,6 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -140,85 +138,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
          */
         public static DecimalHandlingMode parse(String value, String defaultValue) {
             DecimalHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
-    /**
-     * The set of predefined snapshot isolation mode options.
-     */
-    public static enum SnapshotIsolationMode implements EnumeratedValue {
-
-        /**
-         * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
-         * locks during the snapshot process, except schema snapshot phase where exclusive table
-         * locks are acquired for a short period.  Since phantom reads can occur, it does not fully
-         * guarantee consistency.
-         */
-        REPEATABLE_READ("repeatable_read"),
-
-        /**
-         * This mode uses READ COMMITTED isolation level. This mode does not take any table locks during
-         * the snapshot process. In addition, it does not take any long-lasting row-level locks, like
-         * in repeatable read isolation level. Snapshot consistency is not guaranteed.
-         */
-        READ_COMMITTED("read_committed"),
-
-        /**
-         * This mode uses READ UNCOMMITTED isolation level. This mode takes neither table locks nor row-level locks
-         * during the snapshot process.  This way other transactions are not affected by initial snapshot process.
-         * However, snapshot consistency is not guaranteed.
-         */
-        READ_UNCOMMITTED("read_uncommitted"),
-
-        /**
-         * This mode uses SERIALIZABLE isolation level. This mode takes table locks during the snapshot process.
-         * This way other transactions will be blocked until snapshot is completed. However, snapshot consistency is not guaranteed.
-         */
-        SERIALIZABLE("serializable");
-
-        private final String value;
-
-        private SnapshotIsolationMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static SnapshotIsolationMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (SnapshotIsolationMode option : SnapshotIsolationMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static SnapshotIsolationMode parse(String value, String defaultValue) {
-            SnapshotIsolationMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
@@ -535,23 +454,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + " If you are excluding a lot of tables the default behavior should work well.")
             .withDefault(false);
 
-    public static final Field INCREMENTAL_SNAPSHOT_ISOLATION_MODE = Field.create("incremental.snapshot.isolation.mode")
-            .withDisplayName("Incremental Snapshot isolation mode")
-            .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 10))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
-                    + "The default is '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
-                    + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
-                    + "Using a value of '" + SnapshotIsolationMode.SERIALIZABLE.getValue()
-                    + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for captured table during the snapshot duration. "
-                    + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
-                    + "' is specified, connector runs the incremental snapshot in READ COMMITTED isolation level. No long-running locks are taken, so that incremental snapshot does not prevent "
-                    + "other transactions from updating table rows. Snapshot consistency is not guaranteed."
-                    + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
-                    + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
-
     public static final Field UNAVAILABLE_VALUE_PLACEHOLDER = Field.create("unavailable.value.placeholder")
             .withDisplayName("Unavailable value placeholder")
             .withType(Type.STRING)
@@ -568,8 +470,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .connector(
                     DECIMAL_HANDLING_MODE,
                     TIME_PRECISION_MODE,
-                    SNAPSHOT_LOCK_TIMEOUT_MS,
-                    INCREMENTAL_SNAPSHOT_ISOLATION_MODE)
+                    SNAPSHOT_LOCK_TIMEOUT_MS)
             .events(
                     COLUMN_INCLUDE_LIST,
                     COLUMN_EXCLUDE_LIST,
@@ -599,7 +500,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TableIdToStringMapper tableIdMapper;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
-    private final SnapshotIsolationMode incrementalSnapshotIsolationMode;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -609,8 +509,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
-        this.incrementalSnapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(INCREMENTAL_SNAPSHOT_ISOLATION_MODE),
-                INCREMENTAL_SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
+
         this.jdbcConfig = JdbcConfiguration.adapt(
                 config.subset(DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
 
@@ -639,39 +538,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public RelationalTableFilters getTableFilters() {
         return tableFilters;
-    }
-
-    /**
-     * Returns the default Transaction Isolation Level.
-     */
-    public int getDefaultTransactionIsolationLevel() {
-        SnapshotIsolationMode defaultSnapshotIsolationLevel = SnapshotIsolationMode.parse(INCREMENTAL_SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
-        return getTransactionIsolationLevel(defaultSnapshotIsolationLevel);
-    }
-
-    /**
-     * Returns the Incremental Snapshot Transaction Isolation Level.
-     */
-    public int getIncrementalSnapshotTransactionIsolationLevel() {
-        return getTransactionIsolationLevel(this.incrementalSnapshotIsolationMode);
-    }
-
-    public int getTransactionIsolationLevel(SnapshotIsolationMode snapshotIsolationMode) {
-        if (snapshotIsolationMode == SnapshotIsolationMode.READ_COMMITTED) {
-            return Connection.TRANSACTION_READ_COMMITTED;
-        }
-        else if (snapshotIsolationMode == SnapshotIsolationMode.READ_UNCOMMITTED) {
-            return Connection.TRANSACTION_READ_UNCOMMITTED;
-        }
-        else if (snapshotIsolationMode == SnapshotIsolationMode.REPEATABLE_READ) {
-            return Connection.TRANSACTION_REPEATABLE_READ;
-        }
-        else if (snapshotIsolationMode == SnapshotIsolationMode.SERIALIZABLE) {
-            return Connection.TRANSACTION_SERIALIZABLE;
-        }
-        else {
-            throw new DebeziumException("Default Isolation Level is not set");
-        }
     }
 
     /**
