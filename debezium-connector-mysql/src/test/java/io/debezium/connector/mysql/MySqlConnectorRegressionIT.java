@@ -349,14 +349,14 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();
-        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
         assertThat(rec1.get("nnc1")).isEqualTo(0);
         assertThat(rec1.get("nnc2")).isEqualTo(0L);
         assertThat(rec1.get("nnc3")).isEqualTo(0L);
         assertThat(rec2.get("c1")).isNull();
         assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("c3")).isNull();
-        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
         assertThat(rec2.get("nnc1")).isEqualTo(0);
         assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("nnc3")).isEqualTo(0L);
