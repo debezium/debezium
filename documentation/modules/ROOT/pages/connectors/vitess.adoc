@@ -69,9 +69,7 @@ This snapshot feature is built on link:https://vitess.io/docs/design-docs/vrepli
 
 [NOTE]
 ====
-In Vitess 15 or earlier, it is not possible to resume `VStream Copy.`
-Starting in Vitess 16, it will support resuming this initial copy phase if it's interrupted for any reason.
-This will allow the Vitess connector to implement restarting the snapshot where it last left off.
+Automatic retry of a failed snapshot is expected to be available in a future release.
 ====
 
 // Type: concept
