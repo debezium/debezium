@@ -120,6 +120,30 @@ public class PostgresMoneyIT extends AbstractConnectorTest {
         assertThat(after.get("m")).isEqualTo(92233720368547758.00);
     }
 
+    @Test
+    @FixFor("DBZ-6001")
+    public void shouldReceiveChangesForInsertNullAndZeroMoney() throws Exception {
+        createTable();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .build();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        // insert 2 records for testing
+        TestHelper.execute("insert into post_money.debezium_test(id, m) values(10, null), (11, '0.00'::money);");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("post_money.debezium_test"));
+
+        assertThat(recordsForTopic).hasSize(2);
+        Struct after = ((Struct) recordsForTopic.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("m")).isNull();
+        after = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("m")).isEqualTo(BigDecimal.ZERO.setScale(2));
+    }
+
     private void createTable() {
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS post_money CASCADE;",

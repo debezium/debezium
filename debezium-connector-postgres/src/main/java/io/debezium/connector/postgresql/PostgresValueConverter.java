@@ -796,7 +796,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     break;
                 case PRECISE:
                     if (data instanceof BigDecimal) {
-                        r.deliver(data);
+                        r.deliver(((BigDecimal) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
                     else if (data instanceof Double) {
                         r.deliver(BigDecimal.valueOf((Double) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
