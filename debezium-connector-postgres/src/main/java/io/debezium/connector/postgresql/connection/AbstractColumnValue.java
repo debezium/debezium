@@ -23,7 +23,6 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGmoney;
 import org.postgresql.util.PGtokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,20 +138,16 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
 
     @Override
     public Object asMoney() {
-        try {
-            final String value = asString();
-            if (value != null && value.startsWith("-")) {
-                final String negativeMoney = "(" + value.substring(1) + ")";
-                return new BigDecimal(removeCurrencySymbol(negativeMoney));
-            }
-            else if (value != null) {
-                return new BigDecimal(removeCurrencySymbol(value));
-            }
-            return new PGmoney(asString());
+        final String value = asString();
+        if (value == null) {
+            return null;
         }
-        catch (final SQLException e) {
-            LOGGER.error("Failed to parse money {}, {}", asString(), e);
-            throw new ConnectException(e);
+        else if (value.startsWith("-")) {
+            final String negativeMoney = "(" + value.substring(1) + ")";
+            return new BigDecimal(removeCurrencySymbol(negativeMoney));
+        }
+        else {
+            return new BigDecimal(removeCurrencySymbol(value));
         }
     }
 
