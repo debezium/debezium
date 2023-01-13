@@ -31,7 +31,7 @@ public final class Envelope {
     /**
      * The constants for the values for the {@link FieldName#OPERATION operation} field in the message envelope.
      */
-    public static enum Operation {
+    public enum Operation {
         /**
          * The operation that read the current state of a record, most typically during snapshots.
          */
@@ -59,7 +59,7 @@ public final class Envelope {
 
         private final String code;
 
-        private Operation(String code) {
+        Operation(String code) {
             this.code = code;
         }
 
@@ -141,7 +141,7 @@ public final class Envelope {
     /**
      * A builder of an envelope schema.
      */
-    public static interface Builder {
+    public interface Builder {
         /**
          * Define the {@link Schema} used in the {@link FieldName#BEFORE} and {@link FieldName#AFTER} fields.
          *

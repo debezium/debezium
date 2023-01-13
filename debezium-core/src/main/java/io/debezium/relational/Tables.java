@@ -48,14 +48,14 @@ public final class Tables {
         /**
          * Creates a {@link TableFilter} from the given predicate.
          */
-        public static TableFilter fromPredicate(Predicate<TableId> predicate) {
+        static TableFilter fromPredicate(Predicate<TableId> predicate) {
             return t -> predicate.test(t);
         }
 
         /**
          * Creates a {@link TableFilter} that includes all tables.
          */
-        public static TableFilter includeAll() {
+        static TableFilter includeAll() {
             return t -> true;
         }
     }
@@ -420,7 +420,7 @@ public final class Tables {
         private final boolean tableIdCaseInsensitive;
         private final ConcurrentMap<TableId, Table> values;
 
-        public TablesById(boolean tableIdCaseInsensitive) {
+        TablesById(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new ConcurrentHashMap<>();
         }
@@ -505,7 +505,7 @@ public final class Tables {
         private final boolean tableIdCaseInsensitive;
         private final Set<TableId> values;
 
-        public TableIds(boolean tableIdCaseInsensitive) {
+        TableIds(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new HashSet<>();
         }

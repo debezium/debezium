@@ -307,8 +307,8 @@ public class MongoDbShardedCluster implements Startable {
                 .pollInterval(1, SECONDS)
                 .until(() -> stream(arbitraryRouter.eval("db.adminCommand({listShards: 1})")
                         .path("shards"))
-                                .anyMatch(s -> s.get("_id").asText().equals(shard.getName()) &&
-                                        s.get("state").asInt() == 1));
+                        .anyMatch(s -> s.get("_id").asText().equals(shard.getName()) &&
+                                s.get("state").asInt() == 1));
     }
 
     private Stream<Startable> stream() {

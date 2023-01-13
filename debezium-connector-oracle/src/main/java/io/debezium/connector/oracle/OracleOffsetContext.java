@@ -36,7 +36,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      * SCN that was used for the initial consistent snapshot.
      *
      * We keep track of this field because it's a cutoff for emitting DDL statements,
-     * in case we start mining _before_ the snapshot SCN to cover transactions that were 
+     * in case we start mining _before_ the snapshot SCN to cover transactions that were
      * ongoing at the time the snapshot was taken.
      */
     private final Scn snapshotScn;

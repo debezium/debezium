@@ -7,7 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 public interface ChangeEventSource {
 
-    public interface ChangeEventSourceContext {
+    interface ChangeEventSourceContext {
 
         /**
          * Whether this source is running or has been requested to stop.

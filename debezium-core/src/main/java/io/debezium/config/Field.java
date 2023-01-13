@@ -246,7 +246,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return the list of valid values
          */
-        public List<Object> validValues(Field field, Configuration config);
+        List<Object> validValues(Field field, Configuration config);
 
         /**
          * Set the visibility of the field given the current configuration values.
@@ -254,7 +254,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return {@code true} if the field is to be visible, or {@code false} otherwise
          */
-        public boolean visible(Field field, Configuration config);
+        boolean visible(Field field, Configuration config);
     }
 
     public enum Group {
@@ -764,7 +764,7 @@ public final class Field {
     public Field required() {
         return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
                 defaultValueGenerator, validator, recommender, true, group, allowedValues)
-                        .withValidation(Field::isRequired);
+                .withValidation(Field::isRequired);
     }
 
     public Field optional() {

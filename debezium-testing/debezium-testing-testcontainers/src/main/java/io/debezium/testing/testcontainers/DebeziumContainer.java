@@ -173,7 +173,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static void handleFailedResponse(Response response) {
         String responseBodyContent = "{empty response body}";
-        try (final ResponseBody responseBody = response.body()) {
+        try (ResponseBody responseBody = response.body()) {
             if (null != responseBody) {
                 responseBodyContent = responseBody.string();
             }
@@ -188,7 +188,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         final RequestBody body = RequestBody.create(payload, JSON);
         final Request request = new Request.Builder().url(fullUrl).post(body).build();
 
-        try (final Response response = CLIENT.newCall(request).execute()) {
+        try (Response response = CLIENT.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 handleFailedResponse(response);
             }
@@ -202,7 +202,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         final RequestBody body = RequestBody.create(payload, JSON);
         final Request request = new Request.Builder().url(fullUrl).put(body).build();
 
-        try (final Response response = CLIENT.newCall(request).execute()) {
+        try (Response response = CLIENT.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 handleFailedResponse(response);
             }
@@ -231,7 +231,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public boolean connectorIsNotRegistered(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorUri(connectorName)).build();
-        try (final Response response = executeGETRequest(request)) {
+        try (Response response = executeGETRequest(request)) {
             return response.code() == 404;
         }
     }
@@ -251,7 +251,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public List<String> getRegisteredConnectors() {
         final Request request = new Request.Builder().url(getConnectorsUri()).build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 return MAPPER.readValue(responseBody.string(), new TypeReference<List<String>>() {
                 });
@@ -265,7 +265,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public boolean isConnectorConfigured(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorUri(connectorName)).build();
-        try (final Response response = executeGETRequest(request)) {
+        try (Response response = executeGETRequest(request)) {
             return response.isSuccessful();
         }
     }
@@ -290,7 +290,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public Connector.State getConnectorState(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorStatusUri(connectorName)).build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 return Connector.State.valueOf(parsedObject.get("connector").get("state").asText());
@@ -304,7 +304,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public Connector.State getConnectorTaskState(String connectorName, int taskNumber) {
         final Request request = new Request.Builder().url(getConnectorStatusUri(connectorName)).get().build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 final JsonNode tasksNode = parsedObject.get("tasks").get(taskNumber);
@@ -325,7 +325,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     public String getConnectorConfigProperty(String connectorName, String configPropertyName) {
         final Request request = new Request.Builder().url(getConnectorConfigUri(connectorName)).get().build();
 
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 return parsedObject.get(configPropertyName).asText();

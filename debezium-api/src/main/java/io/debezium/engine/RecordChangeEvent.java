@@ -15,5 +15,5 @@ import io.debezium.common.annotation.Incubating;
 @Incubating
 public interface RecordChangeEvent<V> {
 
-    public V record();
+    V record();
 }

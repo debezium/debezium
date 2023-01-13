@@ -173,7 +173,7 @@ public class ConnectionContext implements AutoCloseable {
 
     /**
      * Initial connection seed which is either a host specification or connection string
-     * 
+     *
      * @return hosts or connection string
      */
     public String connectionSeed() {
@@ -296,7 +296,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     @FunctionalInterface
-    public static interface PreferredConnectFailed {
+    public interface PreferredConnectFailed {
         void failed(int attemptNumber, int attemptsRemaining, Throwable error);
     }
 

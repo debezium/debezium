@@ -689,6 +689,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
 
+    public static final Field INCREMENTAL_SNAPSHOT_ISOLATION_MODE = RelationalDatabaseConnectorConfig.INCREMENTAL_SNAPSHOT_ISOLATION_MODE
+            .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.READ_COMMITTED)
+            .withDescription("Controls which transaction isolation level is used and how long the connector locks the captured tables. "
+                    + "The default is '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
+                    + "', which means that read committed isolation level is used."
+                    + "Using a value of '" + SnapshotIsolationMode.SERIALIZABLE.getValue()
+                    + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for captured table during the snapshot duration. "
+                    + "When '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
+                    + "' is specified, connector runs the snapshot in repeatable read isolation level. No long-running locks are taken, so that incremental snapshot does not prevent "
+                    + "other transactions from updating table rows. Snapshot consistency is not guaranteed."
+                    + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
+                    + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
@@ -987,7 +1000,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Postgres")
-            .excluding(CommonConnectorConfig.SKIPPED_OPERATIONS)
+            .excluding(
+                    CommonConnectorConfig.SKIPPED_OPERATIONS,
+                    RelationalDatabaseConnectorConfig.INCREMENTAL_SNAPSHOT_ISOLATION_MODE)
             .type(
                     HOSTNAME,
                     PORT,
@@ -1019,6 +1034,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_MODE_CLASS,
+                    INCREMENTAL_SNAPSHOT_ISOLATION_MODE,
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
@@ -1083,6 +1099,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Module.name();
     }
 
+    @Override
+    public int getDefaultTransactionIsolationLevel() {
+        SnapshotIsolationMode defaultSnapshotIsolationLevel = SnapshotIsolationMode.parse(INCREMENTAL_SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
+        return super.getTransactionIsolationLevel(defaultSnapshotIsolationLevel);
+    }
+
     private static class SystemTablesPredicate implements TableFilter {
         protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
         // these are tables that may be placed in the user's schema but are system tables. This typically includes modules
@@ -1092,8 +1114,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
-                    !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
+            return t.schema() != null && !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase()) &&
+                    t.table() != null && !SYSTEM_TABLES.contains(t.table().toLowerCase()) &&
                     !t.schema().startsWith(TEMP_TABLE_SCHEMA_PREFIX);
         }
     }

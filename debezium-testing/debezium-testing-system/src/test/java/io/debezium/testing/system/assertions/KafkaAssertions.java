@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 public interface KafkaAssertions<K, V> {
 
-    static final Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
+    Logger LOGGER = LoggerFactory.getLogger(KafkaAssertions.class);
 
     static void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
         await()
@@ -63,7 +63,7 @@ public interface KafkaAssertions<K, V> {
             consumer.seekToBeginning(consumer.assignment());
             assertThat(
                     records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
-                            .isGreaterThanOrEqualTo(count);
+                    .isGreaterThanOrEqualTo(count);
         }
     }
 

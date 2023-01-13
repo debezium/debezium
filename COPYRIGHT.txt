@@ -8,6 +8,7 @@ Adham
 Adrian Kreuziger
 Ahmed Eljami
 Aidas
+Akshansh Jain
 Akshath Patkar
 Alberto Martino
 Aleksejs Sibanovs
@@ -153,6 +154,7 @@ Ganesh Ramasubramanian
 Giljae Joo
 Gilles Vaquez
 Giovanni De Stefano
+Govinda Sakhare
 Grant Cooksey
 Guillaume Rosauro
 Guillaume Smet
@@ -162,6 +164,7 @@ Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
 Jacob Gminder
+Jakub Zalas
 Jan Doms
 Jan Hendrik Dolling
 Jan Werner

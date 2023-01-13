@@ -12,12 +12,6 @@ toc::[]
 
 [NOTE]
 ====
-This single message transformation (SMT) is under active development right now, so the emitted message structure or other details may still change as development progresses.
-Please see below for a descriptions of known limitations of this transformation.
-====
-
-[NOTE]
-====
 This SMT is supported only for the MongoDB connector.
 See xref:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
 ====

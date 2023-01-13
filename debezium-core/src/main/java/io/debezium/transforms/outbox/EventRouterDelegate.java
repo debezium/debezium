@@ -48,7 +48,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
 public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     @FunctionalInterface
-    public static interface RecordConverter<R> {
+    public interface RecordConverter<R> {
         R convert(R record);
     }
 

@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -477,13 +478,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @return a valid query string or empty if table will not be snapshotted
      */
     private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
-        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
-
-        // try without catalog id, as this might or might not be populated based on the given connector
-        if (overriddenSelect == null) {
-            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
-        }
-
+        String overriddenSelect = getSnapshotSelectOverridesByTable(tableId);
         if (overriddenSelect != null) {
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
@@ -491,6 +486,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
 
         return getSnapshotSelect(snapshotContext, tableId, columns);
+    }
+
+    protected String getSnapshotSelectOverridesByTable(TableId tableId) {
+        Map<TableId, String> snapshotSelectOverrides = connectorConfig.getSnapshotSelectOverridesByTable();
+        String overriddenSelect = snapshotSelectOverrides.get(tableId);
+
+        // try without catalog id, as this might or might not be populated based on the given connector
+        if (overriddenSelect == null) {
+            overriddenSelect = snapshotSelectOverrides.get(new TableId(null, tableId.schema(), tableId.table()));
+        }
+
+        return overriddenSelect;
     }
 
     /**

@@ -32,7 +32,7 @@ public class PostgresConnectorTaskIT {
     }
 
     class FakeContext extends PostgresTaskContext {
-        public FakeContext(PostgresConnectorConfig postgresConnectorConfig, PostgresSchema postgresSchema) {
+        FakeContext(PostgresConnectorConfig postgresConnectorConfig, PostgresSchema postgresSchema) {
             super(postgresConnectorConfig, postgresSchema, null);
         }
 

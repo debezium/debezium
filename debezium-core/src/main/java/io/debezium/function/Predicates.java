@@ -228,7 +228,7 @@ public class Predicates {
      * in the supplied comma-separated list that matches the predicate parameter in a case-insensitive manner.
      *
      * @param regexPatterns the comma-separated regular expression pattern (or literal) strings; may not be null
-    
+
      * @return the function that performs the matching
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */

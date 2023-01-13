@@ -199,18 +199,18 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         if (storeOnlyCapturedTables) {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(1);
+                    .isEqualTo(1);
         }
         else {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(useGlobalLock ? 1 : 5);
         }
 
         if (!useGlobalLock) {
@@ -381,10 +381,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(orders.numberOfReads()).isEqualTo(5);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 
@@ -522,7 +522,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     private String productsTableName() throws SQLException {
-        try (final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
     }
@@ -644,10 +644,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
         recordCount = 1;

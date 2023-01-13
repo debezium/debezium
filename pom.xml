@@ -73,7 +73,7 @@
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.40.2</version.docker.maven.plugin>
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
@@ -135,6 +135,10 @@
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
         <version.com.google.protobuf>3.19.6</version.com.google.protobuf>
+
+        <!-- Infinispan version for Oracle and Debezium Server sink -->
+        <version.infinispan>14.0.4.Final</version.infinispan>
+        <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
     </properties>
 
     <modules>

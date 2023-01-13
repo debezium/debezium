@@ -4,7 +4,7 @@
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
         <version>2.2.0-SNAPSHOT</version>
-	<relativePath>../pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-bom</artifactId>
@@ -26,10 +26,6 @@
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
-        <!-- Oracle dependencies -->
-        <version.infinispan>14.0.2.Final</version.infinispan>
-        <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
-
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
 
@@ -41,7 +37,11 @@
         <version.graalvm.js>20.0.0</version.graalvm.js>
 
         <!-- Storages -->
+	<!-- Redis -->
         <version.jedis>4.1.1</version.jedis>
+
+	<!-- S3 -->
+        <version.s3>2.17.241</version.s3>
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
@@ -50,7 +50,7 @@
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.17.5</version.testcontainers>
+        <version.testcontainers>1.17.6</version.testcontainers>
         <version.jsonpath>2.7.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
@@ -428,11 +428,20 @@
             </dependency>
 
             <!--Storages -->
+            <!-- Redis Storage -->
             <dependency>
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
             </dependency>
+
+            <!-- S3 Storage -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>s3</artifactId>
+                <version>${version.s3}</version>
+            </dependency>
+
 
             <!-- Testing utilities -->
             <dependency>
@@ -543,7 +552,22 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-s3</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-file</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-tests</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -635,11 +659,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-quarkus-outbox-deployment</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-storage-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

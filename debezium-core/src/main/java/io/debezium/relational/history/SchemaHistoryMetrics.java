@@ -32,7 +32,7 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaHistoryMetrics.class);
 
-    public static enum SchemaHistoryStatus {
+    public enum SchemaHistoryStatus {
         STOPPED,
         RECOVERING,
         RUNNING

@@ -293,7 +293,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
+        OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
     }

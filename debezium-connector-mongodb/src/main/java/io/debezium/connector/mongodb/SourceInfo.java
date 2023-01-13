@@ -152,7 +152,7 @@ public final class SourceInfo extends BaseSourceInfo {
         public final String lsid;
         public final Long txnNumber;
 
-        public SessionTransactionId(String lsid, Long txnNumber) {
+        SessionTransactionId(String lsid, Long txnNumber) {
             super();
             this.txnNumber = txnNumber;
             this.lsid = lsid;

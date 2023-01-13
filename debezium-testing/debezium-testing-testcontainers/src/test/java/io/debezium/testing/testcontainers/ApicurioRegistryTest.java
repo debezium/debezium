@@ -15,10 +15,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -28,6 +30,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
@@ -35,10 +38,13 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
 
 import com.jayway.jsonpath.JsonPath;
+
+import io.debezium.doc.FixFor;
 
 /**
  * An integration test verifying the Apicurio registry is interoperable with Debezium
@@ -49,21 +55,28 @@ public class ApicurioRegistryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
-    private static Network network = Network.newNetwork();
+    private static final List<String> capturedLogs = Collections.synchronizedList(new ArrayList<>());
+
+    private static final List<Pattern> logMatchers = Collections.synchronizedList(new ArrayList<>());
+
+    private static final Network network = Network.newNetwork();
 
     private static final ApicurioRegistryContainer apicurioContainer = new ApicurioRegistryContainer().withNetwork(network);
 
-    private static KafkaContainer kafkaContainer = new KafkaContainer()
+    private static final KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
+    public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = DebeziumContainer.nightly()
+    private static final String TROUBLE_MAKER_LOG = "Caused by: java.io.FileNotFoundException: TroubleMaker";
+    private static final String INVALID_HEADER_NAME_LOG = "Caused by: java.lang.IllegalArgumentException: invalid header name: \"\"";
+    public static final DebeziumContainer debeziumContainer = DebeziumContainer.nightly()
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+            .withLogConsumer(ApicurioRegistryTest::captureMatchingLog)
             .enableApicurioConverters()
             .dependsOn(kafkaContainer);
 
@@ -71,6 +84,12 @@ public class ApicurioRegistryTest {
     public static void startContainers() {
         Startables.deepStart(Stream.of(
                 apicurioContainer, kafkaContainer, postgresContainer, debeziumContainer)).join();
+    }
+
+    @BeforeEach
+    public void clearState() {
+        logMatchers.clear();
+        capturedLogs.clear();
     }
 
     @Test
@@ -188,6 +207,37 @@ public class ApicurioRegistryTest {
         }
     }
 
+    @FixFor("DBZ-5282")
+    @Test
+    public void shouldNotErrorWithBadHeader() {
+
+        logMatchers.add(Pattern.compile(".*" + INVALID_HEADER_NAME_LOG + ".*", Pattern.DOTALL));
+        logMatchers.add(Pattern.compile(".*" + TROUBLE_MAKER_LOG + ".*", Pattern.DOTALL));
+
+        final String apicurioUrl = getApicurioUrl();
+        String id = "4";
+
+        // host, database, user etc. are obtained from the container
+        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
+                .with("topic.prefix", "dbserver" + id)
+                .with("slot.name", "debezium_" + id)
+                .with("key.converter", "org.apache.kafka.connect.json.JsonConverter")
+                .with("value.converter", "io.debezium.converters.CloudEventsConverter")
+                .with("value.converter.data.serializer.type", "avro")
+                .with("value.converter.avro.apicurio.registry.url", apicurioUrl)
+                .with("value.converter.avro.apicurio.registry.auto-register", "true")
+                .with("value.converter.avro.apicurio.registry.artifact.group-id", "dummy")
+                .with("value.converter.avro.apicurio.registry.request.ssl.truststore.location", "TroubleMaker");
+
+        debeziumContainer.registerConnector("my-connector-test-apicurio-header", config);
+        debeziumContainer.ensureConnectorTaskState("my-connector-test-apicurio-header", 0, Connector.State.FAILED);
+
+        // in debezium 1.9, the invalid header log would be found due the use of the older apicurio jar
+        assertThat(capturedLogs).hasSize(1);
+        assertThat(capturedLogs).allMatch(log -> log.contains(TROUBLE_MAKER_LOG));
+        assertThat(capturedLogs).noneMatch(log -> log.contains(INVALID_HEADER_NAME_LOG));
+    }
+
     private Connection getConnection(PostgreSQLContainer<?> postgresContainer) throws SQLException {
         return DriverManager.getConnection(postgresContainer.getJdbcUrl(), postgresContainer.getUsername(),
                 postgresContainer.getPassword());
@@ -256,6 +306,15 @@ public class ApicurioRegistryTest {
         final int port = apicurioContainer.getExposedPorts().get(0);
         final String apicurioUrl = "http://" + host + ":" + port + "/apis/registry/v2";
         return apicurioUrl;
+    }
+
+    private static void captureMatchingLog(OutputFrame outputFrame) {
+        String frameString = outputFrame.getUtf8String();
+        for (Pattern logMatcher : logMatchers) {
+            if (logMatcher.matcher(frameString).matches()) {
+                capturedLogs.add(frameString);
+            }
+        }
     }
 
     @AfterAll

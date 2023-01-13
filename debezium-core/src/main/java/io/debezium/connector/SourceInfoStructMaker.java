@@ -22,7 +22,7 @@ public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
     /**
      * Returns the schema of the source info.
      */
-    public Schema schema();
+    Schema schema();
 
     /**
      * Converts the connector's source info into the struct to be included in the message as the source field.
@@ -30,5 +30,5 @@ public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
      * @param sourceInfo
      * @return the converted struct
      */
-    public Struct struct(T sourceInfo);
+    Struct struct(T sourceInfo);
 }

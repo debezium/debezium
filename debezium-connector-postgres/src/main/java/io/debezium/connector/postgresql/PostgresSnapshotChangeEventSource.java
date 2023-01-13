@@ -236,7 +236,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
      */
     private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> {
 
-        public PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
+        PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
     }

@@ -1653,7 +1653,7 @@ public class MySqlAntlrDdlParserTest {
                 .stream()
                 .map(TableId::table)
                 .collect(Collectors.toSet()))
-                        .containsOnly("t1", "t2", "t3", "t4");
+                .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test
@@ -3122,7 +3122,7 @@ public class MySqlAntlrDdlParserTest {
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
         ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
 
         assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
@@ -3277,7 +3277,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private String toIsoString(String timestamp) {
-        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null);
+        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
 
     /**
@@ -3435,19 +3435,19 @@ public class MySqlAntlrDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
             this(changesListener, false, false, tableFilter);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
             this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 

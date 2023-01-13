@@ -200,7 +200,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     public void insertsNumericPk() throws Exception {
         // Testing.Print.enable();
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection, "s1.anumeric");
         }
         startConnector();
@@ -232,7 +232,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         TestHelper.execute(SETUP_TABLES);
 
         // insert records
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection, "s1.part");
         }
 
@@ -302,13 +302,13 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     protected void populate4PkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a4");
         }
     }
 
     protected void populate4WithoutPkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a42");
         }
     }

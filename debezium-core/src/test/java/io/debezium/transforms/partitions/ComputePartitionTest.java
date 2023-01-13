@@ -129,9 +129,9 @@ public class ComputePartitionTest {
 
         assertThatThrownBy(
                 () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:product", "prod:2,purchaser:2"))
-                        .isInstanceOf(ComputePartitionException.class)
-                        .hasMessageContaining(
-                                "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different tables defined");
+                .isInstanceOf(ComputePartitionException.class)
+                .hasMessageContaining(
+                        "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different tables defined");
     }
 
     @Test
@@ -151,9 +151,9 @@ public class ComputePartitionTest {
         assertThatThrownBy(
                 () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
                         "inventory.products:0,inventory.orders:2"))
-                                .isInstanceOf(ComputePartitionException.class)
-                                .hasMessageContaining(
-                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
+                .isInstanceOf(ComputePartitionException.class)
+                .hasMessageContaining(
+                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
     }
 
     @Test
@@ -161,9 +161,9 @@ public class ComputePartitionTest {
         assertThatThrownBy(
                 () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
                         "inventory.products:-3,inventory.orders:2"))
-                                .isInstanceOf(ComputePartitionException.class)
-                                .hasMessageContaining(
-                                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
+                .isInstanceOf(ComputePartitionException.class)
+                .hasMessageContaining(
+                        "Unable to validate config. partition.data-collections.partition.num.mappings: partition number for 'inventory.products' must be positive");
     }
 
     private SourceRecord buildSourceRecord(String connector, String db, String schema, String tableName, Struct row, Envelope.Operation operation) {

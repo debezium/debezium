@@ -467,6 +467,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected OptionalLong rowCountForTable(TableId tableId) {
+        if (getSnapshotSelectOverridesByTable(tableId) != null) {
+            return super.rowCountForTable(tableId);
+        }
         return connection.getEstimatedTableSize(tableId);
     }
 
@@ -509,7 +512,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      */
     private static class MySqlSnapshotContext extends RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> {
 
-        public MySqlSnapshotContext(MySqlPartition partition) throws SQLException {
+        MySqlSnapshotContext(MySqlPartition partition) throws SQLException {
             super(partition, "");
         }
     }

@@ -2038,7 +2038,7 @@ public class TokenStream {
      * Interface for a Tokenizer component responsible for processing the characters in a {@link CharacterStream} and constructing
      * the appropriate {@link Token} objects.
      */
-    public static interface Tokenizer {
+    public interface Tokenizer {
         /**
          * Process the supplied characters and construct the appropriate {@link Token} objects.
          *
@@ -2054,7 +2054,7 @@ public class TokenStream {
     /**
      * Interface used by a {@link Tokenizer} to iterate through the characters in the content input to the {@link TokenStream}.
      */
-    public static interface CharacterStream {
+    public interface CharacterStream {
 
         /**
          * Determine if there is another character available in this stream.
@@ -2194,7 +2194,7 @@ public class TokenStream {
     /**
      * A factory for Token objects, used by a {@link Tokenizer} to create tokens in the correct order.
      */
-    public static interface Tokens {
+    public interface Tokens {
         /**
          * Create a single-character token at the supplied index in the character stream. The token type is set to 0, meaning this
          * is equivalent to calling <code>addToken(index,index+1)</code> or <code>addToken(index,index+1,0)</code>.
