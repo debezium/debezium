@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
@@ -411,12 +412,36 @@ public abstract class AbstractConnectorTest implements Testing {
                 // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }
+
+            // This allows existing tests to work without modification since they typically assume the
+            // BaseSourceTask#start(Configuration) method has been execute as part of the Task's start method.
+            waitForNotInitialState();
         }
         catch (InterruptedException e) {
             if (Thread.interrupted()) {
                 fail("Interrupted while waiting for engine startup");
             }
         }
+    }
+
+    /**
+     * Wait until the Task state it not {@link BaseSourceTask.State#INITIAL}.
+     * This indicates that the task has been polled and the internal tasks startIfNecessary method has been called.
+     * <p/>
+     * This methos will return immediately if the task is not an instance of  {@link BaseSourceTask}.
+     */
+    protected void waitForNotInitialState() {
+        engine.runWithTask(sourceTask -> {
+            if (sourceTask instanceof BaseSourceTask) {
+                BaseSourceTask<?, ?> baseSourceTask = (BaseSourceTask<?, ?>) sourceTask;
+                Awaitility.await()
+                        .alias("Task has attempted to initialize coordinator")
+                        .pollInterval(100, TimeUnit.MILLISECONDS)
+                        .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                        .until(() -> baseSourceTask.getState() != BaseSourceTask.State.INITIAL);
+
+            }
+        });
     }
 
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
