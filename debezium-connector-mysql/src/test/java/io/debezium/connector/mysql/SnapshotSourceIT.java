@@ -617,7 +617,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        start(MySqlConnector.class, config, (success, message, error) -> {
+            exception.set(error);
+        });
+
+        // a poll is required in order to get the connector to initiate the snapshot
+        waitForConnectorShutdown("mysql", DATABASE.getServerName());
 
         throw (RuntimeException) exception.get();
     }
