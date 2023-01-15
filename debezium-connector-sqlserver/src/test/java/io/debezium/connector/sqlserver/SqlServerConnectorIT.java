@@ -2080,7 +2080,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         final LogInterceptor logInterceptor = new LogInterceptor(SqlServerConnectorIT.class);
         start(SqlServerConnector.class, config);
-        assertConnectorNotRunning();
+        waitForConnectorShutdown("sqlserver", TestHelper.TEST_SERVER_NAME);
         assertThat(logInterceptor.containsStacktraceElement(
                 "The db history topic or its content is fully or partially missing. Please check database schema history topic configuration and re-execute the snapshot."))
                 .isTrue();
