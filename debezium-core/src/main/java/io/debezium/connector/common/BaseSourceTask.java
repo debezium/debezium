@@ -53,7 +53,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
 
-    protected enum State {
+    public enum State {
         RESTARTING,
         RUNNING,
         INITIAL,
@@ -381,7 +381,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     @VisibleForTesting
-    State getState() {
+    public State getState() {
         stateLock.lock();
         try {
             return state.get();
