@@ -5,15 +5,14 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,6 +44,7 @@ public class JdbcOffsetBackingStoreTest {
         props.put(JDBC_URI.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
         props.put(JDBC_USER.name(), "user");
         props.put(JDBC_PASSWORD.name(), "pass");
+        props.put(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");
         props.put(StandaloneConfig.KEY_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         props.put(StandaloneConfig.VALUE_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         config = new JdbcConfig(props);
@@ -58,12 +58,12 @@ public class JdbcOffsetBackingStoreTest {
     }
 
     @After
-    public void teardown() throws IOException {
+    public void teardown() {
         dbFile.delete();
     }
 
     @Test
-    public void testInitialize() throws Exception {
+    public void testInitialize() {
         // multiple initialization should not fail
         // first one should create the table and following ones should use the created table
         store.start();
@@ -101,9 +101,9 @@ public class JdbcOffsetBackingStoreTest {
         JdbcOffsetBackingStore restore = new JdbcOffsetBackingStore();
         restore.configure(config);
         restore.start();
-        Map<ByteBuffer, ByteBuffer> values = restore.get(Arrays.asList(store.toByteBuffer("key"))).get();
-        Map<ByteBuffer, ByteBuffer> values2 = restore.get(Arrays.asList(store.toByteBuffer("key1secondSet"))).get();
-        Map<ByteBuffer, ByteBuffer> values3 = restore.get(Arrays.asList(store.toByteBuffer("key2secondSet"))).get();
+        Map<ByteBuffer, ByteBuffer> values = restore.get(Collections.singletonList(store.toByteBuffer("key"))).get();
+        Map<ByteBuffer, ByteBuffer> values2 = restore.get(Collections.singletonList(store.toByteBuffer("key1secondSet"))).get();
+        Map<ByteBuffer, ByteBuffer> values3 = restore.get(Collections.singletonList(store.toByteBuffer("key2secondSet"))).get();
         assertEquals(store.toByteBuffer("value"), values.get(store.toByteBuffer("key")));
         assertEquals(store.toByteBuffer("value1secondSet"), values2.get(store.toByteBuffer("key1secondSet")));
         assertEquals(store.toByteBuffer("value2secondSet"), values3.get(store.toByteBuffer("key2secondSet")));

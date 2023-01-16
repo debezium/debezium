@@ -5,14 +5,12 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
-
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.runtime.WorkerConfig;
+
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
 
 public class JdbcConfig extends WorkerConfig {
     private static final ConfigDef CONFIG;
@@ -30,7 +28,11 @@ public class JdbcConfig extends WorkerConfig {
                 .define(JDBC_PASSWORD.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
-                        "Jdbc database password");
+                        "Jdbc database password")
+                .define(OFFSET_STORAGE_TABLE_NAME.name(),
+                        ConfigDef.Type.STRING,
+                        ConfigDef.Importance.HIGH,
+                        "Name of the table to store offsets");
     }
 
     public JdbcConfig(Map<String, String> props) {
