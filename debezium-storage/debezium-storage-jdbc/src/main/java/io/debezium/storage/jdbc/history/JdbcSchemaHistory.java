@@ -33,11 +33,11 @@ import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
 import io.debezium.relational.history.AbstractSchemaHistory;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
-import io.debezium.relational.history.HistoryRecord;
-import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 
@@ -53,7 +53,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     private static final Logger LOG = LoggerFactory.getLogger(JdbcSchemaHistory.class);
 
     public static final Field JDBC_URI = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.uri")
-            .withDescription("Uri of the database which will be used to record the database history")
+            .withDescription("URI of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
     public static final Field JDBC_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.user")
