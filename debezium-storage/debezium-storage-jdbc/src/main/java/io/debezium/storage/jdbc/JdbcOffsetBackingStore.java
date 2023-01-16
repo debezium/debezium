@@ -59,21 +59,16 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             .withDescription("Name of the table to store offsets")
             .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
 
-    public static final String OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE " + OFFSET_STORAGE_TABLE_NAME +
-            "(" +
-            "id VARCHAR(36) NOT NULL," +
-            "offset_key VARCHAR(1255)," +
-            "offset_val VARCHAR(1255)," +
+    public static final String OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE %s(id VARCHAR(36) NOT NULL, offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL" +
             ")";
 
-    public static final String OFFSET_STORAGE_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM " + OFFSET_STORAGE_TABLE_NAME +
-            " ORDER BY record_insert_ts, record_insert_seq";
+    public static final String OFFSET_STORAGE_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s ORDER BY record_insert_ts, record_insert_seq";
 
-    public static final String OFFSET_STORAGE_TABLE_INSERT = "INSERT INTO " + OFFSET_STORAGE_TABLE_NAME + " VALUES ( ?, ?, ?, ?, ? )";
+    public static final String OFFSET_STORAGE_TABLE_INSERT = "INSERT INTO %s VALUES ( ?, ?, ?, ?, ? )";
 
-    public static final String OFFSET_STORAGE_TABLE_DELETE = "DELETE FROM " + OFFSET_STORAGE_TABLE_NAME;
+    public static final String OFFSET_STORAGE_TABLE_DELETE = "DELETE FROM %s";
 
     private static final Logger LOG = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
 
@@ -131,21 +126,21 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         if (tableExists.next()) {
             return;
         }
-        LOG.debug("Creating table {} to store offset", OFFSET_STORAGE_TABLE_NAME);
-        conn.prepareStatement(OFFSET_STORAGE_TABLE_DDL).execute();
+        LOG.debug("Creating table {} to store offset", offsetStorageTableName);
+        conn.prepareStatement(String.format(OFFSET_STORAGE_TABLE_DDL, offsetStorageTableName)).execute();
     }
 
     protected void save() {
         try {
             LOG.debug("Saving data to state table...");
-            try (PreparedStatement sqlDelete = conn.prepareStatement(OFFSET_STORAGE_TABLE_DELETE);) {
+            try (PreparedStatement sqlDelete = conn.prepareStatement(String.format(OFFSET_STORAGE_TABLE_DELETE, offsetStorageTableName))) {
                 sqlDelete.executeUpdate();
                 for (Map.Entry<String, String> mapEntry : data.entrySet()) {
                     Timestamp currentTs = new Timestamp(System.currentTimeMillis());
                     String key = (mapEntry.getKey() != null) ? mapEntry.getKey() : null;
                     String value = (mapEntry.getValue() != null) ? mapEntry.getValue() : null;
                     // Execute a query
-                    try (PreparedStatement sql = conn.prepareStatement(OFFSET_STORAGE_TABLE_INSERT);) {
+                    try (PreparedStatement sql = conn.prepareStatement(String.format(OFFSET_STORAGE_TABLE_INSERT, offsetStorageTableName))) {
                         sql.setString(1, UUID.randomUUID().toString());
                         sql.setString(2, key);
                         sql.setString(3, value);
@@ -172,7 +167,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         try {
             ConcurrentHashMap<String, String> tmpData = new ConcurrentHashMap<>();
             Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(OFFSET_STORAGE_TABLE_SELECT);
+            ResultSet rs = stmt.executeQuery(String.format(OFFSET_STORAGE_TABLE_SELECT, offsetStorageTableName));
             while (rs.next()) {
                 String key = rs.getString("offset_key");
                 String val = rs.getString("offset_val");
@@ -218,9 +213,9 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     @Override
     public Future<Void> set(final Map<ByteBuffer, ByteBuffer> values,
                             final Callback<Void> callback) {
-        return executor.submit(new Callable<Void>() {
+        return executor.submit(new Callable<>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() {
                 for (Map.Entry<ByteBuffer, ByteBuffer> entry : values.entrySet()) {
                     if (entry.getKey() == null) {
                         continue;
@@ -240,7 +235,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public Future<Map<ByteBuffer, ByteBuffer>> get(final Collection<ByteBuffer> keys) {
         return executor.submit(new Callable<Map<ByteBuffer, ByteBuffer>>() {
             @Override
-            public Map<ByteBuffer, ByteBuffer> call() throws Exception {
+            public Map<ByteBuffer, ByteBuffer> call() {
                 Map<ByteBuffer, ByteBuffer> result = new HashMap<>();
                 for (ByteBuffer key : keys) {
                     result.put(key, toByteBuffer(data.get(fromByteBuffer(key))));
