@@ -43,7 +43,7 @@ import io.debezium.config.Field;
 public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
     public static final Field JDBC_URI = Field.create("offset.storage.jdbc.uri")
-            .withDescription("Uri of the database which will be used to record the database history")
+            .withDescription("URI of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
     public static final Field JDBC_USER = Field.create("offset.storage.jdbc.user")
@@ -54,7 +54,10 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             .withDescription("Password of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
-    public static final String OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
+    public static final String DEFAULT_OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
+    public static final Field OFFSET_STORAGE_TABLE_NAME = Field.create("offset.storage.jdbc.offset_table_name")
+            .withDescription("Name of the table to store offsets")
+            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
 
     public static final String OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE " + OFFSET_STORAGE_TABLE_NAME +
             "(" +
@@ -80,6 +83,8 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     private Connection conn;
     private String jdbcUri;
 
+    private String offsetStorageTableName;
+
     public JdbcOffsetBackingStore() {
     }
 
@@ -95,11 +100,12 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public void configure(WorkerConfig config) {
         try {
             jdbcUri = config.getString(JDBC_URI.name());
+            offsetStorageTableName = config.getString(OFFSET_STORAGE_TABLE_NAME.name());
             conn = DriverManager.getConnection(jdbcUri, config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
             conn.setAutoCommit(false);
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Failed to connect Jdbc offset backing store: " + jdbcUri, e);
+            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + jdbcUri, e);
         }
     }
 
@@ -113,14 +119,14 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             initializeTable();
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Failed to create Jdbc offset table: " + jdbcUri, e);
+            throw new IllegalStateException("Failed to create JDBC offset table: " + jdbcUri, e);
         }
         load();
     }
 
     private void initializeTable() throws SQLException {
         DatabaseMetaData dbMeta = conn.getMetaData();
-        ResultSet tableExists = dbMeta.getTables(null, null, OFFSET_STORAGE_TABLE_NAME, null);
+        ResultSet tableExists = dbMeta.getTables(null, null, offsetStorageTableName, null);
 
         if (tableExists.next()) {
             return;

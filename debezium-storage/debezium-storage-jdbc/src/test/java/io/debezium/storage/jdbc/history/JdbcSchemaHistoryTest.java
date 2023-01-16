@@ -5,6 +5,25 @@
  */
 package io.debezium.storage.jdbc.history;
 
+import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
+import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.Types;
+import java.time.Instant;
+import java.util.Map;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import io.debezium.config.Configuration;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -16,24 +35,6 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.util.Collect;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.sql.Types;
-import java.time.Instant;
-import java.util.Map;
-
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 /**
  * @author Ismail simsek
