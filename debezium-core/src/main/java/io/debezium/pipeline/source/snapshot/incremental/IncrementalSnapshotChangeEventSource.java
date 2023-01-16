@@ -31,7 +31,8 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     void init(P partition, OffsetContext offsetContext);
 
-    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, OffsetContext offsetContext)
+    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey,
+                                          OffsetContext offsetContext)
             throws InterruptedException;
 
     void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext);

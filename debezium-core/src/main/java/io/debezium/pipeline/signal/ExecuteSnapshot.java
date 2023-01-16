@@ -47,12 +47,13 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         }
         SnapshotType type = getSnapshotType(signalPayload.data);
         Optional<String> additionalCondition = getAdditionalCondition(signalPayload.data);
-        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}'", type, dataCollections,
-                additionalCondition.orElse("No condition passed"));
+        Optional<String> surrogateKey = getQueryColumn(signalPayload.data);
+        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}' and surrogate key '{}'", type, dataCollections,
+                additionalCondition.orElse("No condition passed"), surrogateKey.orElse("PK of table will be used"));
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload.partition, dataCollections, additionalCondition, signalPayload.offsetContext);
+                        signalPayload.partition, dataCollections, additionalCondition, surrogateKey, signalPayload.offsetContext);
                 break;
         }
         return true;
@@ -74,5 +75,10 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     public static Optional<String> getAdditionalCondition(Document data) {
         String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
         return (additionalCondition == null || additionalCondition.trim().isEmpty()) ? Optional.empty() : Optional.of(additionalCondition);
+    }
+
+    public static Optional<String> getQueryColumn(Document data) {
+        String queryKey = data.getString(FIELD_SURROGATE_KEY);
+        return (queryKey == null || queryKey.trim().isEmpty()) ? Optional.empty() : Optional.of(queryKey);
     }
 }
