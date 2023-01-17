@@ -137,7 +137,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asMoney() {
+    public BigDecimal asMoney() {
         final String value = asString();
         if (value == null) {
             return null;
