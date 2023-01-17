@@ -7,15 +7,10 @@ package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -23,12 +18,11 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * @author Jiri Pechanec
  */
-public class ExtractNewRecordStateTest {
+public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
 
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
@@ -37,22 +31,6 @@ public class ExtractNewRecordStateTest {
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
-
-    final Schema recordSchema = SchemaBuilder.struct()
-            .field("id", Schema.INT8_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-
-    final Schema sourceSchema = SchemaBuilder.struct()
-            .field("lsn", Schema.INT32_SCHEMA)
-            .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
-            .build();
-
-    final Envelope envelope = Envelope.defineSchema()
-            .withName("dummy.Envelope")
-            .withRecord(recordSchema)
-            .withSource(sourceSchema)
-            .build();
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -98,142 +76,6 @@ public class ExtractNewRecordStateTest {
             final SourceRecord truncate = createTruncateRecord();
             assertThat(transform.apply(truncate)).isNull();
         }
-    }
-
-    private SourceRecord createDeleteRecord() {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createTombstoneRecord() {
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
-    }
-
-    private SourceRecord createTruncateRecord() {
-        final Struct source = new Struct(sourceSchema);
-        source.put("lsn", 1234);
-        source.put("ts_ms", 12836);
-        final Struct truncate = envelope.truncate(source, Instant.ofEpochMilli(System.currentTimeMillis()));
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), truncate);
-    }
-
-    private SourceRecord createCreateRecord() {
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("ts_ms", 12836);
-        final Struct payload = envelope.create(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createCreateRecordWithOptionalNull() {
-        final Schema recordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
-                .build();
-
-        final Envelope envelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(sourceSchema)
-                .build();
-
-        final Struct after = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        after.put("id", (byte) 1);
-        after.put("name", null);
-        source.put("lsn", 1234);
-        source.put("ts_ms", 12836);
-        final Struct payload = envelope.create(after, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createUpdateRecord() {
-        final Struct before = new Struct(recordSchema);
-        final Struct after = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        after.put("id", (byte) 1);
-        after.put("name", "updatedRecord");
-        source.put("lsn", 1234);
-        transaction.put("id", "571");
-        transaction.put("total_order", 42L);
-        transaction.put("data_collection_order", 42L);
-        final Struct payload = envelope.update(before, after, source, Instant.now());
-        payload.put("transaction", transaction);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createComplexCreateRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
-        final Schema sourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-        Envelope envelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(sourceSchema)
-                .build();
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        before.put("id", (byte) 1);
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = envelope.create(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createUnknownRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().name("unknown")
-                .field("id", SchemaBuilder.int8())
-                .build();
-        final Struct before = new Struct(recordSchema);
-        before.put("id", (byte) 1);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
-    }
-
-    private SourceRecord createUnknownUnnamedSchemaRecord() {
-        final Schema recordSchema = SchemaBuilder.struct()
-                .field("id", SchemaBuilder.int8())
-                .build();
-        final Struct before = new Struct(recordSchema);
-        before.put("id", (byte) 1);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
-    }
-
-    private Header getSourceRecordHeader(SourceRecord record, String headerKey) {
-        Iterator<Header> operationHeader = record.headers().allWithName(headerKey);
-        if (!operationHeader.hasNext()) {
-            return null;
-        }
-        return operationHeader.next();
     }
 
     private String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
@@ -733,64 +575,6 @@ public class ExtractNewRecordStateTest {
 
             final SourceRecord unnamedSchemaRecord = createUnknownUnnamedSchemaRecord();
             assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-5283")
-    public void testAddUpdatedFieldToHeaders() {
-        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put("header.changed.name", "Changed");
-            props.put("header.unchanged.name", "Unchanged");
-            transform.configure(props);
-
-            final SourceRecord updatedRecord = createUpdateRecord();
-            final SourceRecord transformRecord = transform.apply(updatedRecord);
-            final Header changedHeader = getSourceRecordHeader(transformRecord, "Changed");
-            final List<String> changedHeaderValues = (List<String>) changedHeader.value();
-            final Header unchangedHeader = getSourceRecordHeader(transformRecord, "Unchanged");
-            final List<String> unchangedHeaderValues = (ArrayList<String>) unchangedHeader.value();
-
-            assertThat(transformRecord.headers().size()).isEqualTo(2);
-            assertThat(changedHeaderValues.size()).isEqualTo(1);
-            assertThat(changedHeaderValues.get(0)).isEqualTo("name");
-            assertThat(changedHeader.schema().name()).isEqualTo("Changed");
-            assertThat(unchangedHeaderValues.size()).isEqualTo(1);
-            assertThat(unchangedHeaderValues.get(0)).isEqualTo("id");
-        }
-
-        // Not set unchanged header
-        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put("header.changed.name", "Changed");
-            transform.configure(props);
-
-            final SourceRecord updatedRecord = createUpdateRecord();
-            final SourceRecord transformRecord = transform.apply(updatedRecord);
-            final Header changedHeader = getSourceRecordHeader(transformRecord, "Changed");
-            final List<String> changedHeaderValues = (List<String>) changedHeader.value();
-            final Header unchangedHeader = getSourceRecordHeader(transformRecord, "Unchanged");
-
-            assertThat(transformRecord.headers().size()).isEqualTo(1);
-            assertThat(changedHeaderValues.contains("name")).isTrue();
-            assertThat(unchangedHeader).isNull();
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-5283")
-    public void testAddCreatedFieldToHeaders() {
-        try (final ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            transform.configure(props);
-            props.put("header.changed.name", "Changed");
-            props.put("header.unchanged.name", "Unchanged");
-            transform.configure(props);
-
-            final SourceRecord createdRecord = createCreateRecord();
-            final SourceRecord transformRecord = transform.apply(createdRecord);
-            assertThat(transformRecord.headers()).isEmpty();
         }
     }
 }
