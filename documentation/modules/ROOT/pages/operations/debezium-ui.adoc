@@ -81,7 +81,7 @@ The main page of the UI displays all the registered connectors.  Some of the hig
 * *Kafka connect cluster* can be selected via the dropdown in the header.
 * Connector table shows each connector with its type (MongoDB, MySQL, Oracle, PostgreSQL, or SQL Server), connector status, and connector tasks.
 * A connector row can be expanded to show more details, as shown below with the 'testPostgres' connector.  Metrics are shown in the expansion area (*Note:* this feature is still under development and not functional yet).  Connector tasks are shown, with ability to *Restart* the task if desired.
-* The kebab menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
+* The overflow menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
 
 image::debezium-ui-connectors-list.png[{prodname} UI connectors]
 
