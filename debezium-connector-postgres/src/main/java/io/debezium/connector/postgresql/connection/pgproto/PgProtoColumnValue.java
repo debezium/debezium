@@ -242,7 +242,7 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
-    public Object asMoney() {
+    public BigDecimal asMoney() {
         if (value.hasDatumInt64()) {
             return new BigDecimal(value.getDatumInt64()).divide(new BigDecimal(100.0));
         }
