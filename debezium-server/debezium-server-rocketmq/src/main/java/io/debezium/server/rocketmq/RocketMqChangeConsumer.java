@@ -153,7 +153,7 @@ public class RocketMqChangeConsumer extends BaseChangeConsumer implements Debezi
                 throw new DebeziumException(e);
             }
         }
-        
+
         // Messages have set default send timeout, so this will not block forever.
         latch.await();
 
