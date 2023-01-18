@@ -54,6 +54,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
             + "_additional_condition";
 
+    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+            + "_surrogate_key";
+
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
 
@@ -183,6 +186,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
                                 x.getAdditionalCondition().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY,
+                                x.getSurrogateKey().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -198,7 +203,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
                     .map(x -> new DataCollection<T>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION))))
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)),
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY))))
                     .collect(Collectors.toList());
             return dataCollectionsList;
         }
@@ -226,9 +232,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) TableId.parse(x, useCatalogBeforeSchema), additionalCondition))
+                .map(x -> new DataCollection<T>((T) TableId.parse(x, useCatalogBeforeSchema), additionalCondition, surrogateKey))
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         return newDataCollectionIds;
@@ -243,7 +249,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId, null)));
+        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId, null, null)));
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

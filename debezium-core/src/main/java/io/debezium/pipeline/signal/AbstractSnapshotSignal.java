@@ -20,6 +20,7 @@ public abstract class AbstractSnapshotSignal<P extends Partition> implements Sig
     protected static final String FIELD_DATA_COLLECTIONS = "data-collections";
     protected static final String FIELD_TYPE = "type";
     protected static final String FIELD_ADDITIONAL_CONDITION = "additional-condition";
+    protected static final String FIELD_SURROGATE_KEY = "surrogate-key";
 
     public enum SnapshotType {
         INCREMENTAL

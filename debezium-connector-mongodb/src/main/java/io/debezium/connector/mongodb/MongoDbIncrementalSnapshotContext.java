@@ -195,7 +195,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         try {
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
-                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)), null))
+                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)), null, null))
                     .filter(x -> x.getId() != null)
                     .collect(Collectors.toList());
             return dataCollectionsList;
@@ -224,9 +224,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> _additionalCondition) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> _additionalCondition,
+                                                                    Optional<String> surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) CollectionId.parse(x), null))
+                .map(x -> new DataCollection<T>((T) CollectionId.parse(x), null, null))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
@@ -242,7 +243,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) CollectionId.parse(dataCollectionId);
-        return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId, null));
+        return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId, null, null));
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

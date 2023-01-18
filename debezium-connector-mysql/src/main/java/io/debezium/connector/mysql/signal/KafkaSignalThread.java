@@ -176,10 +176,11 @@ public class KafkaSignalThread<T extends DataCollectionId> {
         if (dataCollections != null) {
             ExecuteSnapshot.SnapshotType snapshotType = ExecuteSnapshot.getSnapshotType(data);
             Optional<String> additionalCondition = ExecuteSnapshot.getAdditionalCondition(data);
+            Optional<String> surrogateKey = ExecuteSnapshot.getSurrogateKey(data);
             LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}'", snapshotType, dataCollections,
                     additionalCondition.orElse("No condition passed"));
             if (snapshotType == ExecuteSnapshot.SnapshotType.INCREMENTAL) {
-                eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset, additionalCondition);
+                eventSource.enqueueDataCollectionNamesToSnapshot(dataCollections, signalOffset, additionalCondition, surrogateKey);
             }
         }
     }
