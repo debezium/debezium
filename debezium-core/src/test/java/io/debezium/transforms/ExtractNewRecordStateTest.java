@@ -31,6 +31,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
+    private static final String DROP_UNCHANGED_FIELDS = "drop.unchanged.fields";
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -577,4 +578,47 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
         }
     }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void testDropUnchangedFields() {
+        try (ExtractChangedRecordState<SourceRecord> changesTransform = new ExtractChangedRecordState<>()) {
+            final Map<String, String> changesProps = new HashMap<>();
+            changesProps.put(ExtractChangedRecordState.HEADER_CHANGED_NAME.name(), "changes");
+            changesProps.put(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name(), "non-changes");
+            changesTransform.configure(changesProps);
+            try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+                final Map<String, String> props = new HashMap<>();
+                props.put(DROP_UNCHANGED_FIELDS, "true");
+                props.put(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name(), "non-changes");
+                transform.configure(props);
+
+                // CREATE/INSERT records should not be transformed
+                final SourceRecord createRecord = createCreateRecord();
+                final SourceRecord createUnwrapped = transform.apply(changesTransform.apply(createRecord));
+                assertThat(createUnwrapped.headers()).isEmpty();
+                assertThat(((Struct) createUnwrapped.value()).get("id")).isEqualTo((byte) 1);
+                assertThat(((Struct) createUnwrapped.value()).get("name")).isEqualTo("myRecord");
+
+                // UPDATE records should be transformed
+                final SourceRecord updateRecord = createUpdateRecord();
+                final SourceRecord updateUnwrapped = transform.apply(changesTransform.apply(updateRecord));
+                assertThat(updateUnwrapped.valueSchema().field("id")).isNull();
+                assertThat(updateUnwrapped.valueSchema().field("name")).isNotNull();
+                assertThat(((Struct) updateUnwrapped.value()).get("name")).isEqualTo("updatedRecord");
+
+                // DELETE records should not be transformed
+                final SourceRecord deleteRecord = createDeleteRecord();
+                final SourceRecord deleteUnwrapped = transform.apply(changesTransform.apply(deleteRecord));
+                assertThat(deleteUnwrapped).isNull();
+
+                // TOMBSTONE should not be transformed
+                final SourceRecord tombstoneRecord = createTombstoneRecord();
+                final SourceRecord tombstoneUnwrapped = transform.apply(changesTransform.apply(tombstoneRecord));
+                assertThat(tombstoneUnwrapped).isNull();
+            }
+
+        }
+    }
+
 }

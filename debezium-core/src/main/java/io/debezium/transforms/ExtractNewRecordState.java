@@ -23,9 +23,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
+import org.apache.kafka.connect.transforms.ReplaceField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
@@ -69,7 +71,28 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
     private static final Pattern NEW_FIELD_SEPARATOR = Pattern.compile(":");
 
+    private static final Field DROP_UNCHANGED_FIELDS = Field.create("drop.unchanged.fields")
+            .withDisplayName("Remove unchanged fields from the flattened event structure")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Removes unchanged fields from the flattened event structure. "
+                    + "Requires the ExtractChangedRecordState transformation to precede this transformation.");
+
+    private static final Field KEEP_UNCHANGED_PRIMARY_KEYS = Field.create("keep.unchanged.primary.keys")
+            .withDisplayName("Specifies whether to keep unchanged primary keys in flattened event structure")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(true)
+            .withDescription("Specifies whether to keep unchanged primary keys in flattened event structure"
+                    + "Requires the ExtractChangedRecordState transformation to precede this transformation.");
+
     private boolean dropTombstones;
+    private boolean dropUnchangedFields;
+    private boolean keepUnchangedPrimaryKeyFields;
+    private String unchangedHeaderName;
     private DeleteHandling handleDeletes;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
@@ -102,6 +125,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
+
+        dropUnchangedFields = config.getBoolean(DROP_UNCHANGED_FIELDS);
+        keepUnchangedPrimaryKeyFields = config.getBoolean(KEEP_UNCHANGED_PRIMARY_KEYS);
+        unchangedHeaderName = config.getString(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name());
 
         Map<String, String> delegateConfig = new LinkedHashMap<>();
         delegateConfig.put("field", "before");
@@ -184,6 +211,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
             newRecord = addFields(additionalFields, record, newRecord);
 
+            if (dropUnchangedFields) {
+                newRecord = dropUnchangedFields(newRecord);
+            }
+
             // Handling insert and update records
             switch (handleDeletes) {
                 case REWRITE:
@@ -257,6 +288,47 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 updatedSchema,
                 updatedValue,
                 unwrappedRecord.timestamp());
+    }
+
+    private R dropUnchangedFields(R record) {
+        if (Strings.isNullOrEmpty(unchangedHeaderName)) {
+            // If the "header.unchanged.name" is not configured when "drop.unchanged.fields" is specified,
+            // the SMT will simply not drop any fields.
+            return record;
+        }
+        final Header unchangedHeader = getHeaderByName(record, unchangedHeaderName);
+        if (unchangedHeader != null) {
+            // Get the unchanged fields from the ExtractChangedRecordState output
+            final List<String> removeFieldNames = (List<String>) unchangedHeader.value();
+            if (keepUnchangedPrimaryKeyFields && record.key() != null) {
+                // Since primary keys are to be retained the record has a key, iterate the key schema fields
+                // and exclude those from the field removal step.
+                removeFieldNames.removeAll(getSchemaFieldNames(record.keySchema()));
+            }
+
+            // Configure the ReplaceField.Value with field exclusions
+            final Map<String, String> removeProps = new HashMap<>();
+            removeProps.put("exclude", Strings.join(",", removeFieldNames));
+
+            // Apply the exclusion SMT delegate
+            final ReplaceField<R> removeDelegate = new ReplaceField.Value<>();
+            removeDelegate.configure(removeProps);
+            record = removeDelegate.apply(record);
+        }
+        return record;
+    }
+
+    private Header getHeaderByName(R record, String headerName) {
+        for (Header header : record.headers()) {
+            if (header.key().equals(headerName)) {
+                return header;
+            }
+        }
+        return null;
+    }
+
+    private List<String> getSchemaFieldNames(Schema schema) {
+        return schema.fields().stream().map(org.apache.kafka.connect.data.Field::name).collect(Collectors.toList());
     }
 
     private Schema makeUpdatedSchema(List<FieldReference> additionalFields, Schema schema, Struct originalRecordValue) {
