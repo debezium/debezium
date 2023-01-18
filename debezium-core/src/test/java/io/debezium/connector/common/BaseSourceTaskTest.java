@@ -42,11 +42,11 @@ public class BaseSourceTaskTest {
     public void verifyTaskStartsAndStops() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -57,9 +57,9 @@ public class BaseSourceTaskTest {
     public void verifyStartAndStopWithoutPolling() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(0, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -69,17 +69,17 @@ public class BaseSourceTaskTest {
     public void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(2, baseSourceTask.startCount.get());
         assertEquals(2, baseSourceTask.stopCount.get());
@@ -105,17 +105,17 @@ public class BaseSourceTaskTest {
                 CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1" // wait 1ms between restarts
         );
         baseSourceTask.start(config);
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
         sleep(100); // wait 10ms in order to satisfy retriable wait
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
         sleep(100); // wait 10ms in order to satisfy retriable wait
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(3, baseSourceTask.startCount.get());
         assertEquals(3, baseSourceTask.stopCount.get());
@@ -125,11 +125,11 @@ public class BaseSourceTaskTest {
     @Test
     public void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.INITIAL, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getState());
+        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(0, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());

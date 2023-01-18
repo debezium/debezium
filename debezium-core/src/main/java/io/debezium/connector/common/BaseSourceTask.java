@@ -111,7 +111,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            state.set(State.INITIAL);
+            setTaskState(State.INITIAL);
             config = Configuration.from(props);
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -223,7 +223,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
         boolean result;
         try {
-            State currentState = state.get();
+            State currentState = getTaskState();
             if (currentState == State.RUNNING) {
                 result = true;
             }
@@ -254,7 +254,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             if (currentState != State.RUNNING && result) {
                 // we successfully started, clear restart state
                 restartDelay = null;
-                state.set(State.RUNNING);
+                setTaskState(State.RUNNING);
             }
         }
         finally {
@@ -272,10 +272,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            // if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
-            // LOGGER.info("Connector is already stopped.");
-            // }
-
             if (restart) {
                 LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
             }
@@ -298,14 +294,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             doStop();
 
             if (restart) {
-                state.set(State.RESTARTING);
+                setTaskState(State.RESTARTING);
                 if (restartDelay == null) {
                     restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
                     restartDelay.hasElapsed();
                 }
             }
             else {
-                state.set(State.STOPPED);
+                setTaskState(State.STOPPED);
             }
         }
         finally {
@@ -380,8 +376,18 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return Offsets.of(offsets);
     }
 
+    /**
+     * Sets the new state for the task. The caller must be holding {@link #stateLock} lock.
+     *
+     * @param newState
+     */
+    private void setTaskState(State newState) {
+        State oldState = state.getAndSet(newState);
+        LOGGER.debug("Setting task state to '{}', previous state was '{}'", newState, oldState);
+    }
+
     @VisibleForTesting
-    public State getState() {
+    public State getTaskState() {
         stateLock.lock();
         try {
             return state.get();
