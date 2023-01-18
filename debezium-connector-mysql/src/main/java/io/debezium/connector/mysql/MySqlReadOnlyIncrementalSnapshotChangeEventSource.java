@@ -174,8 +174,9 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         removeDataCollectionsFromSnapshot(signal, partition, offsetContext);
     }
 
-    public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset, Optional<String> additionalCondition) {
-        getContext().enqueueKafkaSignal(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset, additionalCondition));
+    public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset, Optional<String> additionalCondition,
+                                                     Optional<String> surrogateKey) {
+        getContext().enqueueKafkaSignal(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset, additionalCondition, surrogateKey));
     }
 
     public void enqueuePauseSnapshot() {
@@ -285,7 +286,9 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private void addDataCollectionNamesToSnapshot(ExecuteSnapshotKafkaSignal executeSnapshotSignal, MySqlPartition partition, OffsetContext offsetContext)
             throws InterruptedException {
-        super.addDataCollectionNamesToSnapshot(partition, executeSnapshotSignal.getDataCollections(), executeSnapshotSignal.getAdditionalCondition(), offsetContext);
+        super.addDataCollectionNamesToSnapshot(partition, executeSnapshotSignal.getDataCollections(), executeSnapshotSignal.getAdditionalCondition(),
+                executeSnapshotSignal.getSurrogateKey(),
+                offsetContext);
         getContext().setSignalOffset(executeSnapshotSignal.getSignalOffset());
     }
 

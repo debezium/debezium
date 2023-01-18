@@ -12,11 +12,13 @@ public class ExecuteSnapshotKafkaSignal implements KafkaSignal {
     private final List<String> dataCollections;
     private final long signalOffset;
     private final Optional<String> additionalCondition;
+    private final Optional<String> surrogateKey;
 
-    public ExecuteSnapshotKafkaSignal(List<String> dataCollections, long signalOffset, Optional<String> additionalCondition) {
+    public ExecuteSnapshotKafkaSignal(List<String> dataCollections, long signalOffset, Optional<String> additionalCondition, Optional<String> surrogateKey) {
         this.dataCollections = dataCollections;
         this.signalOffset = signalOffset;
         this.additionalCondition = additionalCondition;
+        this.surrogateKey = surrogateKey;
     }
 
     public List<String> getDataCollections() {
@@ -29,5 +31,9 @@ public class ExecuteSnapshotKafkaSignal implements KafkaSignal {
 
     public Optional<String> getAdditionalCondition() {
         return additionalCondition;
+    }
+
+    public Optional<String> getSurrogateKey() {
+        return surrogateKey;
     }
 }

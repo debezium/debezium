@@ -20,9 +20,12 @@ public class DataCollection<T> {
 
     private Optional<String> additionalCondition;
 
-    public DataCollection(T id, Optional<String> additionalCondition) {
+    private Optional<String> surrogateKey;
+
+    public DataCollection(T id, Optional<String> additionalCondition, Optional<String> surrogateKey) {
         this.id = id;
         this.additionalCondition = additionalCondition == null ? Optional.empty() : additionalCondition;
+        this.surrogateKey = surrogateKey == null ? Optional.empty() : surrogateKey;
     }
 
     public T getId() {
@@ -39,6 +42,14 @@ public class DataCollection<T> {
 
     public void setAdditionalCondition(Optional<String> additionalCondition) {
         this.additionalCondition = additionalCondition;
+    }
+
+    public Optional<String> getSurrogateKey() {
+        return surrogateKey;
+    }
+
+    public void setSurrogateKey(Optional<String> surrogateKey) {
+        this.surrogateKey = surrogateKey;
     }
 
     @Override
@@ -63,6 +74,7 @@ public class DataCollection<T> {
         return "DataCollection{" +
                 "id=" + id +
                 ", additionalCondition=" + additionalCondition +
+                ", surrogateKey=" + surrogateKey +
                 '}';
     }
 }

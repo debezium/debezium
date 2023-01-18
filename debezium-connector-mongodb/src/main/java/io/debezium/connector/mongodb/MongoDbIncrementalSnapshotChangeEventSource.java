@@ -338,11 +338,16 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void addDataCollectionNamesToSnapshot(MongoDbPartition partition, List<String> dataCollectionIds,
-                                                 Optional<String> additionalCondition, OffsetContext offsetContext)
+                                                 Optional<String> additionalCondition, Optional<String> surrogateKey, OffsetContext offsetContext)
             throws InterruptedException {
         if (additionalCondition != null && additionalCondition.isPresent()) {
             throw new UnsupportedOperationException("Additional condition not supported for MongoDB");
         }
+
+        if (surrogateKey != null && surrogateKey.isPresent()) {
+            throw new UnsupportedOperationException("Surrogate key not supported for MongoDB");
+        }
+
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
         final String rsName = replicaSets.all().get(0).replicaSetName();
@@ -350,7 +355,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 .stream()
                 .map(x -> rsName + "." + x)
                 .collect(Collectors.toList());
-        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds, null);
+        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds, null, null);
         if (shouldReadChunk) {
             progressListener.snapshotStarted(partition);
             progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()

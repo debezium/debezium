@@ -17,7 +17,7 @@ public interface IncrementalSnapshotContext<T> {
 
     DataCollection<T> nextDataCollection();
 
-    List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition);
+    List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey);
 
     int dataCollectionsToBeSnapshottedCount();
 
