@@ -5,7 +5,10 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
