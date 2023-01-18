@@ -5,12 +5,15 @@
  */
 package io.debezium.storage.jdbc;
 
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
+
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.runtime.WorkerConfig;
-
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
 
 public class JdbcConfig extends WorkerConfig {
     private static final ConfigDef CONFIG;
