@@ -438,7 +438,7 @@ public abstract class AbstractConnectorTest implements Testing {
                         .alias("Task has attempted to initialize coordinator")
                         .pollInterval(100, TimeUnit.MILLISECONDS)
                         .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
-                        .until(() -> baseSourceTask.getState() != BaseSourceTask.State.INITIAL);
+                        .until(() -> baseSourceTask.getTaskState() != BaseSourceTask.State.INITIAL);
 
             }
         });
