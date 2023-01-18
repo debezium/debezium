@@ -69,10 +69,7 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public R apply(final R record) {
-        if (record.value() == null) {
-            return null;
-        }
-        if (!smtManager.isValidEnvelope(record)) {
+        if (record.value() == null || !smtManager.isValidEnvelope(record)) {
             return record;
         }
 
