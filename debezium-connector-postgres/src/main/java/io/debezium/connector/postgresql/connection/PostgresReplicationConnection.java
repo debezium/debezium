@@ -372,12 +372,34 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.warn("Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version", e);
             }
             else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
-                throw new DebeziumException(
-                        String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
-                                e.getMessage()));
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        throw new DebeziumException(
+                                String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
+                                        e.getMessage()));
+                    case WARN:
+                        LOGGER.warn("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
+                                e.getMessage(), e);
+                        break;
+                    case SKIP:
+                    case IGNORE:
+                        LOGGER.debug("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
+                                e.getMessage(), e);
+                        break;
+                }
             }
             else {
-                throw new DebeziumException(e);
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        throw new DebeziumException(e);
+                    case WARN:
+                        LOGGER.warn("Unexpected error while trying to seek LSN", e);
+                        break;
+                    case SKIP:
+                    case IGNORE:
+                        LOGGER.debug("Unexpected error while trying to seek LSN", e);
+                        break;
+                }
             }
         }
     }
