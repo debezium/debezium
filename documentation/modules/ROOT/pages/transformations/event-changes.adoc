@@ -18,8 +18,8 @@ This single message transformation (SMT) is supported for only the SQL database 
 endif::community[]
 
 A {prodname} data change event has a complex structure that provides a wealth of information.
-However, parts of the chagne data capture pipeline may require knowledge of what fields were changed or unchanged when the event occurred in the source system.
-To provide this information, {prodname} provides a event record changes single message transformation (SMT).
+However, in some cases, before a downstream consumer can process {prodname} change event messages, it requires additional information about field-level changes that result from the original database change.
+To enhance event messages with details about how a database operation modifies fields in the source database, {prodname} provides the `ExtractChangedRecordState` single message transformation (SMT).
 
 The event changes transformation is a
 link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
@@ -32,15 +32,15 @@ Each event consists of three parts:
 
 * Metadata, which includes but is not limited to:
 
-** The operation that made the change
-** Source information such as the names of the database and table where the change was made
-** Time stamp for when the change was made
+** The type of operation that changed the data.
+** Source information, such as the names of the database and the table in which the change occurred.
+** Timestamp that identifies when the change was made.
 ** Optional transaction information
 
 * Row data before the change
 * Row data after the change
 
-For example, part of the structure of an `UPDATE` change event looks like this:
+The following example shows part of the structure of a typical {prodname} `UPDATE` change event:
 
 [source,json,indent=0]
 ----
@@ -67,23 +67,24 @@ xref:{link-connectors}[the documentation for each connector].
 endif::community[]
 
 This complex format provides the most information about changes happening in the system.
-However, other connectors or other parts of the Kafka ecosystem may expect knowledge of what fields changed or are unchanged, and this event changes SMT allows exposing that information via event headers.
+However, downstream consumers of the message (other connectors, or other parts of the Kafka ecosystem) might expect the message to explicitly identify the fields that a database operation changes or leaves unchanged.
+This event changes SMT adds information about these field changes to headers in the change event message.
 
 [[event-changes-behavior]]
 == Behavior
 
 The event changes SMT extracts the `before` and `after` fields from a {prodname} `UPDATE` change event in a Kafka record.
-The SMT will examine each of the fields within these two  event state structures and writes the names of fields that changed or are unchanged based on the configuration supplied to the SMT.
+The SMT examines the fields in the `before` and `after` event state structures, and then writes the names of fields that changed or are unchanged based on the values of  settings that you apply to the SMT configuration.
 If the event represents an `INSERT` or `DELETE`, this single message transformation has no effect.
 
-You can configure the event changes SMT for a {prodname} connector or for a sink connector that consumes messages emitted by a {prodname} connector.
-The advantage of configuring the event changes for a sink connector is that the records stored in Apache Kafka contain whole {prodname} change events.
+You can configure the event changes SMT for a {prodname} connector, or for a sink connector that consumes messages emitted by a {prodname} connector.
+Configure the event changes SMT for a sink connector if you want Apache Kafka to retain the entire original {prodname} change events.
 The decision to apply the SMT to a source or sink connector depends on your particular use case.
 
 You can configure the transformation to do any of the following:
 
-* Record the fields that changed in the `UPDATE` in a user-configured header.
-* Record the fields that did not change in the `UPDATE` in a user-configured header.
+* Identify the fields that are changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-changed-name[`header.changed.name`] header.
+* Identify the fields that are not changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-unchanged-name[`header.unchanged.name`] header.
 
 The single message transformation can be configured to include both changed and unchanged fields or either, depending on your use case.
 
@@ -125,9 +126,7 @@ Because the structure of these other messages differs from the structure of the 
 
 For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
-ifdef::community[]
 [id="configuration-options"]
-endif::community[]
 
 == Configuration options
 
