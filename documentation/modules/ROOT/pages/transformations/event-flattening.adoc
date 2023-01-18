@@ -304,3 +304,32 @@ When the SMT adds metadata fields to the simplified record's header, it prefixes
  +
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
 |===
+
+The following table describes the options that you can specify to configure the event flattening SMT to integrate with the event changes SMT.
+
+
+.Descriptions of event flattening SMT configuration options for integration with event changes SMT
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[extract-new-record-state-header-changed-name]]xref:{link-event-flattening}#extract-new-record-state-header-unchanged-name[`header.unchanged.name`]
+|
+|The Kafka message header to source unchanged field names from.
+
+[id="extract-new-record-state-drop-unchanged-fields"]
+|xref:{link-event-flattening}#extract-new-record-state-drop-unchanged-fields[`drop.unchanged.fields`]
+|`false`
+|{prodname} generates a flattened event structure based on the `after` portion of the event's payload that includes all fields by default.
+For an `UPDATE` operation, this behavior can be adjusted to only include the fields that were changed by setting this option to `true` to drop or omit fields that were not changed in the update.
+
+[id="extract-new-record-state-keep-unchanged-primary-keys"]
+|xref:{link-event-flattening}#extract-new-record-state-keep-unchanged-primary-keys[`keep.unchanged.primary.keys`]
+|`true`
+|{prodname} generates a flattened event structure based on the `after` portion of the event's payload that includes all fields by default.
+When enabling link:#extract-new-record-state-drop-unchanged-fields[`drop.unchanged.fields`], it is possible to omit primary key values in the flattened structure by setting this option to `false`.
+By default, primary key fields are always retained even if unchanged fields are to be omitted.
+
+|===
