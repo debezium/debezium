@@ -83,12 +83,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final ZoneOffset defaultOffset;
+    protected final ZoneOffset defaultOffset;
 
     /**
      * Fallback value for TIMESTAMP WITH TZ is epoch
      */
-    private final String fallbackTimestampWithTimeZone;
+    protected final String fallbackTimestampWithTimeZone;
 
     /**
      * Fallback value for TIME WITH TZ is 00:00
@@ -97,7 +97,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
     protected final DecimalMode decimalMode;
-    private final TemporalAdjuster adjuster;
+    protected final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
     protected final BinaryHandlingMode binaryMode;
 
