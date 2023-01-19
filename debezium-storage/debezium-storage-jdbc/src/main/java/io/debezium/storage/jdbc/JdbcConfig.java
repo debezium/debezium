@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 
 import java.util.Map;
@@ -20,15 +20,15 @@ public class JdbcConfig extends WorkerConfig {
 
     static {
         CONFIG = WorkerConfig.baseConfigDef()
-                .define(JDBC_URI.name(),
+                .define(OFFSET_STORAGE_JDBC_URI.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
                         "Jdbc database uri")
-                .define(JDBC_USER.name(),
+                .define(OFFSET_STORAGE_JDBC_USER.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
                         "Jdbc database username")
-                .define(JDBC_PASSWORD.name(),
+                .define(OFFSET_STORAGE_JDBC_PASSWORD.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
                         "Jdbc database password")
