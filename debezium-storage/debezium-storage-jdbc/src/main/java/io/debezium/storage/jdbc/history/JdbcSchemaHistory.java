@@ -274,7 +274,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             if (tableExists.next()) {
                 return;
             }
-            LOG.debug("Creating table {} to store offset", DATABASE_HISTORY_TABLE_NAME);
+            LOG.debug("Creating table {} to store database history", DATABASE_HISTORY_TABLE_NAME);
             conn.prepareStatement(DATABASE_HISTORY_TABLE_DDL).execute();
             LOG.info("Created table in given database...");
         }

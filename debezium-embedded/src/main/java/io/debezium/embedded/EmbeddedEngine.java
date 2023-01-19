@@ -235,6 +235,27 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Max delay (in ms) between retries when encountering connection errors.");
 
+    public static final Field OFFSET_STORAGE_JDBC_URI = Field.create("offset.storage.jdbc.uri")
+            .withDescription("URI of the database which will be used to record the database history")
+            .withDefault("jdbc:")
+            .withValidation(Field::isRequired);
+
+    public static final Field OFFSET_STORAGE_JDBC_USER = Field.create("offset.storage.jdbc.user")
+            .withDescription("Username of the database which will be used to record the database history")
+            .withDefault("offsetuser")
+            .withValidation(Field::isRequired);
+
+    public static final Field OFFSET_STORAGE_JDBC_PASSWORD = Field.create("offset.storage.jdbc.password")
+            .withDescription("Password of the database which will be used to record the database history")
+            .withDefault("offsetpassword")
+            .withValidation(Field::isRequired);
+
+    public static final String DEFAULT_OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
+
+    public static final Field OFFSET_STORAGE_JDBC_TABLE_NAME = Field.create("offset.storage.jdbc.offset_table_name")
+            .withDescription("Name of the table to store offsets")
+            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
+
     /**
      * The array of fields that are required by each connectors.
      */
@@ -245,7 +266,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
             OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
-            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
+            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS,
+            // JDBC OFFSET STORAGE FIELDS
+            OFFSET_STORAGE_JDBC_URI, OFFSET_STORAGE_JDBC_USER, OFFSET_STORAGE_JDBC_PASSWORD, OFFSET_STORAGE_JDBC_TABLE_NAME);
 
     /**
      * How long we wait before forcefully stopping the connector thread when
@@ -1208,6 +1231,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_PARTITIONS);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
+            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_URI);
+            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_USER);
+            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_PASSWORD);
+            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_TABLE_NAME);
             CONFIG = config;
         }
 
