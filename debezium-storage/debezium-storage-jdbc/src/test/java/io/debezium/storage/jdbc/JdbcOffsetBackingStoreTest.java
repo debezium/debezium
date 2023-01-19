@@ -5,9 +5,9 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_URI;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 import static org.junit.Assert.assertEquals;
 
@@ -44,9 +44,9 @@ public class JdbcOffsetBackingStoreTest {
         dbFile = File.createTempFile("test-", "db");
         store = new JdbcOffsetBackingStore();
         props = new HashMap<>();
-        props.put(JDBC_URI.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
-        props.put(JDBC_USER.name(), "user");
-        props.put(JDBC_PASSWORD.name(), "pass");
+        props.put(OFFSET_STORAGE_JDBC_URI.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
+        props.put(OFFSET_STORAGE_JDBC_USER.name(), "user");
+        props.put(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass");
         props.put(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");
         props.put(StandaloneConfig.KEY_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         props.put(StandaloneConfig.VALUE_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");

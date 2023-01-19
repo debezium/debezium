@@ -6,14 +6,22 @@
 package io.debezium.storage.jdbc;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,6 +80,8 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
 
         File dbFile = File.createTempFile("test-", "db");
 
+        String jdbcUri = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
+
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
         config = Configuration.create()
@@ -83,22 +93,64 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_test")
+                .with("database.whitelist", "connector_test")
+
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
-                .with("offset.storage.jdbc.uri", "jdbc:sqlite:" + dbFile.getAbsolutePath())
-                // .with(JDBC_URI.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath())
-                // .with(JDBC_USER.name(), "user")
-                // .with(JDBC_PASSWORD.name(), "pass")
-                // .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
+                .with(OFFSET_STORAGE_JDBC_URI.name(), jdbcUri)
+                .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
+                .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
+                .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
+                .with("snapshot.mode", "initial")
+                .with("offset.flush.interval.ms", "1000")
                 .with("offset.storage", "io.debezium.storage.jdbc.JdbcOffsetBackingStore")
+
                 .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        Thread.sleep(443333444);
+        Thread.sleep(4000);
+        validateIfDataIsCreatedInJDBCDatabase(jdbcUri, "user", "pass", "offsets_jdbc");
+    }
+
+    /**
+     * Function to validate the offset storage data that is created
+     * in Database.
+     *
+     * @param jdbcUri
+     * @param jdbcUser
+     * @param jdbcPassword
+     */
+    private void validateIfDataIsCreatedInJDBCDatabase(String jdbcUri, String jdbcUser,
+                                                       String jdbcPassword, String jdbcTableName) {
+        Connection connection = null;
+        try {
+            // create a database connection
+            connection = DriverManager.getConnection(jdbcUri, jdbcUser, jdbcPassword);
+            Statement statement = connection.createStatement();
+            statement.setQueryTimeout(30); // set timeout to 30 sec.
+
+            ResultSet rs = statement.executeQuery(String.format("select * from %s", jdbcTableName));
+            while (rs.next()) {
+                String offsetKey = rs.getString("offset_key");
+                String offsetValue = rs.getString("offset_val");
+                String recordInsertTimestamp = rs.getString("record_insert_ts");
+                String recordInsertSequence = rs.getString("record_insert_seq");
+
+                Assert.assertFalse(offsetKey.isBlank() && offsetKey.isEmpty());
+                Assert.assertFalse(offsetValue.isBlank() && offsetValue.isEmpty());
+                Assert.assertFalse(recordInsertTimestamp.isBlank() && recordInsertTimestamp.isEmpty());
+                Assert.assertFalse(recordInsertSequence.isBlank() && recordInsertSequence.isEmpty());
+
+            }
+
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
