@@ -259,8 +259,15 @@ Allowed values are:
 
 * `Connect.class` - the output value is change event wrapping Kafka Connect's `SourceRecord`
 * `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
+* `JsonByteArray.class` - the output value is a pair of key and value formatted as `JSON` and encoded as UTF-8 byte arrays
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records (see xref:{link-avro-serialization}[Avro Serialization] for more details)
 * `CloudEvents.class` - the output value is a pair of key and value encoded as xref:{link-cloud-events}[Cloud Events] messages
+
+The header format can also be specified when calling `DebeziumEngine#create()`.
+Allowed values are:
+
+* `Json.class` - the header values are encoded as `JSON` strings
+* `JsonByteArray.class` - the header values are formatted as `JSON` and encoded as UTF-8 byte arrays
 
 Internally, the engine uses the appropriate Kafka Connect converter implementation to which the conversion is delegated.
 The converter can be parametrized using engine properties to modify its behaviour.

@@ -784,7 +784,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(moneyFractionDigits), (r) -> {
             switch (mode) {
                 case DOUBLE:
-                    if (data instanceof Double) {
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).doubleValue());
+                    }
+                    else if (data instanceof Double) {
                         r.deliver(data);
                     }
                     else if (data instanceof Number) {
@@ -792,7 +795,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     }
                     break;
                 case PRECISE:
-                    if (data instanceof Double) {
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
+                    }
+                    else if (data instanceof Double) {
                         r.deliver(BigDecimal.valueOf((Double) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
                     else if (data instanceof Number) {
@@ -801,7 +807,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     }
                     break;
                 case STRING:
-                    r.deliver(String.valueOf(data));
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).toPlainString());
+                    }
+                    else {
+                        r.deliver(String.valueOf(data));
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown decimalMode");

@@ -181,3 +181,6 @@ yoheimuta,Yohei Yoshimuta
 nancyxu123,Nancy Xu
 govi20,Govinda Sakhare
 akshansh,Akshansh Jain
+erdinc,Erdinç Taşkın
+luca.scannapieco,Luca Scannapieco
+sunxiaojian,Sun Xiao Jian

@@ -96,9 +96,16 @@ public interface Snapshotter {
     }
 
     /**
-     * Lifecycle hook called once the snapshot phase is finished.
+     * Lifecycle hook called once the snapshot phase is successful.
      */
     default void snapshotCompleted() {
+        // no operation
+    }
+
+    /**
+     * Lifecycle hook called once the snapshot phase is aborted.
+     */
+    default void snapshotAborted() {
         // no operation
     }
 }

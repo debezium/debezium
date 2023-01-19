@@ -37,6 +37,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.JsonByteArray;
 import io.debezium.engine.format.Protobuf;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.server.events.ConnectorCompletedEvent;
@@ -67,6 +68,7 @@ public class DebeziumServer {
     private static final String PROP_FORMAT_PREFIX = PROP_PREFIX + "format.";
     private static final String PROP_PREDICATES_PREFIX = PROP_PREFIX + "predicates.";
     private static final String PROP_TRANSFORMS_PREFIX = PROP_PREFIX + "transforms.";
+    private static final String PROP_HEADER_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "header.";
     private static final String PROP_KEY_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "key.";
     private static final String PROP_VALUE_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "value.";
     private static final String PROP_OFFSET_STORAGE_PREFIX = "offset.storage.";
@@ -74,11 +76,14 @@ public class DebeziumServer {
     private static final String PROP_PREDICATES = PROP_PREFIX + "predicates";
     private static final String PROP_TRANSFORMS = PROP_PREFIX + "transforms";
     private static final String PROP_SINK_TYPE = PROP_SINK_PREFIX + "type";
+
+    private static final String PROP_HEADER_FORMAT = PROP_FORMAT_PREFIX + "header";
     private static final String PROP_KEY_FORMAT = PROP_FORMAT_PREFIX + "key";
     private static final String PROP_VALUE_FORMAT = PROP_FORMAT_PREFIX + "value";
     private static final String PROP_TERMINATION_WAIT = PROP_PREFIX + "termination.wait";
 
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
+    private static final String FORMAT_JSON_BYTE_ARRAY = JsonByteArray.class.getSimpleName().toLowerCase();
     private static final String FORMAT_CLOUDEVENT = CloudEvents.class.getSimpleName().toLowerCase();
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
     private static final String FORMAT_PROTOBUF = Protobuf.class.getSimpleName().toLowerCase();
@@ -126,11 +131,15 @@ public class DebeziumServer {
 
         final Class<Any> keyFormat = (Class<Any>) getFormat(config, PROP_KEY_FORMAT);
         final Class<Any> valueFormat = (Class<Any>) getFormat(config, PROP_VALUE_FORMAT);
+        final Class<Any> headerFormat = (Class<Any>) getHeaderFormat(config);
+
         configToProperties(config, props, PROP_SOURCE_PREFIX, "", true);
         configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.", true);
         configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.", true);
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "header.converter.", true);
         configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.", true);
         configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.", true);
+        configToProperties(config, props, PROP_HEADER_FORMAT_PREFIX, "header.converter.", true);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + name + ".", false);
         configToProperties(config, props, PROP_SINK_PREFIX + name + ".", PROP_OFFSET_STORAGE_PREFIX + name + ".", false);
 
@@ -149,7 +158,7 @@ public class DebeziumServer {
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
-        engine = DebeziumEngine.create(keyFormat, valueFormat)
+        engine = DebeziumEngine.create(keyFormat, valueFormat, headerFormat)
                 .using(props)
                 .using((DebeziumEngine.ConnectorCallback) health)
                 .using((DebeziumEngine.CompletionCallback) health)
@@ -193,6 +202,9 @@ public class DebeziumServer {
         if (FORMAT_JSON.equals(formatName)) {
             return Json.class;
         }
+        if (FORMAT_JSON_BYTE_ARRAY.equals(formatName)) {
+            return JsonByteArray.class;
+        }
         else if (FORMAT_CLOUDEVENT.equals(formatName)) {
             return CloudEvents.class;
         }
@@ -203,6 +215,17 @@ public class DebeziumServer {
             return Protobuf.class;
         }
         throw new DebeziumException("Unknown format '" + formatName + "' for option " + "'" + property + "'");
+    }
+
+    private Class<?> getHeaderFormat(Config config) {
+        final String formatName = config.getOptionalValue(PROP_HEADER_FORMAT, String.class).orElse(FORMAT_JSON);
+        if (FORMAT_JSON.equals(formatName)) {
+            return Json.class;
+        }
+        else if (FORMAT_JSON_BYTE_ARRAY.equals(formatName)) {
+            return JsonByteArray.class;
+        }
+        throw new DebeziumException("Unknown format '" + formatName + "' for option " + "'" + PROP_HEADER_FORMAT + "'");
     }
 
     public void stop(@Observes ShutdownEvent event) {
