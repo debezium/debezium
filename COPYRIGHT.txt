@@ -36,6 +36,7 @@ Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
 Anil Dasari
+Animesh Kumar
 Anisha Mohanty
 Anton Kondratev
 Anton Martynov
@@ -259,6 +260,7 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
 Lukasz Korzeniowski
@@ -401,6 +403,7 @@ Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
 Subodh Kant Chaturvedi
+Sun Xiao Jian
 Sungho Hwang
 Syed Muhammad Sufyian
 Tapani Moilanen
@@ -448,6 +451,7 @@ Willie Zhu
 Wu Zhenhua
 Wout Scheepers
 Xiao Fu
+Xiaojian Sun
 Xiaopu Zhu
 Xinbin Huang
 Xinquan She

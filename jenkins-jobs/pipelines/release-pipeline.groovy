@@ -76,7 +76,8 @@ CONNECTORS_PER_VERSION = [
     '1.8' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
     '1.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess'],
     '2.0' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess'],
-    '2.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner']
+    '2.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner'],
+    '2.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -581,7 +582,7 @@ node('Slave') {
                 sleep 10
             """
             timeout(time: 2, unit: java.util.concurrent.TimeUnit.MINUTES) {
-                def watcherlog = sh(script: "docker run --name watcher --rm --link zookeeper:zookeeper --link kafka:kafka debezium/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
+                def watcherlog = sh(script: "docker run --name watcher --rm --link zookeeper:zookeeper --link kafka:kafka $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
                 echo watcherlog
                 sh 'docker rm -f connect zookeeper kafka mysql'
                 if (!watcherlog.contains('Processed a total of 2 messages')) {

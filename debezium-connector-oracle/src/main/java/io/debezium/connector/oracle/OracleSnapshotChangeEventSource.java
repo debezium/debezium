@@ -276,7 +276,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void complete(SnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+    public void close() {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }

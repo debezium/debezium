@@ -18,6 +18,8 @@ import javax.inject.Named;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
@@ -27,6 +29,7 @@ import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
+import io.debezium.engine.Header;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 
@@ -69,18 +72,23 @@ public class KafkaChangeConsumer extends BaseChangeConsumer implements DebeziumE
                 producer.close(Duration.ofSeconds(5));
             }
             catch (Throwable t) {
-                LOGGER.warn("Could not close producer {}", t);
+                LOGGER.warn("Could not close producer", t);
             }
         }
     }
 
     @Override
-    public void handleBatch(final List<ChangeEvent<Object, Object>> records, final RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
+    public void handleBatch(final List<ChangeEvent<Object, Object>> records,
+                            final RecordCommitter<ChangeEvent<Object, Object>> committer)
+            throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(records.size());
         for (ChangeEvent<Object, Object> record : records) {
             try {
                 LOGGER.trace("Received event '{}'", record);
-                producer.send(new ProducerRecord<>(record.destination(), record.key(), record.value()), (metadata, exception) -> {
+
+                Headers headers = convertHeaders(record);
+
+                producer.send(new ProducerRecord<>(record.destination(), null, null, record.key(), record.value(), headers), (metadata, exception) -> {
                     if (exception != null) {
                         LOGGER.error("Failed to send record to {}:", record.destination(), exception);
                         throw new DebeziumException(exception);
@@ -99,5 +107,14 @@ public class KafkaChangeConsumer extends BaseChangeConsumer implements DebeziumE
 
         latch.await();
         committer.markBatchFinished();
+    }
+
+    private Headers convertHeaders(ChangeEvent<Object, Object> record) {
+        List<Header<Object>> headers = record.headers();
+        Headers kafkaHeaders = new RecordHeaders();
+        for (Header<Object> header : headers) {
+            kafkaHeaders.add(header.getKey(), getBytes(header.getValue()));
+        }
+        return kafkaHeaders;
     }
 }

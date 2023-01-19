@@ -381,10 +381,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset, snapshotContext.catalogName, table);
     }
 
-    @Override
-    protected void complete(SnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
-    }
-
     /**
      * Generate a valid MySQL query string for the specified table and columns
      *

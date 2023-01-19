@@ -43,16 +43,20 @@ public class TestConfigSource implements ConfigSource {
         String format = System.getProperty("test.apicurio.converter.format");
         String formatKey = System.getProperty("debezium.format.key");
         String formatValue = System.getProperty("debezium.format.value");
+        String formatHeader = System.getProperty("debezium.format.header", "json");
 
         if (format != null && format.length() != 0) {
             integrationTest.put("debezium.format.key", format);
             integrationTest.put("debezium.format.value", format);
+            integrationTest.put("debezium.format.header", formatHeader);
         }
         else {
             formatKey = (formatKey != null) ? formatKey : Json.class.getSimpleName().toLowerCase();
             formatValue = (formatValue != null) ? formatValue : Json.class.getSimpleName().toLowerCase();
+            formatHeader = (formatHeader != null) ? formatHeader : Json.class.getSimpleName().toLowerCase();
             integrationTest.put("debezium.format.key", formatKey);
             integrationTest.put("debezium.format.value", formatValue);
+            integrationTest.put("debezium.format.header", formatHeader);
         }
 
         unitTest.put("debezium.sink.type", "test");
@@ -61,7 +65,9 @@ public class TestConfigSource implements ConfigSource {
         unitTest.put("debezium.source.offset.flush.interval.ms", "0");
         unitTest.put("debezium.source.file", TEST_FILE_PATH.toAbsolutePath().toString());
         unitTest.put("debezium.source.topic", "topicX");
+        unitTest.put("debezium.format.header", formatHeader);
         unitTest.put("debezium.format.schemas.enable", "true");
+        unitTest.put("debezium.format.header.schemas.enable", "false");
         unitTest.put("debezium.format.value.schemas.enable", "false");
         unitTest.put("debezium.transforms", "hoist");
         unitTest.put("debezium.transforms.hoist.type", "org.apache.kafka.connect.transforms.HoistField$Value");

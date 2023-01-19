@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql.connection;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,7 +23,7 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGmoney;
+import org.postgresql.util.PGtokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,18 +137,17 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGmoney asMoney() {
-        try {
-            final String value = asString();
-            if (value != null && value.startsWith("-")) {
-                final String negativeMoney = "(" + value.substring(1) + ")";
-                return new PGmoney(negativeMoney);
-            }
-            return new PGmoney(asString());
+    public BigDecimal asMoney() {
+        final String value = asString();
+        if (value == null) {
+            return null;
         }
-        catch (final SQLException e) {
-            LOGGER.error("Failed to parse money {}, {}", asString(), e);
-            throw new ConnectException(e);
+        else if (value.startsWith("-")) {
+            final String negativeMoney = "(" + value.substring(1) + ")";
+            return new BigDecimal(removeCurrencySymbol(negativeMoney));
+        }
+        else {
+            return new BigDecimal(removeCurrencySymbol(value));
         }
     }
 
@@ -212,5 +212,27 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
         }
         LOGGER.debug("Unknown column type {} for column {} – ignoring", fullType, columnName);
         return null;
+    }
+
+    /**
+     * Remove any () (for negative) & currency symbol (for example: $,)
+     */
+    protected String removeCurrencySymbol(String currency) {
+        String s1;
+        boolean negative;
+
+        negative = (currency.charAt(0) == '(');
+
+        // Remove any () (for negative) & currency symbol
+        s1 = PGtokenizer.removePara(currency).substring(1);
+
+        // Strip out any , in currency
+        int pos = s1.indexOf(',');
+        while (pos != -1) {
+            s1 = s1.substring(0, pos) + s1.substring(pos + 1);
+            pos = s1.indexOf(',');
+        }
+
+        return negative ? "-" + s1 : s1;
     }
 }

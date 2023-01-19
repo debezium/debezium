@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql.connection;
 
-import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,8 +136,7 @@ public class ReplicationMessageColumnValueResolver {
             case "lseg":
                 return value.asLseg();
             case "money":
-                final Object v = value.asMoney();
-                return (v instanceof PGmoney) ? ((PGmoney) v).val : v;
+                return value.asMoney();
             case "path":
                 return value.asPath();
             case "point":
