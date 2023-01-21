@@ -59,6 +59,12 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
     @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
     String nullKey;
 
+    @ConfigProperty(name = PROP_PREFIX + "tenant", defaultValue = "public")
+    String pulsarTenant;
+
+    @ConfigProperty(name = PROP_PREFIX + "namespace", defaultValue = "default")
+    String pulsarNamespace;
+
     @PostConstruct
     void connect() {
         final Config config = ConfigProvider.getConfig();
@@ -92,17 +98,18 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
     }
 
     private Producer<?> createProducer(String topicName, Object value) {
+        final String topicFullName = pulsarTenant + "/" + pulsarNamespace + "/" + topicName;
         try {
             if (value instanceof String) {
                 return pulsarClient.newProducer(Schema.STRING)
                         .loadConf(producerConfig)
-                        .topic(topicName)
+                        .topic(topicFullName)
                         .create();
             }
             else {
                 return pulsarClient.newProducer()
                         .loadConf(producerConfig)
-                        .topic(topicName)
+                        .topic(topicFullName)
                         .create();
             }
         }
