@@ -880,11 +880,28 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(15);
-        final List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
+        List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
         assertThat(migrationTestRecords.size()).isEqualTo(1);
-        final SourceRecord record = migrationTestRecords.get(0);
-        assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("2");
+        SourceRecord record = migrationTestRecords.get(0);
+        assertThat(record.key()).isNull();
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(13);
+
+        // Set column mgb_no to required, will treat this unique index column as primary key
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "alter table migration_test change column mgb_no mgb_no varchar(20) not null",
+                        "alter table migration_test drop index migration_test_mgb_no_uindex",
+                        "create unique index migration_test_mgb_no_uindex on migration_test (mgb_no)",
+                        "insert into migration_test values(2,'3')");
+            }
+        }
+
+        records = consumeRecordsByTopic(4);
+        migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
+        assertThat(migrationTestRecords.size()).isEqualTo(1);
+        record = migrationTestRecords.get(0);
+        assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("3");
 
         stopConnector();
     }
