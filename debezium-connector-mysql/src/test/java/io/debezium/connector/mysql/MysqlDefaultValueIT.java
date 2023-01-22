@@ -869,7 +869,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-2267")
+    @FixFor({ "DBZ-2267", "DBZ-6029" })
     public void alterDateAndTimeTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -886,8 +886,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("create table ALTER_DATE_TIME (ID int primary key);");
-                connection.execute("alter table ALTER_DATE_TIME add column CREATED timestamp not null default current_timestamp");
-                connection.execute("insert into ALTER_DATE_TIME values(1000, default);");
+                connection.execute("alter table ALTER_DATE_TIME add column (CREATED timestamp not null default current_timestamp, C time not null default '08:00')");
+                connection.execute("insert into ALTER_DATE_TIME values(1000, default, default);");
             }
         }
 
@@ -897,7 +897,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         validate(record);
 
         final Schema columnSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        final Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
         assertThat(columnSchema.defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(schemaC.defaultValue()).isEqualTo(28800000000L);
     }
 
     @Test
