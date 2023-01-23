@@ -531,6 +531,7 @@ CREATE TABLE "PRODUCT"."TOKENSTORE" (
 	 CONSTRAINT "PK_TOKENSTORE2" PRIMARY KEY ("AUTH_KEY")
      USING INDEX  ENABLE)
      DEFAULT COLLATION "USING_NLS_COMP";
+CREATE TABLE "P_BL050044".CMP4$231516 organization heap tablespace "PT_LOB" lob (FILE_XML, FILE_IMG_F, FILE_IMG_R) store as (tablespace "PT_LOB" enable storage in row nocache nologging) compress for all operations nologging as select /*+ DYNAMIC_SAMPLING(0) */ * FROM "P_BL050044".CMP3$231516 mytab;
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);
