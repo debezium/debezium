@@ -17,7 +17,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnection;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.history.AbstractSchemaHistoryTest;
+import io.debezium.relational.history.AbstractMySqlSchemaHistoryTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.testing.testcontainers.MySqlTestResourceLifecycleManager;
@@ -39,7 +39,7 @@ import redis.clients.jedis.resps.StreamEntry;
 @QuarkusIntegrationTest
 @TestProfile(RedisSchemaHistoryTestProfile.class)
 @QuarkusTestResource(RedisTestResourceLifecycleManager.class)
-public class RedisSchemaHistoryIT extends AbstractSchemaHistoryTest {
+public class RedisSchemaHistoryIT extends AbstractMySqlSchemaHistoryTest {
 
     private static final String STREAM_NAME = "metadata:debezium:schema_history";
     private static final int INIT_HISTORY_SIZE = 16; // Initial number of entries in the schema history stream.

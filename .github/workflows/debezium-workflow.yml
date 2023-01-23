@@ -36,8 +36,8 @@ jobs:
       debezium-ui-changed: ${{ steps.changed-files-debezium-ui.outputs.any_changed }}
       mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
-      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed}}
-      storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed}}
+      storage-changed: ${{ steps.changed-files-storage.outputs.any_changed }}
+      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3

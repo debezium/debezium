@@ -26,6 +26,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
@@ -101,7 +102,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         }
         config.validateAndRecord(ALL_FIELDS, LOG::error);
         if (running.get()) {
-            throw new IllegalStateException("Database history already initialized db: " + config.getString(JDBC_URI));
+            throw new DebeziumException("Database history already initialized db: " + config.getString(JDBC_URI));
         }
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
 
@@ -111,7 +112,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             conn.setAutoCommit(false);
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Failed to connect " + jdbcUri);
+            throw new DebeziumException("Failed to connect " + jdbcUri, e);
         }
     }
 
@@ -121,7 +122,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         lock.write(() -> {
             if (running.compareAndSet(false, true)) {
                 if (conn == null) {
-                    throw new IllegalStateException("Database connection must be set before it is started");
+                    throw new DebeziumException("Database connection must be set before it is started");
                 }
                 try {
                     if (!storageExists()) {
@@ -142,7 +143,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         }
         lock.write(() -> {
             if (!running.get()) {
-                throw new IllegalStateException("The history has been stopped and will not accept more records");
+                throw new DebeziumException("The history has been stopped and will not accept more records");
             }
 
             try {
@@ -206,9 +207,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     while (rs.next()) {
                         String historyId = rs.getString("id");
                         if (!historyId.equals(prevHistoryId)) {
-                            if (historyData.length() > 0) {
-                                records.accept(new HistoryRecord(reader.read(historyData.toString())));
-                            }
+                            createHistoryRecord(records, historyData);
                             prevHistoryId = historyId;
                             historyData = new StringBuilder();
                         }
@@ -220,6 +219,13 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 throw new SchemaHistoryException("Failed to recover records", e);
             }
         });
+    }
+
+    protected void createHistoryRecord(Consumer<HistoryRecord> records, StringBuilder historyData) throws IOException {
+        if (historyData.length() > 0) {
+            final var historyRecord = new HistoryRecord(reader.read(historyData.toString()));
+            records.accept(historyRecord);
+        }
     }
 
     @Override

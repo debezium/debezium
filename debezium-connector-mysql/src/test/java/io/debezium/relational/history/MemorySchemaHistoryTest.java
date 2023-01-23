@@ -8,7 +8,7 @@ package io.debezium.relational.history;
 /**
  * @author Randall Hauch
  */
-public class MemorySchemaHistoryTest extends AbstractSchemaHistoryTest {
+public class MemorySchemaHistoryTest extends AbstractMySqlSchemaHistoryTest {
 
     @Override
     protected SchemaHistory createHistory() {

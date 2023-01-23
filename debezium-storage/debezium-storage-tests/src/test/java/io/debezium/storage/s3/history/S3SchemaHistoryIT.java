@@ -28,7 +28,7 @@ import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
-import io.debezium.relational.history.AbstractSchemaHistoryTest;
+import io.debezium.relational.history.AbstractMySqlSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
@@ -45,7 +45,7 @@ import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
+public class S3SchemaHistoryIT extends AbstractMySqlSchemaHistoryTest {
     final public static String IMAGE_TAG = System.getProperty("tag.smock", "latest");
     final public static String BUCKET = "debezium";
 

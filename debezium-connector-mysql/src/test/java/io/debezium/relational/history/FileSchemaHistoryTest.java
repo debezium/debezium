@@ -16,7 +16,7 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
-public class FileSchemaHistoryTest extends AbstractSchemaHistoryTest {
+public class FileSchemaHistoryTest extends AbstractMySqlSchemaHistoryTest {
 
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("dbHistory.log");
 

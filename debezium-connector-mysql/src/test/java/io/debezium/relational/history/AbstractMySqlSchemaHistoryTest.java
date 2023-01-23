@@ -24,7 +24,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
-public abstract class AbstractSchemaHistoryTest {
+public abstract class AbstractMySqlSchemaHistoryTest {
 
     protected SchemaHistory history;
     protected Map<String, Object> source1;
