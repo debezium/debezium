@@ -406,6 +406,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
             final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
+            LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
             if (replicationStream != null && lsn != null) {
                 if (!lsnFlushingAllowed) {
                     LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
