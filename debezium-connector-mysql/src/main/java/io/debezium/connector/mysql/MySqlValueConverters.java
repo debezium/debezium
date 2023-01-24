@@ -78,12 +78,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
-    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
-
-    /**
-     * Used to parse values of TIME columns. Format: 00:00.
-     */
-    private static final Pattern TIME_FIELD_WITHOUT_SECOND_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)");
+    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)(:([0-9]*))?(\\.([0-9]*))?");
 
     /**
      * Used to parse values of DATE columns. Format: 000-00-00.
@@ -854,25 +849,22 @@ public class MySqlValueConverters extends JdbcValueConverters {
 
     public static Duration stringToDuration(String timeString) {
         Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
-        long hours;
-        long minutes;
+        if (!matcher.matches()) {
+            throw new DebeziumException("Unexpected format for TIME column: " + timeString);
+        }
+
+        final long hours = Long.parseLong(matcher.group(1));
+        final long minutes = Long.parseLong(matcher.group(2));
+        final String secondsGroup = matcher.group(4);
         long seconds = 0;
         long nanoSeconds = 0;
-        if (matcher.matches()) {
-            hours = Long.parseLong(matcher.group(1));
-            minutes = Long.parseLong(matcher.group(2));
-            seconds = Long.parseLong(matcher.group(3));
-            String microSecondsString = matcher.group(5);
+
+        if (secondsGroup != null) {
+            seconds = Long.parseLong(secondsGroup);
+            String microSecondsString = matcher.group(6);
             if (microSecondsString != null) {
                 nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
             }
-        }
-        else if ((matcher = TIME_FIELD_WITHOUT_SECOND_PATTERN.matcher(timeString)).matches()) {
-            hours = Long.parseLong(matcher.group(1));
-            minutes = Long.parseLong(matcher.group(2));
-        }
-        else {
-            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
         }
 
         if (hours >= 0) {
