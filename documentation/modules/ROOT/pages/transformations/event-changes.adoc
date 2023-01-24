@@ -35,7 +35,7 @@ Each event consists of three parts:
 ** The type of operation that changed the data.
 ** Source information, such as the names of the database and the table in which the change occurred.
 ** Timestamp that identifies when the change was made.
-** Optional transaction information
+** Optional transaction information.
 
 * Row data before the change
 * Row data after the change
@@ -66,32 +66,32 @@ More details about change event structure are provided in
 xref:{link-connectors}[the documentation for each connector].
 endif::community[]
 
-This complex format provides the most information about changes happening in the system.
-However, downstream consumers of the message (other connectors, or other parts of the Kafka ecosystem) might expect the message to explicitly identify the fields that a database operation changes or leaves unchanged.
-This event changes SMT adds information about these field changes to headers in the change event message.
+The complex format of the message in the preceding example provides detailed information about changes that occur in the source database.
+However, the format might not be suitable for some downstream consumers.
+Sink connectors, or other parts of the Kafka ecosystem might expect the message to explicitly identify the fields that a database operation changes or leaves unchanged.
+The `ExtractChangedRecordState` SMT adds headers to the change event message to identify the fields that are modified by a database operation, and the fields that remain unchanged.
 
 [[event-changes-behavior]]
 == Behavior
 
 The event changes SMT extracts the `before` and `after` fields from a {prodname} `UPDATE` change event in a Kafka record.
-The SMT examines the fields in the `before` and `after` event state structures, and then writes the names of fields that changed or are unchanged based on the values of  settings that you apply to the SMT configuration.
+The transformation examines the `before` and `after` event state structures to identify the fields that are altered by an operation, and those that remain unchanged.
+Depending on the connector configuration, the transformation then produces a modified event message that adds message headers to list the changed fields, the unchanged fields, or both.
 If the event represents an `INSERT` or `DELETE`, this single message transformation has no effect.
 
 You can configure the event changes SMT for a {prodname} connector, or for a sink connector that consumes messages emitted by a {prodname} connector.
 Configure the event changes SMT for a sink connector if you want Apache Kafka to retain the entire original {prodname} change events.
 The decision to apply the SMT to a source or sink connector depends on your particular use case.
 
-You can configure the transformation to do any of the following:
+Depending on your use case, you can configure the transformation to modify the original message by performing one or both of the following tasks:
 
 * Identify the fields that are changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-changed-name[`header.changed.name`] header.
 * Identify the fields that are not changed by an `UPDATE` event by listing them in the user-configured xref:extract-changes-header-unchanged-name[`header.unchanged.name`] header.
 
-The single message transformation can be configured to include both changed and unchanged fields or either, depending on your use case.
-
 == Configuration
 
 Configure the {prodname} event changes SMT in a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration.
-To obtain the default behavior which doesn't add any headers, in a `.properties` file, you would specify something like the following:
+To obtain the default behavior, which doesn't add any headers, add the transformation to the connector configuration as in the following example:
 
 [source]
 ----
@@ -99,9 +99,9 @@ transforms=changes,...
 transforms.changes.type=io.debezium.transforms.ExtractChangedRecordState
 ----
 
-As with any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-seperated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
+As with any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
 
-The following `.properties` example sets several event changes SMT options:
+The connector configuration in the following example sets several options for the event changes SMT:
 
 [source]
 ----
@@ -111,8 +111,8 @@ transforms.changes.header.changed.name=Changed
 transforms.changes.header.unchanged.name=Unchanged
 ----
 
-`header.changed.name`:: Specifies the name of the header that will include a comma-separated list of fields that were changed.
-`header.unchanged.name`:: Specifies the name of the header that will include a comma-separated list of fields that were not changed.
+`header.changed.name`:: The Kafka message header name to use for storing a comma-separated list of the fields that are changed by a database operation.
+`header.unchanged.name`:: The Kafka message header name to use for storing a comma-separated list of the fields that remain unchanged after a database operation.
 
 .Customizing the configuration
 The connector might emit many types of event messages (heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
@@ -141,8 +141,8 @@ The following table describes the options that you can specify to configure the 
 
 |[[extract-changes-header-changed-name]]<<extract-changes-header-changed-name, `+header.changed.name+`>>
 |
-|Specifies the name of the header that will include a comma-separated list of fields that were changed.
+|The Kafka message header name to use for storing a comma-separated list of the fields that are changed by a database operation.
 
 |[[extract-changes-header-unchanged-name]]<<extract-changes-header-unchanged-name, `+header.unchanged.name+`>>
 |
-|Specifies the name of the header that will include a comma-separated list of fields that were not changed.
+|The Kafka message header name to use for storing a comma-separated list of the fields that remain unchanged after a database operation.
