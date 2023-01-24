@@ -9,8 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -31,7 +33,9 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
-    private static final String DROP_UNCHANGED_FIELDS = "drop.unchanged.fields";
+    private static final String DROP_FIELDS_HEADER_NAME = "drop.fields.header.name";
+    private static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
+    private static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -581,44 +585,312 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
 
     @Test
     @FixFor("DBZ-5283")
-    public void testDropUnchangedFields() {
-        try (ExtractChangedRecordState<SourceRecord> changesTransform = new ExtractChangedRecordState<>()) {
-            final Map<String, String> changesProps = new HashMap<>();
-            changesProps.put(ExtractChangedRecordState.HEADER_CHANGED_NAME.name(), "changes");
-            changesProps.put(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name(), "non-changes");
-            changesTransform.configure(changesProps);
-            try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-                final Map<String, String> props = new HashMap<>();
-                props.put(DROP_UNCHANGED_FIELDS, "true");
-                props.put(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name(), "non-changes");
-                transform.configure(props);
+    public void dropFieldsFromValueWithSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
 
-                // CREATE/INSERT records should not be transformed
-                final SourceRecord createRecord = createCreateRecord();
-                final SourceRecord createUnwrapped = transform.apply(changesTransform.apply(createRecord));
-                assertThat(createUnwrapped.headers()).isEmpty();
-                assertThat(((Struct) createUnwrapped.value()).get("id")).isEqualTo((byte) 1);
-                assertThat(((Struct) createUnwrapped.value()).get("name")).isEqualTo("myRecord");
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            transform.configure(props);
 
-                // UPDATE records should be transformed
-                final SourceRecord updateRecord = createUpdateRecord();
-                final SourceRecord updateUnwrapped = transform.apply(changesTransform.apply(updateRecord));
-                assertThat(updateUnwrapped.valueSchema().field("id")).isNull();
-                assertThat(updateUnwrapped.valueSchema().field("name")).isNotNull();
-                assertThat(((Struct) updateUnwrapped.value()).get("name")).isEqualTo("updatedRecord");
+            // Create has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
 
-                // DELETE records should not be transformed
-                final SourceRecord deleteRecord = createDeleteRecord();
-                final SourceRecord deleteUnwrapped = transform.apply(changesTransform.apply(deleteRecord));
-                assertThat(deleteUnwrapped).isNull();
+            // Create has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
 
-                // TOMBSTONE should not be transformed
-                final SourceRecord tombstoneRecord = createTombstoneRecord();
-                final SourceRecord tombstoneUnwrapped = transform.apply(changesTransform.apply(tombstoneRecord));
-                assertThat(tombstoneUnwrapped).isNull();
-            }
+            // Update has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
 
+            // Update has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
         }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueWithoutSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE, "false");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Create has a key with one optional field name
+            // "id" is retained in the key, but dropped in the value due to disabling schema compatibility.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has a key with one optional field name
+            // "id" is retained in the key, but dropped in the value due to disabling schema compatibility.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueAndKeyWithSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_FROM_KEY, "true");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Create has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueAndKeyWithoutSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE, "false");
+            props.put(DROP_FIELDS_FROM_KEY, "true");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Create has a key with one optional field name
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNull();
+            assertThat(after.key()).isEqualTo(new Struct(after.keySchema()));
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has a key with one optional field name
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNull();
+            assertThat(after.key()).isEqualTo(new Struct(after.keySchema()));
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    protected SourceRecord addDropFieldsHeader(SourceRecord record, String name, List<String> values) {
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(name)
+                .build();
+        record.headers().add(name, values, dropFieldsSchema);
+        return record;
     }
 
 }

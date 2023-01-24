@@ -303,33 +303,22 @@ Optionally, you can override the field name via `<field name>:<new field name>`,
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
-|===
 
-The following table describes the options that you can specify to configure the event flattening SMT to integrate with the event changes SMT.
-
-
-.Descriptions of event flattening SMT configuration options for integration with event changes SMT
-[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
-|===
-|Option
-|Default
-|Description
-
-|[[extract-new-record-state-header-changed-name]]xref:{link-event-flattening}#extract-new-record-state-header-unchanged-name[`header.unchanged.name`]
+[id="extract-new-record-state-drop-fields-header-name"]
+|xref:{link-event-flattening}#extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`]
 |
-|The Kafka message header to source unchanged field names from.
+|The Kafka message header name to source fields that should be dropped.
 
-[id="extract-new-record-state-drop-unchanged-fields"]
-|xref:{link-event-flattening}#extract-new-record-state-drop-unchanged-fields[`drop.unchanged.fields`]
+[id="extract-new-record-state-drop-fields-from-key"]
+|xref:{link-event-flattening}#extract-new-record-state-drop-fields-from-key[`drop.fields.from.key`]
 |`false`
-|{prodname} generates a flattened event structure based on the `after` portion of the event's payload that includes all fields by default.
-For an `UPDATE` operation, this behavior can be adjusted to only include the fields that were changed by setting this option to `true` to drop or omit fields that were not changed in the update.
+|Controls whether fields are also be dropped fom the event's key.
 
-[id="extract-new-record-state-keep-unchanged-primary-keys"]
-|xref:{link-event-flattening}#extract-new-record-state-keep-unchanged-primary-keys[`keep.unchanged.primary.keys`]
+[id="extract-new-record-state-drop-fields-keep-schema-compatible"]
+|xref:{link-event-flattening}#extract-new-record-state-drop-fields-keep-schema-compatible[`drop.fields.keep.schema.compatible`]
 |`true`
-|{prodname} generates a flattened event structure based on the `after` portion of the event's payload that includes all fields by default.
-When enabling link:#extract-new-record-state-drop-unchanged-fields[`drop.unchanged.fields`], it is possible to omit primary key values in the flattened structure by setting this option to `false`.
-By default, primary key fields are always retained even if unchanged fields are to be omitted.
+|Controls whether non-optional fields will be removed if they're included in the xref:{link-event-flattening}#extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`] configuration property. +
+ +
+The default behavior is to only remove fields if they're marked optional.
 
 |===
