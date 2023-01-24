@@ -7,6 +7,7 @@ package io.debezium.transforms;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,32 +68,41 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
     private static final String PURPOSE = "source field insertion";
+    private static final String EXCLUDE = "exclude";
     private static final int SCHEMA_CACHE_SIZE = 64;
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
     private static final Pattern NEW_FIELD_SEPARATOR = Pattern.compile(":");
 
-    private static final Field DROP_UNCHANGED_FIELDS = Field.create("drop.unchanged.fields")
-            .withDisplayName("Remove unchanged fields from the flattened event structure")
+    private static final Field DROP_FIELDS_HEADER = Field.create("drop.fields.header.name")
+            .withDisplayName("Specifies a header that contains a list of field names to be removed")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Specifies the name of a header that contains a list of fields to be removed from the event value.");
+
+    private static final Field DROP_FIELDS_FROM_KEY = Field.create("drop.fields.from.key")
+            .withDisplayName("Specifies whether the fields to be dropped should also be omitted from the key")
             .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(false)
-            .withDescription("Removes unchanged fields from the flattened event structure. "
-                    + "Requires the ExtractChangedRecordState transformation to precede this transformation.");
+            .withDescription("Specifies whether to apply the drop fields behavior to the event key as well as the value. "
+                    + "Default behavior is to only remove fields from the event value, not the key.");
 
-    private static final Field KEEP_UNCHANGED_PRIMARY_KEYS = Field.create("keep.unchanged.primary.keys")
-            .withDisplayName("Specifies whether to keep unchanged primary keys in flattened event structure")
+    private static final Field DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = Field.create("drop.fields.keep.schema.compatible")
+            .withDisplayName("Specifies if fields are dropped, will the event's schemas be compatible")
             .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(true)
-            .withDescription("Specifies whether to keep unchanged primary keys in flattened event structure"
-                    + "Requires the ExtractChangedRecordState transformation to precede this transformation.");
+            .withDescription("Controls the output event's schema compatibility when using the drop fields feature. "
+                    + "`true`: dropped fields are removed if the schema indicates its optional leaving the schemas unchanged, "
+                    + "`false`: dropped fields are removed from the key/value schemas, regardless of optionality.");
 
     private boolean dropTombstones;
-    private boolean dropUnchangedFields;
-    private boolean keepUnchangedPrimaryKeyFields;
-    private String unchangedHeaderName;
+    private String dropFieldsHeaderName;
+    private boolean dropFieldsFromKey;
+    private boolean dropFieldsKeepSchemaCompatible;
     private DeleteHandling handleDeletes;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
@@ -126,9 +136,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
 
-        dropUnchangedFields = config.getBoolean(DROP_UNCHANGED_FIELDS);
-        keepUnchangedPrimaryKeyFields = config.getBoolean(KEEP_UNCHANGED_PRIMARY_KEYS);
-        unchangedHeaderName = config.getString(ExtractChangedRecordState.HEADER_UNCHANGED_NAME.name());
+        dropFieldsHeaderName = config.getString(DROP_FIELDS_HEADER);
+        dropFieldsFromKey = config.getBoolean(DROP_FIELDS_FROM_KEY);
+        dropFieldsKeepSchemaCompatible = config.getBoolean(DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE);
 
         Map<String, String> delegateConfig = new LinkedHashMap<>();
         delegateConfig.put("field", "before");
@@ -186,6 +196,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 newRecord = setTopic(newTopicName, newRecord);
             }
 
+            if (!Strings.isNullOrBlank(dropFieldsHeaderName)) {
+                newRecord = dropFields(newRecord);
+            }
+
             // Handling delete records
             switch (handleDeletes) {
                 case DROP:
@@ -211,8 +225,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
             newRecord = addFields(additionalFields, record, newRecord);
 
-            if (dropUnchangedFields) {
-                newRecord = dropUnchangedFields(newRecord);
+            if (!Strings.isNullOrEmpty(dropFieldsHeaderName)) {
+                newRecord = dropFields(newRecord);
             }
 
             // Handling insert and update records
@@ -290,32 +304,62 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 unwrappedRecord.timestamp());
     }
 
-    private R dropUnchangedFields(R record) {
-        if (Strings.isNullOrEmpty(unchangedHeaderName)) {
-            // If the "header.unchanged.name" is not configured when "drop.unchanged.fields" is specified,
-            // the SMT will simply not drop any fields.
+    private R dropFields(R record) {
+        if (Strings.isNullOrBlank(dropFieldsHeaderName)) {
+            // No drop field header was specified, nothing to be dropped.
             return record;
         }
-        final Header unchangedHeader = getHeaderByName(record, unchangedHeaderName);
-        if (unchangedHeader != null) {
-            // Get the unchanged fields from the ExtractChangedRecordState output
-            final List<String> removeFieldNames = (List<String>) unchangedHeader.value();
-            if (keepUnchangedPrimaryKeyFields && record.key() != null) {
-                // Since primary keys are to be retained the record has a key, iterate the key schema fields
-                // and exclude those from the field removal step.
-                removeFieldNames.removeAll(getSchemaFieldNames(record.keySchema()));
+
+        final Header dropFieldsHeader = getHeaderByName(record, dropFieldsHeaderName);
+        if (dropFieldsHeader == null || dropFieldsHeader.value() == null) {
+            // There was no header or the header had no value.
+            return record;
+        }
+
+        final List<String> fieldNames = (List<String>) dropFieldsHeader.value();
+        if (fieldNames.isEmpty()) {
+            return record;
+        }
+
+        return dropValueFields(dropKeyFields(record, fieldNames), fieldNames);
+    }
+
+    private R dropKeyFields(R record, List<String> fieldNames) {
+        if (dropFieldsFromKey && record.key() != null) {
+            final List<String> keyFieldsToDrop = getFieldsToDropFromSchema(record.keySchema(), fieldNames);
+            if (!keyFieldsToDrop.isEmpty()) {
+                try (ReplaceField<R> delegate = new ReplaceField.Key<>()) {
+                    delegate.configure(Map.of(EXCLUDE, Strings.join(",", keyFieldsToDrop)));
+                    record = delegate.apply(record);
+                }
             }
-
-            // Configure the ReplaceField.Value with field exclusions
-            final Map<String, String> removeProps = new HashMap<>();
-            removeProps.put("exclude", Strings.join(",", removeFieldNames));
-
-            // Apply the exclusion SMT delegate
-            final ReplaceField<R> removeDelegate = new ReplaceField.Value<>();
-            removeDelegate.configure(removeProps);
-            record = removeDelegate.apply(record);
         }
         return record;
+    }
+
+    private R dropValueFields(R record, List<String> fieldNames) {
+        final List<String> valueFieldsToDrop = getFieldsToDropFromSchema(record.valueSchema(), fieldNames);
+        if (!valueFieldsToDrop.isEmpty()) {
+            try (ReplaceField<R> delegate = new ReplaceField.Value<>()) {
+                delegate.configure(Map.of(EXCLUDE, Strings.join(",", valueFieldsToDrop)));
+                record = delegate.apply(record);
+            }
+        }
+        return record;
+    }
+
+    private List<String> getFieldsToDropFromSchema(Schema schema, List<String> fieldNames) {
+        if (!dropFieldsKeepSchemaCompatible) {
+            return fieldNames;
+        }
+
+        final List<String> fieldsToDrop = new ArrayList<>();
+        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
+            if (field.schema().isOptional() && fieldNames.contains(field.name())) {
+                fieldsToDrop.add(field.name());
+            }
+        }
+        return fieldsToDrop;
     }
 
     private Header getHeaderByName(R record, String headerName) {
@@ -325,10 +369,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
         }
         return null;
-    }
-
-    private List<String> getSchemaFieldNames(Schema schema) {
-        return schema.fields().stream().map(org.apache.kafka.connect.data.Field::name).collect(Collectors.toList());
     }
 
     private Schema makeUpdatedSchema(List<FieldReference> additionalFields, Schema schema, Struct originalRecordValue) {

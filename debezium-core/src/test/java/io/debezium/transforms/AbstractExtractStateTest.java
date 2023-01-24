@@ -109,6 +109,35 @@ public abstract class AbstractExtractStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
+    protected SourceRecord createCreateRecordWithKey() {
+        final Schema keySchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .build();
+
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
+                .build();
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct key = new Struct(keySchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        key.put("id", (byte) 1);
+        after.put("id", (byte) 1);
+        after.put("name", null);
+        source.put("lsn", 1234);
+        source.put("ts_ms", 12836);
+        final Struct payload = envelope.create(after, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", keySchema, key, envelope.schema(), payload);
+    }
+
     protected SourceRecord createUpdateRecord() {
         final Struct before = new Struct(recordSchema);
         final Struct after = new Struct(recordSchema);
@@ -126,6 +155,72 @@ public abstract class AbstractExtractStateTest {
         final Struct payload = envelope.update(before, after, source, Instant.now());
         payload.put("transaction", transaction);
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    protected SourceRecord createUpdateRecordWithOptionalNull() {
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        before.put("id", (byte) 1);
+        before.put("name", null);
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        transaction.put("id", "571");
+        transaction.put("total_order", 42L);
+        transaction.put("data_collection_order", 42L);
+        final Struct payload = envelope.update(before, after, source, Instant.now());
+        payload.put("transaction", transaction);
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    protected SourceRecord createUpdateRecordWithKey() {
+        final Schema keySchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .build();
+
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+        final Struct key = new Struct(keySchema);
+        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        key.put("id", (byte) 1);
+        before.put("id", (byte) 1);
+        before.put("name", null);
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        transaction.put("id", "571");
+        transaction.put("total_order", 42L);
+        transaction.put("data_collection_order", 42L);
+        final Struct payload = envelope.update(before, after, source, Instant.now());
+        payload.put("transaction", transaction);
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", keySchema, key, envelope.schema(), payload);
     }
 
     protected SourceRecord createComplexCreateRecord() {
