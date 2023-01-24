@@ -99,12 +99,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-api</artifactId>
-<!--            <version>${version.kafka}</version>-->
-<!--            <scope>test</scope>-->
-        </dependency>
-        <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
             <scope>test</scope>
