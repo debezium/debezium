@@ -653,6 +653,20 @@ public class TestHelper {
         }
     }
 
+    public static void waitForCdcTransactionPropagation(SqlServerConnection connection, String dbName, int expectedTransactions) throws SQLException {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollDelay(1, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    int transactions = connection.queryAndMap(String.format("SELECT COUNT(start_lsn) FROM [%s].cdc.lsn_time_mapping WHERE tran_id <> 0x00", dbName),
+                            (rs) -> {
+                                rs.next();
+                                return rs.getInt(1);
+                            });
+                    return expectedTransactions == transactions;
+                });
+    }
+
     public static String topicName(String databaseName, String tableName) {
         return String.join(".", TEST_SERVER_NAME, databaseName, "dbo", tableName);
     }

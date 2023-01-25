@@ -76,6 +76,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
 
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+    }
+
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " add col3 int default 0";
     }
@@ -890,6 +893,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
@@ -931,6 +935,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         int expectedCount = 1000, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();

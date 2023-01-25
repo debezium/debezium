@@ -173,4 +173,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
+
+    @Override
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+        TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
+    }
 }
