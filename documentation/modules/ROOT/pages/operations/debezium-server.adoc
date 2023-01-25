@@ -761,6 +761,14 @@ The `topic` is set by Debezium.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pulsar so a surrogate key must be used.
 
+|[[pulsar-tenant]]<<pulsar-tenant, `debezium.sink.pusar.tenant`>>
+|`public`
+|The target tenant used to deliver the message.
+
+|[[pulsar-namespace]]<<pulsar-namespace, `debezium.sink.pusar.namespace`>>
+|`default`
+|The target namespace used to deliver the message.
+
 |===
 
 ===== Injection points
