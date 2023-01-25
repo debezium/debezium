@@ -418,6 +418,7 @@ columnConstraint
     | INVISIBLE                                                     #invisibilityColumnConstraint
     | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
+    | CLUSTERING KEY                                                #clusteringKeyColumnConstraint       // Tokudb-specific only
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
     | COMMENT STRING_LITERAL                                        #commentColumnConstraint
     | COLUMN_FORMAT colformat=(FIXED | DYNAMIC | DEFAULT)           #formatColumnConstraint
@@ -442,6 +443,7 @@ tableConstraint
       referenceDefinition                                           #foreignKeyTableConstraint
     | (CONSTRAINT name=uid?)?
       CHECK '(' expression ')'                                      #checkTableConstraint
+    | CLUSTERING KEY index=uid? indexColumnNames                    #clusteringKeyTableConstraint   // Tokudb-specific only
     ;
 
 referenceDefinition
