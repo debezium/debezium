@@ -76,6 +76,7 @@ public class TestHelper {
     private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
     private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0, @captured_column_list = %s";
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
+    private static final String ADJUST_CDC_POLLING_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = #";
     private static final String CDC_WRAPPERS_DML;
 
     /**
@@ -418,6 +419,21 @@ public class TestHelper {
         Objects.requireNonNull(name);
         String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         connection.execute(disableCdcForTableStmt);
+    }
+
+    /**
+     * Sets new polling interval in which SQL server should poll changes.
+     *
+     * SQL server polls new changes and copies them into CDC in predefined interval.
+     * By default, this interval is 5 seconds. For the tests it may be too long and test may need shorter interval.
+     *
+     * @param interval
+     *          new CDC polling interval, in seconds
+     * @throws SQLException if anything unexpected fails
+     */
+    public static void adjustCdcPollingInterval(JdbcConnection connection, int interval) throws SQLException {
+        String adjustCdcPollingIntervalStmt = ADJUST_CDC_POLLING_INTERVAL.replace(STATEMENTS_PLACEHOLDER, Integer.toString(interval));
+        connection.execute(adjustCdcPollingIntervalStmt);
     }
 
     public static void waitForSnapshotToBeCompleted() {
