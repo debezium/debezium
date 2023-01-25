@@ -101,7 +101,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
@@ -125,7 +125,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
@@ -157,7 +157,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
@@ -182,7 +182,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
@@ -216,7 +216,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);

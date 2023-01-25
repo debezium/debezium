@@ -27,6 +27,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.SESSION_TXN_ID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.WALL_TIME, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
@@ -50,6 +51,10 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
         }
 
         sourceInfo.transactionPosition().ifPresent(transactionPosition -> struct.put(SourceInfo.TX_ORD, transactionPosition));
+
+        if (sourceInfo.wallTime() != 0L) {
+            struct.put(SourceInfo.WALL_TIME, sourceInfo.wallTime());
+        }
 
         return struct;
     }
