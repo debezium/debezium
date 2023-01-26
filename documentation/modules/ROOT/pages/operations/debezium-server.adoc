@@ -17,7 +17,7 @@ Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar or Redis (Stream).
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
