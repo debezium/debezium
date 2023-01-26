@@ -35,6 +35,7 @@ Andrey Pustovetov
 Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
+Animesh Kumar
 Anil Dasari
 Anisha Mohanty
 Anton Kondratev
@@ -257,6 +258,7 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
 Lukasz Korzeniowski
