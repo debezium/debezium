@@ -2468,6 +2468,23 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldHandleMaxTasksGreaterThanNumberOfDatabaseNames() {
+        final Map<String, String> props = TestHelper.defaultConnectorConfig()
+                .with(SqlServerConnectorConfig.DATABASE_NAMES, "mAsTeR,mOdEl")
+                .build()
+                .asMap();
+
+        SqlServerConnector connector = new SqlServerConnector();
+        connector.start(props);
+        List<Map<String, String>> taskConfigs = connector.taskConfigs(3);
+        assertThat(taskConfigs).hasSize(2);
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAMES.name()))
+                .isEqualTo("master");
+        assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.DATABASE_NAMES.name()))
+                .isEqualTo("model");
+    }
+
+    @Test
     public void shouldReturnTwoTaskConfigs() {
         final Map<String, String> props = TestHelper.defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES, "MaStEr,MoDeL")
