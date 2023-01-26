@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.2.Final
+January 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400304)
+
+### New features since 2.1.1.Final
+
+* Remove redundant modifiers of members for interface fields [DBZ-2439](https://issues.redhat.com/browse/DBZ-2439)
+* Update the DBZ-UI documentation page to incorporate the recently added "Custom properties" step details [DBZ-5878](https://issues.redhat.com/browse/DBZ-5878)
+* Postgres LSN check should honor event.processing.failure.handling.mode [DBZ-6012](https://issues.redhat.com/browse/DBZ-6012)
+* Enhance the Spanner connector by adding features and/or solving bugs [DBZ-6014](https://issues.redhat.com/browse/DBZ-6014)
+
+
+### Breaking changes since 2.1.1.Final
+
+* Debezium truncating micro/nanosecond part if it is all zeros [DBZ-5996](https://issues.redhat.com/browse/DBZ-5996)
+
+
+### Fixes since 2.1.1.Final
+
+* Data type conversion failed for mysql bigint [DBZ-5798](https://issues.redhat.com/browse/DBZ-5798)
+* Oracle cannot undo change [DBZ-5907](https://issues.redhat.com/browse/DBZ-5907)
+* Truncate records incompatible with ExtractNewRecordState [DBZ-5966](https://issues.redhat.com/browse/DBZ-5966)
+* Computed partition must not be negative [DBZ-5967](https://issues.redhat.com/browse/DBZ-5967)
+* NPE in execute snapshot signal with exclude.tables config on giving wrong table name [DBZ-5988](https://issues.redhat.com/browse/DBZ-5988)
+* There is a problem with postgresql connector parsing the boundary value of money type [DBZ-5991](https://issues.redhat.com/browse/DBZ-5991)
+* Run PostgresConnectorIT.shouldReceiveChangesForChangeColumnDefault() failed [DBZ-6002](https://issues.redhat.com/browse/DBZ-6002)
+* Nullable columns marked with "optional: false" in DDL events [DBZ-6003](https://issues.redhat.com/browse/DBZ-6003)
+* Vitess: Handle the shard list difference between current db shards and persisted shards [DBZ-6011](https://issues.redhat.com/browse/DBZ-6011)
+* DDL statement with TokuDB engine specific "CLUSTERING KEY" couldn't be parsed [DBZ-6016](https://issues.redhat.com/browse/DBZ-6016)
+* DDL parse fail for role revoke with "user-like" role name [DBZ-6019](https://issues.redhat.com/browse/DBZ-6019)
+* DDL parse fail for ALTER USER x DEFAULT ROLE y; [DBZ-6020](https://issues.redhat.com/browse/DBZ-6020)
+* Offsets are not flushed on connect offsets topic when encountering an error on Postgres connector [DBZ-6026](https://issues.redhat.com/browse/DBZ-6026)
+* Unexpected format for TIME column: 8:00 [DBZ-6029](https://issues.redhat.com/browse/DBZ-6029)
+* Oracle does not support compression/logging clauses after an LOB storage clause [DBZ-6031](https://issues.redhat.com/browse/DBZ-6031)
+* Debezium is logging the full message along with the error [DBZ-6037](https://issues.redhat.com/browse/DBZ-6037)
+* Improve resilience during internal schema history recovery from Kafka [DBZ-6039](https://issues.redhat.com/browse/DBZ-6039)
+
+
+### Other changes since 2.1.1.Final
+
+* Plug-in version information duplicated [DBZ-4669](https://issues.redhat.com/browse/DBZ-4669)
+* Remove incubating documentation text for MongoDB ExtractNewDocumentState SMT  [DBZ-5975](https://issues.redhat.com/browse/DBZ-5975)
+* Upgrade Apicurio to 2.4.1.Final [DBZ-5977](https://issues.redhat.com/browse/DBZ-5977)
+* Upgrade JDBC driver to 42.5.1 [DBZ-5980](https://issues.redhat.com/browse/DBZ-5980)
+* Migrate connector triggers to gitlab [DBZ-5992](https://issues.redhat.com/browse/DBZ-5992)
+* SQL Server IncrementalSnapshotWithRecompileIT fails randomly [DBZ-6035](https://issues.redhat.com/browse/DBZ-6035)
+
+
+
 ## 2.1.1.Final
 December 22nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400296)
 
