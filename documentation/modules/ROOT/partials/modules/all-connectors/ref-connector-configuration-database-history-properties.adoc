@@ -27,8 +27,8 @@ The following table describes the `schema.history.internal` properties for confi
 |An integer value that specifies the maximum number of milliseconds the connector should wait while create kafka history topic using Kafka admin client.
 
 |[[{context}-property-database-history-kafka-recovery-attempts]]<<{context}-property-database-history-kafka-recovery-attempts, `+schema.history.internal.kafka.recovery.attempts+`>>
-|`4`
-|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
+|`100`
+|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` × `recovery.poll.interval.ms`.
 
 |[[{context}-property-database-history-skip-unparseable-ddl]]<<{context}-property-database-history-skip-unparseable-ddl, `+schema.history.internal.skip.unparseable.ddl+`>>
 |`false`

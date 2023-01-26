@@ -6,8 +6,10 @@
 package io.debezium.connector.mongodb;
 
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
+import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
@@ -237,6 +239,64 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CAPTURE_MODE);
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "wallTime support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldProvideWallTime() throws InterruptedException {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        final Instant timestamp = Instant.now();
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct value = (Struct) record.value();
+
+        final long wallTime = value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.WALL_TIME);
+        Instant instant = Instant.ofEpochMilli(wallTime);
+        assertThat(instant.truncatedTo(MILLIS).getNano()).isNotZero();
+        assertThat(wallTime).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = GREATER_THAN_OR_EQUAL, major = 6, reason = "wallTime support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldNotProvideWallTimeForOlderVersions() throws InterruptedException {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct value = (Struct) record.value();
+        // For pre-6.0 version, wallTime should not be presented
+        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.WALL_TIME)).isNull();
     }
 
     @Test

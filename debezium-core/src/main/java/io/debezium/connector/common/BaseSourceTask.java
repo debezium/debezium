@@ -188,7 +188,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             SourceRecord lastRecord = records.get(batchSize - 1);
-            updateLastOffset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
             previousOutputBatchSize += batchSize;
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
@@ -313,6 +312,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {
+        LOGGER.trace("Committing record {}", record);
+
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {
             updateLastOffset(record.sourcePartition(), currentOffset);
@@ -331,6 +332,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                         Map<String, ?> partition = iterator.next();
                         Map<String, ?> lastOffset = lastOffsets.get(partition);
 
+                        LOGGER.debug("Committing offset '{}' for partition '{}'", partition, lastOffset);
                         coordinator.commitOffset(partition, lastOffset);
                         iterator.remove();
                     }

@@ -117,6 +117,7 @@ alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE4
 alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
     require none password expire default account unlock password_lock_time unbounded;
 alter user 'user'@'%' identified by 'newpassword' retain current password;
+ALTER USER 'mattias.hultman' DEFAULT ROLE `prod-spain-mysql-read-only`@`%`;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
 #end

@@ -76,6 +76,7 @@ public class TestHelper {
     private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
     private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0, @captured_column_list = %s";
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
+    private static final String ADJUST_CDC_POLLING_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = #";
     private static final String CDC_WRAPPERS_DML;
 
     /**
@@ -420,6 +421,21 @@ public class TestHelper {
         connection.execute(disableCdcForTableStmt);
     }
 
+    /**
+     * Sets new polling interval in which SQL server should poll changes.
+     *
+     * SQL server polls new changes and copies them into CDC in predefined interval.
+     * By default, this interval is 5 seconds. For the tests it may be too long and test may need shorter interval.
+     *
+     * @param interval
+     *          new CDC polling interval, in seconds
+     * @throws SQLException if anything unexpected fails
+     */
+    public static void adjustCdcPollingInterval(JdbcConnection connection, int interval) throws SQLException {
+        String adjustCdcPollingIntervalStmt = ADJUST_CDC_POLLING_INTERVAL.replace(STATEMENTS_PLACEHOLDER, Integer.toString(interval));
+        connection.execute(adjustCdcPollingIntervalStmt);
+    }
+
     public static void waitForSnapshotToBeCompleted() {
         waitForDatabaseSnapshotToBeCompleted(TEST_DATABASE_1);
     }
@@ -635,6 +651,20 @@ public class TestHelper {
         catch (ConditionTimeoutException e) {
             throw new IllegalStateException("Expected record never appeared in the CDC table", e);
         }
+    }
+
+    public static void waitForCdcTransactionPropagation(SqlServerConnection connection, String dbName, int expectedTransactions) throws SQLException {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollDelay(1, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    int transactions = connection.queryAndMap(String.format("SELECT COUNT(start_lsn) FROM [%s].cdc.lsn_time_mapping WHERE tran_id <> 0x00", dbName),
+                            (rs) -> {
+                                rs.next();
+                                return rs.getInt(1);
+                            });
+                    return expectedTransactions == transactions;
+                });
     }
 
     public static String topicName(String databaseName, String tableName) {

@@ -10,7 +10,7 @@ January 19th 2023 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * Remove redundant modifiers of members for interface fields [DBZ-2439](https://issues.redhat.com/browse/DBZ-2439)
 * Allow reading from read-only Oracle standby disaster/recovery [DBZ-3866](https://issues.redhat.com/browse/DBZ-3866)
 * Remove option for specifying driver class from MySQL Connector [DBZ-4663](https://issues.redhat.com/browse/DBZ-4663)
-* Support S3 bucket as Dezbium history store [DBZ-5402](https://issues.redhat.com/browse/DBZ-5402)
+* Support S3 bucket as Debezium history store [DBZ-5402](https://issues.redhat.com/browse/DBZ-5402)
 * Update the DBZ-UI documentation page to incorporate the recently added "Custom properties" step details [DBZ-5878](https://issues.redhat.com/browse/DBZ-5878)
 * Support retrying database connection failures during connector start [DBZ-5879](https://issues.redhat.com/browse/DBZ-5879)
 * Add support for Connect Headers to Debezium Server [DBZ-5926](https://issues.redhat.com/browse/DBZ-5926)

@@ -3144,6 +3144,10 @@ endif::community[]
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
+|[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `event.processing.failure.handling.mode`>>
+|`fail`
+|Specify how failures during processing of events (i.e. when encountering a corrupted event) should be handled. By default, `fail` mode raises an exception indicating the problematic event and its position, causing the connector to be stopped. `warn` mode does not raise the exception, instead the problematic event and its position will be logged and the event will be skipped. `ignore` mode ignores the problematic event completely with no logging.
+
 |[[mysql-property-topic-naming-strategy]]<<mysql-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.DefaultTopicNamingStrategy`
 |The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `DefaultTopicNamingStrategy`.

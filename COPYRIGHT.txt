@@ -69,6 +69,7 @@ Braden Staudacher
 Brandon Brown
 Brandon Maguire
 Brennan Vincent
+Byron Ruth
 Camile Sing
 César Martínez
 Cao Manh Dat
@@ -260,6 +261,7 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Lokesh Sanapalli
 Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
@@ -298,6 +300,7 @@ Mike Graham
 Mike Kamornikov
 Mikhail Dubrovin
 Mincong Huang
+Ming Luo
 Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle

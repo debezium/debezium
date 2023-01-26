@@ -3187,6 +3187,40 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @FixFor("DBZ-5917")
+    public void shouldIncludeTableWithBackSlashInName() throws Exception {
+        String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.\"back\\slash\" (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.another_table (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" + // we need some excluded table to reproduce the issue
+                "INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (1, 1);" +
+                "INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (2, 2);";
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.back\\\\slash");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        TestHelper.execute("INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (3, 3);");
+
+        final int EXPECTED_RECORDS = 3; // 2 from snapshot, 1 from streaming
+        SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.back_slash"));
+        assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
+        AtomicInteger pkValue = new AtomicInteger(1);
+        records.forEach(record -> {
+            if (pkValue.get() <= 2) {
+                VerifyRecord.isValidRead(record, PK_FIELD, pkValue.getAndIncrement());
+            }
+            else {
+                VerifyRecord.isValidInsert(record, PK_FIELD, pkValue.getAndIncrement());
+            }
+        });
+    }
+
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
         return record -> {
             Struct key = (Struct) record.key();

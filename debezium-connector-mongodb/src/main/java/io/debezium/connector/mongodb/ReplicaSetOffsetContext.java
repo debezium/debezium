@@ -97,7 +97,7 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public void readEvent(CollectionId collectionId, Instant timestamp) {
-        sourceInfo.collectionEvent(replicaSetName, collectionId);
+        sourceInfo.collectionEvent(replicaSetName, collectionId, 0L);
         sourceInfo.lastOffset(replicaSetName);
     }
 
