@@ -32,6 +32,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.util.Strings;
 
 /**
  * The list of configuration options for SQL Server connector
@@ -490,7 +491,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static int validateDatabaseNames(Configuration config, Field field, Field.ValidationOutput problems) {
         String databaseNames = config.getString(field);
         int count = 0;
-        if (databaseNames == null || databaseNames.split(",").length == 0) {
+        if (Strings.isNullOrBlank(databaseNames)) {
             problems.accept(field, databaseNames, "Cannot be empty");
             ++count;
         }
