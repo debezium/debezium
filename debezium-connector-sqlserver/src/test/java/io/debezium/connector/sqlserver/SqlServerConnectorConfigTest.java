@@ -22,9 +22,18 @@ public class SqlServerConnectorConfigTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfigTest.class);
 
     @Test
-    public void emptyDatabaseNames() {
+    public void nullDatabaseNames() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig().build());
+        assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
+    }
+
+    @Test
+    public void emptyDatabaseNames() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(SqlServerConnectorConfig.DATABASE_NAMES, "")
+                        .build());
         assertFalse(connectorConfig.validateAndRecord(SqlServerConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
