@@ -74,6 +74,14 @@ CREATE TABLE table_items_with_subpartitions (id INT, purchased DATE)
         )
     );
 
+CREATE TABLE `TABLE1` (
+`COL1` INT(10) UNSIGNED NOT NULL,
+`COL2` VARCHAR(32) NOT NULL,
+`COL3` ENUM (`VAR1`,`VAR2`, `VAR3`) NOT NULL,
+PRIMARY KEY (`COL1`, `COL2`, `COL3`),
+CLUSTERING KEY `CLKEY1` (`COL3`, `COL2`))
+ENGINE=TOKUDB DEFAULT CHARSET=CP1251;
+
 CREATE TABLE positions_rollover (
     id bigint(20) NOT NULL AUTO_INCREMENT,
     time datetime NOT NULL,

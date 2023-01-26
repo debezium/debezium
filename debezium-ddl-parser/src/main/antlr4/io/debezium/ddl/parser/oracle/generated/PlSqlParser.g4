@@ -1849,7 +1849,9 @@ relational_table
     : ('(' relational_property (',' relational_property)* ')')?
           (DEFAULT COLLATION collation_name)?
           (ON COMMIT (DELETE | PRESERVE) ROWS)?
-          physical_properties? column_properties? table_partitioning_clauses?
+          physical_properties?
+          column_properties?
+          table_partitioning_clauses?
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
@@ -3229,7 +3231,7 @@ varray_item
 column_properties
     : object_type_col_properties
     | nested_table_col_properties
-    | (varray_col_properties | lob_storage_clause) //TODO '(' ( ','? lob_partition_storage)+ ')'
+    | (varray_col_properties | lob_storage_clause table_compression? logging_clause?) //TODO '(' ( ','? lob_partition_storage)+ ')'
     | xmltype_column_properties
     | column_properties column_properties+
     ;

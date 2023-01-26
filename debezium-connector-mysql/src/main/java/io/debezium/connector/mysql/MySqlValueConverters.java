@@ -78,7 +78,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
-    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
+    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)(:([0-9]*))?(\\.([0-9]*))?");
 
     /**
      * Used to parse values of DATE columns. Format: 000-00-00.
@@ -850,16 +850,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
     public static Duration stringToDuration(String timeString) {
         Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
         if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
+            throw new DebeziumException("Unexpected format for TIME column: " + timeString);
         }
 
-        long hours = Long.parseLong(matcher.group(1));
-        long minutes = Long.parseLong(matcher.group(2));
-        long seconds = Long.parseLong(matcher.group(3));
+        final long hours = Long.parseLong(matcher.group(1));
+        final long minutes = Long.parseLong(matcher.group(2));
+        final String secondsGroup = matcher.group(4);
+        long seconds = 0;
         long nanoSeconds = 0;
-        String microSecondsString = matcher.group(5);
-        if (microSecondsString != null) {
-            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+
+        if (secondsGroup != null) {
+            seconds = Long.parseLong(secondsGroup);
+            String microSecondsString = matcher.group(6);
+            if (microSecondsString != null) {
+                nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+            }
         }
 
         if (hours >= 0) {

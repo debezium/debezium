@@ -418,6 +418,7 @@ columnConstraint
     | INVISIBLE                                                     #invisibilityColumnConstraint
     | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
+    | CLUSTERING KEY                                                #clusteringKeyColumnConstraint       // Tokudb-specific only
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
     | COMMENT STRING_LITERAL                                        #commentColumnConstraint
     | COLUMN_FORMAT colformat=(FIXED | DYNAMIC | DEFAULT)           #formatColumnConstraint
@@ -442,6 +443,7 @@ tableConstraint
       referenceDefinition                                           #foreignKeyTableConstraint
     | (CONSTRAINT name=uid?)?
       CHECK '(' expression ')'                                      #checkTableConstraint
+    | CLUSTERING KEY index=uid? indexColumnNames                    #clusteringKeyTableConstraint   // Tokudb-specific only
     ;
 
 referenceDefinition
@@ -1616,12 +1618,15 @@ alterUser
         (WITH userResourceOption+)?
         (userPasswordOption | userLockOption)*
         (COMMENT STRING_LITERAL |  ATTRIBUTE STRING_LITERAL)?       #alterUserMysqlV80
+    | ALTER USER ifExists?
+      (userName | uid) DEFAULT ROLE roleOption                      #alterUserMysqlV80
     ;
 
 createUser
     : CREATE USER userAuthOption (',' userAuthOption)*              #createUserMysqlV56
     | CREATE USER ifNotExists?
         userAuthOption (',' userAuthOption)*
+        (DEFAULT ROLE roleOption)?
         (
           REQUIRE
           (tlsNone=NONE | tlsOption (AND? tlsOption)* )
@@ -1678,7 +1683,7 @@ revokeStatement
       FROM userName (',' userName)*                                 #detailRevoke
     | REVOKE ALL PRIVILEGES? ',' GRANT OPTION
       FROM userName (',' userName)*                                 #shortRevoke
-    | REVOKE uid (',' uid)*
+    | REVOKE (userName | uid) (',' (userName | uid))*
       FROM (userName | uid) (',' (userName | uid))*                 #roleRevoke
     ;
 

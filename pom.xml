@@ -107,12 +107,12 @@
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
-        <version.antlr>4.8</version.antlr>
+        <version.antlr>4.10.1</version.antlr>
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.14.0.Final</quarkus.version>
+        <quarkus.version>2.16.0.Final</quarkus.version>
 
         <!-- Apicurio -->
         <version.apicurio>2.4.1.Final</version.apicurio>

@@ -305,7 +305,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     sanitizedDbName,
                     null,
                     event.statement(),
-                    tableId != null ? tableFor(tableId) : null,
+                    tableId != null ? tables().forTable(tableId) : null,
                     ((TableAlteredEvent) event).previousTableId());
         }
         else {
@@ -316,7 +316,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     sanitizedDbName,
                     null,
                     event.statement(),
-                    tableId != null ? tableFor(tableId) : null,
+                    tableId != null ? tables().forTable(tableId) : null,
                     snapshot);
         }
         schemaChangeEvents.add(schemaChangeEvent);

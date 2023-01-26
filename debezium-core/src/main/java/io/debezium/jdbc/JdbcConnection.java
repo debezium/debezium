@@ -80,6 +80,7 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
+    private static final String ESCAPE_CHAR = "\\";
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -1223,11 +1224,18 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
+    protected String escapeEscapeSequence(String str) {
+        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    }
+
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
+            tableName = escapeEscapeSequence(tableName);
+        }
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));

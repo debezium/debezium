@@ -23,6 +23,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
+    private static final int POLLING_INTERVAL = 1;
 
     private SqlServerConnection connection;
 
@@ -38,6 +39,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 "CREATE TABLE b (pk int primary key, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
         TestHelper.enableTableCdc(connection, "debezium_signal");
+        TestHelper.adjustCdcPollingInterval(connection, POLLING_INTERVAL);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -170,5 +172,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+        TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
     }
 }

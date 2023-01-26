@@ -33,9 +33,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.util.Collect;
 
 /**
@@ -720,21 +718,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     + "Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled).")
             .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
             .withValidation(Field::isNonNegativeInteger);
-
-    /**
-     * The database schema history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
-     * and in these situations using Kafka is the only way to go.
-     */
-    public static final Field SCHEMA_HISTORY = Field.create("schema.history.internal")
-            .withDisplayName("Database schema history class")
-            .withType(Type.CLASS)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("The name of the SchemaHistory class that should be used to store and recover database schema changes. "
-                    + "The configuration properties for the history are prefixed with the '"
-                    + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaSchemaHistory.class.getName());
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")

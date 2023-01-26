@@ -96,6 +96,7 @@ GRANT FLUSH_OPTIMIZER_COSTS, FLUSH_STATUS, FLUSH_TABLES, FLUSH_USER_RESOURCES, P
 REVOKE reader FROM 'mysqluser'@'localhost'
 REVOKE reader FROM topreader
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'retool'@
+REVOKE `cloudsqlsuperuser`@`%` FROM `sarmonitoring`@`10.90.29.%`
 
 -- MariaDB
 GRANT BINLOG_MONITOR ON *.* TO 'mysqluser'@'localhost'
