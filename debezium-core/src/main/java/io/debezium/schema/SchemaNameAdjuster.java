@@ -18,7 +18,8 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.spi.common.ReplacementFunction;
 
 /**
- * A adjuster for the names of change data message schemas. Currently, this solely implements the rules required for
+ * A adjuster for the names of change data message schemas and for the names of the fiields in the schemas.
+ * Currently, this implements the rules required for
  * using these schemas in Avro messages. Avro <a href="http://avro.apache.org/docs/current/spec.html#names">rules for
  * schema fullnames</a> are as follows:
  *
@@ -32,7 +33,15 @@ import io.debezium.spi.common.ReplacementFunction;
  * </ul>
  * <p>
  * A {@code SchemaNameAdjuster} can determine if the supplied fullname follows these Avro rules.
- *
+ * </p>
+ * <p>
+ * In addition to handling the Avro schema naming the adjuster can handle the situation when non-ASCII characters
+ * are used in either schema or field name.
+ * By default just normalization/replacement with underscore character is used. In case of native names it can lead
+ * to collisions. To solve the problem the Unicode based encoding can be used. In that case the special
+ * non-ASCII character is replaced with sequence {@code _uXXXX} where {@code XXXX} is heaxdecimal code
+ * of the replaced character.
+ * </p>
  * @author Randall Hauch
  */
 @FunctionalInterface
