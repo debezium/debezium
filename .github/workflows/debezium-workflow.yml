@@ -46,7 +46,7 @@ jobs:
 
       - name: Get modified files (Common)
         id: changed-files-common
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             support/checkstyle/**
@@ -64,56 +64,56 @@ jobs:
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connector-mongodb/**
 
       - name: Get modified files (MySQL)
         id: changed-files-mysql
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connector-mysql/**
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connector-postgres/**
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connector-oracle/**
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connector-sqlserver/**
 
       - name: Get modified files (Debezium Server)
         id: changed-files-debezium-server
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-server/**
 
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-quarkus-outbox/**
 
       - name: Get modified files (REST Extension)
         id: changed-files-rest-extension
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-connect-rest-extension/**
@@ -125,7 +125,7 @@ jobs:
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-schema-generator/**
@@ -137,14 +137,14 @@ jobs:
 
       - name: Get modified files (Debezium Testing)
         id: changed-files-debezium-testing
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-testing/**
 
       - name: Get modified files (Debezium UI)
         id: changed-files-debezium-ui
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-core/**
@@ -164,7 +164,7 @@ jobs:
 
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mysql/**
@@ -173,7 +173,7 @@ jobs:
 
       - name: Get modified files (Oracle DDL parser)
         id: changed-files-oracle-ddl-parser
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
@@ -183,14 +183,14 @@ jobs:
 
       - name: Get modified files (Documentation)
         id: changed-files-documentation
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             documentation/**
 
       - name: Get modified files (Storage)
         id: changed-files-storage
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.4.4
         with:
           files: |
             debezium-storage/**
