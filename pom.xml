@@ -164,7 +164,6 @@
         <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox</module>
         <module>debezium-scripting</module>
-        <module>debezium-server</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
