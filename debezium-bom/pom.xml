@@ -645,12 +645,22 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-spanner</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-vitess</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-cassandra</artifactId>
+                <artifactId>debezium-connector-cassandra-3</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cassandra-4</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
