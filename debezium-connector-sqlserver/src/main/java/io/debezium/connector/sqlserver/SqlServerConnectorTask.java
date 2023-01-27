@@ -81,7 +81,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
-                new SqlServerPartition.Provider(connectorConfig, config),
+                new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
         schema.recover(offsets);
