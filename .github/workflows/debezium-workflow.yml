@@ -831,6 +831,63 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+  build_spanner:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Spanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v3
+        with:
+          path: core
+
+      - name: Checkout Action (Spanner)
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+           ./core/mvnw clean install -f core/pom.xml
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -am
+           -DskipTests=true
+           -DskipITs=true
+           -Dcheckstyle.skip=true
+           -Dformat.skip=true
+           -Drevapi.skip
+           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+           -Dmaven.wagon.http.pool=false
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Connector Spanner
+        run: >
+          ./core/mvnw clean install -f spanner/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
   build_ui:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' }}
