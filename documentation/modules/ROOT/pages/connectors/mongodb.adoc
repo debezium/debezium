@@ -1426,6 +1426,9 @@ When the connector starts, if it does not detect a value in its offsets topic, i
 `never`::
 When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
 
+`when_needed`::
+The connector runs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded timestamp is before the first existing oplog event.
+
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
 |Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document. To capture pre-image, you can use the pre-image version of the previous two capture modes - *change_streams_update_full_with_pre_image* and *change_streams_with_pre_image*.
