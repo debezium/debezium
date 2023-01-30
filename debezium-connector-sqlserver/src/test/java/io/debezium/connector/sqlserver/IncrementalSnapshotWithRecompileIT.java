@@ -121,4 +121,9 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
+
+    @Override
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+        TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
+    }
 }
