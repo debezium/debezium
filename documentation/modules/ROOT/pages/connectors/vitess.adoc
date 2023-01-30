@@ -1335,6 +1335,20 @@ When the connector starts, if it does not detect a value in its offsets topic, i
 
 `never`::
 When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
+
+|[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
+|string
+|Specify how BIGINT UNSIGNED columns should be represented in change events. +
+Set the property to one of the following values: +
+ +
+`string`:: +
+represent values using Java's `string` +
+ +
+`long`:: +
+represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. +
+ +
+`precise`:: +
+represents values as precise (Java's 'BigDecimal') values. This is precise but difficult to use.
 |===
 
 [id="vitess-advanced-configuration-properties"]
