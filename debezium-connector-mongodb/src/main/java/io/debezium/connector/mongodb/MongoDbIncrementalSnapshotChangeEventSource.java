@@ -413,7 +413,31 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (row == null) {
             return null;
         }
-        return new Object[]{ ((BsonDocument) row[0]).getInt32(DOCUMENT_ID).getValue() };
+        var documentId = ((BsonDocument) row[0]).get(DOCUMENT_ID);
+
+        Object key;
+
+        switch (documentId.getBsonType()) {
+            case DOUBLE:
+                key = documentId.asDouble().getValue();
+                break;
+            case INT32:
+                key = documentId.asInt32().getValue();
+                break;
+            case INT64:
+                key = documentId.asInt64().getValue();
+                break;
+            case DECIMAL128:
+                key = documentId.asDecimal128().getValue();
+                break;
+            case OBJECT_ID:
+                key = documentId.asObjectId().getValue();
+                break;
+            default:
+                throw new IllegalStateException("Unsupported type of document id");
+        }
+
+        return new Object[]{ key };
     }
 
     protected void setContext(IncrementalSnapshotContext<CollectionId> context) {
