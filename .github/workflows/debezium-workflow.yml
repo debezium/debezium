@@ -205,14 +205,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -253,14 +253,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -295,13 +295,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -329,13 +329,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -365,13 +365,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -398,13 +398,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -434,13 +434,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -467,13 +467,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -508,13 +508,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -541,13 +541,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -573,13 +573,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -605,13 +605,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -638,13 +638,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -681,7 +681,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -689,7 +689,7 @@ jobs:
             maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -735,7 +735,7 @@ jobs:
           path: db2
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -744,7 +744,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -792,7 +792,7 @@ jobs:
           path: vitess
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -801,7 +801,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -849,7 +849,7 @@ jobs:
           path: spanner
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -858,7 +858,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -901,13 +901,13 @@ jobs:
           path: debezium-ui
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}

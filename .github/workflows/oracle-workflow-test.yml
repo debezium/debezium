@@ -33,7 +33,7 @@ jobs:
         shell: bash
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -41,7 +41,7 @@ jobs:
       # This workflow uses its own dependency cache rather than the main debezium workflow cache because
       # we explicitly want to trigger this build on pushes separate from the other workflow.  
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           # refresh cache every month to avoid unlimited growth
