@@ -36,7 +36,7 @@ jobs:
           done < AUTHOR_NAME.txt
       - name: Create comment
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

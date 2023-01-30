@@ -40,7 +40,7 @@ jobs:
           fi
       - name: Create Comment
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
