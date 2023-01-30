@@ -43,7 +43,7 @@ jobs:
             Welcome as a new contributor to Debezium, @${{ github.event.pull_request.user.login }}. Reviewers, please add missing author name(s) and alias name(s) to the [COPYRIGHT.txt](https://github.com/debezium/debezium/blob/main/COPYRIGHT.txt) and [Aliases.txt](https://github.com/debezium/debezium/blob/main/jenkins-jobs/scripts/config/Aliases.txt) respectively.
       - name: Check failure
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         continue-on-error: false
         with:
           script: |

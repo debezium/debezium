@@ -35,7 +35,7 @@ jobs:
             Please author your commit(s) using an email [linked to your GitHub account](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile).
       - name: Check failure
         if: ${{ steps.check.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         continue-on-error: false
         with:
           script: |
