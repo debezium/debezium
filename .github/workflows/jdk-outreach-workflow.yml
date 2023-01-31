@@ -120,6 +120,31 @@ jobs:
         run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
       - name: Build Debezium Connector Db2
         run: ./core/mvnw clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+  spanner:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [ 19 ]
+    name: Spanner - Java ${{ matrix.feature }}
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v3
+        with:
+          path: core
+      - name: Checkout Spanner
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+      - name: Setup OpenJDK
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Connector Spanner
+        run: ./core/mvnw clean install -f spanner/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   vitess:
     runs-on: ubuntu-latest
     strategy:
@@ -203,13 +228,21 @@ jobs:
         feature: [ 19 ]
     name: Server - Java ${{ matrix.feature }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Core
+        uses: actions/checkout@v3
         with:
-          submodules: recursive
+          path: core
+      - name: Checkout Server
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-server
+          path: server
       - name: Setup OpenJDK
         uses: oracle-actions/setup-java@v1
         with:
           website: jdk.java.net
           release: ${{ matrix.feature }}
-      - name: Maven Build
-        run: ./mvnw clean install -B -pl debezium-bom,debezium-server/debezium-server-bom,debezium-testing/debezium-testing-testcontainers,debezium-server -Pserver-ci -am -amd -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Server
+        run: ./core/mvnw clean install -fae -f server/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -DskipNonCore
