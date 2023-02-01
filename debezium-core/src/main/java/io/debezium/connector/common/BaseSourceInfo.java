@@ -29,7 +29,7 @@ public abstract class BaseSourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected SnapshotRecord snapshot() {
+    public SnapshotRecord snapshot() {
         return snapshotRecord;
     }
 }

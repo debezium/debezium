@@ -37,6 +37,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
@@ -375,7 +376,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
 
-            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST_IN_DATA_COLLECTION);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST);
         });
     }
 
@@ -1122,6 +1123,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
+        alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
@@ -1131,11 +1133,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void buildWithStreamProducer(Configuration.Builder config) {
+        alterConfig(config);
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
+    }
+
+    protected void alterConfig(Builder config) {
+
     }
 }

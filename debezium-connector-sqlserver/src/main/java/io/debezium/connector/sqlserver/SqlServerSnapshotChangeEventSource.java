@@ -15,12 +15,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
+import io.debezium.connector.sqlserver.SqlServerOffsetContext.Loader;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
@@ -45,9 +47,10 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private final Map<SqlServerPartition, Map<TableId, SqlServerChangeTable>> changeTablesByPartition = new HashMap<>();
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection jdbcConnection,
-                                              SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
+                                              Supplier<SqlServerConnection> connectionFactory, SqlServerDatabaseSchema schema,
+                                              EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
                                               SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
-        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.sqlServerDatabaseSchema = schema;
@@ -303,4 +306,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         }
     }
 
+    @Override
+    protected SqlServerOffsetContext copyOffset(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
+        return new Loader(connectorConfig).load(snapshotContext.offset.getOffset());
+    }
 }

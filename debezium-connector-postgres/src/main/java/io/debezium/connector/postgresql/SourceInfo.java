@@ -14,7 +14,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
@@ -216,11 +215,6 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     @Override
-    public SnapshotRecord snapshot() {
-        return super.snapshot();
-    }
-
-    @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
         sb.append("server='").append(serverName()).append('\'');
@@ -243,7 +237,7 @@ public final class SourceInfo extends BaseSourceInfo {
         if (timestamp != null) {
             sb.append(", timestamp=").append(timestamp);
         }
-        sb.append(", snapshot=").append(snapshot());
+        sb.append(", snapshot=").append(snapshotRecord);
         if (schemaName != null) {
             sb.append(", schema=").append(schemaName);
         }

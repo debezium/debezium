@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import io.debezium.config.Configuration;
 import io.debezium.pipeline.ErrorHandler;
@@ -25,6 +26,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
 
     private final OracleConnectorConfig configuration;
     private final OracleConnection jdbcConnection;
+    private final Supplier<OracleConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
@@ -33,12 +35,13 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleTaskContext taskContext;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
-    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
+    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection, Supplier<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
+        this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -50,8 +53,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
 
     @Override
     public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        return new OracleSnapshotChangeEventSource(configuration, jdbcConnection,
-                schema, dispatcher, clock, snapshotProgressListener);
+        return new OracleSnapshotChangeEventSource(configuration, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override

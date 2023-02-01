@@ -10,17 +10,19 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -43,11 +45,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection, Supplier<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
-
+        super(connectorConfig, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.databaseSchema = schema;
@@ -194,39 +195,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
-                                                     RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
-                                                     SnapshottingTask snapshottingTask)
-            throws Exception {
-        tryStartingSnapshot(snapshotContext);
-        for (Iterator<TableId> iterator = snapshotContext.capturedSchemaTables.iterator(); iterator.hasNext();) {
-            final TableId tableId = iterator.next();
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
-            }
-
-            LOGGER.info("Capturing structure of table {}", tableId);
-
-            Table table = snapshotContext.tables.forTable(tableId);
-
-            if (schema().isHistorized()) {
-                snapshotContext.offset.event(tableId, getClock().currentTime());
-
-                // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                    lastSnapshotRecord(snapshotContext);
-                }
-
-                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, table.id(), (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
-                    }
-                    catch (Exception e) {
-                        throw new DebeziumException(e);
-                    }
-                });
-            }
-        }
+    protected Collection<TableId> getTablesForSchemaChange(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+        return snapshotContext.capturedSchemaTables;
     }
 
     @Override
@@ -244,9 +214,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext, TableId tableId) {
+    protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, OracleOffsetContext offset, TableId tableId) {
         try {
-            Optional<OffsetDateTime> snapshotTs = jdbcConnection.getScnToTimestamp(snapshotContext.offset.getScn());
+            Optional<OffsetDateTime> snapshotTs = ((OracleConnection) jdbcConnection).getScnToTimestamp(offset.getScn());
             if (snapshotTs.isEmpty()) {
                 throw new ConnectException("Failed reading SCN timestamp from source database");
             }
@@ -296,5 +266,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
+    }
+
+    @Override
+    protected OracleOffsetContext copyOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+        return new LogMinerOracleOffsetContextLoader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 }

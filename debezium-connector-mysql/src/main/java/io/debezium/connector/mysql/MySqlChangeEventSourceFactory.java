@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -30,6 +31,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
     private final MySqlConnectorConfig configuration;
     private final MySqlConnection connection;
+    private final Supplier<MySqlConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MySqlPartition, TableId> dispatcher;
     private final Clock clock;
@@ -42,12 +44,13 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     // but in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
 
-    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection,
+    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection, Supplier<MySqlConnection> connectionFactory,
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue) {
         this.configuration = configuration;
         this.connection = connection;
+        this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -59,7 +62,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
     @Override
     public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener) {
-        return new MySqlSnapshotChangeEventSource(configuration, connection, taskContext.getSchema(), dispatcher, clock,
+        return new MySqlSnapshotChangeEventSource(configuration, connection, connectionFactory, taskContext.getSchema(), dispatcher, clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord);
     }
 
