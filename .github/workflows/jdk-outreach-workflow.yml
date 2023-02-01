@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: SQL Server - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: MySQL - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: MongoDB 4.0 - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Oracle - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Db2 - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -124,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Spanner - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Vitess - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
@@ -174,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Quarkus Outbox Extension - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -191,7 +191,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Rest Extension - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -208,7 +208,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Testing - Java ${{ matrix.feature }}
     steps:
       - uses: actions/checkout@v3
@@ -225,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        feature: [ 19 ]
+        feature: [ 20 ]
     name: Server - Java ${{ matrix.feature }}
     steps:
       - name: Checkout Core
