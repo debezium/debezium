@@ -116,7 +116,7 @@ public class ConnectionContext implements AutoCloseable {
     public void shutdown() {
         try {
             // Closing all connections ...
-            logger().info("Closing all connections to {}", connectionSeed());
+            logger().info("Closing all connections to {}", maskedConnectionSeed());
             pool.clear();
         }
         catch (Throwable e) {
