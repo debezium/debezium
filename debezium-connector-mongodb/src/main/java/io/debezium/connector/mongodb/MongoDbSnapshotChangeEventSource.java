@@ -192,8 +192,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotContext<MongoDbPartition, MongoDbOffsetContext> prepare(MongoDbPartition partition)
-            throws Exception {
+    protected SnapshotContext<MongoDbPartition, MongoDbOffsetContext> prepare(MongoDbPartition partition) {
         return new MongoDbSnapshotContext(partition);
     }
 
@@ -264,9 +263,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         return performSnapshot;
     }
 
-    protected void determineSnapshotOffsets(MongoDbSnapshotContext ctx, ReplicaSets replicaSets) {
+    protected void determineSnapshotOffsets(MongoDbSnapshotContext ctx, ReplicaSets replicaSets) throws InterruptedException {
         final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
-        replicaSets.onEachReplicaSet(replicaSet -> {
+        for (var replicaSet : replicaSets.all()) {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
 
             try (MongoDbConnection mongo = establishConnection(ctx.partition, replicaSet, ReadPreference.primaryPreferred())) {
@@ -274,7 +273,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                     positions.put(replicaSet, MongoUtil.getOplogEntry(client, -1, LOGGER));
                 });
             }
-        });
+        }
 
         ctx.offset = new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
@@ -411,7 +410,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data for collection '{}'", collectionId);
 
-        mongo.executeBlocking("sync '" + collectionId + "'", client -> {
+        mongo.execute("sync '" + collectionId + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 

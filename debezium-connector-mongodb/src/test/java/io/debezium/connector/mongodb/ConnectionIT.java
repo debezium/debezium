@@ -58,7 +58,7 @@ public class ConnectionIT extends AbstractMongoIT {
     }
 
     @Test
-    public void shouldCreateMovieDatabase() {
+    public void shouldCreateMovieDatabase() throws InterruptedException {
         useConfiguration(config.edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "dbA,dbB")
                 .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, "dbB.moviesB")
