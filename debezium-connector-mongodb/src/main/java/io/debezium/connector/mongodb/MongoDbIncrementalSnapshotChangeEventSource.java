@@ -179,7 +179,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected void emitWindowOpen() throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-open";
-        mongo.executeBlocking(
+
+        mongo.execute(
                 "emit window open for chunk '" + context.currentChunkId() + "'",
                 client -> {
                     final MongoDatabase database = client.getDatabase(collectionId.dbName());
@@ -200,7 +201,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected void emitWindowClose() throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-close";
-        mongo.executeBlocking(
+        mongo.execute(
                 "emit window close for chunk '" + context.currentChunkId() + "'",
                 client -> {
                     final MongoDatabase database = client.getDatabase(collectionId.dbName());
@@ -322,7 +323,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private Object[] readMaximumKey() throws InterruptedException {
         final CollectionId collectionId = (CollectionId) currentCollection.id();
         final AtomicReference<Object> key = new AtomicReference<>();
-        mongo.executeBlocking("maximum key for '" + collectionId + "'", client -> {
+        mongo.execute("maximum key for '" + collectionId + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<Document> collection = database.getCollection(collectionId.name());
 
@@ -417,7 +418,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         long exportStart = clock.currentTimeInMillis();
         LOGGER.debug("Exporting data chunk from collection '{}' (total {} collections)", currentCollection.id(), context.dataCollectionsToBeSnapshottedCount());
 
-        mongo.executeBlocking("chunk query key for '" + currentCollection.id() + "'", client -> {
+        mongo.execute("chunk query key for '" + currentCollection.id() + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 

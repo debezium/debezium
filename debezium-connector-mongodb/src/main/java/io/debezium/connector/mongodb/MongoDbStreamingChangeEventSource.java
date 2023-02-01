@@ -253,9 +253,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,
-                                                     ReplicaSets replicaSets) {
+                                                     ReplicaSets replicaSets)
+            throws InterruptedException {
         final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
-        replicaSets.onEachReplicaSet(replicaSet -> {
+        for (var replicaSet : replicaSets.all()) {
             LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
 
             try (MongoDbConnection mongo = establishConnection(partition, replicaSet, ReadPreference.primaryPreferred())) {
@@ -263,7 +264,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     positions.put(replicaSet, MongoUtil.getOplogEntry(client, -1, LOGGER));
                 });
             }
-        });
+        }
 
         return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);

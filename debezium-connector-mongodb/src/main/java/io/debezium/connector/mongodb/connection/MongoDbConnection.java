@@ -11,8 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.mongodb.ConnectionString;
@@ -24,6 +22,7 @@ import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoUtil;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.function.BlockingFunction;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -85,7 +84,7 @@ public final class MongoDbConnection implements AutoCloseable {
      * @param desc      the description of the operation, for logging purposes
      * @param operation the operation to be performed
      */
-    public void execute(String desc, Consumer<MongoClient> operation) {
+    public void execute(String desc, BlockingConsumer<MongoClient> operation) throws InterruptedException {
         execute(desc, client -> {
             operation.accept(client);
             return null;
@@ -99,42 +98,11 @@ public final class MongoDbConnection implements AutoCloseable {
      * @param operation the operation to be performed
      * @return return value of the executed operation
      */
-    public <T> T execute(String desc, Function<MongoClient, T> operation) {
+    public <T> T execute(String desc, BlockingFunction<MongoClient, T> operation) throws InterruptedException {
         final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
         while (true) {
             try (var client = connectionSupplier.get()) {
                 return operation.apply(client);
-            }
-            catch (Throwable t) {
-                errorHandler.onError(desc, t);
-                if (!isRunning()) {
-                    throw new DebeziumException("Operation failed and MongoDB connection '" + name + "' termination requested", t);
-                }
-                try {
-                    errorMetronome.pause();
-                }
-                catch (InterruptedException e) {
-                    // Interruption is not propagated
-                }
-            }
-        }
-    }
-
-    /**
-     * Execute the supplied operation using the preferred node, blocking until it is available. Whenever the operation stops
-     * (e.g., if the node is no longer of preferred type), then restart the operation using a current node of that type.
-     *
-     * @param desc      the description of the operation, for logging purposes
-     * @param operation the operation to be performed on a node of preferred type.
-     * @throws InterruptedException if the operation was interrupted
-     */
-    public void executeBlocking(String desc, BlockingConsumer<MongoClient> operation) throws InterruptedException {
-        final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
-        while (true) {
-            MongoClient client = connectionSupplier.get();
-            try {
-                operation.accept(client);
-                return;
             }
             catch (InterruptedException e) {
                 throw e;
@@ -154,7 +122,7 @@ public final class MongoDbConnection implements AutoCloseable {
      *
      * @return the database names; never null but possibly empty
      */
-    public Set<String> databaseNames() {
+    public Set<String> databaseNames() throws InterruptedException {
         return execute("get database names", client -> {
             Set<String> databaseNames = new HashSet<>();
 
@@ -175,7 +143,7 @@ public final class MongoDbConnection implements AutoCloseable {
      *
      * @return the collection identifiers; never null
      */
-    public List<CollectionId> collections() {
+    public List<CollectionId> collections() throws InterruptedException {
         return execute("get collections in databases", client -> {
             List<CollectionId> collections = new ArrayList<>();
             Set<String> databaseNames = databaseNames();
