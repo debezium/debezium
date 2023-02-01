@@ -6,6 +6,7 @@
 package io.debezium.connector.postgresql;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -28,6 +29,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
 
     private final PostgresConnectorConfig configuration;
     private final PostgresConnection jdbcConnection;
+    private final Supplier<PostgresConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final PostgresEventDispatcher<TableId> dispatcher;
     private final Clock clock;
@@ -39,11 +41,12 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotState startingSlotInfo;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
-                                            ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
-                                            PostgresTaskContext taskContext,
-                                            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
+                                            Supplier<PostgresConnection> connectionFactory, ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher,
+                                            Clock clock, PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection,
+                                            SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
+        this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -61,6 +64,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 configuration,
                 snapshotter,
                 jdbcConnection,
+                connectionFactory,
                 schema,
                 dispatcher,
                 clock,

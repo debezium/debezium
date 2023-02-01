@@ -206,7 +206,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
             final Long txId = readOptionalLong(offset, SourceInfo.TXID_KEY);
             final String msgType = (String) offset.getOrDefault(SourceInfo.MSG_TYPE_KEY, null);
             final Operation messageType = msgType == null ? null : Operation.valueOf(msgType);
-            final Instant useconds = Conversions.toInstantFromMicros((Long) offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
+            final Instant useconds = Conversions.toInstantFromMicros((Long) ((Map<String, Object>) offset).getOrDefault(SourceInfo.TIMESTAMP_USEC_KEY, 0L));
             final boolean snapshot = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
             return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, lastCommitLsn, txId, messageType, useconds, snapshot, lastSnapshotRecord,

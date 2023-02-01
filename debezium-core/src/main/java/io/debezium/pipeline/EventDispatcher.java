@@ -8,9 +8,10 @@ package io.debezium.pipeline;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -437,7 +438,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
-        private Supplier<DataChangeEvent> bufferedEvent;
+        private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(new BufferedDataChangeEvent());
 
         @Override
         public void changeRecord(P partition,
@@ -451,45 +452,51 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
-            if (bufferedEvent != null) {
-                queue.enqueue(bufferedEvent.get());
-            }
+            BufferedDataChangeEvent nextBufferedEvent = new BufferedDataChangeEvent();
+            nextBufferedEvent.offsetContext = offsetContext;
+            nextBufferedEvent.dataChangeEvent = new DataChangeEvent(new SourceRecord(
+                    partition.getSourcePartition(),
+                    offsetContext.getOffset(),
+                    topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id()),
+                    null,
+                    dataCollectionSchema.keySchema(),
+                    key,
+                    dataCollectionSchema.getEnvelopeSchema().schema(),
+                    value,
+                    null,
+                    headers));
 
-            Schema keySchema = dataCollectionSchema.keySchema();
-            String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
-
-            // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks
-            bufferedEvent = () -> {
-                SourceRecord record = new SourceRecord(
-                        partition.getSourcePartition(),
-                        offsetContext.getOffset(),
-                        topicName, null,
-                        keySchema, key,
-                        dataCollectionSchema.getEnvelopeSchema().schema(), value,
-                        null, headers);
-                return changeEventCreator.createDataChangeEvent(record);
-            };
+            queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
         }
 
         @Override
         public void completeSnapshot() throws InterruptedException {
-            if (bufferedEvent != null) {
-                // It is possible that the last snapshotted table was empty
-                // this way we ensure that the last event is always marked as last
-                // even if it originates form non-last table
-                final DataChangeEvent event = bufferedEvent.get();
-                final Struct envelope = (Struct) event.getRecord().value();
+            // It is possible that the last snapshotted table was empty
+            // this way we ensure that the last event is always marked as last
+            // even if it originates form non-last table
+            final BufferedDataChangeEvent bufferedEvent = bufferedEventRef.getAndSet(new BufferedDataChangeEvent());
+            DataChangeEvent event = bufferedEvent.dataChangeEvent;
+            if (event != null) {
+                SourceRecord record = event.getRecord();
+                final Struct envelope = (Struct) record.value();
                 if (envelope.schema().field(Envelope.FieldName.SOURCE) != null) {
                     final Struct source = envelope.getStruct(Envelope.FieldName.SOURCE);
-                    final SnapshotRecord snapshot = SnapshotRecord.fromSource(source);
-                    if (snapshot == SnapshotRecord.TRUE) {
-                        SnapshotRecord.LAST.toSource(source);
-                    }
+                    SnapshotRecord.LAST.toSource(source);
                 }
+                @SuppressWarnings("unchecked")
+                final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+                offset.clear();
+                offset.putAll(bufferedEvent.offsetContext.getOffset());
                 queue.enqueue(event);
-                bufferedEvent = null;
             }
         }
+    }
+
+    private static class BufferedDataChangeEvent {
+
+        private DataChangeEvent dataChangeEvent;
+        private OffsetContext offsetContext;
+
     }
 
     private final class IncrementalSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {

@@ -465,6 +465,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Specify the constant that will be provided by Debezium to indicate that " +
                     "the original value is unavailable and not provided by the database.");
 
+    public static final Field SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT = Field.create("snapshot.tables.order.by.row.count")
+            .withDisplayName("Initial snapshot tables order by row count")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 111))
+            .withValidation(Field::isInteger)
+            .withDescription("Controls the order in which tables are processed in the initial snapshot. "
+                    + "A `negative` value will order the tables by row count descending. "
+                    + "A `positive` value will order the tables by row count ascending. "
+                    + "A value of `0` will disable ordering by row count.")
+            .withDefault(0);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     CommonConnectorConfig.TOPIC_PREFIX)
@@ -490,6 +501,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_COLUMN_SOURCE_TYPE,
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
+                    SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT,
                     DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
@@ -502,6 +514,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
     private final FieldNamer<Column> fieldNamer;
+    private int snapshotOrderByRowCount;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -537,6 +550,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
         this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
+        this.snapshotOrderByRowCount = config.getInteger(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT);
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -612,6 +626,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public Boolean isFullColumnScanRequired() {
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
+    }
+
+    public int snapshotOrderByRowCount() {
+        return snapshotOrderByRowCount;
     }
 
     private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {

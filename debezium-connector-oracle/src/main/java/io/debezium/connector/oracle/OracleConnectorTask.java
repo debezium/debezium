@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -51,11 +52,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        jdbcConnection = new OracleConnection(jdbcConfig);
+        Supplier<OracleConnection> connectionFactory = () -> new OracleConnection(jdbcConfig);
+        jdbcConnection = connectionFactory.get();
 
         validateRedoLogConfiguration();
 
@@ -116,7 +118,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext, streamingMetrics),
+                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
+                        streamingMetrics),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema);

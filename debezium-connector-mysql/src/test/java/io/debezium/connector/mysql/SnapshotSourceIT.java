@@ -686,10 +686,20 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldSnapshotTablesInOrderSpecifiedInTablesIncludeList() throws Exception {
+    public void shouldSnapshotTablesInRowCountOrderAsc() throws Exception {
+        try (
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
+            statement.execute("ANALYZE TABLE Products");
+            statement.execute("ANALYZE TABLE dbz_342_timetest");
+        }
+
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
-                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                        "connector_test_ro_(.*).Products,connector_test_ro_(.*).dbz_342_timetest")
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, 10)
                 .build();
 
         // Start the connector ...
@@ -699,8 +709,8 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Poll for records ...
         // Testing.Print.enable();
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
-        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest");
-        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 1);
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("dbz_342_timetest", "Products");
+        SourceRecords sourceRecords = consumeRecordsByTopic(1 + 9);
         sourceRecords.allRecordsInOrder().forEach(record -> {
             VerifyRecord.isValid(record);
             VerifyRecord.hasNoSourceQuery(record);
@@ -708,7 +718,43 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
             }
         });
-        assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
+    }
+
+    @Test
+    public void shouldSnapshotTablesInRowCountOrderDesc() throws Exception {
+        try (
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
+            statement.execute("ANALYZE TABLE Products");
+            statement.execute("ANALYZE TABLE dbz_342_timetest");
+        }
+
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
+                        "connector_test_ro_(.*).dbz_342_timetest,connector_test_ro_(.*).Products")
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, -5)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "dbz_342_timetest");
+        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 1);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            if (record.value() != null) {
+                tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+            }
+        });
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
     }
 
     @Test
@@ -723,7 +769,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Testing.Print.enable();
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
         LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "customers", "dbz_342_timetest", "orders", "products_on_hand");
-        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 1);
+        SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 4 + 1);
         sourceRecords.allRecordsInOrder().forEach(record -> {
             VerifyRecord.isValid(record);
             VerifyRecord.hasNoSourceQuery(record);

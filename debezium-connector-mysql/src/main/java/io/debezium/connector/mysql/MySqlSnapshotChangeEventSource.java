@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -31,8 +33,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mysql.MySqlConnection.DatabaseLocales;
+import io.debezium.connector.mysql.MySqlOffsetContext.Loader;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -58,11 +62,11 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
-    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection,
+    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection, Supplier<MySqlConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
-        super(connectorConfig, connection, schema, dispatcher, clock, metrics);
+        super(connectorConfig, connection, connectionFactory, schema, dispatcher, clock, metrics);
         this.connectorConfig = connectorConfig;
         this.connection = connection;
         this.filters = connectorConfig.getTableFilters();
@@ -390,10 +394,17 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
-        String snapshotSelectColumns = columns.stream()
-                .collect(Collectors.joining(", "));
+        return Optional.of(getSnapshotSelect(tableId, columns));
+    }
 
-        return Optional.of(String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table()));
+    private String getSnapshotSelect(TableId tableId, List<String> columns) {
+        String snapshotSelectColumns = columns.stream().collect(Collectors.joining(", "));
+        return String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table());
+    }
+
+    @Override
+    protected Optional<String> getSnapshotConnectionFirstSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext, TableId tableId) {
+        return Optional.of(getSnapshotSelect(tableId, Arrays.asList("*")) + " LIMIT 1");
     }
 
     private boolean isGloballyLocked() {
@@ -466,16 +477,19 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         if (getSnapshotSelectOverridesByTable(tableId) != null) {
             return super.rowCountForTable(tableId);
         }
-        return connection.getEstimatedTableSize(tableId);
+        OptionalLong rowCount = connection.getEstimatedTableSize(tableId);
+        LOGGER.info("Estimated row count for table {} is {}", tableId, rowCount);
+        return rowCount;
     }
 
     @Override
-    protected Statement readTableStatement(OptionalLong rowCount) throws SQLException {
+    protected Statement readTableStatement(JdbcConnection jdbcConnection, OptionalLong rowCount) throws SQLException {
+        MySqlConnection connection = (MySqlConnection) jdbcConnection;
         final long largeTableRowCount = connectorConfig.rowCountForLargeTable();
         if (!rowCount.isPresent() || largeTableRowCount == 0 || rowCount.getAsLong() <= largeTableRowCount) {
-            return super.readTableStatement(rowCount);
+            return super.readTableStatement(connection, rowCount);
         }
-        return createStatementWithLargeResultSet();
+        return createStatementWithLargeResultSet(connection);
     }
 
     /**
@@ -496,7 +510,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
      * @return the statement; never null
      * @throws SQLException if there is a problem creating the statement
      */
-    private Statement createStatementWithLargeResultSet() throws SQLException {
+    private Statement createStatementWithLargeResultSet(MySqlConnection connection) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         Statement stmt = connection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
         stmt.setFetchSize(fetchSize);
@@ -553,5 +567,10 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             return record;
         });
         super.postSnapshot();
+    }
+
+    @Override
+    protected MySqlOffsetContext copyOffset(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext) {
+        return new Loader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 }

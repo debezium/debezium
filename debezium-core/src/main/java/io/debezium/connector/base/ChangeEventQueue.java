@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -84,8 +85,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     @SingleThreadAccess("producer thread")
     private boolean buffering;
 
-    @SingleThreadAccess("producer thread")
-    private T bufferedEvent;
+    private AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
 
@@ -170,9 +170,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
 
         if (buffering) {
-            final T newEvent = record;
-            record = bufferedEvent;
-            bufferedEvent = newEvent;
+            record = bufferedEvent.getAndSet(record);
             if (record == null) {
                 // Can happen only for the first coming event
                 return;
@@ -190,9 +188,9 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      */
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
         assert buffering : "Unsuported for queues with disabled buffering";
-        if (bufferedEvent != null) {
-            doEnqueue(recordModifier.apply(bufferedEvent));
-            bufferedEvent = null;
+        T record = bufferedEvent.getAndSet(null);
+        if (record != null) {
+            doEnqueue(recordModifier.apply(record));
         }
     }
 
@@ -200,7 +198,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      * Disable buffering for the queue
      */
     public void disableBuffering() {
-        assert bufferedEvent == null : "Buffer must be flushed";
+        assert bufferedEvent.get() == null : "Buffer must be flushed";
         buffering = false;
     }
 

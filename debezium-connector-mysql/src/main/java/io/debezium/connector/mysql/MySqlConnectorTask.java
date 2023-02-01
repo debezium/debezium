@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -58,24 +59,26 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     }
 
     @Override
-    public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration configuration) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
-        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(configuration);
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
         // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
         // By default do not load whole result sets into memory
-        config = config.edit()
+        final Configuration config = configuration.edit()
                 .withDefault("database.responseBuffering", "adaptive")
                 .withDefault("database.fetchSize", 10_000)
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        connection = new MySqlConnection(new MySqlConnectionConfiguration(config),
+        Supplier<MySqlConnection> connectionFactory = () -> new MySqlConnection(new MySqlConnectionConfiguration(config),
                 connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig)
                         : new MySqlTextProtocolFieldReader(connectorConfig));
+
+        connection = connectionFactory.get();
 
         validateBinlogConfiguration(connectorConfig);
 
@@ -169,7 +172,8 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
-                new MySqlChangeEventSourceFactory(connectorConfig, connection, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics, queue),
+                new MySqlChangeEventSourceFactory(connectorConfig, connection, connectionFactory, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics,
+                        queue),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema);

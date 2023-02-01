@@ -10,11 +10,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresOffsetContext.Loader;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -39,12 +41,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
-                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<PostgresPartition, TableId> dispatcher,
-                                             Clock clock,
+    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresConnection jdbcConnection,
+                                             Supplier<PostgresConnection> connectionFactory, PostgresSchema schema,
+                                             EventDispatcher<PostgresPartition, TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener<PostgresPartition> snapshotProgressListener, SlotCreationResult slotCreatedInfo,
                                              SlotState startingSlotInfo) {
-        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
@@ -244,5 +246,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
+    }
+
+    @Override
+    protected PostgresOffsetContext copyOffset(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+        return new Loader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 }

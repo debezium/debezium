@@ -2664,6 +2664,10 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 For more information, see xref:sqlserver-transaction-metadata[Transaction Metadata].
 
+|[[sqlserver-property-snapshot-max-threads]]<<sqlserver-property-snapshot-max-threads, `snapshot.max.threads`>>
+|1
+|Controls the number of threads used for the initial snapshot. A value `greater than 1` will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]

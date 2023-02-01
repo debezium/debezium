@@ -3330,6 +3330,10 @@ _topic.prefix_._topic.transaction_ +
  +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
+|[[oracle-property-snapshot-max-threads]]<<oracle-property-snapshot-max-threads, `snapshot.max.threads`>>
+|1
+|Controls the number of threads used for the initial snapshot. A value `greater than 1` will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+
 |===
 
 [id="debezium-oracle-connector-database-history-configuration-properties"]

@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -25,17 +26,19 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
 
     private final SqlServerConnectorConfig configuration;
     private final SqlServerConnection dataConnection;
+    private final Supplier<SqlServerConnection> connectionFactory;
     private final SqlServerConnection metadataConnection;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
 
-    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection dataConnection, SqlServerConnection metadataConnection,
-                                             ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
-                                             SqlServerDatabaseSchema schema) {
+    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection dataConnection, Supplier<SqlServerConnection> connectionFactory,
+                                             SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
+                                             Clock clock, SqlServerDatabaseSchema schema) {
         this.configuration = configuration;
         this.dataConnection = dataConnection;
+        this.connectionFactory = connectionFactory;
         this.metadataConnection = metadataConnection;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -45,8 +48,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
 
     @Override
     public SnapshotChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
-        return new SqlServerSnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock,
-                snapshotProgressListener);
+        return new SqlServerSnapshotChangeEventSource(configuration, dataConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override

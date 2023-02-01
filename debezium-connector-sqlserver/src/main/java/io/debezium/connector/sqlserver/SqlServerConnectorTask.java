@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -64,15 +65,14 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .build();
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(
-                CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
-        dataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
-                connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(),
-                connectorConfig.getOptionRecompile());
+        Supplier<SqlServerConnection> connectionFactory = () -> new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
+                connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile());
+        dataConnection = connectionFactory.get();
         metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
@@ -116,7 +116,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,
-                new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
+                new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, connectionFactory, metadataConnection, errorHandler, dispatcher, clock, schema),
                 new SqlServerMetricsFactory(offsets.getPartitions()),
                 dispatcher,
                 schema,

@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -62,7 +63,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
@@ -80,9 +81,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 databaseCharset,
                 typeRegistry);
 
+        Supplier<PostgresConnection> connectionFactory = () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder,
+                PostgresConnection.CONNECTION_GENERAL);
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL);
+        jdbcConnection = connectionFactory.get();
         try {
             jdbcConnection.setAutoCommit(false);
         }
@@ -204,6 +207,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             connectorConfig,
                             snapshotter,
                             jdbcConnection,
+                            connectionFactory,
                             errorHandler,
                             dispatcher,
                             clock,
@@ -212,7 +216,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             replicationConnection,
                             slotCreatedInfo,
                             slotInfo),
-                    new DefaultChangeEventSourceMetricsFactory(),
+                    new DefaultChangeEventSourceMetricsFactory<PostgresPartition>(),
                     dispatcher,
                     schema,
                     snapshotter,
