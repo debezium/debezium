@@ -95,6 +95,31 @@ jobs:
           release: ${{ matrix.feature }}
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+  cassandra:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [ 20 ]
+    name: Cassandra - Java ${{ matrix.feature }}
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v3
+        with:
+          path: core
+      - name: Checkout Cassandra
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+      - name: Setup OpenJDK
+        uses: oracle-actions/setup-java@v1
+        with:
+          website: jdk.java.net
+          release: ${{ matrix.feature }}
+      - name: Build Debezium Core
+        run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Connectors Cassandra
+        run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
     runs-on: ubuntu-latest
     strategy:
