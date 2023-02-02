@@ -48,7 +48,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
-  * xref:how-debezium-oracle-connectors-handle-faults-and-problems[]
+  * xref:oracle-frequently-asked-questions[]
 endif::product[]
 
 // Type: assembly
