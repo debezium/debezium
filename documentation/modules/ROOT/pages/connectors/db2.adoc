@@ -2214,6 +2214,15 @@ For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as 
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[db2-property-field-name-adjustment-mode]]<<db2-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 [id="db2-advanced-configuration-properties"]
@@ -2369,11 +2378,6 @@ From a `customers.orders` table that includes the soft-delete column, `delete_fl
 ----
 
 In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
-|[[db2-property-sanitize-field-names]]<<db2-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`

@@ -1326,6 +1326,16 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[vitess-property-field-name-adjustment-mode]]<<vitess-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
 |[[vitess-property-snapshot-mode]]<<vitess-property-snapshot-mode,`+snapshot.mode+`>>
 |initial
 |Specifies the criteria for performing a snapshot when the connector starts.
@@ -1406,11 +1416,6 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |[[vitess-property-poll-interval-ms]]<<vitess-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
-
-|[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
 |`t`

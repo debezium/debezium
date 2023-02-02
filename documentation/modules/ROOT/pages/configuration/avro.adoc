@@ -465,8 +465,8 @@ As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[
 
 {prodname} uses the column's name as the basis for the corresponding Avro field.
 This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules.
-Each {prodname} connector provides a configuration property, `sanitize.field.names` that you can set to `true` if you have columns that do not adhere to Avro rules for names.
-Setting `sanitize.field.names` to `true` allows serialization of non-conformant fields without having to actually modify your schema.
+Each {prodname} connector provides a configuration property, `field.name.adjustment.mode` that you can set to `avro` if you have columns that do not adhere to Avro rules for names.
+Setting `field.name.adjustment.mode` to `avro` allows serialization of non-conformant fields without having to actually modify your schema.
 
 ifdef::community[]
 == Getting More Information

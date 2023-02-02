@@ -2968,6 +2968,16 @@ For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[postgresql-property-field-name-adjustment-mode]]<<postgresql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
 |Specifies how many decimal digits should be used when converting Postgres `money` type to `java.math.BigDecimal`, which represents the values in change events.
@@ -3203,12 +3213,6 @@ become outdated if TOASTable columns are dropped from the table.
 |[[postgresql-property-slot-stream-params]]<<postgresql-property-slot-stream-params, `+slot.stream.params+`>>
 |No default
 |Semicolon separated list of parameters to pass to the configured logical decoding plug-in. For example, `add-tables=public.table,public.table2;include-lsn=true`.
-
-|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`

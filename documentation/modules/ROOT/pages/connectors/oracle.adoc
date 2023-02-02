@@ -2887,6 +2887,16 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[oracle-property-field-name-adjustment-mode]]<<oracle-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns.
@@ -3072,11 +3082,6 @@ The connector reads table contents in multiple batches of the specified size.
 |No default
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
 Defaults to the JDBC driver's default fetch size.
-
-|[[oracle-property-sanitize-field-names]]<<oracle-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` when the connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Specifies whether field names are normalized to comply with Avro naming requirements.
-For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming].
 
 |[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
