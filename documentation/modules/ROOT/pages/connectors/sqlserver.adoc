@@ -2397,6 +2397,16 @@ However, it's best to use the minimum number that are required to specify a uniq
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[sqlserver-property-field-name-adjustment-mode]]<<sqlserver-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
 |===
 
 [id="sqlserver-advanced-connector-configuration-properties"]
@@ -2579,11 +2589,6 @@ all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
-
-|[[sqlserver-property-sanitize-field-names]]<<sqlserver-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Whether field names are sanitized to adhere to Avro naming requirements.
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`

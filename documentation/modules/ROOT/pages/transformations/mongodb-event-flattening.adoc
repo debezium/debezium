@@ -301,10 +301,6 @@ In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should 
 The fields will be prefixed with `pass:[__]` or `pass:[__]<struct>pass:[__]`, depending on the specification of the struct.
 Please use a comma separated list without spaces.
 
-|[[mongodb-extract-new-record-state-sanitize-field-names]]<<mongodb-extract-new-record-state-sanitize-field-names, `sanitize.field.names`>>
-|`false`
-|Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 == Known limitations

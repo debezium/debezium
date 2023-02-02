@@ -1486,6 +1486,15 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[mongodb-property-field-name-adjustment-mode]]<<mongodb-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
@@ -1561,13 +1570,6 @@ This will cause the oplog files to be rotated out but connector will not notice 
 
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
-
-|[[mongodb-property-sanitize-field-names]]<<mongodb-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Whether field names are sanitized to adhere to Avro naming requirements.
-ifdef::community[]
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
-endif::community[]
 
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
