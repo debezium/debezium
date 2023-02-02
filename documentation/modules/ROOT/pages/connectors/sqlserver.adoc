@@ -2139,8 +2139,9 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-tasks-max]]<<sqlserver-property-tasks-max, `+tasks.max+`>>
 |`1`
 |Specifies the maximum number of tasks that the connector can use to capture data from the database instance.
+ifdef::community[]
 If the xref:sqlserver-property-database-names[`database.names`] list contains more than one element, you can increase the value of this property to a number less than or equal to the number of elements in the list.
-
+endif::community[]
 |[[sqlserver-property-database-hostname]]<<sqlserver-property-database-hostname, `+database.hostname+`>>
 |No default
 |IP address or hostname of the SQL Server database server.
