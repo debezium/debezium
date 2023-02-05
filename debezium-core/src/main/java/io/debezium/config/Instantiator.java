@@ -15,6 +15,23 @@ import java.util.function.Supplier;
  * @author Jiri Pechanec
  */
 public class Instantiator {
+    public static ClassLoader getClassLoader(Supplier<ClassLoader> classloaderSupplier) {
+
+        if (classloaderSupplier != null) {
+            return classloaderSupplier.get();
+        }
+
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        if (classloader == null) {
+            classloader = Configuration.class.getClassLoader();
+        }
+
+        return classloader;
+    }
+
+    public static ClassLoader getClassLoader() {
+        return Instantiator.getClassLoader(null);
+    }
 
     /**
      * Instantiates the specified class either using the no-args constructor or the
@@ -44,8 +61,7 @@ public class Instantiator {
     public static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
                                                                   C constructorValue) {
         if (className != null) {
-            ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
-                    : Configuration.class.getClassLoader();
+            ClassLoader classloader = Instantiator.getClassLoader(classloaderSupplier);
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()
