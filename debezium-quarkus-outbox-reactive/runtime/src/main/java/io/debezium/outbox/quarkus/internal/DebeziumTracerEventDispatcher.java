@@ -34,7 +34,6 @@ import io.smallrye.mutiny.Uni;
 public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumTracerEventDispatcher.class);
-    public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
     private static final String OPERATION_NAME = "outbox-write";
     private static final String TRACING_COMPONENT = "debezium";
 
@@ -66,7 +65,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
             // Define the entity map-mode object using property names and values
             final Map<String, Object> dataMap = getDataMapFromEvent((ExportedEvent<?, ?>) event);
-            dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
+            dataMap.put(OutboxConstants.TRACING_SPAN_CONTEXT, exportedSpanData.export());
 
             return persist(dataMap);
         }

@@ -41,6 +41,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-quarkus-outbox-deployment-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
         <dependency>
             <groupId>io.debezium</groupId>

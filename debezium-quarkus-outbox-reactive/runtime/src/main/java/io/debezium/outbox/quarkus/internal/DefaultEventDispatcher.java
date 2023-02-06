@@ -30,7 +30,7 @@ public class DefaultEventDispatcher extends AbstractEventDispatcher {
     @Override
     @ConsumeEvent(value = "debezium-outbox", codec = DebeziumCustomCodec.class)
     public Uni<Void> onExportedEvent(Object event) {
-        LOGGER.debug("An exported event was found for type {}");
+        LOGGER.debug("An exported event was found for type {}", event.getClass().getName());
         return persist(getDataMapFromEvent((ExportedEvent<?, ?>) event));
     }
 }

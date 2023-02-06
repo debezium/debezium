@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
+import io.debezium.outbox.quarkus.internal.OutboxConstants;
 
 /**
  * Helper class that can produce a JAXB HBM mapping for the OutboxEvent entity.
@@ -33,7 +33,7 @@ public class OutboxEventHbmWriter {
     private static final Logger LOGGER = LoggerFactory.getLogger(OutboxEventHbmWriter.class);
     private static final String JACKSON_JSONNODE = "com.fasterxml.jackson.databind.JsonNode";
 
-    static JaxbHbmHibernateMapping write(DebeziumOutboxConfig config, OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
+    static JaxbHbmHibernateMapping write(DebeziumOutboxCommonConfig config, OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
         final JaxbHbmHibernateMapping mapping = new JaxbHbmHibernateMapping();
 
         final JaxbHbmRootEntityType entityType = new JaxbHbmRootEntityType();
@@ -89,7 +89,7 @@ public class OutboxEventHbmWriter {
         return mapping;
     }
 
-    private static JaxbHbmSimpleIdType createIdAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmSimpleIdType createIdAttribute(DebeziumOutboxCommonConfig config) {
         final JaxbHbmSimpleIdType attribute = new JaxbHbmSimpleIdType();
         attribute.setName("id");
         attribute.setTypeAttribute(UUID.class.getName());
@@ -106,7 +106,7 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createAggregateTypeAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmBasicAttributeType createAggregateTypeAttribute(DebeziumOutboxCommonConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateType");
         attribute.setNotNull(true);
@@ -125,7 +125,7 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createAggregateIdAttribute(DebeziumOutboxConfig config,
+    private static JaxbHbmBasicAttributeType createAggregateIdAttribute(DebeziumOutboxCommonConfig config,
                                                                         OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateId");
@@ -145,7 +145,7 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createTypeAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmBasicAttributeType createTypeAttribute(DebeziumOutboxCommonConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("type");
         attribute.setNotNull(true);
@@ -164,7 +164,7 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createTimestampAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmBasicAttributeType createTimestampAttribute(DebeziumOutboxCommonConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("timestamp");
         attribute.setNotNull(true);
@@ -183,7 +183,7 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createPayloadAttribute(DebeziumOutboxConfig config,
+    private static JaxbHbmBasicAttributeType createPayloadAttribute(DebeziumOutboxCommonConfig config,
                                                                     OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
 
         final boolean isJacksonJsonNode = isPayloadJacksonJsonNode(outboxEventEntityBuildItem);
@@ -225,9 +225,9 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createTracingSpanAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmBasicAttributeType createTracingSpanAttribute(DebeziumOutboxCommonConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
-        attribute.setName(DebeziumTracerEventDispatcher.TRACING_SPAN_CONTEXT);
+        attribute.setName(OutboxConstants.TRACING_SPAN_CONTEXT);
         attribute.setNotNull(false);
         attribute.setTypeAttribute("string");
 

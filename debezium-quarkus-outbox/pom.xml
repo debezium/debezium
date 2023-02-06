@@ -27,7 +27,9 @@
     </dependencyManagement>
 
     <modules>
+        <module>deployment-common</module>
         <module>deployment</module>
+        <module>runtime-common</module>
         <module>runtime</module>
         <module>integration-tests</module>
     </modules>
