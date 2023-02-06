@@ -27,7 +27,9 @@
     </dependencyManagement>
 
     <modules>
+        <module>../debezium-quarkus-outbox/deployment-common</module>
         <module>deployment</module>
+        <module>../debezium-quarkus-outbox/runtime-common</module>
         <module>runtime</module>
         <module>integration-tests</module>
     </modules>

@@ -7,7 +7,6 @@ package io.debezium.outbox.quarkus.internal;
 
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
@@ -25,15 +24,9 @@ import io.smallrye.mutiny.Uni;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractEventDispatcher implements EventDispatcher {
+public abstract class AbstractEventDispatcher extends AbstractEventWriter<Uni<Void>> implements EventDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEventDispatcher.class);
-
-    protected static final String TIMESTAMP = "timestamp";
-    protected static final String PAYLOAD = "payload";
-    protected static final String TYPE = "type";
-    protected static final String AGGREGATE_ID = "aggregateId";
-    protected static final String AGGREGATE_TYPE = "aggregateType";
 
     @Inject
     Mutiny.SessionFactory factory;
@@ -64,24 +57,11 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
         return Uni.createFrom().item(-1);
     }
 
-    protected Map<String, Object> getDataMapFromEvent(ExportedEvent<?, ?> event) {
-        final HashMap<String, Object> dataMap = new HashMap<>();
-        dataMap.put(AGGREGATE_TYPE, event.getAggregateType());
-        dataMap.put(AGGREGATE_ID, event.getAggregateId());
-        dataMap.put(TYPE, event.getType());
-        dataMap.put(PAYLOAD, event.getPayload());
-        dataMap.put(TIMESTAMP, event.getTimestamp());
+    @Override
+    protected Map<String, Object> createDataMap(ExportedEvent<?, ?> event) {
+        final Map<String, Object> dataMap = super.createDataMap(event);
         dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
-
-        for (Map.Entry<String, Object> additionalFields : event.getAdditionalFieldValues().entrySet()) {
-            if (dataMap.containsKey(additionalFields.getKey())) {
-                LOGGER.error(
-                        additionalFields.getKey());
-                continue;
-            }
-            dataMap.put(additionalFields.getKey(), additionalFields.getValue());
-        }
-
         return dataMap;
     }
+
 }

@@ -21,10 +21,6 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-opentracing</artifactId>
             <optional>true</optional>
         </dependency>
@@ -32,21 +28,10 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-vertx</artifactId>
         </dependency>
-        <!-- Needed specifically for AdditionalJaxbMappingProducerImpl usage -->
-        <dependency>
-            <groupId>org.jboss</groupId>
-            <artifactId>jandex</artifactId>
-            <version>2.4.0.Final</version>
-        </dependency>
-        <!-- Needed primarily for @Incubating annotation -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-internal</artifactId>
-            <scope>test</scope>
+            <artifactId>debezium-quarkus-outbox-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
