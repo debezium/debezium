@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
+import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -913,7 +914,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     @Override
     public Optional<String[]> parseSignallingMessage(Struct value) {
-        final String after = value.getString(Envelope.FieldName.AFTER);
+        final String after;
+        if (getEnableBson()) {
+            RawBsonDocument data = new RawBsonDocument(value.getBytes(Envelope.FieldName.AFTER));
+            after = data.toJson();
+        }
+        else {
+            after = value.getString(Envelope.FieldName.AFTER);
+        }
+
         if (after == null) {
             LOGGER.warn("After part of signal '{}' is missing", value);
             return Optional.empty();
