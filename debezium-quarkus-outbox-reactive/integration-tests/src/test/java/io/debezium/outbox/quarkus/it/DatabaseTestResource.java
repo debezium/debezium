@@ -40,7 +40,7 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
                     .withEnv("LANG", "en_US.utf8")
                     .withStartupTimeout(Duration.ofSeconds(30));
             postgresContainer.start();
-            final Map properties = new HashMap<String, String>();
+            final Map<String, String> properties = new HashMap<>();
             properties.put("quarkus.datasource.reactive.url", getVertxReactiveJdbcUrl(postgresContainer));
             properties.put("quarkus.datasource.db-kind", "postgresql");
             return properties;
