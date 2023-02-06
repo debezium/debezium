@@ -57,7 +57,7 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
-        try (final Scope outboxSpanScope = tracer.scopeManager().activate(spanBuilder.start())) {
+        try (Scope outboxSpanScope = tracer.scopeManager().activate(spanBuilder.start())) {
             final Span activeSpan = tracer.scopeManager().activeSpan();
 
             Tags.COMPONENT.set(activeSpan, TRACING_COMPONENT);
