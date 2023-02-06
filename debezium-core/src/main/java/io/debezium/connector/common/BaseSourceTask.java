@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -50,13 +51,16 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
     private static final Duration INITIAL_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.SECONDS.toMillis(5));
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
+    private Configuration config;
 
-    protected enum State {
+    public enum State {
+        RESTARTING,
         RUNNING,
-        STOPPED;
+        INITIAL,
+        STOPPED
     }
 
-    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+    private final AtomicReference<State> state = new AtomicReference<>(State.INITIAL);
 
     /**
      * Used to ensure that start(), stop() and commitRecord() calls are serialized.
@@ -64,11 +68,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private final ReentrantLock stateLock = new ReentrantLock();
 
     private volatile ElapsedTimeStrategy restartDelay;
-
-    /**
-     * Raw connector properties, kept here so they can be passed again in case of a restart.
-     */
-    private volatile Map<String, String> props;
 
     /**
      * The change event source coordinator for those connectors adhering to the new
@@ -112,13 +111,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
-                LOGGER.info("Connector has already been started");
-                return;
-            }
-
-            this.props = props;
-            Configuration config = Configuration.from(props);
+            setTaskState(State.INITIAL);
+            config = Configuration.from(props);
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -132,8 +126,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     LOGGER.info("   {} = {}", propName, propValue);
                 });
             }
-
-            this.coordinator = start(config);
         }
         finally {
             stateLock.unlock();
@@ -145,7 +137,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     /**
-     * Called once when starting this source task.
+     * Called when starting this source task.  This method can throw a {@link RetriableException} to indicate
+     * that the task should attempt to retry the start later.
      *
      * @param config
      *            the task configuration; implementations should wrap it in a dedicated implementation of
@@ -155,18 +148,19 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
-        boolean started = startIfNeededAndPossible();
-
-        // in backoff period after a retriable exception
-        if (!started) {
-            // WorkerSourceTask calls us immediately after we return the empty list.
-            // This turns into a throttling so we need to make a pause before we return
-            // the control back.
-            Metronome.parker(Duration.of(2, ChronoUnit.SECONDS), Clock.SYSTEM).pause();
-            return Collections.emptyList();
-        }
 
         try {
+            boolean started = startIfNeededAndPossible();
+
+            // in backoff period after a retriable exception
+            if (!started) {
+                // WorkerSourceTask calls us immediately after we return the empty list.
+                // This turns into a throttling so we need to make a pause before we return
+                // the control back.
+                Metronome.parker(Duration.of(2, ChronoUnit.SECONDS), Clock.SYSTEM).pause();
+                return Collections.emptyList();
+            }
+
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
             return records;
@@ -194,7 +188,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             SourceRecord lastRecord = records.get(batchSize - 1);
-            updateLastOffset(lastRecord.sourcePartition(), lastRecord.sourceOffset());
             previousOutputBatchSize += batchSize;
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
@@ -227,22 +220,46 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private boolean startIfNeededAndPossible() {
         stateLock.lock();
 
+        boolean result;
         try {
-            if (state.get() == State.RUNNING) {
-                return true;
+            State currentState = getTaskState();
+            if (currentState == State.RUNNING) {
+                result = true;
             }
-            else if (restartDelay != null && restartDelay.hasElapsed()) {
-                start(props);
-                return true;
+            else if (currentState == State.RESTARTING) {
+                // we're in restart mode... check if it's time to restart
+                if (restartDelay.hasElapsed()) {
+                    LOGGER.info("Attempting to restart task.");
+                    this.coordinator = start(config);
+                    LOGGER.info("Successfully restarted task");
+                    result = true;
+                }
+                else {
+                    LOGGER.info("Awaiting end of restart backoff period after a retriable error");
+                    result = false;
+                }
+            }
+            else if (currentState == State.INITIAL) {
+                LOGGER.info("Attempting to start task");
+                this.coordinator = start(config);
+                LOGGER.info("Successfully started task");
+                result = true;
             }
             else {
-                LOGGER.info("Awaiting end of restart backoff period after a retriable error");
-                return false;
+                LOGGER.warn("Attempting to start task but task has been stopped.");
+                result = false;
+            }
+
+            if (currentState != State.RUNNING && result) {
+                // we successfully started, clear restart state
+                restartDelay = null;
+                setTaskState(State.RUNNING);
             }
         }
         finally {
             stateLock.unlock();
         }
+        return result;
     }
 
     @Override
@@ -254,11 +271,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
-                LOGGER.info("Connector has already been stopped");
-                return;
-            }
-
             if (restart) {
                 LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
             }
@@ -269,6 +281,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             try {
                 if (coordinator != null) {
                     coordinator.stop();
+                    coordinator = null;
                 }
             }
             catch (InterruptedException e) {
@@ -279,9 +292,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             doStop();
 
-            if (restart && restartDelay == null) {
-                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
-                restartDelay.hasElapsed();
+            if (restart) {
+                setTaskState(State.RESTARTING);
+                if (restartDelay == null) {
+                    restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
+                    restartDelay.hasElapsed();
+                }
+            }
+            else {
+                setTaskState(State.STOPPED);
             }
         }
         finally {
@@ -293,6 +312,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {
+        LOGGER.trace("Committing record {}", record);
+
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {
             updateLastOffset(record.sourcePartition(), currentOffset);
@@ -311,6 +332,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                         Map<String, ?> partition = iterator.next();
                         Map<String, ?> lastOffset = lastOffsets.get(partition);
 
+                        LOGGER.debug("Committing offset '{}' for partition '{}'", partition, lastOffset);
                         coordinator.commitOffset(partition, lastOffset);
                         iterator.remove();
                     }
@@ -354,5 +376,26 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
 
         return Offsets.of(offsets);
+    }
+
+    /**
+     * Sets the new state for the task. The caller must be holding {@link #stateLock} lock.
+     *
+     * @param newState
+     */
+    private void setTaskState(State newState) {
+        State oldState = state.getAndSet(newState);
+        LOGGER.debug("Setting task state to '{}', previous state was '{}'", newState, oldState);
+    }
+
+    @VisibleForTesting
+    public State getTaskState() {
+        stateLock.lock();
+        try {
+            return state.get();
+        }
+        finally {
+            stateLock.unlock();
+        }
     }
 }

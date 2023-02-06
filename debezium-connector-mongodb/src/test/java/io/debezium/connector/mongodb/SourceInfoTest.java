@@ -98,7 +98,7 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
@@ -121,7 +121,7 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
@@ -152,7 +152,7 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
@@ -176,7 +176,7 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
@@ -209,7 +209,7 @@ public class SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
@@ -239,6 +239,17 @@ public class SourceInfoTest {
     }
 
     @Test
+    public void wallTimeIsPresent() {
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.initialPosition("rs", event);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
+        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"), 10L);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
+    }
+
+    @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
@@ -254,6 +265,7 @@ public class SourceInfoTest {
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("txnNumber", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);

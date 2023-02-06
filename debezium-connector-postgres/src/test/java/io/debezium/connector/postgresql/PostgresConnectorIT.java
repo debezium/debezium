@@ -1691,7 +1691,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1437")
-    public void shouldPeformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
+    public void shouldPerformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(InitialOnlySnapshotter.class);
 
@@ -1736,8 +1736,10 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
 
+        waitForConnectorShutdown("postgres", TestHelper.TEST_SERVER);
+
         // Stop the connector, verify that no snapshot was performed
-        stopConnector(value -> assertThat(logInterceptor.containsMessage("Previous initial snapshot completed, no snapshot will be performed")).isTrue());
+        assertThat(logInterceptor.containsMessage("Previous initial snapshot completed, no snapshot will be performed")).isTrue();
     }
 
     @Test
@@ -3132,6 +3134,91 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .until(() -> logInterceptor
                         .containsMessage("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset."));
+    }
+
+    @Test
+    @FixFor("DBZ-5852")
+    public void shouldInvokeSnapshotterAbortedMethod() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        // insert another set of rows so we can stop at certain point
+        String setupStmt = SETUP_TABLES_STMT + INSERT_STMT + INSERT_STMT + INSERT_STMT;
+        TestHelper.execute(setupStmt);
+
+        TestHelper.execute(
+                "CREATE TABLE s1.lifecycle_state (hook text, state text, PRIMARY KEY(hook));");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, 2)
+                .with(PostgresConnectorConfig.MAX_RETRIES, 1)
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 60 * 1000)
+                .with(PostgresConnectorConfig.SNAPSHOT_FETCH_SIZE, 1)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomLifecycleHookTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
+            if (error != null) {
+                latch.countDown();
+            }
+            else {
+                fail("A controlled exception was expected....");
+            }
+        };
+
+        start(PostgresConnector.class, configBuilder.build(), completionCallback, stopOnPKPredicate(1));
+
+        // wait until we know we've raised the exception at startup AND the engine has been shutdown
+        if (!latch.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)) {
+            fail("did not reach stop condition in time");
+        }
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            List<String> snapshotCompleteState = connection.queryAndMap(
+                    "SELECT state FROM s1.lifecycle_state WHERE hook like 'snapshotComplete'",
+                    rs -> {
+                        final List<String> ret = new ArrayList<>();
+                        while (rs.next()) {
+                            ret.add(rs.getString(1));
+                        }
+                        return ret;
+                    });
+            assertEquals(Collections.singletonList("aborted"), snapshotCompleteState);
+        }
+    }
+
+    @FixFor("DBZ-5917")
+    public void shouldIncludeTableWithBackSlashInName() throws Exception {
+        String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.\"back\\slash\" (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.another_table (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" + // we need some excluded table to reproduce the issue
+                "INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (1, 1);" +
+                "INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (2, 2);";
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.back\\\\slash");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        TestHelper.execute("INSERT INTO s1.\"back\\slash\" (aa, bb) VALUES (3, 3);");
+
+        final int EXPECTED_RECORDS = 3; // 2 from snapshot, 1 from streaming
+        SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.back_slash"));
+        assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
+        AtomicInteger pkValue = new AtomicInteger(1);
+        records.forEach(record -> {
+            if (pkValue.get() <= 2) {
+                VerifyRecord.isValidRead(record, PK_FIELD, pkValue.getAndIncrement());
+            }
+            else {
+                VerifyRecord.isValidInsert(record, PK_FIELD, pkValue.getAndIncrement());
+            }
+        });
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

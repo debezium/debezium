@@ -37,11 +37,11 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
@@ -64,7 +64,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
-        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         if (snapshotter == null) {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");

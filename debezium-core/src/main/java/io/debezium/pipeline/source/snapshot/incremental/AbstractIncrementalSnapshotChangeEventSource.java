@@ -322,7 +322,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             jdbcConnection.commit();
             context.startNewChunk();
             emitWindowOpen();
-            setTransactionIsolationLevel(connectorConfig.getIncrementalSnapshotTransactionIsolationLevel());
             while (context.snapshotRunning()) {
                 if (isTableInvalid(partition)) {
                     continue;
@@ -498,8 +497,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     closeWindow(partition, context.currentChunkId(), offsetContext);
 
                     progressListener.snapshotAborted(partition);
-                    // reset transaction isolation level to default
-                    setTransactionIsolationLevel(connectorConfig.getDefaultTransactionIsolationLevel());
                 }
                 catch (InterruptedException e) {
                     LOGGER.warn("Failed to stop snapshot successfully.", e);
@@ -637,16 +634,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             throw new DebeziumException("Snapshotting of table " + currentTable.id() + " failed", e);
         }
         return true;
-    }
-
-    private void setTransactionIsolationLevel(int transactionIsolationLevel) {
-        try {
-            LOGGER.debug("Transaction level set to {}", transactionIsolationLevel);
-            this.jdbcConnection.connection().setTransactionIsolation(transactionIsolationLevel);
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Unexpected error while setting transaction level");
-        }
     }
 
     private boolean checkSchemaChanges(ResultSet rs) throws SQLException {

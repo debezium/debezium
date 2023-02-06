@@ -36,6 +36,7 @@ Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
 Anil Dasari
+Animesh Kumar
 Anisha Mohanty
 Anton Kondratev
 Anton Martynov
@@ -68,6 +69,7 @@ Braden Staudacher
 Brandon Brown
 Brandon Maguire
 Brennan Vincent
+Byron Ruth
 Camile Sing
 César Martínez
 Cao Manh Dat
@@ -259,6 +261,9 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Liz Chatman
+Lokesh Sanapalli
+Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
 Lukasz Korzeniowski
@@ -296,6 +301,7 @@ Mike Graham
 Mike Kamornikov
 Mikhail Dubrovin
 Mincong Huang
+Ming Luo
 Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
@@ -401,6 +407,7 @@ Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
 Subodh Kant Chaturvedi
+Sun Xiao Jian
 Sungho Hwang
 Syed Muhammad Sufyian
 Tapani Moilanen
@@ -416,6 +423,7 @@ Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Tim Loes
 Timo Roeseler
 Tin Nguyen
 Tom Bentley
@@ -448,6 +456,7 @@ Willie Zhu
 Wu Zhenhua
 Wout Scheepers
 Xiao Fu
+Xiaojian Sun
 Xiaopu Zhu
 Xinbin Huang
 Xinquan She

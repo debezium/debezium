@@ -15,7 +15,11 @@ toc::[]
 {prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace].
 For information about the Vitess versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 
-The connector does not support snapshot feature at the moment. The first time it connects to a Vitess cluster, it starts from the current VGTID location of the keyspace and continuously captures row-level changes that insert, update, and delete database content and that were committed to a Vitess keyspace. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
+When the connector first connects to a Vitess cluster, it takes a consistent snapshot of the keyspace. 
+After that snapshot is complete, the connector continuously captures row-level changes that are committed to a Vitess keyspace to insert, update, or delete database content. 
+The connector generates data change event records and streams them to Kafka topics. 
+For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. 
+Applications and services can then consume data change event records from the resulting topic.
 
 // Type: concept
 // Title: Overview of {prodname} Vitess connector
@@ -31,7 +35,17 @@ The connector gives you the flexibility to choose to subscribe to the `MASTER` n
 
 The connector produces a change event for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
-The connector is tolerant of failures. As the connector reads changes and produces events, it records the VGTID position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off.
+The underlying MySQL implementation in Vitess purges binary logs based on some configurable period of time. 
+Because the contents of the binlog might not be complete, the connector requires another mechanism to ensure that it captures the complete content of a particular database.
+Thus, when the connector connects to a database for the first time, it performs a consistent snapshot of the database. 
+After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. 
+In this way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
+
+The connector is tolerant of failures. 
+As the connector reads changes and produces events, it records the VGTID position for each event. 
+If the connector stops for any reason (including communication failures, network problems, or crashes), after the connectors restarts, it continues reading the WAL from the point at which it stopped. 
+This behavior does not apply to snapshots. If the connector stops during a snapshot, after a restart, the connector does not continue performing snapshots where it last left off.
+We'll talk later about how the connector behaves xref:{link-vitess-connector}#vitess-when-things-go-wrong[when things go wrong].
 
 // Type: assembly
 // ModuleID: how-debezium-vitess-connectors-work
@@ -39,7 +53,24 @@ The connector is tolerant of failures. As the connector reads changes and produc
 [[how-the-vitess-connector-works]]
 == How the connector works
 
-To optimally configure and run a {prodname} Vitess connector, it is helpful to understand how the connector streams change events, determines Kafka topic names, and uses metadata.
+To optimally configure and run a {prodname} Vitess connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata.
+
+// Type: concept
+// ModuleID: how-debezium-vitess-connectors-perform-snapshot
+// Title: How {prodname} Vitess connectors perform a snapshot
+[[vitess-snapshot]]
+=== Snapshot
+
+Typically, a MySQL server is not configured to retain the complete history of the database in the binary logs.
+As a result, the connector is unable to read the entire history of the database from the binary logs. 
+For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database. 
+You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
+This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
+
+[NOTE]
+====
+Automatic retry of a failed snapshot is expected to be available in a future release.
+====
 
 // Type: concept
 // ModuleID: how-debezium-vitess-connectors-stream-change-event-records
@@ -500,7 +531,7 @@ The following example shows the value portion of a change event that the connect
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": true,
+            "snapshot": false,
             "db": "",
             "keyspace": "commerce",
             "table": "customers",
@@ -560,7 +591,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * {prodname} version
 * Connector type and name
 * Database (a.k.a keyspace) and table that contains the new row
-* If the event was part of a snapshot
+* If the event was part of a snapshot (always `false`)
 * Offset of the operation in the database binlog
 * Timestamp for when the change was made in the database
 
@@ -608,7 +639,7 @@ The value of a change event for an update in the sample `customers` table has th
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": null,
+            "snapshot": false,
             "db": "",
             "keyspace": "commerce",
             "table": "customers",
@@ -640,7 +671,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * {prodname} version
 * Connector type and name
 * Database (a.k.a keyspace) and table that contains the new row
-* If the event was part of a snapshot
+* If the event was part of a snapshot (always `false`)
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
@@ -683,7 +714,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": null,
+            "snapshot": false,
             "db": "",
             "keyspace": "commerce",
             "table": "customers",
@@ -715,7 +746,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * {prodname} version
 * Connector type and name
 * Database (a.k.a keyspace) and table that contains the new row
-* If the event was part of a snapshot
+* If the event was part of a snapshot (always `false`)
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
@@ -1293,6 +1324,42 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[vitess-property-field-name-adjustment-mode]]<<vitess-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
+|[[vitess-property-snapshot-mode]]<<vitess-property-snapshot-mode,`+snapshot.mode+`>>
+|initial
+|Specifies the criteria for performing a snapshot when the connector starts.
+Set the property to one of the following values:
+
+`initial`::
+When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+
+`never`::
+When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the binary logs.
+
+|[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
+|string
+|Specify how BIGINT UNSIGNED columns should be represented in change events. +
+Set the property to one of the following values: +
+ +
+`string`:: +
+represent values using Java's `string` +
+ +
+`long`:: +
+represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. +
+ +
+`precise`:: +
+represents values as precise (Java's 'BigDecimal') values. This is precise but difficult to use.
 |===
 
 [id="vitess-advanced-configuration-properties"]
@@ -1363,11 +1430,6 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |[[vitess-property-poll-interval-ms]]<<vitess-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
-
-|[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
 |`t`
@@ -1508,6 +1570,14 @@ As the connector generates change events, the Kafka Connect framework records th
 If the connector is gracefully stopped, the database can continue to be used. Any changes are recorded in the Vitess binlog. When the connector restarts, it resumes streaming changes where it left off. That is, it generates change event records for all database changes that were made while the connector was stopped.
 
 A properly configured Kafka cluster is able to handle massive throughput. Kafka Connect is written according to Kafka best practices, and given enough resources a Kafka Connect connector can also handle very large numbers of database change events. Because of this, after being stopped for a while, when a {prodname} connector restarts, it is very likely to catch up with the database changes that were made while it was stopped. How quickly this happens depends on the capabilities and performance of Kafka and the volume of changes being made to the data in Vitess.
+
+[id="vitess-connector-failed-before-finishing-the-snapshot"]
+=== Connector fails before finishing the snapshot
+
+If a snapshot fails to complete, the connector does not automatically reattempt the snapshot.
+If the connector is restarted with the previous offset, the connector skips the snapshot process and immediately begins to stream change events.
+
+Consequently, to recover from the failure, link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector/[remove the connector offsets manually] and start the connector.
 
 [id="limitations-with-earlier-vitess-versions"]
 === Limitations with earlier Vitess versions

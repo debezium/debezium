@@ -21,8 +21,8 @@ import io.debezium.data.Json;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * @author Chris Cranford

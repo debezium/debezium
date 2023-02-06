@@ -358,6 +358,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 }
                 else {
                     LOGGER.debug("Processed {} records from database schema history", numRecordsProcessed);
+                    recoveryAttempts = 0;
                 }
             } while (lastProcessedOffset < endOffset - 1);
         }

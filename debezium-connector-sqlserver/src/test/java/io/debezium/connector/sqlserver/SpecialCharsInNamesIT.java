@@ -124,7 +124,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*")
-                .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, true)
+                .with(SqlServerConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO)
                 .build();
 
         connection.execute(
@@ -261,7 +261,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig(databaseName)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, false)
+                .with(SqlServerConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.NONE)
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO)
                 .build();
         connection.execute(

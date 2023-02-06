@@ -31,10 +31,10 @@ import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
-import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Loggings;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -74,9 +74,10 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
-                              boolean sanitizeFieldNames, boolean multiPartitionMode) {
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, sanitizeFieldNames, multiPartitionMode);
+                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode);
     }
 
     /**
@@ -93,13 +94,14 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
-                              boolean sanitizeFieldNames, boolean multiPartitionMode) {
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
                 .orElse(DefaultValueConverter.passthrough());
         this.sourceInfoSchema = sourceInfoSchema;
-        this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
+        this.fieldNamer = fieldNamer;
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
     }
@@ -206,8 +208,9 @@ public class TableSchemaBuilder {
                         }
                         catch (DataException e) {
                             Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert key value for '{}.{}' of type {} for row {}:",
-                                    columnSetName, col.name(), col.typeName(), row, e);
+                            Loggings.logErrorAndTraceRecord(LOGGER, row,
+                                    "Failed to properly convert key value for '{}.{}' of type {}", columnSetName,
+                                    col.name(), col.typeName(), e);
                         }
                     }
                 }
@@ -279,13 +282,15 @@ public class TableSchemaBuilder {
                         }
                         catch (DataException | IllegalArgumentException e) {
                             Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                    tableId, col.name(), col.typeName(), row, e);
+                            Loggings.logErrorAndTraceRecord(LOGGER, row,
+                                    "Failed to properly convert data value for '{}.{}' of type {}", tableId,
+                                    col.name(), col.typeName(), e);
                         }
                         catch (final Exception e) {
                             Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                    tableId, col.name(), col.typeName(), row, e);
+                            Loggings.logErrorAndTraceRecord(LOGGER, row,
+                                    "Failed to properly convert data value for '{}.{}' of type {}", tableId,
+                                    col.name(), col.typeName(), e);
                         }
                     }
                 }

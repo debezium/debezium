@@ -106,7 +106,6 @@ Details are in the following topics:
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
-* xref:metadata-in-debezium-postgresql-change-event-records[]
 * xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
@@ -2966,6 +2965,17 @@ For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[postgresql-property-field-name-adjustment-mode]]<<postgresql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
@@ -3203,12 +3213,6 @@ become outdated if TOASTable columns are dropped from the table.
 |No default
 |Semicolon separated list of parameters to pass to the configured logical decoding plug-in. For example, `add-tables=public.table,public.table2;include-lsn=true`.
 
-|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
-
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`
 |If connecting to a replication slot fails, this is the maximum number of consecutive attempts to connect.
@@ -3252,23 +3256,6 @@ Use the following format to specify the collection name: +
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
-
-|[[postgresql-property-incremental-snapshot-isolation-mode]]<<postgresql-property-incremental-snapshot-isolation-mode, `+incremental.snapshot.isolation.mode+`>>
-|_read_committed_
-|Mode to control which transaction isolation level is used for tables that are designated for capture.
-The following values are supported:
-
-* `read_uncommitted`
-* `read_committed`
-* `repeatable_read`
-* `serializable`
-
-The `read_committed` and `read_uncommitted` modes do not prevent other transactions from updating table rows during incremental snapshot.
-The `serializable` and `repeatable_read` modes do prevent concurrent updates. +
-
-Mode choice also affects data consistency. Only `serializable` mode guarantee full consistency, that is, incremental snapshot and streaming logs constitute a linear history.
-In case of `repeatable_read` and `read_committed` modes, it might happen that, for instance, a record added appears twice - once in incremental snapshot and once in streaming phase. Nonetheless, that consistency level should do for data mirroring.
-For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
 |[[postgresql-property-xmin-fetch-interval-ms]]<<postgresql-property-xmin-fetch-interval-ms, `+xmin.fetch.interval.ms+`>>
 |`0`

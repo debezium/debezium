@@ -2212,7 +2212,17 @@ For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as 
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[db2-property-field-name-adjustment-mode]]<<db2-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 [id="db2-advanced-configuration-properties"]
@@ -2368,11 +2378,6 @@ From a `customers.orders` table that includes the soft-delete column, `delete_fl
 ----
 
 In the resulting snapshot, the connector includes only the records for which `delete_flag = 0`.
-|[[db2-property-sanitize-field-names]]<<db2-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
@@ -2397,23 +2402,6 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
-
-|[[db2-property-incremental-snapshot-isolation-mode]]<<db2-property-incremental-snapshot-isolation-mode, `+incremental.snapshot.isolation.mode+`>>
-|_read_committed_
-|Mode to control which transaction isolation level is used for tables that are designated for capture.
-The following values are supported:
-
-* `read_uncommitted`
-* `read_committed`
-* `repeatable_read`
-* `serializable`
-
-The `read_committed` and `read_uncommitted` modes do not prevent other transactions from updating table rows during incremental snapshot.
-The `serializable` and `repeatable_read` modes do prevent concurrent updates. +
-
-Mode choice also affects data consistency. Only `serializable` mode guarantee full consistency, that is, incremental snapshot and streaming logs constitute a linear history.
-In case of `repeatable_read` and `read_committed` modes, it might happen that, for instance, a record added appears twice - once in incremental snapshot and once in streaming phase. Nonetheless, that consistency level should do for data mirroring.
-For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
 |[[db2-property-topic-naming-strategy]]<<db2-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`

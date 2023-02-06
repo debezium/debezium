@@ -50,10 +50,11 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
@@ -81,9 +82,106 @@ public class MySqlAntlrDdlParserTest {
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 new MySqlDefaultValueConverter(converters),
-                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
         properties = new Properties();
         properties.put("topic.prefix", "test");
+    }
+
+    @Test
+    @FixFor("DBZ-6003")
+    public void shouldProcessCreateUniqueBeforePrimaryKeyDefinitions() {
+        String ddl = "CREATE TABLE `dbz_6003_1` (\n"
+                + "`id` INT ( 11 ) NOT NULL,\n"
+                + "`name` VARCHAR ( 255 ),\n"
+                + "UNIQUE KEY `test` ( `name` ),\n"
+                + "PRIMARY KEY ( `id` )\n"
+                + ") ENGINE = INNODB;";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "dbz_6003_1");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY and UNIQUE KEY
+        ddl = "create table dbz_6003_2 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_2 add unique key dbz_6003_2_uk(name);"
+                + "alter table dbz_6003_2 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_2");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY and PRIMARY KEY
+        ddl = "create table dbz_6003_3 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_3 add (primary key id(id), unique key dbz_6003_3_uk(name));";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_3");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY, drop PRIMARY KEY
+        ddl = "create table dbz_6003_4 (id int not null, name varchar(255), primary key(id));"
+                + "alter table dbz_6003_4 add unique key dbz_6003_4_uk(name);"
+                + "alter table dbz_6003_4 drop primary key;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_4");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop PRIMARY KEY, add UNIQUE KEY
+        ddl = "create table dbz_6003_5 (id int not null, name varchar(255) not null, primary key(id));"
+                + "alter table dbz_6003_5 drop primary key;"
+                + "alter table dbz_6003_5 add unique key dbz_6003_5_uk(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_5");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("name");
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
+
+        // drop UNIQUE KEY, add PRIMARY KEY
+        ddl = "create table dbz_6003_6 (id int not null, name varchar(255), unique key dbz_6003_6_uk(name));"
+                + "alter table dbz_6003_6 drop index dbz_6003_6_uk;"
+                + "alter table dbz_6003_6 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_6");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY, drop UNIQUE KEY
+        ddl = "create table dbz_6003_7 (id int not null, name varchar(255), unique key dbz_6003_7_uk(name));"
+                + "alter table dbz_6003_7 add primary key(id);"
+                + "alter table dbz_6003_7 drop index dbz_6003_7_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_7");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop both PRIMARY and UNIQUE keys
+        ddl = "create table dbz_6003_8 (id int not null, name varchar(255), unique key dbz_6003_8_uk(name), primary key(id));"
+                + "alter table dbz_6003_8 drop primary key;"
+                + "alter table dbz_6003_8 drop index dbz_6003_8_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_8");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // create unique index
+        ddl = "create table dbz_6003_9 (id int not null, name varchar(255));"
+                + "create unique index dbz_6003_9_uk on dbz_6003_9(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_9");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        ddl = "create table dbz_6003_10 (id int not null, name varchar(255) not null);"
+                + "create unique index dbz_6003_10_uk on dbz_6003_10(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_10");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
     }
 
     @Test

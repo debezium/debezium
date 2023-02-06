@@ -74,7 +74,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
                     "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
                     rs -> {
                         if (rs.next()) {
-                            return !"OFF".equalsIgnoreCase(rs.getString(2));
+                            return "ON".equalsIgnoreCase(rs.getString(2));
                         }
                         throw new IllegalStateException("Cannot obtain GTID status");
                     });

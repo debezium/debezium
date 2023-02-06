@@ -36,8 +36,9 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
@@ -212,7 +213,8 @@ public class SqlServerConnectionIT {
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
-                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, true);
+                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);
@@ -382,7 +384,8 @@ public class SqlServerConnectionIT {
             TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                     new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                     connection.getDefaultValueConverter(),
-                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, true);
+                    SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                    FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), true);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null, tableSchemaBuilder);

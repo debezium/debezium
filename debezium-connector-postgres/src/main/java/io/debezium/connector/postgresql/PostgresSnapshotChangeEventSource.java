@@ -208,8 +208,13 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void complete(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+    protected void completed(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
         snapshotter.snapshotCompleted();
+    }
+
+    @Override
+    protected void aborted(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+        snapshotter.snapshotAborted();
     }
 
     /**

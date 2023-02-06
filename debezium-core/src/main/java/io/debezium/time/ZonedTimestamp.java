@@ -59,7 +59,8 @@ public class ZonedTimestamp {
      */
     private static DateTimeFormatter getDateTimeFormatter(Integer fractionalWidth) {
         // TIMESTAMP type passes fractionalWidth as -1.
-        if (fractionalWidth == null || fractionalWidth <= 0) {
+        // Java DateTimeFormatter supports 9 as maximum fraction
+        if (fractionalWidth == null || fractionalWidth <= 0 || fractionalWidth > 9) {
             return FORMATTER;
         }
 

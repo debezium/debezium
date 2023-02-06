@@ -2,6 +2,68 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.Alpha1
+January 19th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400295)
+
+### New features since 2.1.1.Final
+
+* Remove redundant modifiers of members for interface fields [DBZ-2439](https://issues.redhat.com/browse/DBZ-2439)
+* Allow reading from read-only Oracle standby disaster/recovery [DBZ-3866](https://issues.redhat.com/browse/DBZ-3866)
+* Remove option for specifying driver class from MySQL Connector [DBZ-4663](https://issues.redhat.com/browse/DBZ-4663)
+* Support S3 bucket as Debezium history store [DBZ-5402](https://issues.redhat.com/browse/DBZ-5402)
+* Update the DBZ-UI documentation page to incorporate the recently added "Custom properties" step details [DBZ-5878](https://issues.redhat.com/browse/DBZ-5878)
+* Support retrying database connection failures during connector start [DBZ-5879](https://issues.redhat.com/browse/DBZ-5879)
+* Add support for Connect Headers to Debezium Server [DBZ-5926](https://issues.redhat.com/browse/DBZ-5926)
+* Sink adapter for Apache RocketMQ [DBZ-5962](https://issues.redhat.com/browse/DBZ-5962)
+* Sink adapter for Infinispan [DBZ-5986](https://issues.redhat.com/browse/DBZ-5986)
+* Add custom Debezium banner to Debezium Server [DBZ-6004](https://issues.redhat.com/browse/DBZ-6004)
+* Postgres LSN check should honor event.processing.failure.handling.mode [DBZ-6012](https://issues.redhat.com/browse/DBZ-6012)
+* Enhance the Spanner connector by adding features and/or solving bugs [DBZ-6014](https://issues.redhat.com/browse/DBZ-6014)
+
+
+### Breaking changes since 2.1.1.Final
+
+* Debezium truncating micro/nanosecond part if it is all zeros [DBZ-5996](https://issues.redhat.com/browse/DBZ-5996)
+
+
+### Fixes since 2.1.1.Final
+
+* Debezium is not working with apicurio and custom truststores [DBZ-5282](https://issues.redhat.com/browse/DBZ-5282)
+*  Show/Hide password does not work on Connectors View details screen [DBZ-5322](https://issues.redhat.com/browse/DBZ-5322)
+* Snapshotter#snapshotCompleted is invoked regardless of snapshot result [DBZ-5852](https://issues.redhat.com/browse/DBZ-5852)
+* Oracle cannot undo change [DBZ-5907](https://issues.redhat.com/browse/DBZ-5907)
+* Postgresql Data Loss on restarts [DBZ-5915](https://issues.redhat.com/browse/DBZ-5915)
+* Oracle Multithreading lost data [DBZ-5945](https://issues.redhat.com/browse/DBZ-5945)
+* Spanner connector is missing JSR-310 dependency [DBZ-5959](https://issues.redhat.com/browse/DBZ-5959)
+* Truncate records incompatible with ExtractNewRecordState [DBZ-5966](https://issues.redhat.com/browse/DBZ-5966)
+* Computed partition must not be negative [DBZ-5967](https://issues.redhat.com/browse/DBZ-5967)
+* Stream tag images are not published [DBZ-5979](https://issues.redhat.com/browse/DBZ-5979)
+* Table size log message for snapshot.select.statement.overrides tables not correct [DBZ-5985](https://issues.redhat.com/browse/DBZ-5985)
+* NPE in execute snapshot signal with exclude.tables config on giving wrong table name [DBZ-5988](https://issues.redhat.com/browse/DBZ-5988)
+* There is a problem with postgresql connector parsing the boundary value of money type [DBZ-5991](https://issues.redhat.com/browse/DBZ-5991)
+* Log statement for unparseable DDL statement in MySqlDatabaseSchema contains placeholder [DBZ-5993](https://issues.redhat.com/browse/DBZ-5993)
+* Synchronize all actions with core CI & fix GitHub Actions set-output command [DBZ-5998](https://issues.redhat.com/browse/DBZ-5998)
+* Postgresql connector parses the null of the money type into 0 [DBZ-6001](https://issues.redhat.com/browse/DBZ-6001)
+* Run PostgresConnectorIT.shouldReceiveChangesForChangeColumnDefault() failed [DBZ-6002](https://issues.redhat.com/browse/DBZ-6002)
+
+
+### Other changes since 2.1.1.Final
+
+* Plug-in version information duplicated [DBZ-4669](https://issues.redhat.com/browse/DBZ-4669)
+* Move common code in Cassandra connector core module [DBZ-5950](https://issues.redhat.com/browse/DBZ-5950)
+* website-builder image cannot be built [DBZ-5971](https://issues.redhat.com/browse/DBZ-5971)
+* Zookeeper 3.6.3 available only on archive [DBZ-5972](https://issues.redhat.com/browse/DBZ-5972)
+* Jenkins pipelines don't provide information about FAILURE status [DBZ-5974](https://issues.redhat.com/browse/DBZ-5974)
+* Remove incubating documentation text for MongoDB ExtractNewDocumentState SMT  [DBZ-5975](https://issues.redhat.com/browse/DBZ-5975)
+* Use replace rather than replaceAll [DBZ-5976](https://issues.redhat.com/browse/DBZ-5976)
+* Upgrade Apicurio to 2.4.1.Final [DBZ-5977](https://issues.redhat.com/browse/DBZ-5977)
+* Upgrade JDBC driver to 42.5.1 [DBZ-5980](https://issues.redhat.com/browse/DBZ-5980)
+* Update TestContainers to 1.17.6 [DBZ-5990](https://issues.redhat.com/browse/DBZ-5990)
+* Align pipeline tests with new connector pipelines [DBZ-5999](https://issues.redhat.com/browse/DBZ-5999)
+* Db2 incremental snapshot test execution is blocked [DBZ-6008](https://issues.redhat.com/browse/DBZ-6008)
+
+
+
 ## 2.1.0.Final
 December 22nd 2022 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400034)
 
