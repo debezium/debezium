@@ -128,7 +128,7 @@ public abstract class OutboxCommonProcessor {
             integrationConfiguredProducer.produce(
                     new HibernateOrmIntegrationStaticConfiguredBuildItem(DEBEZIUM_OUTBOX,
                             puDescriptor.getPersistenceUnitName())
-                                    .setXmlMappingRequired(true));
+                            .setXmlMappingRequired(true));
         }
     }
 
