@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -228,14 +229,22 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)) || connectorConfig.isSignalDataCollection(tid))
+                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
                 .sorted();
     }
 
     private Set<TableId> sort(Set<TableId> capturedTables) throws Exception {
         String tableIncludeList = connectorConfig.tableIncludeList();
-        if (tableIncludeList != null) {
-            return Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE)
+        String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
+        List<Pattern> captureTablePatterns = new ArrayList<>();
+        if (!Strings.isNullOrBlank(tableIncludeList)) {
+            captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
+        }
+        if (!Strings.isNullOrBlank(signalingDataCollection)) {
+            captureTablePatterns.addAll(Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE));
+        }
+        if (captureTablePatterns.size() > 0) {
+            return captureTablePatterns
                     .stream()
                     .flatMap(pattern -> toTableIds(capturedTables, pattern))
                     .collect(Collectors.toCollection(LinkedHashSet::new));
