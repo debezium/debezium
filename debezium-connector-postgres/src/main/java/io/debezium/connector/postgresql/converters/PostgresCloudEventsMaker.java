@@ -25,6 +25,7 @@ public class PostgresCloudEventsMaker extends CloudEventsMaker {
     public String ceId() {
         return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
                 + ";lsn:" + recordParser.getMetadata(PostgresRecordParser.LSN_KEY).toString()
-                + ";txId:" + recordParser.getMetadata(PostgresRecordParser.TXID_KEY).toString();
+                + ";txId:" + recordParser.getMetadata(PostgresRecordParser.TXID_KEY).toString()
+                + ";sequence:" + recordParser.getMetadata(PostgresRecordParser.SEQUENCE_KEY).toString();
     }
 }

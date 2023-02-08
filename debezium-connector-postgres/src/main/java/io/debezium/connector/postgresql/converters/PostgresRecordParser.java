@@ -25,11 +25,13 @@ public class PostgresRecordParser extends RecordParser {
     static final String TXID_KEY = "txId";
     static final String XMIN_KEY = "xmin";
     static final String LSN_KEY = "lsn";
+    static final String SEQUENCE_KEY = "sequence";
 
     static final Set<String> POSTGRES_SOURCE_FIELD = Collect.unmodifiableSet(
             TXID_KEY,
             XMIN_KEY,
-            LSN_KEY);
+            LSN_KEY,
+            SEQUENCE_KEY);
 
     public PostgresRecordParser(Schema schema, Struct record) {
         super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
