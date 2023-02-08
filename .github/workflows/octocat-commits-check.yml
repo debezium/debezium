@@ -27,7 +27,7 @@ jobs:
           done < SORTED_AUTHORS.txt
       - name: Create comment
         if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
@@ -35,7 +35,7 @@ jobs:
             Please author your commit(s) using an email [linked to your GitHub account](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile).
       - name: Check failure
         if: ${{ steps.check.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         continue-on-error: false
         with:
           script: |

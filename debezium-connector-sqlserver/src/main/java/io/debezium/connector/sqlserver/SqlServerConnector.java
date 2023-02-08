@@ -74,20 +74,21 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
         // Initialize the database list for each task
         List<List<String>> databasesByTask = new ArrayList<>();
-        for (int i = 0; i < maxTasks; i++) {
+        final int numTasks = Math.min(maxTasks, config.getDatabaseNames().size());
+        for (int i = 0; i < numTasks; i++) {
             databasesByTask.add(new ArrayList<>());
         }
 
         // Add each database to a task list via round-robin.
         for (int databaseNameIndex = 0; databaseNameIndex < databaseNames.size(); databaseNameIndex++) {
-            int taskIndex = databaseNameIndex % maxTasks;
+            int taskIndex = databaseNameIndex % numTasks;
             String realDatabaseName = connection.retrieveRealDatabaseName(databaseNames.get(databaseNameIndex));
             databasesByTask.get(taskIndex).add(realDatabaseName);
         }
 
         // Create a task config for each task, assigning each a list of database names.
         List<Map<String, String>> taskConfigs = new ArrayList<>();
-        for (int taskIndex = 0; taskIndex < maxTasks; taskIndex++) {
+        for (int taskIndex = 0; taskIndex < numTasks; taskIndex++) {
             String taskDatabases = String.join(",", databasesByTask.get(taskIndex));
             Map<String, String> taskProperties = new HashMap<>(properties);
             taskProperties.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), taskDatabases);

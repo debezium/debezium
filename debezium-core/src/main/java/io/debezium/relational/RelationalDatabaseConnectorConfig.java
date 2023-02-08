@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -37,8 +36,10 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -54,9 +55,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
-
-    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
-
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
@@ -500,6 +498,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final TableIdToStringMapper tableIdMapper;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
+    private final FieldNamer<Column> fieldNamer;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -534,6 +533,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
+        this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -551,7 +551,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
-     * Returns the temporal precision mode mode Enum for {@code time.precision.mode}
+     * Returns the temporal precision mode Enum for {@code time.precision.mode}
      * configuration. This defaults to {@code adaptive} if nothing is provided.
      */
     public TemporalPrecisionMode getTemporalPrecisionMode() {
@@ -734,5 +734,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
         }
         return problemCount;
+    }
+
+    public FieldNamer<Column> getFieldNamer() {
+        return fieldNamer;
     }
 }

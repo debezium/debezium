@@ -52,7 +52,7 @@ import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Implementation of Converter that express schemas and objects with CloudEvents specification. The serialization

@@ -11,7 +11,7 @@ pipelineJob('ocp-debezium-testing-system') {
     }
 
     parameters {
-        stringParam('MAIL_TO', 'jcechace@redhat.com')
+        stringParam('MAIL_TO', 'debezium-qe@redhat.com')
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
         booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
 //        OCP CONFIG
@@ -26,10 +26,11 @@ pipelineJob('ocp-debezium-testing-system') {
         stringParam('DBZ_GIT_BRANCH', 'main', 'A branch/tag of Debezium sources')
         stringParam('DBZ_GIT_REPOSITORY_DB2', 'https://github.com/debezium/debezium-connector-db2.git', 'Repository from which Debezium DB2 sources are cloned')
         stringParam('DBZ_GIT_BRANCH_DB2', 'main', 'A branch/tag of Debezium DB2 sources')
-//        STRIMZI CONFIG
-        stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
-        stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Debezium is built')
-        stringParam('STRZ_RESOURCES_ARCHIVE_URL', '', 'URL to productised strimzi sources')
+//        OPERATORS CONFIG
+        stringParam('STRIMZI_PREPARE_BUILD_NUMBER', '', 'Downstream preparation build to obtain AMQ streams operator from.' +
+                ' Leave empty to install operator from ocp marketplace')
+        stringParam('STRIMZI_OPERATOR_CHANNEL', 'stable', 'Update channel for Strimzi operator')
+        stringParam('APICURIO_OPERATOR_CHANNEL', '2.x', 'Update channel for Apicurio operator')
 //      Images config
         stringParam('IMAGE_DBZ_AS', '', "Debezium artifact server image (usable with Strimzi's build mechanism")
         stringParam('IMAGE_CONNECT_STRZ', '', 'Kafka Connect Strimzi Image with DBZ plugins.')

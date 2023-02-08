@@ -106,7 +106,6 @@ Details are in the following topics:
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
-* xref:metadata-in-debezium-postgresql-change-event-records[]
 * xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
@@ -2966,6 +2965,17 @@ For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`
 
 * `none` does not apply any adjustment. +
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[postgresql-property-field-name-adjustment-mode]]<<postgresql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
@@ -3203,12 +3213,6 @@ become outdated if TOASTable columns are dropped from the table.
 |No default
 |Semicolon separated list of parameters to pass to the configured logical decoding plug-in. For example, `add-tables=public.table,public.table2;include-lsn=true`.
 
-|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
-
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`
 |If connecting to a replication slot fails, this is the maximum number of consecutive attempts to connect.
@@ -3409,7 +3413,7 @@ ifdef::community[]
 
 [NOTE]
 ====
-There are discussions in the PostgreSQL community around a feature called `failover slots` that would help mitigate this problem, but as of PostgreSQL 12, they have not been implemented.  However, there is active development for PostgreSQL 13 to support logical decoding on standbys, which is a major requirement to make failover possible. You can find more about this in this link:"https://www.postgresql.org/message-id/CAJ3gD9fE=0w50sRagcs+jrktBXuJAWGZQdSTMa57CCY+Dh-xbg@mail.gmail.com"[community thread].
+There are discussions in the PostgreSQL community around a feature called `failover slots` that would help mitigate this problem, but as of PostgreSQL 12, they have not been implemented.  However, there is active development for PostgreSQL 13 to support logical decoding on standbys, which is a major requirement to make failover possible. You can find more about this in this link:https://www.postgresql.org/message-id/CAJ3gD9fE%3D0w50sRagcs%2BjrktBXuJAWGZQdSTMa57CCY%2BDh-xbg%40mail.gmail.com[community thread].
 
 More about the concept of failover slots is in link:http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post].
 ====

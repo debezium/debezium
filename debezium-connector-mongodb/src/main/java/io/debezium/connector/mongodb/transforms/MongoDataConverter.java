@@ -27,6 +27,7 @@ import org.bson.BsonValue;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * MongoDataConverter handles translating MongoDB strings to Kafka Connect schemas and row data to Kafka
@@ -53,7 +54,7 @@ public class MongoDataConverter {
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
-        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(false), false);
+        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false);
     }
 
     public Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {

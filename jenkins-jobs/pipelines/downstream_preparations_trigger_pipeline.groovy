@@ -48,26 +48,6 @@ pipeline {
                     }
                 }
 
-                stage('Invoke_apicurio') {
-                    when {
-                        expression { params.EXECUTE_APICURIO }
-                    }
-                    steps {
-                        build job: 'ocp-downstream-apicurio-prepare-job', parameters: [
-                                string(name: MAIL_TO, value: params.MAIL_TO),
-                                string(name: 'QUAY_CREDENTIALS', value: params.QUAY_CREDENTIALS),
-                                string(name: 'QUAY_ORGANISATION', value: params.QUAY_ORGANISATION),
-                                string(name: 'APIC_RESOURCES_ARCHIVE_URL', value: params.APIC_RESOURCES_ARCHIVE_URL),
-                                string(name: 'APIC_RESOURCES_DEPLOYMENT_DESCRIPTOR', value: params.APIC_RESOURCES_DEPLOYMENT_DESCRIPTOR),
-                                text(name: 'APIC_IMAGES', value: params.APIC_IMAGES),
-                                string(name: 'DBZ_GIT_REPOSITORY', value: params.DBZ_GIT_REPOSITORY),
-                                string(name: 'DBZ_GIT_BRANCH', value: params.DBZ_GIT_BRANCH),
-                                booleanParam(name: 'PUSH_IMAGES', value: params.PUSH_IMAGES),
-                        ]
-                        copyArtifacts(projectName: 'ocp-downstream-apicurio-prepare-job', selector: lastCompleted())
-                    }
-                }
-
                 stage('Invoke_rhel') {
                     when {
                         expression { params.EXECUTE_RHEL }
@@ -100,7 +80,6 @@ pipeline {
                 jobMap.put("ocp-downstream-artifact-server-prepare-job", params.EXECUTE_AS)
                 jobMap.put("ocp-downstream-strimzi-prepare-job", params.EXECUTE_STRIMZI)
                 jobMap.put("rhel-downstream-prepare-job", params.EXECUTE_RHEL)
-                jobMap.put("ocp-downstream-apicurio-prepare-job", params.EXECUTE_APICURIO)
 
                 jobMap.each { entry ->
                     if (!entry.value) {

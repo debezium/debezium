@@ -39,12 +39,12 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -261,7 +261,12 @@ public abstract class CommonConnectorConfig {
         /**
          * Adjust names for compatibility with Avro
          */
-        AVRO("avro");
+        AVRO("avro"),
+
+        /**
+         * Adjust names for compatibility with Avro, replace invalid character to corresponding unicode
+         */
+        AVRO_UNICODE("avro_unicode");
 
         private final String value;
 
@@ -275,10 +280,14 @@ public abstract class CommonConnectorConfig {
         }
 
         public SchemaNameAdjuster createAdjuster() {
-            if (this == SchemaNameAdjustmentMode.AVRO) {
-                return SchemaNameAdjuster.create();
+            switch (this) {
+                case AVRO:
+                    return SchemaNameAdjuster.AVRO;
+                case AVRO_UNICODE:
+                    return SchemaNameAdjuster.AVRO_UNICODE;
+                default:
+                    return SchemaNameAdjuster.NO_OP;
             }
-            return SchemaNameAdjuster.NO_OP;
         }
 
         /**
@@ -293,6 +302,68 @@ public abstract class CommonConnectorConfig {
             }
             value = value.trim();
             for (SchemaNameAdjustmentMode option : SchemaNameAdjustmentMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * The set of predefined FieldNameAdjustmentMode options
+     */
+    public enum FieldNameAdjustmentMode implements EnumeratedValue {
+
+        /**
+         * Do not adjust names
+         */
+        NONE("none"),
+
+        /**
+         * Adjust names for compatibility with Avro
+         */
+        AVRO("avro"),
+
+        /**
+         * Adjust names for compatibility with Avro, replace invalid character to corresponding unicode
+         */
+        AVRO_UNICODE("avro_unicode");
+
+        private final String value;
+
+        FieldNameAdjustmentMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public SchemaNameAdjuster createAdjuster() {
+            switch (this) {
+                case AVRO:
+                    return SchemaNameAdjuster.AVRO_FIELD_NAMER;
+                case AVRO_UNICODE:
+                    return SchemaNameAdjuster.AVRO_UNICODE_FIELD_NAMER;
+                default:
+                    return SchemaNameAdjuster.NO_OP;
+            }
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static FieldNameAdjustmentMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (FieldNameAdjustmentMode option : FieldNameAdjustmentMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
@@ -443,15 +514,6 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "This setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
 
-    public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
-            .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 18))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Whether field names will be sanitized to Avro naming conventions")
-            .withDefault(Boolean.FALSE);
-
     public static final Field PROVIDE_TRANSACTION_METADATA = Field.create("provide.transaction.metadata")
             .withDisplayName("Store transaction metadata information in a dedicated topic.")
             .withType(Type.BOOLEAN)
@@ -513,6 +575,18 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including: "
                     + "'avro' replaces the characters that cannot be used in the Avro type name with underscore; "
+                    + "'avro_unicode' replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java;"
+                    + "'none' does not apply any adjustment (default)");
+
+    public static final Field FIELD_NAME_ADJUSTMENT_MODE = Field.create("field.name.adjustment.mode")
+            .withDisplayName("Field Name Adjustment")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
+            .withEnum(FieldNameAdjustmentMode.class, FieldNameAdjustmentMode.NONE)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how field names should be adjusted for compatibility with the message converter used by the connector, including: "
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore; "
+                    + "'avro_unicode' replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java;"
                     + "'none' does not apply any adjustment (default)");
 
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
@@ -581,7 +655,6 @@ public abstract class CommonConnectorConfig {
                     QUERY_FETCH_SIZE)
             .events(
                     CUSTOM_CONVERTERS,
-                    SANITIZE_FIELD_NAMES,
                     TOMBSTONES_ON_DELETE,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
@@ -606,12 +679,12 @@ public abstract class CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
-    private final boolean sanitizeFieldNames;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
+    private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
@@ -634,8 +707,8 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
+        this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
-        this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
@@ -796,10 +869,6 @@ public abstract class CommonConnectorConfig {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
     }
 
-    public boolean getSanitizeFieldNames() {
-        return sanitizeFieldNames;
-    }
-
     public EnumSet<Envelope.Operation> getSkippedOperations() {
         return skippedOperations;
     }
@@ -923,8 +992,15 @@ public abstract class CommonConnectorConfig {
         return binaryHandlingMode;
     }
 
-    public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
-        return schemaNameAdjustmentMode;
+    public SchemaNameAdjuster schemaNameAdjuster() {
+        return schemaNameAdjustmentMode.createAdjuster();
+    }
+
+    public SchemaNameAdjuster fieldNameAdjuster() {
+        if (fieldNameAdjustmentMode == FieldNameAdjustmentMode.NONE && isUsingAvroConverter(config)) {
+            return FieldNameAdjustmentMode.AVRO.createAdjuster();
+        }
+        return fieldNameAdjustmentMode.createAdjuster();
     }
 
     public String getSignalingDataCollectionId() {

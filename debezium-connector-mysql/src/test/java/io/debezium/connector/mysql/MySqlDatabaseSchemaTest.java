@@ -31,10 +31,10 @@ import io.debezium.relational.TableSchema;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.ParsingException;
 import io.debezium.util.IoUtil;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OPTS=$(getopt -o h: --long dbz-git-repository:,dbz-git-branch:,filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,testsuite-log:,help  -n 'parse-options' -- "$@")
+OPTS=$(getopt -o h: --long dbz-git-repository:,dbz-git-branch:,filename:,pull-secret-name:,docker-tag:,project-name:,product-build:,strimzi-kc-build:,dbz-connect-image:,artifact-server-image:,apicurio-version:,kafka-version:,groups-arg:,testsuite-log:,strimzi-channel:,apicurio-channel:,prepare-strimzi:,help  -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -8,21 +8,24 @@ echo "${OPTS[@]}"
 
 while true; do
     case "$1" in
-        --dbz-git-repository )    DBZ_GIT_REPOSITORY=$2;     shift 2;;
-        --dbz-git-branch )        DBZ_GIT_BRANCH=$2;         shift 2;;
-        --filename )              FILENAME=$2;                shift 2;;
-        --pull-secret-name )      PULL_SECRET_NAME=$2;        shift 2;;
-        --docker-tag )            DOCKER_TAG=$2;              shift 2;;
-        --project-name )          PROJECT_NAME=$2;            shift 2;;
-        --product-build )         PRODUCT_BUILD=$2;           shift 2;;
-        --strimzi-kc-build )      STRIMZI_KC_BUILD=$2;        shift 2;;
-        --dbz-connect-image )     DBZ_CONNECT_IMAGE=$2;       shift 2;;
-        --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;   shift 2;;
-        --apicurio-version )      APICURIO_VERSION=$2;        shift 2;;
-        --kafka-version )         KAFKA_VERSION=$2;           shift 2;;
-        --groups-arg )            GROUPS_ARG=$2;              shift 2;;
-        --testsuite-log )         TESTSUITE_LOG=$2;           shift 2;;
-        -h | --help )             PRINT_HELP=true=$2;         shift ;;
+        --dbz-git-repository )    DBZ_GIT_REPOSITORY=$2;        shift 2;;
+        --dbz-git-branch )        DBZ_GIT_BRANCH=$2;            shift 2;;
+        --filename )              FILENAME=$2;                  shift 2;;
+        --pull-secret-name )      PULL_SECRET_NAME=$2;          shift 2;;
+        --docker-tag )            DOCKER_TAG=$2;                shift 2;;
+        --project-name )          PROJECT_NAME=$2;              shift 2;;
+        --product-build )         PRODUCT_BUILD=$2;             shift 2;;
+        --strimzi-kc-build )      STRIMZI_KC_BUILD=$2;          shift 2;;
+        --dbz-connect-image )     DBZ_CONNECT_IMAGE=$2;         shift 2;;
+        --artifact-server-image ) ARTIFACT_SERVER_IMAGE=$2;     shift 2;;
+        --apicurio-version )      APICURIO_VERSION=$2;          shift 2;;
+        --kafka-version )         KAFKA_VERSION=$2;             shift 2;;
+        --groups-arg )            GROUPS_ARG=$2;                shift 2;;
+        --testsuite-log )         TESTSUITE_LOG=$2;             shift 2;;
+        --strimzi-channel )       STRIMZI_OPERATOR_CHANNEL=$2;  shift 2;;
+        --apicurio-channel )      APICURIO_OPERATOR_CHANNEL=$2; shift 2;;
+        --prepare-strimzi )       PREPARE_STRIMZI=$2;           shift 2;;
+        -h | --help )             PRINT_HELP=true=$2;           shift ;;
         -- ) shift; break ;;
         * ) break ;;
     esac
@@ -66,10 +69,16 @@ spec:
           value: \"${APICURIO_VERSION}\"
         - name: DBZ_KAFKA_VERSION
           value: \"${KAFKA_VERSION}\"
+        - name: STRIMZI_OPERATOR_CHANNEL
+          value: \"${STRIMZI_OPERATOR_CHANNEL}\"
+        - name: APICURIO_OPERATOR_CHANNEL
+          value: \"${APICURIO_OPERATOR_CHANNEL}\"
         - name: DBZ_GROUPS_ARG
           value: \"${GROUPS_ARG}\"
         - name: DBZ_OCP_DELETE_PROJECTS
           value: \"true\"
+        - name: PREPARE_STRIMZI
+          value: \"${PREPARE_STRIMZI}\"
       readinessProbe:
         exec:
           command:

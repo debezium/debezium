@@ -23,6 +23,14 @@ cd "${SCRIPT_LOCATION}" || exit 1
     OPTIONAL_ARGS+=("-Dversion.kafka=${DBZ_KAFKA_VERSION}")
   fi
 
+  if [ -n "${STRIMZI_OPERATOR_CHANNEL}" ] ; then
+    OPTIONAL_ARGS+=("-Dtest.strimzi.operator.channel=${STRIMZI_OPERATOR_CHANNEL}")
+  fi
+
+  if [ -n "${APICURIO_OPERATOR_CHANNEL}" ] ; then
+    OPTIONAL_ARGS+=("-Dtest.apicurio.operator.channel=${APICURIO_OPERATOR_CHANNEL}")
+  fi
+
   # clone, compile debezium and run tests
   git clone --branch "${DBZ_GIT_BRANCH}" "${DBZ_GIT_REPOSITORY}"
   pushd "${DEBEZIUM_LOCATION}" || exit 1
@@ -38,6 +46,7 @@ cd "${SCRIPT_LOCATION}" || exit 1
                       -Dimage.as="${DBZ_ARTIFACT_SERVER_IMAGE}" \
                       -Das.apicurio.version="${DBZ_APICURIO_VERSION}" \
                       -Dgroups="${DBZ_GROUPS_ARG}" \
+                      -Dprepare.strimzi="${PREPARE_STRIMZI}" \
                       "${OPTIONAL_ARGS[@]}"
 
   pushd debezium-testing/debezium-testing-system/target/failsafe-reports || exit 1

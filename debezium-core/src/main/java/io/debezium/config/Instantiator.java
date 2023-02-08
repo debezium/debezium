@@ -15,6 +15,15 @@ import java.util.Properties;
  */
 public class Instantiator {
 
+    public static ClassLoader getClassLoader() {
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        if (classloader == null) {
+            classloader = Configuration.class.getClassLoader();
+        }
+
+        return classloader;
+    }
+
     /**
      * Instantiates the specified class either using the no-args constructor.
      *
@@ -49,10 +58,7 @@ public class Instantiator {
     @SuppressWarnings("unchecked")
     public static <T, C> T getInstanceWithProvidedConstructorType(String className, Class<C> constructorType, C constructorValue) {
         if (className != null) {
-            ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-            if (classloader == null) {
-                classloader = Configuration.class.getClassLoader();
-            }
+            ClassLoader classloader = Instantiator.getClassLoader();
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
                 return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()

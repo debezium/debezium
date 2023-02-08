@@ -261,6 +261,7 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Liz Chatman
 Lokesh Sanapalli
 Luca Scannapieco
 Luis Garcés-Erice
@@ -422,6 +423,7 @@ Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Tim Loes
 Timo Roeseler
 Tin Nguyen
 Tom Bentley

@@ -5,13 +5,16 @@
  */
 package io.debezium.connector.mongodb;
 
+import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +31,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -258,14 +263,14 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 k -> Integer.parseInt(k.getString(pkFieldName())), valueConverter, topicName, recordConsumer);
     }
 
-    protected <V> Map<Integer, V> consumeMixedWithIncrementalSnapshot(int recordCount,
-                                                                      Predicate<Map.Entry<Integer, V>> dataCompleted,
-                                                                      Function<Struct, Integer> idCalculator,
-                                                                      Function<SourceRecord, V> valueConverter,
-                                                                      String topicName,
-                                                                      Consumer<List<SourceRecord>> recordConsumer)
+    protected <V, K> Map<K, V> consumeMixedWithIncrementalSnapshot(int recordCount,
+                                                                   Predicate<Map.Entry<K, V>> dataCompleted,
+                                                                   Function<Struct, K> idCalculator,
+                                                                   Function<SourceRecord, V> valueConverter,
+                                                                   String topicName,
+                                                                   Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
-        final Map<Integer, V> dbChanges = new HashMap<>();
+        final Map<K, V> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
             final SourceRecords records = consumeRecordsByTopic(1);
@@ -281,7 +286,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 continue;
             }
             dataRecords.forEach(record -> {
-                final int id = idCalculator.apply((Struct) record.key());
+                final K id = idCalculator.apply((Struct) record.key());
                 final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);
             });
@@ -323,20 +328,67 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return "id";
     }
 
-    @Test
-    public void snapshotOnly() throws Exception {
-        // Testing.Print.enable();
+    private <K> void snapshotOnly(K initialId, Function<K, K> idGenerator) throws Exception {
+        final Map<K, Document> documents = new LinkedHashMap<>();
 
-        populateDataCollection();
+        K key = initialId;
+        for (int i = 0; i < ROW_COUNT; i++) {
+            final Document doc = new Document();
+            doc.append(DOCUMENT_ID, key).append(valueFieldName(), i);
+            documents.put(key, doc);
+            key = idGenerator.apply(key);
+        }
+        insertDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, documents.values().toArray(Document[]::new));
+
         startConnector();
-
         sendAdHocSnapshotSignal();
 
-        final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
-        for (int i = 0; i < expectedRecordCount; i++) {
-            assertThat(dbChanges).contains(entry(i + 1, i));
-        }
+        final var dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                x -> true,
+                k -> k.getString(pkFieldName()),
+                this::extractFieldValue,
+                topicName(), null);
+
+        var serialization = new JsonSerialization();
+
+        var expected = documents.values()
+                .stream()
+                .map(d -> d.toBsonDocument())
+                .collect(toMap(
+                        d -> serialization.getDocumentIdOplog(d),
+                        d -> d.getInt32(valueFieldName()).getValue()));
+
+        assertThat(dbChanges).containsAllEntriesOf(expected);
+    }
+
+    @Test
+    public void snapshotOnlyInt32() throws Exception {
+        snapshotOnly(0, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyWithInt64() throws Exception {
+        long firstKey = Integer.MAX_VALUE + 1L;
+        snapshotOnly(firstKey, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyDouble() throws Exception {
+        snapshotOnly(0.0, k -> k + 1);
+    }
+
+    @Test
+    public void snapshotOnlyDecimal128() throws Exception {
+        Assume.assumeTrue("Decimal 128 not supported", TestHelper.decimal128Supported());
+        BigDecimal firstKey = BigDecimal.valueOf(Long.MAX_VALUE).add(BigDecimal.ONE);
+        snapshotOnly(firstKey, k -> k.add(BigDecimal.ONE));
+    }
+
+    @Test
+    public void snapshotOnlyObjectId() throws Exception {
+        ObjectId firstKey = new ObjectId();
+        snapshotOnly(firstKey, k -> new ObjectId());
     }
 
     @Test

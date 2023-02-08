@@ -40,14 +40,14 @@ jobs:
           fi
       - name: Create Comment
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md#making-changes).
       - name: Check failure
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
-        uses: actions/github-script@v5
+        uses: actions/github-script@v6
         continue-on-error: false
         with:
           script: |

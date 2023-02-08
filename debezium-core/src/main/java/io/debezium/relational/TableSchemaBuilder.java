@@ -31,11 +31,10 @@ import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
-import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Loggings;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -75,9 +74,10 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
-                              boolean sanitizeFieldNames, boolean multiPartitionMode) {
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
-                customConverterRegistry, sourceInfoSchema, sanitizeFieldNames, multiPartitionMode);
+                customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode);
     }
 
     /**
@@ -94,13 +94,14 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
-                              boolean sanitizeFieldNames, boolean multiPartitionMode) {
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
                 .orElse(DefaultValueConverter.passthrough());
         this.sourceInfoSchema = sourceInfoSchema;
-        this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
+        this.fieldNamer = fieldNamer;
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
     }
