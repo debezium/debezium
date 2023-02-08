@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
@@ -293,17 +294,36 @@ public class PostgresConnection extends JdbcConnection {
 
         try {
             confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "confirmed_flush_lsn");
+            if (confirmedFlushedLsn == null) {
+                LOGGER.debug("Failed to obtain valid replication slot, confirmed flush lsn is null");
+                AtomicBoolean hasConcurrentTransaction = new AtomicBoolean(false);
+                int connectionPID = ((PgConnection) connection()).getBackendPID();
+                query("select * from pg_stat_activity where state like 'idle in transaction' AND pid <> " + connectionPID, rset -> {
+                    if (rset.next()) {
+                        hasConcurrentTransaction.compareAndSet(false, true);
+                    }
+                });
+                if (!hasConcurrentTransaction.get()) {
+                    confirmedFlushedLsn = tryFallbackToRestartLsn(slotName, pluginName, database, rs);
+                }
+            }
         }
         catch (SQLException e) {
-            LOGGER.info("unable to find confirmed_flushed_lsn, falling back to restart_lsn");
-            try {
-                confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
-            }
-            catch (SQLException e2) {
-                throw new ConnectException("Neither confirmed_flush_lsn nor restart_lsn could be found");
-            }
+            confirmedFlushedLsn = tryFallbackToRestartLsn(slotName, pluginName, database, rs);
         }
 
+        return confirmedFlushedLsn;
+    }
+
+    private Lsn tryFallbackToRestartLsn(String slotName, String pluginName, String database, ResultSet rs) {
+        Lsn confirmedFlushedLsn;
+        LOGGER.info("Unable to find confirmed_flushed_lsn, falling back to restart_lsn");
+        try {
+            confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
+        }
+        catch (SQLException e2) {
+            throw new ConnectException("Neither confirmed_flush_lsn nor restart_lsn could be found");
+        }
         return confirmedFlushedLsn;
     }
 

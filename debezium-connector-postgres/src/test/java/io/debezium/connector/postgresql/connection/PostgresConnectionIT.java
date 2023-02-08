@@ -231,6 +231,22 @@ public class PostgresConnectionIT {
 
     }
 
+    @Test(timeout = 60000)
+    public void shouldSupportFallbackToRestartLsn() throws Exception {
+        String slotName = "emptyconfirmed";
+        try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
+            replConnection.initConnection();
+            assertTrue(replConnection.isConnected());
+        }
+        try (PostgresConnection conn = buildConnectionWithEmptyConfirmedFlushLSN(slotName)) {
+            ServerInfo.ReplicationSlot slotInfo = conn.readReplicationSlotInfo(slotName, TestHelper.decoderPlugin().getPostgresPluginName());
+            assertNotNull(slotInfo);
+            assertNotEquals(ServerInfo.ReplicationSlot.INVALID, slotInfo);
+            conn.dropReplicationSlot(slotName);
+        }
+
+    }
+
     // "fake" a pg95 response by not returning confirmed_flushed_lsn
     private PostgresConnection buildPG95PGConn(String name) {
         return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name) {
@@ -245,6 +261,24 @@ public class PostgresConnectionIT {
                     statement.setString(2, database);
                     statement.setString(3, pluginName);
                 }, map);
+            }
+        };
+    }
+
+    private PostgresConnection buildConnectionWithEmptyConfirmedFlushLSN(String name) {
+        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name) {
+            @Override
+            protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
+                                                              ResultSetMapper<ServerInfo.ReplicationSlot> map)
+                    throws SQLException {
+
+                String fields = "slot_name, plugin, slot_type, datoid, database, active, active_pid, xmin, catalog_xmin, restart_lsn";
+                return prepareQueryAndMap(
+                        "select " + fields + ", NULL as confirmed_flush_lsn from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                            statement.setString(1, slotName);
+                            statement.setString(2, database);
+                            statement.setString(3, pluginName);
+                        }, map);
             }
         };
     }
