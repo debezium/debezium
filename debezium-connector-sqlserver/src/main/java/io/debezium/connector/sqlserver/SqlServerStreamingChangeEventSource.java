@@ -358,7 +358,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             return;
         }
         dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
-                new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema,
+                new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
                         SchemaChangeEventType.ALTER));
         newTable.setSourceTable(tableSchema);
     }
@@ -435,6 +435,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 offsetContext,
                                 currentTable,
                                 dataConnection.getTableSchemaFromTable(databaseName, currentTable),
+                                schema,
                                 SchemaChangeEventType.CREATE));
             }
 

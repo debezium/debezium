@@ -18,12 +18,13 @@ import io.debezium.schema.DataCollectionFilters;
 
 public class RelationalTableFilters implements DataCollectionFilters {
 
-    // Filter that filters tables based only on datbase/schema/system table filters but not table filters
+    // Filter that filters tables based only on database/schema/system table filters but not table filters
     // Represents the list of tables whose schema needs to be captured
     private final TableFilter eligibleTableFilter;
     // Filter that filters tables based on table filters
     private final TableFilter tableFilter;
     private final Predicate<String> databaseFilter;
+    private final Predicate<String> schemaFilter;
     private final String excludeColumns;
 
     /**
@@ -77,6 +78,10 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST))
                 .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST))
                 .build();
+        this.schemaFilter = Selectors.databaseSelector()
+                .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST))
+                .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST))
+                .build();
 
         Predicate<TableId> eligibleSchemaPredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? systemTablesFilter::isIncluded
@@ -104,6 +109,10 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
     public Predicate<String> databaseFilter() {
         return databaseFilter;
+    }
+
+    public Predicate<String> schemaFilter() {
+        return schemaFilter;
     }
 
     public String getExcludeColumns() {

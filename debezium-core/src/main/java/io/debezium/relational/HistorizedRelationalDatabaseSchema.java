@@ -8,6 +8,9 @@ package io.debezium.relational;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Key.KeyMapper;
@@ -20,6 +23,7 @@ import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Strings;
 
 /**
  * A {@link DatabaseSchema} or a relational database which has a schema history, that can be recovered to the current
@@ -31,7 +35,10 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatabaseSchema
         implements HistorizedDatabaseSchema<TableId> {
 
+    private final static Logger LOGGER = LoggerFactory.getLogger(HistorizedRelationalDatabaseSchema.class);
+
     protected final SchemaHistory schemaHistory;
+    private final HistorizedRelationalDatabaseConnectorConfig historizedConnectorConfig;
     private boolean recoveredTables;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
@@ -41,6 +48,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
         this.schemaHistory = config.getSchemaHistory();
         this.schemaHistory.start();
+        this.historizedConnectorConfig = config;
     }
 
     @Override
@@ -110,21 +118,35 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     @Override
     public boolean storeOnlyCapturedTables() {
-        return schemaHistory.storeOnlyCapturedTables();
+        return historizedConnectorConfig.storeOnlyCapturedTables();
+    }
+
+    @Override
+    public boolean storeOnlyCapturedDatabases() {
+        return historizedConnectorConfig.storeOnlyCapturedDatabases();
     }
 
     @Override
     public boolean skipUnparseableDdlStatements() {
-        return schemaHistory.skipUnparseableDdlStatements();
+        return historizedConnectorConfig.skipUnparseableDdlStatements();
     }
 
     @Override
     public Predicate<String> ddlFilter() {
-        return schemaHistory.ddlFilter();
+        return historizedConnectorConfig.ddlFilter();
     }
 
     @Override
     public boolean isHistorized() {
         return true;
+    }
+
+    public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
+        if (storeOnlyCapturedDatabases() && !Strings.isNullOrEmpty(event.getSchema())
+                && !historizedConnectorConfig.getTableFilters().schemaFilter().test(event.getSchema())) {
+            LOGGER.debug("Skipping schema event as it belongs to a non-captured schema: '{}'", event);
+            return true;
+        }
+        return false;
     }
 }

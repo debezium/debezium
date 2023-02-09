@@ -38,11 +38,20 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 
 |[[{context}-property-database-history-store-only-captured-tables-ddl]]<<{context}-property-database-history-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
 |`false`
-|A Boolean value that specifies whether the connector should record all DDL statements +
+|A Boolean value that specifies whether the connector should record all DDL statements from specified schema or database +
 
 `true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
 
 The safe default is `false`.
+
+|[[{context}-property-database-history-store-only-captured-databases-ddl]]<<{context}-property-database-history-store-only-captured-databases-ddl, `+schema.history.internal.store.only.captured.databases.ddl+`>>
+|`false`
+|A Boolean value that specifies whether the connector should record all DDL statements +
+
+`true` records only those DDL statements that are relevant to database/schema's tables whose changes are being captured by {prodname}. `false` will store all incoming DDL statements. +
+
+NOTE: The default value is `true` for MySQL Connector +
+
 |===
 
 [id="{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]

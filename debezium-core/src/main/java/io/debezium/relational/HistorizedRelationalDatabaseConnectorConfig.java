@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -14,9 +17,9 @@ import org.apache.kafka.connect.source.SourceConnector;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.function.Predicates;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
@@ -32,9 +35,13 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
 
-    private boolean useCatalogBeforeSchema;
+    private final boolean useCatalogBeforeSchema;
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
+    private final Predicate<String> ddlFilter;
+    protected boolean skipUnparseableDDL;
+    protected boolean storeOnlyCapturedTablesDdl;
+    protected boolean storeOnlyCapturedDatabasesDdl;
 
     /**
      * The database schema history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -51,11 +58,18 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(DEFAULT_SCHEMA_HISTORY);
 
+    public static final Field SKIP_UNPARSEABLE_DDL_STATEMENTS = SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS;
+
+    public static final Field STORE_ONLY_CAPTURED_TABLES_DDL = SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL;
+
+    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL;
+
     protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
                     SCHEMA_HISTORY,
-                    SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
-                    SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL)
+                    SKIP_UNPARSEABLE_DDL_STATEMENTS,
+                    STORE_ONLY_CAPTURED_TABLES_DDL,
+                    STORE_ONLY_CAPTURED_DATABASES_DDL)
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -65,10 +79,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           int defaultSnapshotFetchSize,
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
-        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
-        this.connectorClass = connectorClass;
-        this.multiPartitionMode = multiPartitionMode;
+        this(connectorClass, config, systemTablesFilter, TableId::toString, useCatalogBeforeSchema,
+                defaultSnapshotFetchSize, columnFilterMode, multiPartitionMode);
     }
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
@@ -78,10 +90,26 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                                           boolean useCatalogBeforeSchema,
                                                           ColumnFilterMode columnFilterMode,
                                                           boolean multiPartitionMode) {
-        super(config, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, useCatalogBeforeSchema);
+        this(connectorClass, config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema,
+                DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode, multiPartitionMode);
+    }
+
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass,
+                                                          Configuration config,
+                                                          TableFilter systemTablesFilter,
+                                                          TableIdToStringMapper tableIdMapper,
+                                                          boolean useCatalogBeforeSchema,
+                                                          int defaultSnapshotFetchSize,
+                                                          ColumnFilterMode columnFilterMode,
+                                                          boolean multiPartitionMode) {
+        super(config, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, columnFilterMode, useCatalogBeforeSchema);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.connectorClass = connectorClass;
         this.multiPartitionMode = multiPartitionMode;
+        this.ddlFilter = createDdlFilter(config);
+        this.skipUnparseableDDL = config.getBoolean(SKIP_UNPARSEABLE_DDL_STATEMENTS);
+        this.storeOnlyCapturedTablesDdl = config.getBoolean(STORE_ONLY_CAPTURED_TABLES_DDL);
+        this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
     }
 
     /**
@@ -90,10 +118,10 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     public SchemaHistory getSchemaHistory() {
         Configuration config = getConfig();
 
-        SchemaHistory schemaHistory = config.getInstance(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY, SchemaHistory.class);
+        SchemaHistory schemaHistory = config.getInstance(SCHEMA_HISTORY, SchemaHistory.class);
         if (schemaHistory == null) {
             throw new ConnectException("Unable to instantiate the database schema history class " +
-                    config.getString(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY));
+                    config.getString(SCHEMA_HISTORY));
         }
 
         // Do not remove the prefix from the subset of config properties ...
@@ -101,8 +129,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 .edit()
                 .with(config.subset(Field.INTERNAL_PREFIX + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false))
                 .withDefault(SchemaHistory.NAME, getLogicalName() + "-schemahistory")
-                .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
-                .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)
+                .withDefault(SchemaHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
+                .withDefault(SchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
@@ -118,6 +146,28 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     public boolean multiPartitionMode() {
         return multiPartitionMode;
+    }
+
+    private Predicate<String> createDdlFilter(Configuration config) {
+        // Set up the DDL filter
+        final String ddlFilter = config.getString(SchemaHistory.DDL_FILTER);
+        return (ddlFilter != null) ? Predicates.includes(ddlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL) : (x -> false);
+    }
+
+    public Predicate<String> ddlFilter() {
+        return ddlFilter;
+    }
+
+    public boolean skipUnparseableDdlStatements() {
+        return skipUnparseableDDL;
+    }
+
+    public boolean storeOnlyCapturedTables() {
+        return storeOnlyCapturedTablesDdl;
+    }
+
+    public boolean storeOnlyCapturedDatabases() {
+        return storeOnlyCapturedDatabasesDdl;
     }
 
     /**

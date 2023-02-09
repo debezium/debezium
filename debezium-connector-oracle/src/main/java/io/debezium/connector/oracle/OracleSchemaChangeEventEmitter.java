@@ -119,7 +119,9 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             });
 
             for (SchemaChangeEvent event : changeEvents) {
-                receiver.schemaChangeEvent(event);
+                if (!schema.skipSchemaChangeEvent(event)) {
+                    receiver.schemaChangeEvent(event);
+                }
             }
         }
     }

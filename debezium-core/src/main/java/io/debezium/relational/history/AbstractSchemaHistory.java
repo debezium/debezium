@@ -12,9 +12,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +24,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.relational.history.TableChanges.TableChangeType;
+import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
@@ -39,47 +37,16 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
-            .withDisplayName("Debezium connector class")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withDescription("The class of the Debezium database connector")
-            .withNoValidation();
-
-    // Required for unified thread creation
-    public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
-            .withDisplayName("Debezium connector identifier")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("The unique identifier of the Debezium connector")
-            .withNoValidation();
-
-    // Temporary preference for DDL over logical schema due to DBZ-32
-    public static final Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
-            .withDisplayName("Prefer DDL for schema recovery")
-            .withType(Type.BOOLEAN)
-            .withDefault(false)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Prefer DDL for schema recovery in case logical schema is present")
-            .withInvisibleRecommender()
-            .withNoValidation();
-
-    public static Field.Set ALL_FIELDS = Field.setOf(SchemaHistory.NAME, INTERNAL_CONNECTOR_CLASS,
-            INTERNAL_CONNECTOR_ID);
+    public static Field.Set ALL_FIELDS = Field.setOf(NAME, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID);
 
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
-    private boolean storeOnlyCapturedTablesDdl;
     private Predicate<String> ddlFilter = x -> false;
     private SchemaHistoryListener listener = SchemaHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
     private boolean preferDdl = false;
-    private TableChanges.TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
+    private final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
     protected AbstractSchemaHistory() {
     }
@@ -88,10 +55,9 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
-        this.skipUnparseableDDL = config.getBoolean(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyCapturedTablesDdl = Boolean.valueOf(config.getString(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL));
+        this.skipUnparseableDDL = config.getBoolean(SKIP_UNPARSEABLE_DDL_STATEMENTS);
 
-        final String ddlFilter = config.getString(SchemaHistory.DDL_FILTER);
+        final String ddlFilter = config.getString(DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL) : (x -> false);
         this.listener = listener;
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -165,8 +131,8 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                         ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
                     }
                     if (ddlFilter.test(ddl)) {
-                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl,
-                                config.getString(SchemaHistory.DDL_FILTER));
+                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'", ddl,
+                                config.getString(DDL_FILTER));
                         return;
                     }
                     try {
@@ -176,7 +142,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                     }
                     catch (final ParsingException | MultipleParsingExceptions e) {
                         if (skipUnparseableDDL) {
-                            logger.warn("Ignoring unparseable statements '{}' stored in database schema history: {}", ddl, e);
+                            logger.warn("Ignoring unparseable statements '{}' stored in database schema history", ddl, e);
                         }
                         else {
                             throw e;
@@ -202,20 +168,5 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
 
     @Override
     public void initializeStorage() {
-    }
-
-    @Override
-    public boolean storeOnlyCapturedTables() {
-        return storeOnlyCapturedTablesDdl;
-    }
-
-    @Override
-    public boolean skipUnparseableDdlStatements() {
-        return skipUnparseableDDL;
-    }
-
-    @Override
-    public Predicate<String> ddlFilter() {
-        return ddlFilter;
     }
 }

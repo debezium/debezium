@@ -858,13 +858,17 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
 
+    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
+            .withDefault(true);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+                    HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL)
             .type(
                     HOSTNAME,
                     PORT,
@@ -893,7 +897,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    STORE_ONLY_CAPTURED_DATABASES_DDL)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -969,6 +974,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+
+        this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
     }
 
     public boolean useCursorFetch() {
