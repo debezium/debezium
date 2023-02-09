@@ -6,13 +6,13 @@
 package io.debezium.connector.postgresql;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -28,8 +28,7 @@ import io.debezium.util.Strings;
 public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresPartition, PostgresOffsetContext> {
 
     private final PostgresConnectorConfig configuration;
-    private final PostgresConnection jdbcConnection;
-    private final Supplier<PostgresConnection> connectionFactory;
+    private final MainConnectionFactory<PostgresConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final PostgresEventDispatcher<TableId> dispatcher;
     private final Clock clock;
@@ -40,12 +39,11 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
-                                            Supplier<PostgresConnection> connectionFactory, ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher,
-                                            Clock clock, PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection,
-                                            SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
+    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, MainConnectionFactory<PostgresConnection> connectionFactory,
+                                            ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
+                                            PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
+                                            SlotState startingSlotInfo) {
         this.configuration = configuration;
-        this.jdbcConnection = jdbcConnection;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -63,7 +61,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
-                jdbcConnection,
                 connectionFactory,
                 schema,
                 dispatcher,
@@ -78,7 +75,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         return new PostgresStreamingChangeEventSource(
                 configuration,
                 snapshotter,
-                jdbcConnection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -99,7 +96,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         }
         final PostgresSignalBasedIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                jdbcConnection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 schema,
                 clock,

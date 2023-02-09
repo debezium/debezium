@@ -14,7 +14,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -23,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -45,12 +45,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection, Supplier<OracleConnection> connectionFactory,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        super(connectorConfig, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.jdbcConnection = connectionFactory.getMainConnection();
         this.databaseSchema = schema;
     }
 

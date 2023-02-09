@@ -29,8 +29,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,6 +41,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -76,18 +75,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
-    private final Supplier<? extends JdbcConnection> jdbcConnectionFactory;
+    private final MainConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
     private final RelationalDatabaseSchema schema;
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig, JdbcConnection jdbcConnection,
-                                               Supplier<? extends JdbcConnection> jdbcConnectionFactory, RelationalDatabaseSchema schema,
-                                               EventDispatcher<P, TableId> dispatcher, Clock clock, SnapshotProgressListener<P> snapshotProgressListener) {
+    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig, MainConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
+                                               RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
+                                               SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnection;
+        this.jdbcConnection = jdbcConnectionFactory.getMainConnection();
         this.jdbcConnectionFactory = jdbcConnectionFactory;
         this.schema = schema;
         this.dispatcher = dispatcher;
@@ -184,7 +183,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         if (snapshotMaxThreads > 1) {
             Optional<String> firstQuery = getSnapshotConnectionFirstSelect(ctx, ctx.capturedTables.iterator().next());
             for (int i = 1; i < snapshotMaxThreads; i++) {
-                JdbcConnection conn = jdbcConnectionFactory.get().setAutoCommit(false);
+                JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
                 conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
                 connectionPool.add(conn);
                 if (firstQuery.isPresent()) {
@@ -358,7 +357,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         int snapshotMaxThreads = connectionPool.size();
         LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
         ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
-        CompletionService<Exception> completionService = new ExecutorCompletionService<>(executorService);
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(executorService);
 
         Map<TableId, String> queryTables = new HashMap<>();
         Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
@@ -400,30 +399,17 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 String selectStatement = queryTables.get(tableId);
                 OptionalLong rowCount = rowCountTables.get(tableId);
 
-                Callable<Exception> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
+                Callable<Void> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                         snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement, rowCount, connectionPool, offsets);
                 completionService.submit(callable);
             }
 
-            Exception firstError = null;
             for (int i = 0; i < tableCount; i++) {
-                Exception error = completionService.take().get();
-                if (error != null) {
-                    if (firstError == null) {
-                        firstError = error;
-                    }
-                    else {
-                        LOGGER.debug("Snapshot task failed", error);
-                    }
-                }
-            }
-            if (firstError != null) {
-                throw firstError;
+                completionService.take().get();
             }
         }
         finally {
             executorService.shutdownNow();
-            executorService.awaitTermination(10, TimeUnit.SECONDS);
         }
 
         releaseDataSnapshotLocks(snapshotContext);
@@ -463,19 +449,16 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
     }
 
-    private Callable<Exception> createDataEventsForTableCallable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
-                                                                 SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
-                                                                 int tableCount, String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
-                                                                 Queue<O> offsets) {
+    private Callable<Void> createDataEventsForTableCallable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
+                                                            SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
+                                                            int tableCount, String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
+                                                            Queue<O> offsets) {
         return () -> {
             JdbcConnection connection = connectionPool.poll();
             O offset = offsets.poll();
             try {
                 doCreateDataEventsForTable(sourceContext, snapshotContext.partition, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
                         selectStatement, rowCount, connection);
-            }
-            catch (Exception e) {
-                return e;
             }
             finally {
                 offsets.add(offset);

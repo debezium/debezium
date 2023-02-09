@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -21,7 +20,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.jdbc.DefaultMainConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -56,8 +57,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        Supplier<OracleConnection> connectionFactory = () -> new OracleConnection(jdbcConfig);
-        jdbcConnection = connectionFactory.get();
+        MainConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new OracleConnection(jdbcConfig));
+        jdbcConnection = connectionFactory.getMainConnection();
 
         validateRedoLogConfiguration();
 
@@ -118,7 +119,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
+                new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
                         streamingMetrics),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,

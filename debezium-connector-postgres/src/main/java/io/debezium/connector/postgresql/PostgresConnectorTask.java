@@ -10,7 +10,6 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -32,6 +31,8 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.jdbc.DefaultMainConnectionFactory;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -81,11 +82,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 databaseCharset,
                 typeRegistry);
 
-        Supplier<PostgresConnection> connectionFactory = () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder,
-                PostgresConnection.CONNECTION_GENERAL);
+        MainConnectionFactory<PostgresConnection> connectionFactory = new DefaultMainConnectionFactory<>(
+                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = connectionFactory.get();
+        jdbcConnection = connectionFactory.getMainConnection();
         try {
             jdbcConnection.setAutoCommit(false);
         }
@@ -206,7 +207,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     new PostgresChangeEventSourceFactory(
                             connectorConfig,
                             snapshotter,
-                            jdbcConnection,
                             connectionFactory,
                             errorHandler,
                             dispatcher,

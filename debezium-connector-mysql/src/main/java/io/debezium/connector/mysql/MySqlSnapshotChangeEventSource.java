@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -37,6 +36,7 @@ import io.debezium.connector.mysql.MySqlOffsetContext.Loader;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -62,13 +62,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
-    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection, Supplier<MySqlConnection> connectionFactory,
+    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionFactory<MySqlConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
-        super(connectorConfig, connection, connectionFactory, schema, dispatcher, clock, metrics);
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics);
         this.connectorConfig = connectorConfig;
-        this.connection = connection;
+        this.connection = connectionFactory.getMainConnection();
         this.filters = connectorConfig.getTableFilters();
         this.metrics = metrics;
         this.databaseSchema = schema;
