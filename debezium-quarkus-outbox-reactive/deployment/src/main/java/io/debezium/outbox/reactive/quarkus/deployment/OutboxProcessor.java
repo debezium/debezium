@@ -3,11 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.outbox.quarkus.deployment;
+package io.debezium.outbox.reactive.quarkus.deployment;
 
-import io.debezium.outbox.quarkus.internal.DebeziumOutboxHandler;
-import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
-import io.debezium.outbox.quarkus.internal.DefaultEventDispatcher;
+import io.debezium.outbox.quarkus.deployment.DebeziumOutboxCommonConfig;
+import io.debezium.outbox.quarkus.deployment.OutboxCommonProcessor;
+import io.debezium.outbox.quarkus.deployment.OutboxEventEntityBuildItem;
+import io.debezium.outbox.reactive.quarkus.internal.DebeziumOutboxHandler;
+import io.debezium.outbox.reactive.quarkus.internal.DebeziumTracerEventDispatcher;
+import io.debezium.outbox.reactive.quarkus.internal.DefaultEventDispatcher;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.deployment.Capabilities;
 import io.quarkus.deployment.Capability;

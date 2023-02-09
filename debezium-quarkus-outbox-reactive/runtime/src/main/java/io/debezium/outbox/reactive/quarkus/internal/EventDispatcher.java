@@ -3,10 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.outbox.quarkus.internal;
+package io.debezium.outbox.reactive.quarkus.internal;
 
-import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.reactive.quarkus.DebeziumCustomCodec;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.outbox.quarkus.it;
+package io.debezium.outbox.reactive.quarkus.it;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,7 +11,7 @@ import java.util.Map;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
-import io.debezium.outbox.quarkus.internal.DebeziumOutboxHandler;
+import io.debezium.outbox.reactive.quarkus.internal.DebeziumOutboxHandler;
 import io.smallrye.mutiny.Uni;
 
 @ApplicationScoped

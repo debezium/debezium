@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.outbox.quarkus.internal;
+package io.debezium.outbox.reactive.quarkus.internal;
 
 import java.util.Map;
 
@@ -13,8 +13,10 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.outbox.quarkus.DebeziumCustomCodec;
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.quarkus.internal.DebeziumTextMap;
+import io.debezium.outbox.quarkus.internal.OutboxConstants;
+import io.debezium.outbox.reactive.quarkus.DebeziumCustomCodec;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
