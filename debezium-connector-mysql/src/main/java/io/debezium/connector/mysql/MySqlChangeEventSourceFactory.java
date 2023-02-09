@@ -7,11 +7,11 @@ package io.debezium.connector.mysql;
 
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -30,8 +30,7 @@ import io.debezium.util.Strings;
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
     private final MySqlConnectorConfig configuration;
-    private final MySqlConnection connection;
-    private final Supplier<MySqlConnection> connectionFactory;
+    private final MainConnectionFactory<MySqlConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MySqlPartition, TableId> dispatcher;
     private final Clock clock;
@@ -44,12 +43,11 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     // but in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
 
-    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection, Supplier<MySqlConnection> connectionFactory,
+    public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionFactory<MySqlConnection> connectionFactory,
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue) {
         this.configuration = configuration;
-        this.connection = connection;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -62,7 +60,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
     @Override
     public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener) {
-        return new MySqlSnapshotChangeEventSource(configuration, connection, connectionFactory, taskContext.getSchema(), dispatcher, clock,
+        return new MySqlSnapshotChangeEventSource(configuration, connectionFactory, taskContext.getSchema(), dispatcher, clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord);
     }
 
@@ -76,7 +74,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,
-                connection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -90,10 +88,10 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                                                                                                                                               SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
                                                                                                                                               DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
         if (configuration.isReadOnlyConnection()) {
-            if (connection.isGtidModeEnabled()) {
+            if (connectionFactory.getMainConnection().isGtidModeEnabled()) {
                 return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource<>(
                         configuration,
-                        connection,
+                        connectionFactory.getMainConnection(),
                         dispatcher,
                         schema,
                         clock,
@@ -109,7 +107,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         }
         return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                connection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 schema,
                 clock,

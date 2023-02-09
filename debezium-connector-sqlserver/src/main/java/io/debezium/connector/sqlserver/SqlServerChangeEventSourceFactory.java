@@ -6,8 +6,8 @@
 package io.debezium.connector.sqlserver;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -25,19 +25,17 @@ import io.debezium.util.Strings;
 public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory<SqlServerPartition, SqlServerOffsetContext> {
 
     private final SqlServerConnectorConfig configuration;
-    private final SqlServerConnection dataConnection;
-    private final Supplier<SqlServerConnection> connectionFactory;
+    private final MainConnectionFactory<SqlServerConnection> connectionFactory;
     private final SqlServerConnection metadataConnection;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
 
-    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection dataConnection, Supplier<SqlServerConnection> connectionFactory,
+    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionFactory<SqlServerConnection> connectionFactory,
                                              SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
                                              Clock clock, SqlServerDatabaseSchema schema) {
         this.configuration = configuration;
-        this.dataConnection = dataConnection;
         this.connectionFactory = connectionFactory;
         this.metadataConnection = metadataConnection;
         this.errorHandler = errorHandler;
@@ -48,14 +46,14 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
 
     @Override
     public SnapshotChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
-        return new SqlServerSnapshotChangeEventSource(configuration, dataConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+        return new SqlServerSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
     public StreamingChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getStreamingChangeEventSource() {
         return new SqlServerStreamingChangeEventSource(
                 configuration,
-                dataConnection,
+                connectionFactory.getMainConnection(),
                 metadataConnection,
                 dispatcher,
                 errorHandler,
@@ -75,7 +73,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         }
         final SignalBasedIncrementalSnapshotChangeEventSource<SqlServerPartition, TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                dataConnection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 schema,
                 clock,

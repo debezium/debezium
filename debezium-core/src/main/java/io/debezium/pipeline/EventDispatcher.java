@@ -492,7 +492,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         }
     }
 
-    private static class BufferedDataChangeEvent {
+    private static final class BufferedDataChangeEvent {
 
         private DataChangeEvent dataChangeEvent;
         private OffsetContext offsetContext;

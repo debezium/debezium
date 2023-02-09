@@ -6,9 +6,9 @@
 package io.debezium.connector.oracle;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import io.debezium.config.Configuration;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -25,8 +25,7 @@ import io.debezium.util.Strings;
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OraclePartition, OracleOffsetContext> {
 
     private final OracleConnectorConfig configuration;
-    private final OracleConnection jdbcConnection;
-    private final Supplier<OracleConnection> connectionFactory;
+    private final MainConnectionFactory<OracleConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
@@ -35,12 +34,11 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleTaskContext taskContext;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
-    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection, Supplier<OracleConnection> connectionFactory,
+    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionFactory<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
-        this.jdbcConnection = jdbcConnection;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -53,13 +51,13 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
 
     @Override
     public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        return new OracleSnapshotChangeEventSource(configuration, jdbcConnection, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
     public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getStreamingChangeEventSource() {
         return configuration.getAdapter().getSource(
-                jdbcConnection,
+                connectionFactory.getMainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -86,7 +84,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(jdbcConnection.config()),
+                new OracleConnection(connectionFactory.getMainConnection().config()),
                 dispatcher,
                 schema,
                 clock,

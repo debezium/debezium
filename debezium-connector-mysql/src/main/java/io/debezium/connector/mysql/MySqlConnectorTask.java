@@ -7,7 +7,6 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -22,8 +21,10 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.jdbc.DefaultMainConnectionFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.MainConnectionFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -74,11 +75,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        Supplier<MySqlConnection> connectionFactory = () -> new MySqlConnection(new MySqlConnectionConfiguration(config),
-                connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig)
-                        : new MySqlTextProtocolFieldReader(connectorConfig));
+        MainConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new MySqlConnection(new MySqlConnectionConfiguration(config),
+                connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
 
-        connection = connectionFactory.get();
+        connection = connectionFactory.getMainConnection();
 
         validateBinlogConfiguration(connectorConfig);
 
@@ -172,8 +172,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
-                new MySqlChangeEventSourceFactory(connectorConfig, connection, connectionFactory, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics,
-                        queue),
+                new MySqlChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics, queue),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema);
