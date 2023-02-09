@@ -47,7 +47,6 @@ public class ConnectionIT extends AbstractMongoIT {
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, true)
                 .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
                 .build());

@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -217,6 +216,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
+    /**
+     * The comma-separated list of replica set names
+     */
+    public static final Field REPLICA_SETS = Field.create("mongodb.replica.sets")
+            .withDescription("Internal use only")
+            .withType(Type.LIST);
+
+    // MongoDb fields in Connection Group start from 1 (topic.prefix is 0)
     public static final Field CONNECTION_STRING = Field.create("mongodb.connection.string")
             .withDisplayName("Connection String")
             .withType(Type.STRING)
@@ -225,13 +232,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
             .withDescription("Database connection string.");
-
-    /**
-     * The comma-separated list of replica set names
-     */
-    public static final Field REPLICA_SETS = Field.create("mongodb.replica.sets")
-            .withDescription("Internal use only")
-            .withType(Type.LIST);
 
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
@@ -288,55 +288,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(10_000)
             .withDescription("The connection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
-    public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
-            .withDisplayName("Initial delay before reconnection (ms)")
-            .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(TimeUnit.SECONDS.toMillis(1))
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(
-                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 1 second (1,000 ms).");
-
-    public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
-            .withDisplayName("Maximum delay before reconnection (ms)")
-            .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(TimeUnit.SECONDS.toMillis(120))
-            .withValidation(Field::isPositiveInteger)
-            .withDescription(
-                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 120 second (120,000 ms).");
-
     public static final Field AUTH_SOURCE = Field.create("mongodb.authsource")
             .withDisplayName("Credentials Database")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
             .withDescription("Database containing user credentials.");
 
-    public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
-            .withDisplayName("Connection attempt limit")
-            .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault(16)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. "
-                    + "Defaults to 16, which with the defaults for '"
-                    + CONNECT_BACKOFF_INITIAL_DELAY_MS + "' and '"
-                    + CONNECT_BACKOFF_MAX_DELAY_MS + "' results in "
-                    + "just over 20 minutes of attempts before failing.");
-
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
             .withDisplayName("Server selection timeout MS")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(30_000)
@@ -345,7 +309,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
             .withDisplayName("Socket timeout MS")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
@@ -354,7 +318,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field HEARTBEAT_FREQUENCY_MS = Field.create("mongodb.heartbeat.frequency.ms")
             .withDisplayName("Heartbeat frequency ms")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(10_000)
@@ -548,14 +512,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     USER,
                     PASSWORD,
                     AUTH_SOURCE,
-                    CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                    CONNECT_BACKOFF_MAX_DELAY_MS,
                     CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     MONGODB_POLL_INTERVAL_MS,
-                    MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
