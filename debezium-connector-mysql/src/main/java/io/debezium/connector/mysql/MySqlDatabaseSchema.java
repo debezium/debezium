@@ -180,7 +180,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // - all DDLs if configured
         // - or global SET variables
         // - or DDLs for monitored objects
-        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
+        if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
@@ -213,7 +213,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             this.ddlParser.parse(ddlStatements, tables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
-            if (schemaHistory.skipUnparseableDdlStatements()) {
+            if (skipUnparseableDdlStatements()) {
                 LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
             }
             else {
@@ -222,7 +222,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
 
         // No need to send schema events or store DDL if no table has changed
-        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
+        if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
 
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
@@ -351,11 +351,6 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return schemaHistory.exists();
     }
 
-    @Override
-    public boolean storeOnlyCapturedTables() {
-        return schemaHistory.storeOnlyCapturedTables();
-    }
-
     /**
      * Assign the given table number to the table with the specified {@link TableId table ID}.
      *
@@ -378,7 +373,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     /**
      * Return the table id associated with MySQL-specific table number.
      *
-     * @param tableNumber
+     * @param tableNumber the table number from binlog
      * @return the table id or null if not known
      */
     public TableId getTableId(long tableNumber) {
@@ -388,7 +383,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     /**
      * Return the excluded table id associated with MySQL-specific table number.
      *
-     * @param tableNumber
+     * @param tableNumber the table number from binlog
      * @return the table id or null if not known
      */
     public TableId getExcludeTableId(long tableNumber) {
@@ -415,8 +410,9 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return storageInitializationExecuted;
     }
 
+    @Override
     public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
-        if (!Strings.isNullOrEmpty(event.getDatabase())
+        if (storeOnlyCapturedDatabases() && !Strings.isNullOrEmpty(event.getDatabase())
                 && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
             LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
             return true;

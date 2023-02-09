@@ -350,9 +350,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 lastSnapshotRecord(snapshotContext);
             }
 
+            SchemaChangeEvent event = getCreateTableEvent(snapshotContext, snapshotContext.tables.forTable(tableId));
+            if (HistorizedRelationalDatabaseSchema.class.isAssignableFrom(schema.getClass()) &&
+                    ((HistorizedRelationalDatabaseSchema) schema).skipSchemaChangeEvent(event)) {
+                continue;
+            }
+
             dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> {
                 try {
-                    receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, snapshotContext.tables.forTable(tableId)));
+                    receiver.schemaChangeEvent(event);
                 }
                 catch (Exception e) {
                     throw new DebeziumException(e);

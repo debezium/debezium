@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -64,6 +63,16 @@ public interface SchemaHistory {
                     + "then only DDL that manipulates a captured table will be stored.")
             .withDefault(false);
 
+    Field STORE_ONLY_CAPTURED_DATABASES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.captured.databases.ddl")
+            .withDisplayName("Store only DDL that modifies tables of databases that are captured based on include/exclude lists")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls what DDL will Debezium store in database schema history. "
+                    + "By default (true) only DDL that manipulates a table from captured schema/database will be stored. "
+                    + "If set to false, then Debezium will store all incoming DDL statements.")
+            .withDefault(false);
+
     Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
             .withDisplayName("DDL filter")
             .withType(Type.STRING)
@@ -85,6 +94,35 @@ public interface SchemaHistory {
             .withDescription("A regular expression to filter out a subset of incoming DDL statements "
                     + "from processing and storing into schema history evolution.")
             .withValidation(Field::isListOfRegex);
+
+    // Required for unified thread creation
+    Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
+            .withDisplayName("Debezium connector class")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The class of the Debezium database connector")
+            .withNoValidation();
+
+    // Required for unified thread creation
+    Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
+            .withDisplayName("Debezium connector identifier")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The unique identifier of the Debezium connector")
+            .withNoValidation();
+
+    // Temporary preference for DDL over logical schema due to DBZ-32
+    Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
+            .withDisplayName("Prefer DDL for schema recovery")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Prefer DDL for schema recovery in case logical schema is present")
+            .withInvisibleRecommender()
+            .withNoValidation();
 
     /**
      * Configure this instance.
@@ -180,10 +218,4 @@ public interface SchemaHistory {
      * Called to initialize permanent storage of the history.
      */
     void initializeStorage();
-
-    boolean storeOnlyCapturedTables();
-
-    boolean skipUnparseableDdlStatements();
-
-    Predicate<String> ddlFilter();
 }

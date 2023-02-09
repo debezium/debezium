@@ -44,13 +44,11 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void initializeStorage();
 
-    default boolean storeOnlyCapturedTables() {
-        return false;
-    }
-
-    default boolean skipUnparseableDdlStatements() {
-        return false;
-    }
-
     Predicate<String> ddlFilter();
+
+    boolean skipUnparseableDdlStatements();
+
+    boolean storeOnlyCapturedTables();
+
+    boolean storeOnlyCapturedDatabases();
 }
