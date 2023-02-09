@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.outbox.quarkus.internal;
+package io.debezium.outbox.reactive.quarkus.internal;
 
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
 
@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
+import io.debezium.outbox.quarkus.internal.AbstractEventWriter;
 import io.smallrye.mutiny.Uni;
 
 /**
