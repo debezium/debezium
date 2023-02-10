@@ -175,6 +175,7 @@ public class PostgresConnection extends JdbcConnection {
         }, rs -> {
             if (rs.next()) {
                 replIdentity.append(rs.getString(1));
+                rs.close();
             }
             else {
                 LOGGER.warn("Cannot determine REPLICA IDENTITY information for table '{}'", tableId);
