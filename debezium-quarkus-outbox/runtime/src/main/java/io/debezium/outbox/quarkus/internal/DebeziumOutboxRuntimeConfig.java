@@ -5,7 +5,6 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
-import io.quarkus.runtime.annotations.ConfigItem;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 
@@ -15,10 +14,6 @@ import io.quarkus.runtime.annotations.ConfigRoot;
  * @author Chris Cranford
  */
 @ConfigRoot(phase = ConfigPhase.RUN_TIME, name = "debezium-outbox")
-public class DebeziumOutboxRuntimeConfig {
-    /**
-     * Remove outbox entity after being inserted.  Default is {@code true}.
-     */
-    @ConfigItem(defaultValue = "true")
-    public boolean removeAfterInsert;
+public class DebeziumOutboxRuntimeConfig extends DebeziumOutboxCommonRuntimeConfig {
+
 }

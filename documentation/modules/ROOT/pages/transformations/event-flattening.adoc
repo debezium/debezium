@@ -303,4 +303,22 @@ Optionally, you can override the field name via `<field name>:<new field name>`,
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
+
+[id="extract-new-record-state-drop-fields-header-name"]
+|xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`]
+|
+|The Kafka message header name to use for listing field names in the source message that you want to drop from the output message.
+
+[id="extract-new-record-state-drop-fields-from-key"]
+|xref:extract-new-record-state-drop-fields-from-key[`drop.fields.from.key`]
+|`false`
+|Specifies whether you want the SMT to remove fields that are listed in `drop.fields.header.name` from the event's key.
+
+[id="extract-new-record-state-drop-fields-keep-schema-compatible"]
+|xref:extract-new-record-state-drop-fields-keep-schema-compatible[`drop.fields.keep.schema.compatible`]
+|`true`
+|Specifies whether you want the SMT to remove non-optional fields that are included in the xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`] configuration property. +
+ +
+By default, the SMT only removes fields that are marked `optional`.
+
 |===
