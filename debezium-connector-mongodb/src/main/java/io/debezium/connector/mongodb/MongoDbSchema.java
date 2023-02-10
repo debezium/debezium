@@ -114,6 +114,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                     // Extra field for raw oplogs
                     .field(MongoDbFieldName.RAW_OPLOG_FIELD, Schema.OPTIONAL_BYTES_SCHEMA)
+                    .field(MongoDbFieldName.STRIPE_AUDIT, Schema.OPTIONAL_STRING_SCHEMA)
                     .build();
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);

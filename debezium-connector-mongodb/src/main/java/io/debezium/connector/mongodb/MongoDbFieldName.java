@@ -31,4 +31,6 @@ public class MongoDbFieldName {
     // Extra field for raw oplogs
     // TODO(CDC-234): Deprecate once consumers are using ChangeEvent envelope
     public static final String RAW_OPLOG_FIELD = "_raw_oplog";
+
+    public static final String STRIPE_AUDIT = "stripeAudit";
 }

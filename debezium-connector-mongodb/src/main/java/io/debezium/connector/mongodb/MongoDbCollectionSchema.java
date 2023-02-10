@@ -23,6 +23,7 @@ import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaUtil;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
+import org.bson.BsonString;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given mongodb collection, and which can
@@ -112,6 +113,8 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     public Struct valueFromDocumentChangeStream(ChangeStreamDocument<BsonDocument> document, Envelope.Operation operation) {
         Struct value = new Struct(valueSchema);
 
+        getStripeAudit(document, value);
+
         switch (operation) {
             case CREATE:
                 extractFullDocument(document, value);
@@ -175,6 +178,17 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 break;
         }
         return value;
+    }
+
+    private static void getStripeAudit(ChangeStreamDocument<BsonDocument> document, Struct value) {
+        BsonDocument extra = document.getExtraElements();
+        if (extra != null) {
+            BsonString stripAudit = extra.getString(MongoDbFieldName.STRIPE_AUDIT);
+
+            if (stripAudit != null) {
+                value.put(MongoDbFieldName.STRIPE_AUDIT, stripAudit.getValue());
+            }
+        }
     }
 
     private void extractFullDocument(ChangeStreamDocument<BsonDocument> document, Struct value) {
