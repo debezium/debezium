@@ -48,16 +48,10 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
-        <!-- OpenTracing Integration, Strimzi version is not aligned with Quarkus -->
+        <!-- OpenTelemetry Integration, Strimzi version is not aligned with Quarkus -->
         <dependency>
-            <groupId>io.opentracing</groupId>
-            <artifactId>opentracing-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.opentracing</groupId>
-            <artifactId>opentracing-util</artifactId>
-            <scope>provided</scope>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
         </dependency>
 
         <!-- Testing -->

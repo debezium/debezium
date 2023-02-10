@@ -29,7 +29,8 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
+        <version.opentelemetry>1.21.0</version.opentelemetry>
+        <version.opentelemetry.alpha>1.22.1-alpha</version.opentelemetry.alpha>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -282,16 +283,11 @@
                 <version>${version.graalvm.js}</version>
             </dependency>
 
-            <!-- OpenTracing Integration, Strimzi version is not aligned with Quarkus -->
+            <!-- OpenTelemetry Integration, Strimzi version is not aligned with Quarkus -->
             <dependency>
-                <groupId>io.opentracing</groupId>
-                <artifactId>opentracing-api</artifactId>
-                <version>${version.opentracing.strimzi}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.opentracing</groupId>
-                <artifactId>opentracing-util</artifactId>
-                <version>${version.opentracing.strimzi}</version>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
+                <version>${version.opentelemetry.alpha}</version>
             </dependency>
 
             <!-- Kafka runtime libs -->
