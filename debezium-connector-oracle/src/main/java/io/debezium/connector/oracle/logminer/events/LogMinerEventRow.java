@@ -65,7 +65,7 @@ public class LogMinerEventRow {
     private String redoSql;
     private int status;
     private String info;
-    private int ssn;
+    private long ssn;
     private int thread;
 
     public Scn getScn() {

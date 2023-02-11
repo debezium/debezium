@@ -323,7 +323,7 @@ public class CommitScn implements Comparable<Scn> {
                 // The new redo-thread based commit scn entry
                 final Scn scn = Scn.valueOf(parts[0]);
                 final String rsId = parts[1];
-                final int ssn = Long.parseLong(parts[2]);
+                final long ssn = Long.parseLong(parts[2]);
                 final int thread = Integer.parseInt(parts[3]);
                 return new RedoThreadCommitScn(thread, scn, rsId, ssn);
             }
