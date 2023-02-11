@@ -262,7 +262,7 @@ public class CommitScn implements Comparable<Scn> {
         private final int thread;
         private Scn commitScn;
         private String rsId;
-        private int ssn;
+        private long ssn;
 
         public RedoThreadCommitScn(int thread) {
             this(thread, Scn.NULL, null, 0);
@@ -272,7 +272,7 @@ public class CommitScn implements Comparable<Scn> {
             this(row.getThread(), row.getScn(), row.getRsId(), row.getSsn());
         }
 
-        public RedoThreadCommitScn(int thread, Scn commitScn, String rsId, int ssn) {
+        public RedoThreadCommitScn(int thread, Scn commitScn, String rsId, long ssn) {
             this.thread = thread;
             this.commitScn = commitScn;
             this.rsId = rsId;
@@ -299,11 +299,11 @@ public class CommitScn implements Comparable<Scn> {
             this.rsId = rsId;
         }
 
-        public int getSsn() {
+        public long getSsn() {
             return ssn;
         }
 
-        public void setSsn(int ssn) {
+        public void setSsn(long ssn) {
             this.ssn = ssn;
         }
 
@@ -323,7 +323,7 @@ public class CommitScn implements Comparable<Scn> {
                 // The new redo-thread based commit scn entry
                 final Scn scn = Scn.valueOf(parts[0]);
                 final String rsId = parts[1];
-                final int ssn = Integer.parseInt(parts[2]);
+                final int ssn = Long.parseLong(parts[2]);
                 final int thread = Integer.parseInt(parts[3]);
                 return new RedoThreadCommitScn(thread, scn, rsId, ssn);
             }
