@@ -364,10 +364,6 @@ public class CommitScn implements Comparable<Scn> {
                     ", commitScn=" + commitScn +
                     ", txIds=" + txIds +
                     '}';
-
         }
     }
 }
-
-
-        
