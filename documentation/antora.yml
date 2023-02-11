@@ -8,20 +8,18 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '2.0.0.Alpha3'
-    debezium-dev-version: '2.0'
-    debezium-kafka-version: '3.1.0'
-    debezium-docker-label: '1.9'
+    debezium-version: '2.2.0.Alpha1'
+    debezium-kafka-version: '3.3.1'
+    debezium-docker-label: '2.2'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '3.0.11'
-    install-version: '1.9'
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
-    apicurio-version: '2.1.5.Final'
+    apicurio-version: '2.4.1.Final'
     db2-version: '11.5.0.0'
-    ojdbc8-version: '21.5.0.0'
+    ojdbc8-version: '21.6.0.0'
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
@@ -51,6 +49,7 @@ asciidoc:
     link-signalling: 'configuration/signalling.adoc'
     link-smt-predicates: 'transformations/applying-transformations-selectively.adoc'
     link-sqlserver-connector: 'connectors/sqlserver.adoc'
+    link-transformations: 'transformations/index.adoc'
     link-topic-auto-creation: 'configuration/topic-auto-create-config.adoc'
     link-topic-routing: 'transformations/topic-routing.adoc'
     link-tutorial: 'tutorial.adoc'
@@ -64,6 +63,7 @@ asciidoc:
     link-cassandra-3-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-3&v=LATEST&c=plugin&e=tar.gz'
     link-cassandra-4-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-4&v=LATEST&c=plugin&e=tar.gz'
     link-vitess-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-vitess&v=LATEST&c=plugin&e=tar.gz'
+    link-spanner-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-spanner&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'
     link-java7-standard-names: 'https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest'

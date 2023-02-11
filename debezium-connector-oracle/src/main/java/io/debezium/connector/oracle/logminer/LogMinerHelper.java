@@ -124,8 +124,8 @@ public class LogMinerHelper {
         LOGGER.trace("Getting logs to be mined for offset scn {}", offsetScn);
 
         final List<LogFile> logFiles = new ArrayList<>();
-        final List<LogFile> onlineLogFiles = new ArrayList<>();
-        final List<LogFile> archivedLogFiles = new ArrayList<>();
+        final Set<LogFile> onlineLogFiles = new LinkedHashSet<>();
+        final Set<LogFile> archivedLogFiles = new LinkedHashSet<>();
 
         connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName), rs -> {
             while (rs.next()) {
@@ -135,16 +135,17 @@ public class LogMinerHelper {
                 String status = rs.getString(5);
                 String type = rs.getString(6);
                 BigInteger sequence = new BigInteger(rs.getString(7));
+                int thread = rs.getInt(10);
                 if ("ARCHIVED".equals(type)) {
                     // archive log record
-                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE);
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.ARCHIVE, thread);
                     if (logFile.getNextScn().compareTo(offsetScn) >= 0) {
                         LOGGER.trace("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
                         archivedLogFiles.add(logFile);
                     }
                 }
                 else if ("ONLINE".equals(type)) {
-                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO, CURRENT.equalsIgnoreCase(status));
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, LogFile.Type.REDO, CURRENT.equalsIgnoreCase(status), thread);
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
                         onlineLogFiles.add(logFile);

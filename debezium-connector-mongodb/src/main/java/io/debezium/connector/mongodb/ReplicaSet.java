@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -53,12 +54,16 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     private final String shardName;
     private final int hc;
 
-    public ReplicaSet(String addresses, String replicaSetName, String shardName) {
-        this.addresses = MongoUtil.parseAddresses(addresses);
+    public ReplicaSet(List<ServerAddress> addresses, String replicaSetName, String shardName) {
+        this.addresses = new ArrayList<>(addresses);
         this.addresses.sort(ReplicaSet::compareServerAddresses);
         this.replicaSetName = replicaSetName != null ? replicaSetName.trim() : null;
         this.shardName = shardName != null ? shardName.trim() : null;
         this.hc = addresses.hashCode();
+    }
+
+    public ReplicaSet(String addresses, String replicaSetName, String shardName) {
+        this(MongoUtil.parseAddresses(addresses), replicaSetName, shardName);
     }
 
     /**

@@ -52,7 +52,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Debug.enable();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         Configuration config = connectorConfig()
                 .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)

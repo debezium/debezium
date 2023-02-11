@@ -60,10 +60,6 @@ PostgreSQL:: `_<schemaName>_._<tableName>_`
 SQL Server:: `_<databaseName>_._<schemaName>_._<tableName>_` +
  +
 For more information about setting the `signal.data.collection` property, see the table of configuration properties for your connector.
-. Add the signaling table to the list of tables to monitor. +
-  In the configuration for the {prodname} connector, add the name of the data collection that you created in Step 1 to the `table.include.list` property. +
- +
-For more information about the `table.include.list` property, see the table of configuration properties for your connector.
 
 // Type: reference
 // ModuleID: debezium-signaling-required-structure-of-a-signaling-data-collection
@@ -128,7 +124,7 @@ You create a signaling table by submitting a standard SQL DDL query to the sourc
 
 .Procedure
 
-* Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
+* Submit a SQL query to the source database to create a table that is consistent with the xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[required structure], as shown in the following example: +
  +
 `CREATE TABLE _<tableName>_ (id VARCHAR(_<varcharValue>_) PRIMARY KEY, type VARCHAR(__<varcharValue>__) NOT NULL, data VARCHAR(_<varcharValue>_) NULL);` +
 
@@ -155,6 +151,8 @@ You can use signaling to initiate the following actions:
 * xref:debezium-signaling-logging[Add messages to the log].
 * xref:debezium-signaling-ad-hoc-snapshots[Trigger ad hoc snapshots].
 * xref:debezium-signaling-stop-ad-hoc-snapshots[Stop execution of an ad hoc snapshot].
+* xref:debezium-signaling-pause-incremental-snapshots[Pause incremental snapshots].
+* xref:debezium-signaling-resume-incremental-snapshots[Resume incremenal snapshots].
 
 Some signals are not compatible with all connectors.
 
@@ -203,9 +201,7 @@ ifdef::community[]
 * MongoDB
 endif::community[]
 * MySQL
-ifdef::community[]
 * Oracle
-endif::community[]
 * PostgreSQL
 * SQL Server
 
@@ -235,12 +231,10 @@ For more information about ad hoc snapshots, see the _Snapshots_ topic in the do
 
 * xref:{link-db2-connector}#db2-ad-hoc-snapshots[Db2 connector ad hoc snapshots]
 ifdef::community[]
-* xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshot[MongoDB connector ad hoc snapshots]
+* xref:{link-mongodb-connector}#mongodb-ad-hoc-snapshots[MongoDB connector ad hoc snapshots]
 endif::community[]
 * xref:{link-mysql-connector}#mysql-ad-hoc-snapshots[MySQL connector ad hoc snapshots]
-ifdef::community[]
 * xref:{link-oracle-connector}#oracle-ad-hoc-snapshots[Oracle connector ad hoc snapshots]
-endif::community[]
 * xref:{link-postgresql-connector}#postgresql-ad-hoc-snapshots[PostgreSQL connector ad hoc snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-ad-hoc-snapshots[SQL Server connector ad hoc snapshots]
 
@@ -257,9 +251,7 @@ ifdef::community[]
 * MongoDB
 endif::community[]
 * MySQL
-ifdef::community[]
 * Oracle
-endif::community[]
 * PostgreSQL
 * SQL Server
 
@@ -301,6 +293,75 @@ By capturing the initial state of the specified tables in chunks rather than in 
 * If the incremental snapshot process is interrupted, it can be resumed from the point at which it stopped.
 * You can initiate an incremental snapshot at any time.
 
+[id="debezium-signaling-pause-incremental-snapshots"]
+==== Incremental snapshot pause signals
+
+You can request a connector to pause an in-progress incremental snapshot by creating a signal table entry with the `pause-snapshot` signal type.
+After processing the signal, the connector will stop pause current in-progress snapshot operation.
+Therefor it's not possible to specify the data collection as the snapshot processing will be paused in position where it is in time of processing of the signal.
+
+You can pause incremental snapshots for the following {prodname} connectors:
+
+* Db2
+ifdef::community[]
+* MongoDB
+endif::community[]
+* MySQL
+* Oracle
+* PostgreSQL
+* SQL Server
+
+[id="debezium-signaling-example-of-a-pause-incremental-signal-record"]
+.Example of a pause incremental snapshot signal record
+[cols="1,9",options="header"]
+|===
+|Column | Value
+
+|id
+|`d139b9b7-7777-4547-917d-e1775ea61d41`
+
+|type
+|`pause-snapshot`
+
+|===
+
+You must specify the `type` of the signal.
+The `data` field is ignored.
+
+[id="debezium-signaling-resume-incremental-snapshots"]
+==== Incremental snapshot resume signals
+
+You can request a connector to resume a paused incremental snapshot by creating a signal table entry with the `resume-snapshot` signal type.
+After processing the signal, the connector will resume previously paused snapshot operation.
+
+You can resume incremental snapshots for the following {prodname} connectors:
+
+* Db2
+ifdef::community[]
+* MongoDB
+endif::community[]
+* MySQL
+* Oracle
+* PostgreSQL
+* SQL Server
+
+[id="debezium-signaling-example-of-a-resume-incremental-signal-record"]
+.Example of a resume incremental snapshot signal record
+[cols="1,9",options="header"]
+|===
+|Column | Value
+
+|id
+|`d139b9b7-7777-4547-917d-e1775ea61d41`
+
+|type
+|`resume-snapshot`
+
+|===
+
+You must specify the `type` of the signal.
+The `data` field is ignored.
+
 For more information about incremental snapshots, see the _Snapshots_ topic in the documentation for your connector.
 
 .Additional resources
@@ -310,8 +371,6 @@ ifdef::community[]
 * xref:{link-mongodb-connector}#mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
 endif::community[]
 * xref:{link-mysql-connector}#mysql-incremental-snapshots[MySQL connector incremental snapshots]
-ifdef::community[]
 * xref:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
-endif::community[]
 * xref:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
 * xref:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]

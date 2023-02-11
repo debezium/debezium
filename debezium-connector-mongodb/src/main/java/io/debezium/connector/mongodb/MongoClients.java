@@ -5,16 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
+import com.mongodb.connection.ClusterConnectionMode;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -74,12 +76,25 @@ public class MongoClients {
         }
     }
 
+    protected static Supplier<MongoClientSettings.Builder> createSettingsSupplier(MongoClientSettings settings) {
+        return () -> MongoClientSettings.builder(settings);
+    }
+
     private final Map<ServerAddress, MongoClient> directConnections = new ConcurrentHashMap<>();
     private final Map<List<ServerAddress>, MongoClient> connections = new ConcurrentHashMap<>();
-    private final MongoClientSettings.Builder settings;
+    private final Map<ConnectionString, MongoClient> stringConnections = new ConcurrentHashMap<>();
+    private final Supplier<MongoClientSettings.Builder> settingsSupplier;
 
     private MongoClients(MongoClientSettings.Builder settings) {
-        this.settings = settings;
+        this.settingsSupplier = createSettingsSupplier(settings.build());
+    }
+
+    /**
+     * Creates fresh {@link MongoClientSettings.Builder} from {@link #settingsSupplier}
+     * @return connection settings builder
+     */
+    protected MongoClientSettings.Builder settings() {
+        return settingsSupplier.get();
     }
 
     /**
@@ -88,8 +103,10 @@ public class MongoClients {
     public void clear() {
         directConnections.values().forEach(MongoClient::close);
         connections.values().forEach(MongoClient::close);
+        stringConnections.values().forEach(MongoClient::close);
         directConnections.clear();
         connections.clear();
+        stringConnections.clear();
     }
 
     /**
@@ -159,21 +176,8 @@ public class MongoClients {
         return clientForMembers(MongoUtil.parseAddresses(addressList));
     }
 
-    /**
-     * Obtain a client connection to the replica set or cluster. The supplied addresses are used as seeds, and once a connection
-     * is established it will discover all of the members.
-     *
-     * @param seeds the seed addresses
-     * @return the MongoClient instance; never null
-     */
-    public MongoClient clientForMembers(ServerAddress... seeds) {
-        List<ServerAddress> addresses = new ArrayList<>();
-        for (ServerAddress seedAddress : seeds) {
-            if (seedAddress != null) {
-                addresses.add(seedAddress);
-            }
-        }
-        return clientForMembers(addresses);
+    public MongoClient clientForMembers(ConnectionString connectionString) {
+        return stringConnections.computeIfAbsent(connectionString, this::connection);
     }
 
     /**
@@ -188,12 +192,20 @@ public class MongoClients {
     }
 
     protected MongoClient directConnection(ServerAddress address) {
-        settings.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(address)));
+        MongoClientSettings.Builder settings = settings().applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(address)));
         return com.mongodb.client.MongoClients.create(settings.build());
     }
 
     protected MongoClient connection(List<ServerAddress> addresses) {
-        settings.applyToClusterSettings(builder -> builder.hosts(addresses));
+        MongoClientSettings.Builder settings = settings().applyToClusterSettings(builder -> builder.hosts(addresses));
+        if (addresses.size() > 1) {
+            settings.applyToClusterSettings(builder -> builder.mode(ClusterConnectionMode.MULTIPLE));
+        }
+        return com.mongodb.client.MongoClients.create(settings.build());
+    }
+
+    protected MongoClient connection(ConnectionString connectionString) {
+        MongoClientSettings.Builder settings = settings().applyConnectionString(connectionString);
         return com.mongodb.client.MongoClients.create(settings.build());
     }
 }

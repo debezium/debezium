@@ -5,8 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Collections;
+import java.util.List;
+
 import io.debezium.annotation.Immutable;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Collect;
 
 /**
  * A simple identifier for collections in a replica set.
@@ -102,6 +106,21 @@ public final class CollectionId implements DataCollectionId {
     @Override
     public String identifier() {
         return replicaSetName + "." + dbName + "." + name;
+    }
+
+    @Override
+    public List<String> parts() {
+        return Collect.arrayListOf(replicaSetName, dbName, name);
+    }
+
+    @Override
+    public List<String> databaseParts() {
+        return Collect.arrayListOf(dbName, name);
+    }
+
+    @Override
+    public List<String> schemaParts() {
+        return Collections.emptyList();
     }
 
     @Override

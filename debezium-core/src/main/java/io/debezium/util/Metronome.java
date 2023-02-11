@@ -23,7 +23,7 @@ public interface Metronome {
      *
      * @throws InterruptedException if the thread was interrupted while pausing
      */
-    public void pause() throws InterruptedException;
+    void pause() throws InterruptedException;
 
     /**
      * Create a new metronome that starts ticking immediately and that uses {@link Thread#sleep(long)} to wait.
@@ -42,7 +42,7 @@ public interface Metronome {
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome sleeper(Duration period, Clock timeSystem) {
+    static Metronome sleeper(Duration period, Clock timeSystem) {
         long periodInMillis = period.toMillis();
         return new Metronome() {
             private long next = timeSystem.currentTimeInMillis() + periodInMillis;
@@ -70,8 +70,8 @@ public interface Metronome {
      * Create a new metronome that starts ticking immediately and that uses {@link LockSupport#parkNanos(long)} to wait.
      * <p>
      * {@link LockSupport#parkNanos(long)} uses the underlying platform-specific timed wait mechanism, which may be more
-     * accurate for smaller periods than {@link #sleeper(long, TimeUnit, Clock)}. However, like
-     * {@link #sleeper(long, TimeUnit, Clock)}, the resulting Metronome may result in thread context switches.
+     * accurate for smaller periods than {@link #sleeper(Duration, Clock)}. However, like
+     * {@link #sleeper(Duration, Clock)}, the resulting Metronome may result in thread context switches.
      * <p>
      * Although the method seemingly supports taking {@link TimeUnit#MICROSECONDS} and {@link TimeUnit#NANOSECONDS}, it is
      * likely that the JVM and operating system do not support such fine-grained precision. And as mentioned above, care should
@@ -81,7 +81,7 @@ public interface Metronome {
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome parker(Duration period, Clock timeSystem) {
+    static Metronome parker(Duration period, Clock timeSystem) {
         long periodInNanos = period.toNanos();
         return new Metronome() {
             private long next = timeSystem.currentTimeInNanos() + periodInNanos;

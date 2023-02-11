@@ -6,15 +6,20 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -90,7 +95,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final List<SourceRecord> records = new ArrayList<>();
 
         // Database sometimes insert an empty transaction, we must skip those
-        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3)).until(() -> {
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3L)).until(() -> {
             final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
             if (candidate.get(1).topic().contains("transaction")) {
                 // empty transaction, should be skipped
@@ -101,10 +106,58 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             return true;
         });
 
-        Assertions.assertThat(records).hasSize(4);
-        final String txId = assertBeginTransaction(records.get(0));
-        assertRecordTransactionMetadata(records.get(1), txId, 1, 1);
-        assertRecordTransactionMetadata(records.get(2), txId, 2, 1);
-        assertEndTransaction(records.get(3), txId, 2, Collect.hashMapOf("s1.a", 1, "s2.a", 1));
+        assertThat(records).hasSize(4);
+        final String beginTxId = assertBeginTransaction(records.get(0));
+        assertRecordTransactionMetadata(records.get(1), beginTxId, 1, 1);
+        assertRecordTransactionMetadata(records.get(2), beginTxId, 2, 1);
+        assertEndTransaction(records.get(3), beginTxId, 2, Collect.hashMapOf("s1.a", 1, "s2.a", 1));
+    }
+
+    @Override
+    protected String assertBeginTransaction(SourceRecord record) {
+        final Struct begin = (Struct) record.value();
+        final Struct beginKey = (Struct) record.key();
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+
+        assertThat(begin.getString("status")).isEqualTo("BEGIN");
+        assertThat(begin.getInt64("event_count")).isNull();
+        final String txId = begin.getString("id");
+        assertThat(beginKey.getString("id")).isEqualTo(txId);
+
+        final String expectedId = Arrays.stream(txId.split(":")).findFirst().get();
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
+        return txId;
+    }
+
+    @Override
+    protected void assertEndTransaction(SourceRecord record, String beginTxId, long expectedEventCount, Map<String, Number> expectedPerTableCount) {
+        final Struct end = (Struct) record.value();
+        final Struct endKey = (Struct) record.key();
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
+        final String expectedTxId = String.format("%s:%s", expectedId, offset.get("lsn"));
+
+        assertThat(end.getString("status")).isEqualTo("END");
+        assertThat(end.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
+        assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
+
+        assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
+                .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
+                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
+    }
+
+    @Override
+    protected void assertRecordTransactionMetadata(SourceRecord record, String beginTxId, long expectedTotalOrder, long expectedCollectionOrder) {
+        final Struct change = ((Struct) record.value()).getStruct("transaction");
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
+        final String expectedTxId = String.format("%s:%s", expectedId, offset.get("lsn"));
+
+        assertThat(change.getString("id")).isEqualTo(expectedTxId);
+        assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
+        assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
     }
 }

@@ -10,8 +10,11 @@ import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE_IN_BYTES;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -27,6 +30,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
 
 public class ChangeEventQueuePerf {
@@ -39,17 +43,18 @@ public class ChangeEventQueuePerf {
     @BenchmarkMode({ Mode.Throughput })
     public static class ProducerPerf {
 
-        private static final String EVENT = "Change Data Capture Even via Debezium";
+        private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
+                Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));
 
         @Param({ "10", "50", "500" })
         private long pollIntervalMillis;
 
-        private ChangeEventQueue<String> changeEventQueue;
+        private ChangeEventQueue<DataChangeEvent> changeEventQueue;
         private Thread consumer;
 
         @Setup(Level.Trial)
         public void setup() {
-            changeEventQueue = new ChangeEventQueue.Builder<String>()
+            changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
@@ -87,17 +92,18 @@ public class ChangeEventQueuePerf {
     @BenchmarkMode({ Mode.Throughput })
     public static class ConsumerPerf {
 
-        private static final String EVENT = "Change Data Capture Even via Debezium";
+        private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
+                Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));;
 
         @Param({ "10", "50", "500" })
         private long pollIntervalMillis;
 
-        private ChangeEventQueue<String> changeEventQueue;
+        private ChangeEventQueue<DataChangeEvent> changeEventQueue;
         private Thread producer;
 
         @Setup(Level.Trial)
         public void setup() {
-            changeEventQueue = new ChangeEventQueue.Builder<String>()
+            changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
@@ -136,18 +142,19 @@ public class ChangeEventQueuePerf {
     public static class QueuePerf {
 
         private static final int TOTAL_RECORDS = 10_000_000;
-        private static final String EVENT = "Change Data Capture Even via Debezium";
+        private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
+                Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));;
 
         @Param({ "10", "50", "500" })
         long pollIntervalMillis;
 
-        private ChangeEventQueue<String> changeEventQueue;
+        private ChangeEventQueue<DataChangeEvent> changeEventQueue;
         private Thread producer;
         private Thread consumer;
 
         @Setup(Level.Trial)
         public void setupInvocation() {
-            changeEventQueue = new ChangeEventQueue.Builder<String>()
+            changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
@@ -207,20 +214,21 @@ public class ChangeEventQueuePerf {
     @BenchmarkMode({ Mode.AverageTime })
     public static class MultiWriterQueuePerf {
 
-        private static final String EVENT = "Change Data Capture Even via Debezium";
+        private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
+                Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));;
         private static final int TOTAL_RECORDS_PER_PRODUCER = 1_000_000;
         private static final int TOTAL_PRODUCERS = 10;
 
         @Param({ "10", "50", "500" })
         long pollIntervalMillis;
 
-        private ChangeEventQueue<String> changeEventQueue;
+        private ChangeEventQueue<DataChangeEvent> changeEventQueue;
         private Thread[] producers;
         private Thread consumer;
 
         @Setup(Level.Trial)
         public void setupInvocation() {
-            changeEventQueue = new ChangeEventQueue.Builder<String>()
+            changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))

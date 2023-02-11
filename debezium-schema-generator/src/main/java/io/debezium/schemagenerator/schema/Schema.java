@@ -26,7 +26,7 @@ public interface Schema {
         return f -> true;
     }
 
-    public interface FieldFilter {
+    interface FieldFilter {
         boolean include(Field field);
     }
 

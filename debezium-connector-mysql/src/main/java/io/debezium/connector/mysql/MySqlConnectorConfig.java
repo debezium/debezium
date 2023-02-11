@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -33,9 +32,8 @@ import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.util.Collect;
 
 /**
@@ -55,7 +53,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
      */
-    public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
+    public enum BigIntUnsignedHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code BIGINT UNSIGNED} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -70,7 +68,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private BigIntUnsignedHandlingMode(String value) {
+        BigIntUnsignedHandlingMode(String value) {
             this.value = value;
         }
 
@@ -127,7 +125,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot when it is needed.
@@ -148,7 +146,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
-         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
@@ -172,8 +170,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         private final boolean shouldSnapshotOnSchemaError;
         private final boolean shouldSnapshotOnDataError;
 
-        private SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
-                             boolean shouldSnapshotOnDataError) {
+        SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
+                     boolean shouldSnapshotOnDataError) {
             this.value = value;
             this.includeSchema = includeSchema;
             this.includeData = includeData;
@@ -210,7 +208,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
 
         /**
-         * Whether the schema can be recovered if database history is corrupted.
+         * Whether the schema can be recovered if database schema history is corrupted.
          */
         public boolean shouldSnapshotOnSchemaError() {
             return shouldSnapshotOnSchemaError;
@@ -265,7 +263,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         }
     }
 
-    public static enum SnapshotNewTables implements EnumeratedValue {
+    public enum SnapshotNewTables implements EnumeratedValue {
         /**
          * Do not snapshot new tables
          */
@@ -278,7 +276,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotNewTables(String value) {
+        SnapshotNewTables(String value) {
             this.value = value;
         }
 
@@ -325,7 +323,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined Snapshot Locking Mode options.
      */
-    public static enum SnapshotLockingMode implements EnumeratedValue {
+    public enum SnapshotLockingMode implements EnumeratedValue {
 
         /**
          * This mode will block all writes for the entire duration of the snapshot.
@@ -361,7 +359,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SnapshotLockingMode(String value) {
+        SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -434,7 +432,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
-    public static enum SecureConnectionMode implements EnumeratedValue {
+    public enum SecureConnectionMode implements EnumeratedValue {
         /**
          * Establish an unencrypted connection.
          */
@@ -463,7 +461,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         private final String value;
 
-        private SecureConnectionMode(String value) {
+        SecureConnectionMode(String value) {
             this.value = value;
         }
 
@@ -536,9 +534,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     "A semicolon separated list of SQL statements to be executed when a JDBC connection (not binlog reading connection) to the database is established. "
                             + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, "
                             + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
-
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field SERVER_ID = Field.create("database.server.id")
             .withDisplayName("Cluster ID")
@@ -734,20 +729,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
             .withValidation(Field::isNonNegativeInteger);
 
-    /**
-     * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
-     * and in these situations using Kafka is the only way to go.
-     */
-    public static final Field DATABASE_HISTORY = Field.create("database.history")
-            .withDisplayName("Database history class")
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+            .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
-                    + "The configuration properties for the history are prefixed with the '"
-                    + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaDatabaseHistory.class.getName());
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the TopicNamingStrategy class that should be used to determine the topic name " +
+                    "for data change, schema change, transaction, heartbeat event etc.")
+            .withDefault(DefaultTopicNamingStrategy.class.getName());
 
     public static final Field INCLUDE_SQL_QUERY = Field.create("include.query")
             .withDisplayName("Include original SQL query with in change events")
@@ -757,7 +746,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether the connector should include the original SQL query that generated the change event. "
                     + "Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from snapshot. "
-                    + "WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. "
+                    + "WARNING: Enabling this option may expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. "
                     + "For this reason the default value is 'false'.")
             .withDefault(false);
 
@@ -874,7 +863,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    RelationalDatabaseConnectorConfig.SERVER_NAME,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
@@ -882,7 +870,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_NAME,
                     ON_CONNECT_STATEMENTS,
                     SERVER_ID,
                     SERVER_ID_OFFSET,
@@ -951,14 +938,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Duration connectionTimeout;
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
-    private final Predicate<String> ddlFilter;
     private final boolean readOnlyConnection;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
                 MySqlConnector.class,
                 config,
-                config.getString(SERVER_NAME),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
                 DEFAULT_SNAPSHOT_FETCH_SIZE,
@@ -984,10 +969,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
-
-        // Set up the DDL filter
-        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
-        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
     }
 
     public boolean useCursorFetch() {
@@ -1170,10 +1151,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static boolean isNotBuiltInTable(TableId id) {
         return !isBuiltInDatabase(id.catalog());
-    }
-
-    public Predicate<String> getDdlFilter() {
-        return ddlFilter;
     }
 
     public boolean isReadOnlyConnection() {

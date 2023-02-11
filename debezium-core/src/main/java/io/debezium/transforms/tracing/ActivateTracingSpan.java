@@ -39,9 +39,9 @@ import io.opentracing.util.GlobalTracer;
  * The application then needs to export its tracing active span context into a database field.
  * The SMT looks for a predefined field name in the {@code after} block
  * and when found it extracts the parent span from it.
- * 
+ *
  * @see {@link EventDispatcher} for example of such implementation
- * 
+ *
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
@@ -180,11 +180,12 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         final Span txLogSpan = txLogSpanBuilder.start();
         debeziumSpanBuilder.asChildOf(txLogSpan);
         final Span debeziumSpan = debeziumSpanBuilder.start();
-        try (final Scope debeziumScope = tracer.scopeManager().activate(debeziumSpan)) {
+        try (Scope debeziumScope = tracer.scopeManager().activate(debeziumSpan)) {
             Tags.COMPONENT.set(txLogSpan, TRACING_COMPONENT);
             Tags.COMPONENT.set(debeziumSpan, TRACING_COMPONENT);
-            if (eventTimestamp != null) {
-                txLogSpan.finish(eventTimestamp * 1_000);
+
+            if (processingTimestamp != null) {
+                txLogSpan.finish(processingTimestamp * 1_000);
             }
             else {
                 txLogSpan.finish();

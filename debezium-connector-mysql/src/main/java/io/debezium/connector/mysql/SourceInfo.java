@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -321,10 +320,5 @@ public final class SourceInfo extends BaseSourceInfo {
             return databaseName;
         }
         return tableId.catalog();
-    }
-
-    @Deprecated
-    public boolean isLastSnapshot() {
-        return snapshot() == SnapshotRecord.LAST;
     }
 }

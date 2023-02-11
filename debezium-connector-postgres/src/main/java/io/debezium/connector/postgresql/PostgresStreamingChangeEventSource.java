@@ -132,8 +132,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
+                final Operation lastProcessedMessageType = offsetContext.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn);
+                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn, lastProcessedMessageType);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -233,7 +234,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                             taskContext.getSlotXmin(connection),
-                            null);
+                            null,
+                            message.getOperation());
                     if (message.getOperation() == Operation.BEGIN) {
                         dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
                     }
@@ -245,7 +247,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 else if (message.getOperation() == Operation.MESSAGE) {
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                            taskContext.getSlotXmin(connection));
+                            taskContext.getSlotXmin(connection),
+                            message.getOperation());
 
                     // non-transactional message that will not be followed by a COMMIT message
                     if (message.isLastEventForLsn()) {
@@ -270,7 +273,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                             taskContext.getSlotXmin(connection),
-                            tableId);
+                            tableId,
+                            message.getOperation());
 
                     boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
                             partition,
@@ -395,13 +399,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void commitOffset(Map<String, ?> offset) {
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
             final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
             final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
+            LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
             if (replicationStream != null && lsn != null) {
                 if (!lsnFlushingAllowed) {
                     LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
@@ -449,7 +454,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @FunctionalInterface
-    public static interface PgConnectionSupplier {
+    public interface PgConnectionSupplier {
         BaseConnection get() throws SQLException;
     }
 }

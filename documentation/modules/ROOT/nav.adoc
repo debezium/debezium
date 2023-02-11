@@ -18,11 +18,13 @@
 ** xref:connectors/db2.adoc[Db2]
 ** xref:connectors/cassandra.adoc[Cassandra]
 ** xref:connectors/vitess.adoc[Vitess]
+** xref:connectors/spanner.adoc[Spanner]
 * Transformations
 ** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]
 ** xref:transformations/event-flattening.adoc[New Record State Extraction]
 ** xref:transformations/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
+** xref:transformations/event-changes.adoc[Event Changes]
 ** xref:transformations/outbox-event-router.adoc[Outbox Event Router]
 ** xref:transformations/mongodb-outbox-event-router.adoc[MongoDB Outbox Event Router]
 ** xref:transformations/filtering.adoc[Message Filtering]

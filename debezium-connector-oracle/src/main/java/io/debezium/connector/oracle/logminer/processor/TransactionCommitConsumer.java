@@ -71,6 +71,7 @@ import oracle.sql.RAW;
 public class TransactionCommitConsumer implements AutoCloseable, BlockingConsumer<LogMinerEvent> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCommitConsumer.class);
+    private static final String NULL_COLUMN = "__debezium_null";
 
     private final Handler<LogMinerEvent> delegate;
     private final OracleConnectorConfig connectorConfig;
@@ -166,6 +167,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         if (EventType.LOB_WRITE != event.getEventType()) {
             LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentLobColumnName);
             LOGGER.trace("All LOB manipulation events apart from LOB_WRITE are currently ignored; ignoring {} {}.", event.getEventType(), event);
+            discardCurrentMergeState();
             return;
         }
 
@@ -274,10 +276,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
                 throw new DebeziumException("Field values corrupt for " + event.getEventType() + " " + event);
             }
             Object value = values[position];
-            if (value == null) {
-                throw new DebeziumException("Could not find column " + columnName + " in event");
-            }
-            idParts.add(value.toString());
+            idParts.add(value == null ? NULL_COLUMN : value.toString());
         }
         return String.join("|", idParts);
     }
@@ -288,6 +287,16 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private Object[] oldValues(DmlEvent event) {
         return event.getDmlEntry().getOldValues();
+    }
+
+    private void discardCurrentMergeState() {
+        final RowState state = rows.get(currentLobRowId);
+        if (state != null) {
+            LOGGER.trace("Discarding merge state for row id {}", currentLobRowId);
+            rows.remove(currentLobRowId);
+            currentLobRowId = null;
+            currentLobColumnName = null;
+        }
     }
 
     static class LobFragment {

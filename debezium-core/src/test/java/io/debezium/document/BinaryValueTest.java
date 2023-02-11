@@ -5,7 +5,7 @@
  */
 package io.debezium.document;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.Set;

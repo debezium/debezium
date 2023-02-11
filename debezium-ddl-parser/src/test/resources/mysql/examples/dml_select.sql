@@ -10,6 +10,8 @@ select 'afdf' "erwhg" "ads" 'dgs' "rter" as tstDiffQuoteConcat;
 select 'some string' COLLATE latin1_danish_ci as tstCollate;
 select _latin1'some string' COLLATE latin1_danish_ci as tstCollate;
 select '\'' as c1, '\"' as c2, '\b' as c3, '\n' as c4, '\r' as c5, '\t' as c6, '\Z' as c7, '\\' as c8, '\%' as c9, '\_' as c10;
+select * from t1 for update skip locked;
+select * from t1 lock in share mode nowait;
 #end
 #begin
 -- -- -- String literal spec symbols
@@ -172,7 +174,20 @@ SELECT SCHEMA();
 -- Non Aggregate Functions
 SELECT pk, LEAD(pk) OVER (ORDER BY pk) AS l;
 SELECT COALESCE(LAG(last_eq.end_variation) OVER (PARTITION BY eq.account_id, eq.execution_name_id, eq.currency ORDER BY eq.start_date), 0) AS start_variation FROM t1;
+
+#begin
 -- Window Functions
+SELECT
+  year, country, product, profit,
+  SUM(profit) OVER() AS total_profit,
+  SUM(profit) OVER(PARTITION BY country) AS country_profit
+FROM sales
+  ORDER BY country, year, product, profit;
+SELECT
+  year, country, product, profit,
+  ROW_NUMBER() OVER(PARTITION BY country) AS row_num1,
+  ROW_NUMBER() OVER(PARTITION BY country ORDER BY year, product) AS row_num2
+FROM sales;
 SELECT
     e.id,
     SUM(e.bin_volume) AS bin_volume,
@@ -195,6 +210,7 @@ SELECT
 FROM table2
     WINDOW w AS (PARTITION BY id, bin_volume ORDER BY id ROWS UNBOUNDED PRECEDING),
            w2 AS (PARTITION BY id, bin_volume ORDER BY id DESC ROWS 10 PRECEDING);
+#end
 
 #begin
 -- https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
@@ -211,3 +227,32 @@ FROM
     ORDER BY amount DESC LIMIT 1)
   AS max_sale;
 #end
+
+#begin
+-- From MariaDB 10.1.2, pre-query variables are supported
+-- src: https://mariadb.com/kb/en/set-statement/
+SET STATEMENT some_statement=60 FOR SELECT a FROM some_table;
+#end
+
+-- Index hints: https://dev.mysql.com/doc/refman/8.0/en/index-hints.html
+SELECT * FROM table1 USE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
+SELECT * FROM table1 FORCE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
+SELECT * FROM t1 USE INDEX (PRIMARY) ORDER BY a;
+SELECT * FROM t1 FORCE INDEX (PRIMARY) ORDER BY a;
+
+-- JSON_TABLE
+-- https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
+SELECT *
+    FROM
+        JSON_TABLE (
+           '[{"a":"3"},{"a":2},{"b":1},{"a":0},{"a":[1,2]}]',
+           "$[*]"
+         COLUMNS (
+           rowid FOR ORDINALITY,
+           ac VARCHAR(100) PATH "$.a" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR,
+           aj JSON PATH "$.a" DEFAULT '{"x": 333}' ON EMPTY,
+           bx INT EXISTS PATH "$.b",
+           NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$')
+         )
+        ) AS tt;
+

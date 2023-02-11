@@ -22,9 +22,15 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
      * Marker value indicating an unchanged TOAST column value.
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_TEXT_ARRAY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_INT_ARRAY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
+
+    private Object unchangedToastValue;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
         super(columnName, type, typeWithModifiers, optional);
+        setUnchangedToastValue(typeWithModifiers);
     }
 
     @Override
@@ -34,6 +40,31 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
 
     @Override
     public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-        return UNCHANGED_TOAST_VALUE;
+        return unchangedToastValue;
+    }
+
+    private void setUnchangedToastValue(String typeWithModifiers) {
+        switch (typeWithModifiers) {
+            case "text[]":
+            case "_text":
+            case "character varying[]":
+            case "_varchar":
+            case "json[]":
+            case "_json":
+            case "jsonb[]":
+            case "_jsonb":
+                unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
+                break;
+            case "integer[]":
+            case "_int4":
+                unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
+                break;
+            case "bigint[]":
+            case "_int8":
+                unchangedToastValue = UNCHANGED_BIGINT_ARRAY_TOAST_VALUE;
+                break;
+            default:
+                unchangedToastValue = UNCHANGED_TOAST_VALUE;
+        }
     }
 }

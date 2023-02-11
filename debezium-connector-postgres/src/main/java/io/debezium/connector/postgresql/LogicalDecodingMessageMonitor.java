@@ -12,7 +12,6 @@ import java.util.Base64;
 import java.util.Base64.Encoder;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -22,8 +21,8 @@ import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.HexConverter;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The class receives {@link LogicalDecodingMessage} events and delivers the event to the dedicated topic.
@@ -50,6 +49,7 @@ public class LogicalDecodingMessageMonitor {
     private final String topicName;
     private final BinaryHandlingMode binaryMode;
     private final Encoder base64Encoder;
+    private final Encoder base64UrlSafeEncoder;
 
     /**
      * The key schema; a struct like this:
@@ -65,34 +65,22 @@ public class LogicalDecodingMessageMonitor {
     private final Schema valueSchema;
 
     public LogicalDecodingMessageMonitor(PostgresConnectorConfig connectorConfig, BlockingConsumer<SourceRecord> sender) {
-        this.schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        this.schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         this.sender = sender;
         this.topicName = connectorConfig.getLogicalName() + LOGICAL_DECODING_MESSAGE_TOPIC_SUFFIX;
         this.binaryMode = connectorConfig.binaryHandlingMode();
         this.base64Encoder = Base64.getEncoder();
+        this.base64UrlSafeEncoder = Base64.getUrlEncoder();
 
-        this.keySchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageKey"))
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
+        this.keySchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorKeySchema(schemaNameAdjuster);
 
         // pg_logical_emit_message accepts null for prefix and content, but these
         // messages are not received actually via logical decoding still marking these
         // schemas as optional, just in case we will receive null values for either
         // field at some point
-        this.blockSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.Message"))
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY, binaryMode.getSchema().optional().build())
-                .build();
+        this.blockSchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorBlockSchema(schemaNameAdjuster, binaryMode);
 
-        this.valueSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.postgresql.MessageValue"))
-                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
-                .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(Envelope.FieldName.SOURCE, connectorConfig.getSourceInfoStructMaker().schema())
-                .field(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, blockSchema)
-                .build();
+        this.valueSchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorValueSchema(schemaNameAdjuster, connectorConfig, binaryMode);
     }
 
     public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,
@@ -123,6 +111,8 @@ public class LogicalDecodingMessageMonitor {
         switch (binaryMode) {
             case BASE64:
                 return new String(base64Encoder.encode(content), StandardCharsets.UTF_8);
+            case BASE64_URL_SAFE:
+                return new String(base64UrlSafeEncoder.encode(content), StandardCharsets.UTF_8);
             case HEX:
                 return HexConverter.convertToHexString(content);
             case BYTES:

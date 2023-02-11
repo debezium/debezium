@@ -94,11 +94,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> ctx)
             throws Exception {
-        return jdbcConnection.readTableNames(
-                ctx.catalogName,
-                null,
-                null,
-                new String[]{ "TABLE", "PARTITIONED TABLE" });
+        return jdbcConnection.getAllTableIds(ctx.catalogName);
     }
 
     @Override
@@ -149,7 +145,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         LOGGER.info("Read xlogStart at '{}' from transaction '{}'", xlogStart, txId);
 
         // use the old xmin, as we don't want to update it if in xmin recovery
-        offset.updateWalPosition(xlogStart, offset.lastCompletelyProcessedLsn(), clock.currentTime(), txId, offset.xmin(), null);
+        offset.updateWalPosition(xlogStart, offset.lastCompletelyProcessedLsn(), clock.currentTime(), txId, offset.xmin(), null, null);
     }
 
     protected void updateOffsetForPreSnapshotCatchUpStreaming(PostgresOffsetContext offset) throws SQLException {
@@ -212,8 +208,13 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void complete(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+    protected void completed(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
         snapshotter.snapshotCompleted();
+    }
+
+    @Override
+    protected void aborted(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+        snapshotter.snapshotAborted();
     }
 
     /**
@@ -240,7 +241,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
      */
     private static class PostgresSnapshotContext extends RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> {
 
-        public PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
+        PostgresSnapshotContext(PostgresPartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
     }

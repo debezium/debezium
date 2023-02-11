@@ -19,7 +19,6 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
 
 import kafka.admin.RackAwareMode;
-import kafka.log.UnifiedLog;
 import kafka.server.KafkaConfig;
 import kafka.zk.AdminZkClient;
 import scala.collection.JavaConverters;
@@ -238,7 +237,8 @@ public class KafkaServer {
                 if (deleteLogs) {
                     // as of 0.10.1.1 if logs are not deleted explicitly, there are open File Handles left on .timeindex files
                     // at least on Windows courtesy of the TimeIndex.scala class
-                    JavaConverters.asJavaIterableConverter(server.logManager().allLogs()).asJava().forEach(UnifiedLog::delete);
+                    // NOTE: specifically do not use method reference to ensure compatibility between Kafka 3.0.x and 3.1+
+                    JavaConverters.asJavaIterableConverter(server.logManager().allLogs()).asJava().forEach(l -> l.delete());
                 }
                 LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
             }

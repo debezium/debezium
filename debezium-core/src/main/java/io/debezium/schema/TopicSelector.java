@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 
@@ -21,7 +22,9 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
  *
  * @param <I>
  *            The type of {@link DataCollectionId} used by a given implementation
+ * @deprecated Use {@link io.debezium.spi.topic.TopicNamingStrategy} instead.
  */
+@Deprecated
 public class TopicSelector<I extends DataCollectionId> {
 
     private final String prefix;
@@ -103,7 +106,7 @@ public class TopicSelector<I extends DataCollectionId> {
 
         private final DataCollectionTopicNamer<I> delegate;
 
-        public TopicNameSanitizer(DataCollectionTopicNamer<I> delegate) {
+        TopicNameSanitizer(DataCollectionTopicNamer<I> delegate) {
             this.delegate = delegate;
         }
 
@@ -156,7 +159,7 @@ public class TopicSelector<I extends DataCollectionId> {
         private final BoundedConcurrentHashMap<I, String> topicNames;
         private final DataCollectionTopicNamer<I> delegate;
 
-        public TopicNameCache(DataCollectionTopicNamer<I> delegate) {
+        TopicNameCache(DataCollectionTopicNamer<I> delegate) {
             this.topicNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LRU);
             this.delegate = delegate;
         }

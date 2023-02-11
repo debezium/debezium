@@ -240,6 +240,47 @@ public interface TableEditor {
     boolean hasUniqueValues();
 
     /**
+     * Get the definitions for the attributes in this table. The resulting list should not be modified directly;
+     * instead, the attributes definitions should be defined with {@link #addAttribute(Attribute)} or
+     * {@link #removeAttribute(String)}.
+     *
+     * @return the list of attribute definitions; never null
+     */
+    List<Attribute> attributes();
+
+    /**
+     * Get the definition for the attribute in this table with the supplied name. The case of the supplied name does not matter.
+     *
+     * @param attributeName the attribute name
+     * @return the attribute definition; or null if no attribute exists with the given name
+     */
+    Attribute attributeWithName(String attributeName);
+
+    /**
+     * Add a new attribute to this table.
+     *
+     * @param attribute the definition for the attribute to be added
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor addAttribute(Attribute attribute);
+
+    /**
+     * Add attributes to this table.
+     *
+     * @param attributes the list of attribute definitions to be added
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor addAttributes(List<Attribute> attributes);
+
+    /**
+     * Remove an attribute from this table.
+     *
+     * @param attributeName the name of the attribute to be removed
+     * @return this editor so callers can chain methods togethe
+     */
+    TableEditor removeAttribute(String attributeName);
+
+    /**
      * Obtain an immutable table definition representing the current state of this editor. This editor can be reused
      * after this method, since the resulting table definition no longer refers to any of the data used in this editor.
      *

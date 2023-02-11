@@ -74,6 +74,8 @@ public class SelectLobParser {
                                 }
                             }
                         }
+
+                        ParserUtils.setColumnUnavailableValues(columnValues, table);
                     }
                 }
             }

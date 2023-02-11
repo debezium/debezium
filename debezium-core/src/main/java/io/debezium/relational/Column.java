@@ -27,7 +27,7 @@ public interface Column extends Comparable<Column> {
      *
      * @return the editor; never null
      */
-    public static ColumnEditor editor() {
+    static ColumnEditor editor() {
         return new ColumnEditorImpl();
     }
 

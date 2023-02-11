@@ -7,6 +7,8 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -20,20 +22,18 @@ import io.debezium.util.Clock;
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object> {
 
     private final Operation operation;
-    private final Object[] oldValues;
-    private final Object[] newValues;
 
-    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, Operation operation, Object[] oldValues,
-                                       Object[] newValues, Table table, Clock clock) {
-        super(partition, offset, table, clock);
-        this.oldValues = oldValues;
-        this.newValues = newValues;
+    public LogMinerChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset,
+                                       Operation operation, Object[] oldValues, Object[] newValues, Table table,
+                                       OracleDatabaseSchema schema, Clock clock) {
+        super(connectorConfig, partition, offset, schema, table, clock, oldValues, newValues);
         this.operation = operation;
     }
 
-    public LogMinerChangeRecordEmitter(Partition partition, OffsetContext offset, EventType eventType, Object[] oldValues,
-                                       Object[] newValues, Table table, Clock clock) {
-        this(partition, offset, getOperation(eventType), oldValues, newValues, table, clock);
+    public LogMinerChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset,
+                                       EventType eventType, Object[] oldValues, Object[] newValues, Table table,
+                                       OracleDatabaseSchema schema, Clock clock) {
+        this(connectorConfig, partition, offset, getOperation(eventType), oldValues, newValues, table, schema, clock);
     }
 
     private static Operation getOperation(EventType eventType) {
@@ -53,15 +53,5 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
     @Override
     public Operation getOperation() {
         return operation;
-    }
-
-    @Override
-    protected Object[] getOldColumnValues() {
-        return oldValues;
-    }
-
-    @Override
-    protected Object[] getNewColumnValues() {
-        return newValues;
     }
 }

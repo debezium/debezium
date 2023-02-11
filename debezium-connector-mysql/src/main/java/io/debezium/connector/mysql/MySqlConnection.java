@@ -6,6 +6,9 @@
 
 package io.debezium.connector.mysql;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -33,8 +36,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 
 /**
@@ -219,7 +220,7 @@ public class MySqlConnection extends JdbcConnection {
         try {
             return queryAndMap("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
                 if (rs.next()) {
-                    return !"OFF".equalsIgnoreCase(rs.getString(2));
+                    return "ON".equalsIgnoreCase(rs.getString(2));
                 }
                 return false;
             });
@@ -495,11 +496,11 @@ public class MySqlConnection extends JdbcConnection {
             this.config = config;
             final boolean useSSL = sslModeEnabled();
             final Configuration dbConfig = config
-                    .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
                     .edit()
                     .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
                     .build()
-                    .subset("database.", true);
+                    .subset(DATABASE_CONFIG_PREFIX, true)
+                    .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
 
             final Builder jdbcConfigBuilder = dbConfig
                     .edit()
@@ -613,9 +614,7 @@ public class MySqlConnection extends JdbcConnection {
     }
 
     @Override
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return mysqlFieldReader.readField(rs, columnIndex, column, table);
     }
 

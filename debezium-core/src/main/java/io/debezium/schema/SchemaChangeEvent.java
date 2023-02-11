@@ -133,14 +133,15 @@ public class SchemaChangeEvent {
 
     /**
      * Type describing the content of the event.
-     * CREATE, ALTER, DROP - corresponds to table operations
+     * CREATE, ALTER, DROP, TRUNCATE - corresponds to table operations
      * DATABASE - an event common to the database, like CREATE/DROP DATABASE or SET...
      */
-    public static enum SchemaChangeEventType {
+    public enum SchemaChangeEventType {
         CREATE,
         ALTER,
         DROP,
-        DATABASE;
+        TRUNCATE,
+        DATABASE
     }
 
     /**

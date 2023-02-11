@@ -5,12 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -21,20 +18,20 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.util.Testing;
 
-public abstract class AbstractMongoIT implements Testing {
+public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
 
     protected final static Logger logger = LoggerFactory.getLogger(AbstractMongoIT.class);
 
     protected Configuration config;
     protected MongoDbTaskContext context;
-    protected ReplicaSet replicaSet;
     protected MongoPrimary primary;
+    protected ReplicaSet replicaSet;
 
     @Before
     public void beforeEach() {
         Testing.Print.disable();
         Testing.Debug.disable();
-        useConfiguration(TestHelper.getConfiguration());
+        useConfiguration(TestHelper.getConfiguration(mongo));
     }
 
     /**
@@ -85,7 +82,7 @@ public abstract class AbstractMongoIT implements Testing {
         }
 
         // Get a connection to the primary ...
-        primary = context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
+        primary = context.getConnectionContext().primaryFor(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 
     @After
@@ -95,15 +92,4 @@ public abstract class AbstractMongoIT implements Testing {
             context.getConnectionContext().shutdown();
         }
     }
-
-    protected BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
-    }
-
 }

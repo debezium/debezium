@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -385,7 +385,7 @@ public class ReadBinLogIT implements Testing {
 
     }
 
-    public static interface UpdateBuilder {
+    public interface UpdateBuilder {
         RowBuilder to(Serializable... values);
     }
 

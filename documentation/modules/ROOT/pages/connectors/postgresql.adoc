@@ -106,7 +106,6 @@ Details are in the following topics:
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
-* xref:metadata-in-debezium-postgresql-change-event-records[]
 * xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
@@ -185,6 +184,18 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 The {prodname} connector for PostgreSQL does not support schema changes while an incremental snapshot is running.
 If a schema change is performed _before_ the incremental snapshot start but _after_ sending the signal then passthrough config option `database.autosave` is set to `conservative` to correctly process the schema change.
 ====
+
+// Type: procedure
+[id="postgresql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="postgresql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
 
 ifdef::community[]
 [[postgresql-custom-snapshot]]
@@ -333,11 +344,11 @@ See xref:{link-postgresql-connector}#setting-up-postgresql[Setting up PostgreSQL
 By default, the PostgreSQL connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
 The connector uses the following convention to name change event topics:
 
-_serverName.schemaName.tableName_
+_topicPrefix.schemaName.tableName_
 
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the connector, as specified by the xref:postgresql-property-database-server-name[`database.server.name`] configuration property.
+_topicPrefix_:: The topic prefix as specified by the xref:postgresql-property-topic-prefix[`topic.prefix`] configuration property.
 _schemaName_:: The name of the database schema in which the change event occurred.
 _tableName_:: The name of the database table in which the change event occurred.
 
@@ -362,36 +373,6 @@ To configure custom topic names, you specify regular expressions in the logical 
 For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
-// ModuleID: metadata-in-debezium-postgresql-change-event-records
-// Title: Metadata in {prodname} PostgreSQL change event records
-[[postgresql-meta-information]]
-=== Meta information
-
-In addition to a xref:{link-postgresql-connector}#postgresql-events[_database change event_], each record produced by a PostgreSQL connector contains some metadata. Metadata includes where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should go, for example:
-
-[source,json,indent=0]
-----
-   "sourcePartition": {
-        "server": "fulfillment"
-    },
-    "sourceOffset": {
-        "lsn": "24023128",
-        "txId": "555",
-        "ts_ms": "1482918357011"
-    },
-    "kafkaPartition": null
-----
-
-* `sourcePartition` always defaults to the setting of the `database.server.name` connector configuration property.
-
-* `sourceOffset` contains information about the location of the server where the event occurred:
-
-** `lsn` represents the PostgreSQL https://www.postgresql.org/docs/current/static/datatype-pg-lsn.html[Log Sequence Number] or `offset` in the transaction log.
-** `txId` represents the identifier of the server transaction that caused the event.
-** `ts_ms` represents the server time at which the transaction was committed in the form of the number of milliseconds since the epoch.
-* `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition.
-
-// Type: concept
 // ModuleID: debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries
 // Title: {prodname} PostgreSQL connector-generated events that represent transaction boundaries
 [[postgresql-transaction-metadata]]
@@ -408,11 +389,12 @@ Metadata for transactions that occur before you deploy the connector is not avai
 
 For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `ts_ms` - The time of `BEGIN` or `END` transaction.
-* `event_count` (for `END` events) - total number of events emitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier composed of Postgres transaction ID itself and LSN of given operation separated by colon, i.e. the format is `txID:LSN`.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
+`event_count` (for `END` events):: Total number of events emmitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 .Example
 
@@ -420,14 +402,16 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 ----
 {
   "status": "BEGIN",
-  "id": "571",
+  "id": "571:53195829",
+  "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
 }
 
 {
   "status": "END",
-  "id": "571",
+  "id": "571:53195832",
+  "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
     {
@@ -442,17 +426,17 @@ For every transaction `BEGIN` and `END`, {prodname} generates an event that cont
 }
 ----
 
-Unless overridden via the xref:{link-postgresql-connector}#postgresql-property-transaction-topic[`transaction.topic`] option,
-transaction events are written to the topic named `_database.server.name_.transaction`.
+Unless overridden via the xref:postgresql-property-topic-transaction[`topic.transaction`] option,
+transaction events are written to the topic named xref:postgresql-property-topic-prefix[`_<topic.prefix>_`]`.transaction`.
 
 .Change data event enrichment
 
 When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-* `id` - string representation of unique transaction identifier
-* `total_order` - absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
 
 Following is an example of a message:
 
@@ -470,7 +454,7 @@ Following is an example of a message:
   "op": "c",
   "ts_ms": "1580390884335",
   "transaction": {
-    "id": "571",
+    "id": "571:53195832",
     "total_order": "1",
     "data_collection_order": "1"
   }
@@ -578,7 +562,7 @@ CREATE TABLE customers (
 ----
 
 .Example change event key
-If the `database.server.name` connector configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
+If the `topic.prefix` connector configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
 
 [source,json,indent=0]
 ----
@@ -1283,7 +1267,7 @@ a|Mandatory field that describes the source metadata for the event. In a _messag
 * {prodname} version
 * Connector type and name
 * Database name
-* Schema name (always `""` for _mesage_ events)
+* Schema name (always `""` for _message_ events)
 * Table name (always `""` for _message_ events)
 * If the event was part of a snapshot (always `false` for _message_ events)
 * ID of the transaction in which the operation was performed (`null` for non-transactional _message_ events)
@@ -1439,7 +1423,7 @@ The string representation of the interval value that follows the pattern `P<year
 |`BYTES` or `STRING`
 |n/a +
  +
-Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
+Either the raw bytes (the default), a base64-encoded string, or a base64-url-safe-encoded String, or a hex-encoded string, based on the connector's xref:postgresql-property-binary-handling-mode[binary handling mode] setting. +
  +
 Debezium only supports Postgres `bytea_output` configuration of value `hex`. See this link:https://www.postgresql.org/docs/current/datatype-binary.html[documentation on Postgres binary data types].
 
@@ -2051,7 +2035,7 @@ The PostgreSQL connector works with one of {prodname}'s supported logical decodi
 The `pgoutput` plugin comes out-of-the-box with the PostgreSQL database.
 For more details on using Protobuf via the `decoderbufs` plug-in, see the plug-in link:https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[`documentation`] which discusses its requirements, limitations, and how to compile it.
 
-For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/docker-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
+For simplicity, {prodname} also provides a container image based on the upstream PostgreSQL server image, on top of which it compiles and installs the plug-ins. You can link:https://github.com/debezium/container-images/tree/main/postgres/13[use this image] as an example of the detailed steps required for the installation.
 
 [WARNING]
 ====
@@ -2119,7 +2103,7 @@ Setting up a PostgreSQL server to run a {prodname} connector requires a database
 Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
 Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:{link-postgresql-connector}#postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
-Instead, create a {prodname} user that has the the minimum required privileges.
+Instead, create a {prodname} user that has the minimum required privileges.
 
 .Prerequisites
 
@@ -2164,7 +2148,7 @@ For {prodname} to create a PostgreSQL publication, it must run as a user that ha
 * `CREATE` privileges on the database to add publications.
 * `SELECT` privileges on the tables to copy the initial table data. Table owners automatically have `SELECT` permission for the table.
 
-To add tables to a publication, the user be an owner of the table.
+To add tables to a publication, the user must be an owner of the table.
 But because the source table already exists, you need a mechanism to share ownership with the original owner.
 To enable shared ownership, you create a PostgreSQL replication group, and then add the existing table owner and the replication user to the group.
 
@@ -2291,7 +2275,7 @@ To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreS
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
@@ -2351,17 +2335,35 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
 +
+=====================================================================
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-postgresql.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zipUSER 1001
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/
+USER 1001
 EOF
 ----
-<1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-postgresql.yaml` in the current directory.
 
@@ -2397,18 +2399,32 @@ docker push _<myregistry.io>_/debezium-container-for-postgresql:latest
 .. Create a new {prodname} PostgreSQL `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnect
 metadata:
   name: my-connect-cluster
-  annotations: strimzi.io/use-connector-resources: "true" // <1>
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
 spec:
   image: debezium-container-for-postgresql // <2>
 ----
-<1> `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-<2> `spec.image` specifies the name of the image that you created to run your {prodname} connector. This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply your `KafkaConnect` CR to the OpenShift Kafka instance by running the following command:
 +
@@ -2445,7 +2461,7 @@ apiVersion: {KafkaConnectorApiVersion}
       database.user: debezium
       database.password: dbz
       database.dbname: sampledb
-      database.server.name: fulfillment   // <5>
+      topic.prefix: fulfillment   // <5>
       schema.include.list: public   // <6>
       plugin.name: pgoutput    // <7>
 ----
@@ -2459,7 +2475,7 @@ If any of the services stop or crash,
 those tasks will be redistributed to running services.
 <3> The connector’s configuration.
 <4> The name of the database host that is running the PostgreSQL server. In this example, the database host name is `192.168.99.100`.
-<5> A unique server name.
+<5> A unique topic prefix.
 The server name is the logical identifier for the PostgreSQL server or cluster of servers.
 This name is used as the prefix for all Kafka topics that receive change event records.
 <6> The connector captures changes in only the `public` schema. It is possible to configure the connector to capture changes in only the tables that you choose. See xref:{link-postgresql-connector}#postgresql-property-table-include-list[`table.include.list` connector configuration property].
@@ -2501,7 +2517,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
     "database.user": "postgres", // <5>
     "database.password": "postgres", // <6>
     "database.dbname" : "postgres", // <7>
-    "database.server.name": "fulfillment", // <8>
+    "topic.prefix": "fulfillment", // <8>
     "table.include.list": "public.inventory" // <9>
 
   }
@@ -2514,7 +2530,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the PostgreSQL user that has the xref:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <6> The password for the PostgreSQL user that has the xref:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <7> The name of the PostgreSQL database to connect to
-<8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+<8> The topic prefix for the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
 See the xref:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
@@ -2560,10 +2576,10 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} PostgreSQL connector configuration properties
+// Title: Descriptions of {prodname} PostgreSQL connector configuration properties
 // ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 [[postgresql-connector-properties]]
-=== Connector configuration properties
+=== Connector properties
 
 The {prodname} PostgreSQL connector has many configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows:
 
@@ -2647,12 +2663,12 @@ If the publication already exists, either for all tables or configured with a su
 |No default
 |The name of the PostgreSQL database from which to stream the changes.
 
-|[[postgresql-property-database-server-name]]<<postgresql-property-database-server-name, `+database.server.name+`>>
+|[[postgresql-property-topic-prefix]]<<postgresql-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes.
-The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
-Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name.
-+
+|Topic prefix that provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes.
+The prefix should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
@@ -2661,27 +2677,61 @@ If you change the name value, after a restart, instead of continuing to emit eve
 
 |[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `+schema.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
+Any schema name not included in `schema.include.list` is excluded from having its changes captured.
+By default, all non-system schemas have their changes captured. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not also set the `schema.exclude.list` property.
 
 |[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
+Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not set the `schema.include.list` property.
 
 |[[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `+table.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture.
+When this property is set, the connector captures changes only from the specified tables.
+Each identifier is of the form _schemaName_._tableName_.
+By default, the connector captures changes in every non-system table in each schema whose changes are being captured. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[postgresql-property-table-exclude-list]]<<postgresql-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
+Each identifier is of the form _schemaName_._tableName_.
+When this property is set, the connector captures changes from every table that you do not specify. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire identifier for the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not set the `table.include.list` property.
 
 |[[postgresql-property-column-include-list]]<<postgresql-property-column-include-list, `+column.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not also set the `column.exclude.list` property.
 
 |[[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.include.list` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
@@ -2761,19 +2811,38 @@ If you change the name value, after a restart, instead of continuing to emit eve
  +
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
-|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
+|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `+column.truncate.to.20.chars`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
+Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
 
-|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+The fully-qualified name of a column observes the following format: `_<schemaName>_._<tableName>_._<columnName>_`.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
+Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
+Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
+
+The fully-qualified name of a column observes the following format: _schemaName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
 
 |[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
 [[postgresql-property-column-mask-hash-v2]]<<postgresql-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_.
+Fully-qualified names for columns are of the form _<schemaName>_._<tableName>_._<columnName>_. +
+To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2795,25 +2864,37 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
- +
-For each specified column, the connector adds the column's original type and original length as parameters to the corresponding field schemas in the emitted change records. The following added schema parameters propagate the original type name and also the original length for variable-width types: +
- +
-`pass:[_]pass:[_]debezium.source.column.type` + `pass:[_]pass:[_]debezium.source.column.length` + `pass:[_]pass:[_]debezium.source.column.scale` +
- +
-This property is useful for properly sizing corresponding columns in sink databases.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
+When this property is set, the connector adds the following fields to the schema of event records:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
 |[[postgresql-property-datatype-propagate-source-type]]<<postgresql-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the database-specific data type name for some columns. Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
- +
-For these data types, the connector adds parameters to the corresponding field schemas in emitted change records. The added parameters specify the original type and length of the column: +
- +
-`pass:[_]pass:[_]debezium.source.column.type` + `pass:[_]pass:[_]debezium.source.column.length` + `pass:[_]pass:[_]debezium.source.column.scale` +
- +
-These parameters propagate a column's original type name and length, for variable-width types, respectively. This property is useful for properly sizing corresponding columns in sink databases. +
- +
-See the xref:{link-postgresql-connector}#postgresql-data-types[list of PostgreSQL-specific data type names].
+|An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
+When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
+To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
+
+For the list of PostgreSQL-specific data type names, see the xref:postgresql-data-types[PostgreSQL data type mappings].
 
 |[[postgresql-property-message-key-columns]]<<postgresql-property-message-key-columns, `+message.key.columns+`>>
 |_empty string_
@@ -2825,7 +2906,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names.
 
@@ -2847,13 +2928,24 @@ There is no limit to the number of columns that you use to create custom message
 However, it's best to use the minimum number that are required to specify a unique key.
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `+publication.autocreate.mode+`>>
 |_all_tables_
-|Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are: +
+|Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in].
+The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work.
+Specify one of the following values: +
  +
-`all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user that has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
+`all_tables` - If a publication exists, the connector uses it.
+If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes.
+For the connector to create a publication it must access the database through a database user account that has permission to create publications and perform replications.
+You grant the required permission by using the following SQL command `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
  +
-`disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. +
+`disabled` - The connector does not attempt to create a publication.
+A database administrator or the user configured to perform replications must have created the publication before running the connector.
+If the connector cannot find the publication, the connector throws an exception and stops. +
  +
-`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `schema.include.list`, `schema.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`. If the publication exists, the connector upadates the publication for tables that match the current filter configuration. For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
+`filtered` - If a publication exists, the connector uses it.
+If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `schema.include.list`, `schema.exclude.list`, and `table.include.list`, and `table.exclude.list` connector configuration properties.
+For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
+If the publication exists, the connector updates the publication for tables that match the current filter configuration.
+For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
@@ -2863,14 +2955,27 @@ However, it's best to use the minimum number that are required to specify a uniq
  +
 `base64` represents binary data as base64-encoded strings. +
  +
+`base64-url-safe` represents binary data as base64-url-safe-encoded strings. +
+ +
 `hex` represents binary data as hex-encoded (base16) strings.
 
 |[[postgresql-property-schema-name-adjustment-mode]]<<postgresql-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
-|avro
+|none
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
 
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[postgresql-property-field-name-adjustment-mode]]<<postgresql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[postgresql-property-money-fraction-digits]]<<postgresql-property-money-fraction-digits, `+money.fraction.digits+`>>
 |`2`
@@ -2879,13 +2984,29 @@ Applicable only when xref:postgresql-property-decimal-handling-mode[`decimal.han
 
 |[[postgresql-property-logical-decoding-message-prefix-include-list]]<<postgresql-property-logical-decoding-message-prefix-include-list, `+message.prefix.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *want* to capture. Any logical decoding message with a prefix not included in `message.prefix.include.list` is excluded By default, all logical decoding messages are captured. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
+|An optional, comma-separated list of regular expressions that match the names of the logical decoding message prefixes that you want the connector to capture.
+By default, the connector captures all logical decoding messages.
+When this property is set, the connector captures only logical decoding message with the prefixes specified by the property.
+All other logical decoding messages are excluded.
+
+To match the name of a message prefix, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire message prefix string; the expression does not match substrings that might be present in a prefix.
+
+If you include this property in the configuration, do not also set the xref:postgresql-property-logical-decoding-message-prefix-exclude-list[`message.prefix.exclude.list`] property.
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
 |[[postgresql-property-logical-decoding-message-prefix-exclude-list]]<<postgresql-property-logical-decoding-message-prefix-exclude-list, `+message.prefix.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of logical decoding message prefixes for which you *do not* to capture. Any logical decoding message with a prefix that is not included in `message.prefix.exclude.list` is included. Do not also set the xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property. To exclude all logical decoding messages pass `.*` into this config.
+|An optional, comma-separated list of regular expressions that match the names of the logical decoding message prefixes that you do not want the connector to capture.
+When this property is set, the connector does not capture logical decoding messages that use the specified prefixes.
+All other messages are captured. +
+To exclude all logical decoding messages, set the value of this property to `.*`.
+
+To match the name of a message prefix, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire message prefix string; the expression does not match substrings that might be present in a prefix.
+
+If you include this property in the configuration, do not also set xref:postgresql-property-logical-decoding-message-prefix-include-list[`message.prefix.include.list`] property. +
 
 For information about the structure of _message_ events and about their ordering semantics, see xref:postgresql-message-events[].
 
@@ -2955,9 +3076,11 @@ endif::community[]
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:postgresql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
 
-This property does not affect the behavior of incremental snapshots.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
@@ -3003,11 +3126,11 @@ In the resulting snapshot, the connector includes only the records for which `de
 `skip` skips the problematic event and continues processing.
 
 |[[postgresql-property-max-batch-size]]<<postgresql-property-max-batch-size, `+max.batch.size+`>>
-|`10240`
+|`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
 |[[postgresql-property-max-queue-size]]<<postgresql-property-max-queue-size, `+max.queue.size+`>>
-|`20240`
+|`8192`
 |Positive integer value that specifies the maximum number of records that the blocking queue can hold.
 When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
 The blocking queue can provide backpressure for reading change events from the database
@@ -3024,8 +3147,8 @@ If xref:postgresql-property-max-queue-size[`max.queue.size`] is also set, writin
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[postgresql-property-poll-interval-ms]]<<postgresql-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
+|`500`
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds.
 
 |[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `+include.unknown.datatypes+`>>
 |`false`
@@ -3043,7 +3166,7 @@ The connector may establish JDBC connections at its own discretion. Consequently
  +
 The connector does not execute these statements when it creates a connection for reading the transaction log. +
 
-|[[postgresql-property-status-update-interval-ms]]<<postgresql-property-status-update-interval-ms, `+status.update.interval.ms`>>
+|[[postgresql-property-status-update-interval-ms]]<<postgresql-property-status-update-interval-ms, `+status.update.interval.ms+`>>
 |`10000`
 |Frequency for sending replication connection status updates to the server, given in milliseconds.
  +
@@ -3056,14 +3179,6 @@ The property also controls how frequently the database status is checked to dete
 Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
  +
 Heartbeat messages are needed when there are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that no offset updates are committed to Kafka and the connector does not have an opportunity to send the latest retrieved LSN to the database. The database retains WAL files that contain events that have already been processed by the connector. Sending heartbeat messages enables the connector to send the latest retrieved LSN to the database, which allows the database to reclaim disk space being used by no longer needed WAL files.
-
-|[[postgresql-property-heartbeat-topics-prefix]]<<postgresql-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
- +
-_<heartbeat.topics.prefix>_._<server.name>_ +
- +
-For example, if the database server name is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
@@ -3098,12 +3213,6 @@ become outdated if TOASTable columns are dropped from the table.
 |No default
 |Semicolon separated list of parameters to pass to the configured logical decoding plug-in. For example, `add-tables=public.table,public.table2;include-lsn=true`.
 
-|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
-
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
-
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `+slot.max.retries+`>>
 |`6`
 |If connecting to a replication slot fails, this is the maximum number of consecutive attempts to connect.
@@ -3121,9 +3230,9 @@ If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix 
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
 
-|[[postgresql-property-transaction-topic]]<<postgresql-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
+|[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
+|`true`
+|Determines whether the connector should commit the LSN of the processed records in the source postgres database so that the WAL logs can be deleted. Specify `false` if you don't want the connector to do this. Please note that if set to `false` LSN will not be acknowledged by Debezium and as a result WAL logs will not be cleared which might result in disk space issues. User is expected to handle the acknowledgement of LSN outside Debezium.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
@@ -3153,6 +3262,34 @@ Adjust the chunk size to a value that provides the best performance in your envi
 |How often, in milliseconds, the XMIN will be read from the replication slot.
 The XMIN value provides the lower bounds of where a new replication slot could start from.
 The default value of `0` disables tracking XMIN tracking.
+
+|[[postgresql-property-topic-naming-strategy]]<<postgresql-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[postgresql-property-topic-delimiter]]<<postgresql-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[postgresql-property-topic-cache-size]]<<postgresql-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[postgresql-property-topic-heartbeat-prefix]]<<postgresql-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[postgresql-property-topic-transaction]]<<postgresql-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
 
@@ -3251,6 +3388,11 @@ As of release 12, PostgreSQL allows logical replication slots _only on primary s
 Also, replication slots themselves are not propagated to replicas.
 If the primary server goes down, a new primary must be promoted.
 
+[NOTE]
+====
+Some managed PostgresSQL services (AWS RDS and GCP CloudSQL for example) implement replication to a standby via disk replication. This means that the replication slot does get replicated and will remain available after a failover.
+====
+
 ifdef::community[]
 The new primary must have the xref:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
 endif::community[]
@@ -3271,7 +3413,7 @@ ifdef::community[]
 
 [NOTE]
 ====
-There are discussions in the PostgreSQL community around a feature called `failover slots` that would help mitigate this problem, but as of PostgreSQL 12, they have not been implemented.  However, there is active development for PostgreSQL 13 to support logical decoding on standbys, which is a major requirement to make failover possible. You can find more about this in this link:"https://www.postgresql.org/message-id/CAJ3gD9fE=0w50sRagcs+jrktBXuJAWGZQdSTMa57CCY+Dh-xbg@mail.gmail.com"[community thread].
+There are discussions in the PostgreSQL community around a feature called `failover slots` that would help mitigate this problem, but as of PostgreSQL 12, they have not been implemented.  However, there is active development for PostgreSQL 13 to support logical decoding on standbys, which is a major requirement to make failover possible. You can find more about this in this link:https://www.postgresql.org/message-id/CAJ3gD9fE%3D0w50sRagcs%2BjrktBXuJAWGZQdSTMa57CCY%2BDh-xbg%40mail.gmail.com[community thread].
 
 More about the concept of failover slots is in link:http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post].
 ====

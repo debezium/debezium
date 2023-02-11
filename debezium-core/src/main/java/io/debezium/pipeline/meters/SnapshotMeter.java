@@ -15,10 +15,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.pipeline.metrics.traits.SnapshotMetricsMXBean;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**
@@ -26,12 +29,17 @@ import io.debezium.util.Clock;
  */
 @ThreadSafe
 public class SnapshotMeter implements SnapshotMetricsMXBean {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotMeter.class);
 
     private final AtomicBoolean snapshotRunning = new AtomicBoolean();
+    private final AtomicBoolean snapshotPaused = new AtomicBoolean();
     private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
     private final AtomicBoolean snapshotAborted = new AtomicBoolean();
     private final AtomicLong startTime = new AtomicLong();
     private final AtomicLong stopTime = new AtomicLong();
+    private final AtomicLong startPauseTime = new AtomicLong();
+    private final AtomicLong stopPauseTime = new AtomicLong();
+    private final AtomicLong pauseDuration = new AtomicLong();
     private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<>();
 
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
@@ -66,6 +74,11 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
     }
 
     @Override
+    public boolean getSnapshotPaused() {
+        return this.snapshotPaused.get();
+    }
+
+    @Override
     public boolean getSnapshotCompleted() {
         return this.snapshotCompleted.get();
     }
@@ -89,6 +102,12 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
     }
 
     @Override
+    public long getSnapshotPausedDurationInSeconds() {
+        final long pausedMillis = pauseDuration.get();
+        return pausedMillis < 0 ? 0 : pausedMillis / 1000L;
+    }
+
+    @Override
     public String[] getCapturedTables() {
         return capturedTables.toArray(new String[0]);
     }
@@ -107,16 +126,50 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
 
     public void snapshotStarted() {
         this.snapshotRunning.set(true);
+        this.snapshotPaused.set(false);
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(false);
         this.startTime.set(clock.currentTimeInMillis());
         this.stopTime.set(0L);
+        this.startPauseTime.set(0);
+        this.stopPauseTime.set(0);
+        this.pauseDuration.set(0);
+    }
+
+    public void snapshotPaused() {
+        this.snapshotRunning.set(false);
+        this.snapshotPaused.set(true);
+        this.snapshotCompleted.set(false);
+        this.snapshotAborted.set(false);
+        this.startPauseTime.set(clock.currentTimeInMillis());
+        this.stopPauseTime.set(0L);
+    }
+
+    public void snapshotResumed() {
+        this.snapshotRunning.set(true);
+        this.snapshotPaused.set(false);
+        this.snapshotCompleted.set(false);
+        this.snapshotAborted.set(false);
+        final long currTime = clock.currentTimeInMillis();
+        this.stopPauseTime.set(currTime);
+
+        long pauseStartTime = this.startPauseTime.get();
+        if (pauseStartTime < 0L) {
+            pauseStartTime = currTime;
+        }
+        long pausedTime = this.pauseDuration.get();
+        if (pausedTime < 0L) {
+            pausedTime = 0;
+        }
+
+        this.pauseDuration.set(pausedTime + currTime - pauseStartTime);
     }
 
     public void snapshotCompleted() {
         this.snapshotCompleted.set(true);
         this.snapshotAborted.set(false);
         this.snapshotRunning.set(false);
+        this.snapshotPaused.set(false);
         this.stopTime.set(clock.currentTimeInMillis());
     }
 
@@ -124,6 +177,7 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(true);
         this.snapshotRunning.set(false);
+        this.snapshotPaused.set(false);
         this.stopTime.set(clock.currentTimeInMillis());
     }
 
@@ -179,10 +233,14 @@ public class SnapshotMeter implements SnapshotMetricsMXBean {
 
     public void reset() {
         snapshotRunning.set(false);
+        snapshotPaused.set(false);
         snapshotCompleted.set(false);
         snapshotAborted.set(false);
         startTime.set(0);
         stopTime.set(0);
+        startPauseTime.set(0);
+        stopPauseTime.set(0);
+        pauseDuration.set(0);
         rowsScanned.clear();
         remainingTables.clear();
         capturedTables.clear();

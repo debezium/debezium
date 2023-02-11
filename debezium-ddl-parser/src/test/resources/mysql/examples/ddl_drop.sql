@@ -7,6 +7,8 @@ drop table antlr_all_tokens, antlr_function_tokens, antlr_keyword_tokens, antlr_
 drop table if exists order;
 drop table if exists group;
 drop table if exists condition;
+drop index index1 on t1 nowait;
+drop table tbl_name wait 100;
 #end
 #begin
 -- Drop database
@@ -70,4 +72,10 @@ drop function bar;
 -- Drop Role
 DROP ROLE 'admin', 'developer';
 DROP ROLE 'webapp'@'localhost';
+#end
+
+-- Drop sequence
+#begin
+DROP SEQUENCE IF EXISTS /* test comment */ s1, s2;
+DROP SEQUENCE s3;
 #end

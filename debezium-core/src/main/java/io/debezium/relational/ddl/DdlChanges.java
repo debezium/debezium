@@ -24,7 +24,7 @@ import io.debezium.relational.Tables.TableFilter;
 @NotThreadSafe
 public class DdlChanges implements DdlParserListener {
 
-    private final List<Event> events = new ArrayList<>();
+    protected final List<Event> events = new ArrayList<>();
     private final Set<String> databaseNames = new HashSet<>();
 
     /**
@@ -115,7 +115,7 @@ public class DdlChanges implements DdlParserListener {
         return events.toString();
     }
 
-    public static interface DatabaseEventConsumer {
+    public interface DatabaseEventConsumer {
         void consume(String databaseName, List<Event> events);
     }
 

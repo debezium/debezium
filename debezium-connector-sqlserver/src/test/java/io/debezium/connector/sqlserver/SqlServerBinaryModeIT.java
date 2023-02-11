@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
@@ -13,7 +14,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +39,7 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "binary_mode_test");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -78,6 +78,15 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         assertEquals(expectedValue, data.get("varbinary_col"));
     }
 
+    @Test
+    public void shouldReceiveBase64UrlSafeBinary() throws InterruptedException {
+        Struct data = consume(BinaryHandlingMode.BASE64_URL_SAFE);
+
+        String expectedValue = "AQID";
+        assertEquals(expectedValue, data.get("binary_col"));
+        assertEquals(expectedValue, data.get("varbinary_col"));
+    }
+
     private Struct consume(BinaryHandlingMode binaryMode) throws InterruptedException {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
@@ -90,8 +99,8 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         TestHelper.waitForSnapshotToBeCompleted();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.dbo.binary_mode_test");
-        Assertions.assertThat(results).hasSize(1);
+        final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.binary_mode_test");
+        assertThat(results).hasSize(1);
 
         return (Struct) ((Struct) results.get(0).value()).get("after");
     }

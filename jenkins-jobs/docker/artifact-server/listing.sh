@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 
-OPTS=$(getopt -o d:o: --long dir:,output: -n 'parse-options' -- "$@")
+CONNECTORS="db2 mongodb mysql oracle postgres sqlserver"
+OPTS=$(getopt -o d:o:c: --long dir:,output:,connectors: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -9,21 +10,26 @@ while true; do
   case "$1" in
     -d | --dir )                DIR=$2;                         shift; shift ;;
     -o | --output )             OUTPUT=$2;                      shift; shift ;;
+    -c | --connectors )         CONNECTORS=$2;                  shift; shift ;;
     -h | --help )               PRINT_HELP=true;                shift ;;
     -- ) shift; break ;;
     * ) break ;;
   esac
 done
 
-shopt -s globstar nullglob
+shopt -s globstar
 pushd "$DIR" || exit
 rm -f "$OUTPUT"
-for connector in **/*connector*.{zip,jar}; do
-    name=$(echo "$connector" | sed -rn 's@^(.*)-[0-9]*\..*$@\1@p')
-    artifact="$name"
+for connector in ${CONNECTORS}; do
+    file=""
+    if [[ $(ls **/*"${connector}"*.zip) ]]; then
+        file=$(ls **/*"${connector}"*.zip)
+    fi
+    artifact="debezium-connector-$connector"
     echo "$artifact"
-    echo "$artifact::$connector" >> "$OUTPUT"
+    echo "$artifact::$file" >> "$OUTPUT"
 done
+
 
 scripting=$(ls **/*scripting*.{zip,jar})
 artifact="debezium-scripting"
@@ -38,6 +44,9 @@ echo "$artifact::$converter" >> "$OUTPUT"
 for driver in **/jdbc/*.{zip,jar}; do
     name=$(echo "$driver" | sed -rn 's@^(.*)-([[:digit:]].*([[:digit:]]|Final|SNAPSHOT))(.*)(\..*)$@\1@p')
     artifact="$name"
+        if [[ ! $artifact ]]; then
+                continue
+        fi
     echo "$artifact"
     echo "$artifact::$driver" >> "$OUTPUT"
 done
@@ -45,6 +54,9 @@ done
 for groovy_script in **/groovy/*.{zip,jar}; do
     name=$(echo "$groovy_script" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
     artifact="$name"
+    if [[ ! $artifact ]]; then
+        continue
+    fi
     echo "$artifact"
     echo "$artifact::$groovy_script" >> "$OUTPUT"
 done

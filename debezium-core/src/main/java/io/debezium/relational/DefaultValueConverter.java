@@ -40,7 +40,7 @@ public interface DefaultValueConverter {
      * Converts the raw JDBC default value expression for a column into an object.
      */
     @FunctionalInterface
-    public interface DefaultValueMapper {
+    interface DefaultValueMapper {
         /**
          * Parses the string-representation of the default value to an object.
          *

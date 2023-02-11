@@ -6,15 +6,29 @@
 package io.debezium.testing.system.tools.kafka;
 
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_FILENAME;
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Base64;
 import java.util.List;
+import java.util.Properties;
 
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.WaitConditions;
 import io.debezium.testing.system.tools.YAML;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -97,7 +111,7 @@ public class OcpKafkaController implements KafkaController {
         LOGGER.info("Waiting for Kafka cluster '" + name + "'");
         kafka = kafkaOperation()
                 .withName(name)
-                .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
+                .waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(7), MINUTES);
     }
 
     /**
@@ -121,4 +135,39 @@ public class OcpKafkaController implements KafkaController {
         return Crds.kafkaOperation(ocp).inNamespace(project);
     }
 
+    @Override
+    public Properties getDefaultConsumerProperties() {
+        Properties kafkaConsumerProps = new Properties();
+        try {
+            kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, getKafkaCaCertificate().getAbsolutePath());
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        kafkaConsumerProps.put(BOOTSTRAP_SERVERS_CONFIG, getPublicBootstrapAddress());
+        kafkaConsumerProps.put(GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
+        kafkaConsumerProps.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
+        kafkaConsumerProps.put(ENABLE_AUTO_COMMIT_CONFIG, false);
+        kafkaConsumerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+        kafkaConsumerProps.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "PEM");
+        return kafkaConsumerProps;
+    }
+
+    private File getKafkaCaCertificate() throws IOException {
+        // get kafka cluster ca secret
+        Secret secret = ocp.secrets().inNamespace(project).withName(KAFKA_CERT_SECRET).get();
+        if (secret == null) {
+            throw new IllegalStateException("Kafka cluster certificate secret not found");
+        }
+
+        // download and decode certificate
+        String cert = secret.getData().get(KAFKA_CERT_FILENAME);
+        byte[] decodedBytes = Base64.getDecoder().decode(cert);
+        cert = new String(decodedBytes);
+
+        // save to local file
+        File crtFile = Files.createTempFile("kafka-cert-", null).toFile();
+        Files.writeString(crtFile.toPath(), cert);
+        return crtFile;
+    }
 }

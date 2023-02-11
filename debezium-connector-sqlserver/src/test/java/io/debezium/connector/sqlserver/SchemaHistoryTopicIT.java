@@ -5,19 +5,16 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +52,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -95,36 +92,36 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         // DDL for 3 tables
         SourceRecords records = consumeRecordsByTopic(3);
         final List<SourceRecord> schemaRecords = records.allRecordsInOrder();
-        Assertions.assertThat(schemaRecords).hasSize(3);
+        assertThat(schemaRecords).hasSize(3);
         schemaRecords.forEach(record -> {
-            Assertions.assertThat(record.topic()).isEqualTo("server1");
-            Assertions.assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB");
-            Assertions.assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.topic()).isEqualTo("server1");
+            assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
         });
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("last");
+        assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("last");
 
         List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
-        Assertions.assertThat(tableChanges).hasSize(1);
-        Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
+        assertThat(tableChanges).hasSize(1);
+        assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         waitForAvailableRecords(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES, 24);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        final List<SourceRecord> tablebRecords = records.recordsForTopic("server1.dbo.tableb");
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        final List<SourceRecord> tablebRecords = records.recordsForTopic("server1.testDB1.dbo.tableb");
         // Additional schema change record was emitted
         if (tablebRecords.size() == RECORDS_PER_TABLE - 1) {
             tablebRecords.add(consumeRecord());
         }
-        Assertions.assertThat(tablebRecords).hasSize(RECORDS_PER_TABLE);
+        assertThat(tablebRecords).hasSize(RECORDS_PER_TABLE);
         tablebRecords.forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -149,29 +146,29 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         // DDL for 1 table
         records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.allRecordsInOrder()).hasSize(1);
+        assertThat(records.allRecordsInOrder()).hasSize(1);
         final SourceRecord schemaRecord = records.allRecordsInOrder().get(0);
-        Assertions.assertThat(schemaRecord.topic()).isEqualTo("server1");
-        Assertions.assertThat(((Struct) schemaRecord.key()).getString("databaseName")).isEqualTo("testDB");
-        Assertions.assertThat(schemaRecord.sourceOffset().get("snapshot")).isNull();
+        assertThat(schemaRecord.topic()).isEqualTo("server1");
+        assertThat(((Struct) schemaRecord.key()).getString("databaseName")).isEqualTo("testDB1");
+        assertThat(schemaRecord.sourceOffset().get("snapshot")).isNull();
 
-        Assertions.assertThat(((Struct) schemaRecord.value()).getStruct("source").getString("snapshot")).isNull();
+        assertThat(((Struct) schemaRecord.value()).getStruct("source").getString("snapshot")).isNull();
 
         tableChanges = ((Struct) schemaRecord.value()).getArray("tableChanges");
-        Assertions.assertThat(tableChanges).hasSize(1);
-        Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("ALTER");
-        Assertions.assertThat(lastUpdate.sourceOffset()).isEqualTo(schemaRecord.sourceOffset());
+        assertThat(tableChanges).hasSize(1);
+        assertThat(tableChanges.get(0).get("type")).isEqualTo("ALTER");
+        assertThat(lastUpdate.sourceOffset()).isEqualTo(schemaRecord.sourceOffset());
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -185,14 +182,14 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b3')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -227,29 +224,29 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         // DDL for 3 tables
         SourceRecords records = consumeRecordsByTopic(3);
         final List<SourceRecord> schemaRecords = records.allRecordsInOrder();
-        Assertions.assertThat(schemaRecords).hasSize(3);
+        assertThat(schemaRecords).hasSize(3);
         schemaRecords.forEach(record -> {
-            Assertions.assertThat(record.topic()).isEqualTo("server1");
-            Assertions.assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB");
-            Assertions.assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.topic()).isEqualTo("server1");
+            assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
         });
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
 
         final List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
-        Assertions.assertThat(tableChanges).hasSize(1);
-        Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
+        assertThat(tableChanges).hasSize(1);
+        assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.testDB1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -282,7 +279,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         // 1 schema event + 1 data event
         Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(1 + 1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablec")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tablec")).hasSize(1);
 
         stopConnector();
         assertConnectorNotRunning();
@@ -307,7 +304,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         // 1-2 schema events + 1 data event
         records = consumeRecordsByTopic(2 + 1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.testDB1.dbo.tabled")).hasSize(1);
 
         final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
 
@@ -318,34 +315,17 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         }
 
         final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
-        Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
-        Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
-    }
-
-    @Test
-    @FixFor("DBZ-3347")
-    public void shouldContainPartitionInSchemaChangeEventInSinglePartitionMode() throws Exception {
-        shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultConfig(),
-                TestHelper::waitForStreamingStarted,
-                Collections.singletonMap("server", "server1"));
+        assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
+        assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
     }
 
     @Test
     @FixFor({ "DBZ-3347", "DBZ-2975" })
-    public void shouldContainPartitionInSchemaChangeEventInMultiPartitionMode() throws Exception {
-        shouldContainPartitionInSchemaChangeEvent(TestHelper.defaultMultiPartitionConfig(),
-                TestHelper::waitForTaskStreamingStarted,
-                Collect.hashMapOf("server", "server1", "database", "testDB"));
-    }
-
-    private void shouldContainPartitionInSchemaChangeEvent(Configuration.Builder configBuilder,
-                                                           Runnable waitForStreamingStarted,
-                                                           Map<String, String> expectedPartition)
-            throws Exception {
+    public void shouldContainPartitionInSchemaChangeEvent() throws Exception {
         connection.execute("create table dbz3347 (id int primary key, data varchar(50))");
         TestHelper.enableTableCdc(connection, "dbz3347");
 
-        Configuration config = configBuilder
+        Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.dbz3347")
                 .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
@@ -353,10 +333,10 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForStreamingStarted.run();
+        TestHelper.waitForStreamingStarted();
 
         SourceRecords schemaChanges = consumeRecordsByTopic(1);
         SourceRecord change = schemaChanges.recordsForTopic("server1").get(0);
-        assertThat(change.sourcePartition()).isEqualTo(expectedPartition);
+        assertThat(change.sourcePartition()).isEqualTo(Collect.hashMapOf("server", "server1", "database", "testDB1"));
     }
 }

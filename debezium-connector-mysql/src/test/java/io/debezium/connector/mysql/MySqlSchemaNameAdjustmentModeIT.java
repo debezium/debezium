@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -13,7 +13,6 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,10 +24,10 @@ import io.debezium.util.Testing;
 
 public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("adjustment1", "schema_name_adjustment")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     @Before
     public void beforeEach() throws SQLException {
@@ -36,7 +35,7 @@ public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -45,7 +44,7 @@ public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -75,7 +74,7 @@ public class MySqlSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(6 + 1); // 6 DDL changes, 1 INSERT
         final List<SourceRecord> results = records.recordsForTopic(DATABASE.topicForTable("name-adjustment"));
-        Assertions.assertThat(results).hasSize(1);
+        assertThat(results).hasSize(1);
 
         return (Struct) results.get(0).value();
     }

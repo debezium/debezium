@@ -5,10 +5,11 @@
  */
 package io.debezium.spi;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -92,15 +93,15 @@ public class ValueConverterTest {
     public void matchingField() {
         testConverter.configure(new Properties());
         testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
-        Assertions.assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
-        Assertions.assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
+        assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
+        assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
     }
 
     @Test
     public void nonMatchingField() {
         testConverter.configure(new Properties());
         testConverter.converterFor(new BasicField("wrongfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
-        Assertions.assertThat(testRegistration.fieldSchema).isNull();
+        assertThat(testRegistration.fieldSchema).isNull();
     }
 
     @Test
@@ -109,10 +110,10 @@ public class ValueConverterTest {
         props.setProperty("field", "otherfield");
         testConverter.configure(props);
         testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
-        Assertions.assertThat(testRegistration.fieldSchema).isNull();
+        assertThat(testRegistration.fieldSchema).isNull();
 
         testConverter.converterFor(new BasicField("otherfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
-        Assertions.assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
-        Assertions.assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
+        assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
+        assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
     }
 }

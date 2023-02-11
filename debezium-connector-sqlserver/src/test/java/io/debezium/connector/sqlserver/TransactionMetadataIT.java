@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
 import java.sql.ResultSet;
@@ -20,7 +20,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -64,7 +63,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         // Testing.Print.enable();
     }
 
@@ -105,12 +104,12 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // BEGIN, data, END, BEGIN, data
         final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
         final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        Assertions.assertThat(tx).hasSize(3);
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
+        assertThat(tx).hasSize(3);
 
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));
@@ -122,7 +121,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         }
 
         assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE,
-                Collect.hashMapOf("testDB.dbo.tablea", RECORDS_PER_TABLE, "testDB.dbo.tableb", RECORDS_PER_TABLE));
+                Collect.hashMapOf("testDB1.dbo.tablea", RECORDS_PER_TABLE, "testDB1.dbo.tableb", RECORDS_PER_TABLE));
         stopConnector();
     }
 
@@ -149,19 +148,19 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
 
             Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
-                if (!connection.getMaxLsn(TestHelper.TEST_DATABASE).isAvailable()) {
+                if (!connection.getMaxLsn(TestHelper.TEST_DATABASE_1).isAvailable()) {
                     return false;
                 }
 
-                for (SqlServerChangeTable ct : connection.getChangeTables(TestHelper.TEST_DATABASE)) {
+                for (SqlServerChangeTable ct : connection.getChangeTables(TestHelper.TEST_DATABASE_1)) {
                     final String tableName = ct.getChangeTableId().table();
                     if (tableName.endsWith("dbo_" + connection.getNameOfChangeTable("tablea"))) {
                         try {
-                            final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE, tableName);
-                            final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE);
+                            final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE_1, tableName);
+                            final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
                             final AtomicReference<Boolean> found = new AtomicReference<>(false);
                             SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                            connection.getChangesForTables(TestHelper.TEST_DATABASE, tables, minLsn, maxLsn, resultsets -> {
+                            connection.getChangesForTables(TestHelper.TEST_DATABASE_1, tables, minLsn, maxLsn, resultsets -> {
                                 final ResultSet rs = resultsets[0];
                                 while (rs.next()) {
                                     if (rs.getInt("id") == -1) {
@@ -182,7 +181,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         }
 
         start(SqlServerConnector.class, config, record -> {
-            if (!"server1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
+            if (!"server1.testDB1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
                 return false;
             }
             final Struct envelope = (Struct) record.value();
@@ -232,7 +231,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         assertThat(records).hasSize(expectedRecords);
 
         if (firstTxId != null) {
-            assertEndTransaction(records.get(0), firstTxId, 1, Collect.hashMapOf("testDB.dbo.tablea", 1));
+            assertEndTransaction(records.get(0), firstTxId, 1, Collect.hashMapOf("testDB1.dbo.tablea", 1));
         }
         final String batchTxId = assertBeginTransaction(records.get(txBeginIndex));
 
@@ -252,8 +251,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         records = sourceRecords.allRecordsInOrder();
         assertThat(records).hasSize(RECORDS_PER_TABLE);
 
-        List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
-        List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+        List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.testDB1.dbo.tableb");
         for (int i = 0; i < RECORDS_PER_TABLE / 2; i++) {
             final int id = HALF_ID + i;
             final SourceRecord recordA = tableA.get(i);
@@ -288,15 +287,15 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // END of previous TX, data records, BEGIN of TX for every pair of record, END of TX for every pair of record but last
         sourceRecords = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES + (2 * RECORDS_PER_TABLE - 1));
-        tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
-        tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+        tableA = sourceRecords.recordsForTopic("server1.testDB1.dbo.tablea");
+        tableB = sourceRecords.recordsForTopic("server1.testDB1.dbo.tableb");
         List<SourceRecord> txMetadata = sourceRecords.recordsForTopic("server1.transaction");
 
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
         assertEndTransaction(txMetadata.get(0), batchTxId, 2 * RECORDS_PER_TABLE,
-                Collect.hashMapOf("testDB.dbo.tablea", RECORDS_PER_TABLE, "testDB.dbo.tableb", RECORDS_PER_TABLE));
+                Collect.hashMapOf("testDB1.dbo.tablea", RECORDS_PER_TABLE, "testDB1.dbo.tableb", RECORDS_PER_TABLE));
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = i + ID_RESTART;
@@ -321,7 +320,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             assertRecordTransactionMetadata(recordA, txId, 1, 1);
             assertRecordTransactionMetadata(recordB, txId, 2, 1);
             if (i < RECORDS_PER_TABLE - 1) {
-                assertEndTransaction(txMetadata.get(2 * i + 2), txId, 2, Collect.hashMapOf("testDB.dbo.tablea", 1, "testDB.dbo.tableb", 1));
+                assertEndTransaction(txMetadata.get(2 * i + 2), txId, 2, Collect.hashMapOf("testDB1.dbo.tablea", 1, "testDB1.dbo.tableb", 1));
             }
         }
     }

@@ -8,15 +8,14 @@ package io.debezium.schemagenerator;
 import java.io.File;
 import java.io.IOException;
 import java.lang.System.Logger;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.ServiceLoader.Provider;
 import java.util.stream.Collectors;
-
-import com.google.common.base.Charsets;
-import com.google.common.io.Files;
 
 import io.debezium.metadata.ConnectorMetadata;
 import io.debezium.metadata.ConnectorMetadataProvider;
@@ -77,7 +76,7 @@ public class SchemaGenerator {
                 schemaFilename += ".json";
                 Path schemaFilePath = outputDirectory.resolve(schemaFilename);
                 schemaFilePath.getParent().toFile().mkdirs();
-                Files.write(spec.getBytes(Charsets.UTF_8), schemaFilePath.toFile());
+                Files.write(schemaFilePath, spec.getBytes(StandardCharsets.UTF_8));
             }
             catch (IOException e) {
                 throw new RuntimeException("Couldn't write file", e);

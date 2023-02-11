@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -87,6 +88,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final ElapsedTimeStrategy pauseBetweenCommits;
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
 
+    private boolean checkAgent;
+
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
                                                EventDispatcher<SqlServerPartition, TableId> dispatcher,
@@ -106,6 +109,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         : intervalBetweenCommitsBasedOnPoll.toMillis());
         this.pauseBetweenCommits.hasElapsed();
         this.streamingExecutionContexts = new HashMap<>();
+        this.checkAgent = true;
     }
 
     @Override
@@ -154,8 +158,25 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
-                    LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
+                    if (checkAgent) {
+                        try {
+                            if (!dataConnection.isAgentRunning(databaseName)) {
+                                LOGGER.error("No maximum LSN recorded in the database; SQL Server Agent is not running");
+                            }
+                        }
+                        catch (SQLException e) {
+                            LOGGER.warn("No maximum LSN recorded in the database; this may happen if there are no changes recorded in the change table yet or " +
+                                    "low activity database where the cdc clean up job periodically clears entries from the cdc tables. " +
+                                    "Otherwise, this may be an indication that the SQL Server Agent is not running. " +
+                                    "You should follow the documentation on how to configure SQL Server Agent running status query.");
+                            LOGGER.warn("Cannot query the status of the SQL Server Agent", e);
+                        }
+                        checkAgent = false;
+                    }
                     return false;
+                }
+                else if (!checkAgent) {
+                    checkAgent = true;
                 }
                 // There is no change in the database
                 if (toLsn.compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && streamingExecutionContext.getShouldIncreaseFromLsn()) {
@@ -195,8 +216,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final SqlServerChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i],
-                                    connectorConfig.getSourceTimestampMode());
+                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i]);
                             changeTables[i].next();
                         }
 
@@ -280,11 +300,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             }
                             final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
 
+                            final ResultSet resultSet = tableWithSmallestLsn.getResultSet();
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.event(
                                     tableWithSmallestLsn.getChangeTable().getSourceTableId(),
-                                    connectorConfig.getSourceTimestampMode().getTimestamp(
-                                            clock, tableWithSmallestLsn.getResultSet()));
+                                    resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()).toInstant());
 
                             dispatcher
                                     .dispatchDataChangeEvent(
@@ -372,7 +392,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         return true;
                     }
                     else {
-                        LOGGER.info("CDC is enabled for table {} but the table is not whitelisted by connector", changeTable);
+                        LOGGER.info("CDC is enabled for table {} but the table is not on connector's table include list", changeTable);
                         return false;
                     }
                 })
@@ -380,7 +400,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         if (includeListChangeTables.isEmpty()) {
             LOGGER.warn(
-                    "No whitelisted table has enabled CDC, whitelisted table list does not contain any table with CDC enabled or no table match the white/blacklist filter(s)");
+                    "No table on connector's include list has enabled CDC, tables on include list do not contain any table with CDC enabled or no table match the include/exclude filter(s)");
         }
 
         final List<SqlServerChangeTable> tables = new ArrayList<>();

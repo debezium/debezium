@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
 import static io.debezium.data.Envelope.FieldName.AFTER;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.time.Duration;
@@ -22,6 +22,8 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldBlacklistIT.ExpectedUpdate;
 import io.debezium.doc.FixFor;
@@ -1597,7 +1599,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1634,7 +1636,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration("*.c1.name:new_name,*.c1.active:new_active");
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), "dbA");
+        TestHelper.cleanDatabase(mongo, "dbA");
 
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
@@ -1824,9 +1826,10 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     private static Configuration getConfiguration(String fieldRenames, String database, String collection) {
-        Configuration.Builder builder = TestHelper.getConfiguration().edit()
+        Configuration.Builder builder = TestHelper.getConfiguration(mongo).edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME);
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, SchemaNameAdjustmentMode.AVRO);
 
         if (fieldRenames != null && !"".equals(fieldRenames.trim())) {
             builder = builder.with(MongoDbConnectorConfig.FIELD_RENAMES, fieldRenames);
@@ -1844,7 +1847,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(fieldRenames, database, collection);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), database);
+        TestHelper.cleanDatabase(mongo, database);
 
         dropAndInsertDocuments(database, collection, document);
 
@@ -1865,7 +1868,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(fieldRenames, database, collection);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), database);
+        TestHelper.cleanDatabase(mongo, database);
 
         insertDocuments(database, collection, document);
 
@@ -1914,7 +1917,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         dropAndInsertDocuments(DATABASE_NAME, COLLECTION_NAME, snapshot);
 
@@ -1930,7 +1933,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList);
         context = new MongoDbTaskContext(config);
 
-        TestHelper.cleanDatabase(primary(), DATABASE_NAME);
+        TestHelper.cleanDatabase(mongo, DATABASE_NAME);
 
         logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);

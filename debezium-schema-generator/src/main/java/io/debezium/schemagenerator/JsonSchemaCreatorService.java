@@ -19,7 +19,9 @@ import org.eclipse.microprofile.openapi.models.media.Schema;
 
 import io.debezium.config.Field;
 import io.debezium.metadata.ConnectorMetadata;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.schemagenerator.schema.Schema.FieldFilter;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.smallrye.openapi.api.models.media.SchemaImpl;
 
 public class JsonSchemaCreatorService {
@@ -121,42 +123,7 @@ public class JsonSchemaCreatorService {
             orderedPropertiesByCategory.put(category, new TreeMap<>());
         });
 
-        connectorMetadata.getConnectorFields().forEach(field -> {
-            String propertyName = field.name();
-            Field checkedField = checkField(field);
-            if (null != checkedField) {
-                SchemaImpl propertySchema = new SchemaImpl(propertyName);
-                Set<?> allowedValues = checkedField.allowedValues();
-                if (null != allowedValues && !allowedValues.isEmpty()) {
-                    propertySchema.enumeration(new ArrayList<>(allowedValues));
-                }
-                if (checkedField.isRequired()) {
-                    propertySchema.nullable(false);
-                    schema.addRequired(propertyName);
-                }
-                propertySchema.description(checkedField.description());
-                propertySchema.defaultValue(checkedField.defaultValue());
-                JsonSchemaType jsonSchemaType = toJsonSchemaType(checkedField.type());
-                propertySchema.type(jsonSchemaType.schemaType);
-                if (null != jsonSchemaType.format) {
-                    propertySchema.format(jsonSchemaType.format);
-                }
-                propertySchema.title(checkedField.displayName());
-                Map<String, Object> extensions = new HashMap<>();
-                extensions.put("name", checkedField.name()); // @TODO remove "x-name" in favor of map key?
-                Field.GroupEntry groupEntry = checkedField.group();
-                extensions.put("category", groupEntry.getGroup().name());
-                propertySchema.extensions(extensions);
-                SortedMap<Integer, SchemaImpl> groupProperties = orderedPropertiesByCategory.get(groupEntry.getGroup());
-                if (groupProperties.containsKey(groupEntry.getPositionInGroup())) {
-                    errors.add("[ERROR] Position in group \"" + groupEntry.getGroup().name() + "\" for property \""
-                            + propertyName + "\" is used more than once for connector \"" + connectorName + "\".");
-                }
-                else {
-                    groupProperties.put(groupEntry.getPositionInGroup(), propertySchema);
-                }
-            }
-        });
+        connectorMetadata.getConnectorFields().forEach(field -> processField(schema, orderedPropertiesByCategory, field));
 
         Arrays.stream(Field.Group.values()).forEach(
                 group -> orderedPropertiesByCategory.get(group).forEach((position, propertySchema) -> schema.addProperty(propertySchema.getName(), propertySchema)));
@@ -169,5 +136,47 @@ public class JsonSchemaCreatorService {
         schema.additionalPropertiesBoolean(true);
 
         return schema;
+    }
+
+    private void processField(Schema schema, Map<Field.Group, SortedMap<Integer, SchemaImpl>> orderedPropertiesByCategory, Field field) {
+        String propertyName = field.name();
+        Field checkedField = checkField(field);
+        if (null != checkedField) {
+            SchemaImpl propertySchema = new SchemaImpl(propertyName);
+            Set<?> allowedValues = checkedField.allowedValues();
+            if (null != allowedValues && !allowedValues.isEmpty()) {
+                propertySchema.enumeration(new ArrayList<>(allowedValues));
+            }
+            if (checkedField.isRequired()) {
+                propertySchema.nullable(false);
+                schema.addRequired(propertyName);
+            }
+            propertySchema.description(checkedField.description());
+            propertySchema.defaultValue(checkedField.defaultValue());
+            JsonSchemaType jsonSchemaType = toJsonSchemaType(checkedField.type());
+            propertySchema.type(jsonSchemaType.schemaType);
+            if (null != jsonSchemaType.format) {
+                propertySchema.format(jsonSchemaType.format);
+            }
+            propertySchema.title(checkedField.displayName());
+            Map<String, Object> extensions = new HashMap<>();
+            extensions.put("name", checkedField.name()); // @TODO remove "x-name" in favor of map key?
+            Field.GroupEntry groupEntry = checkedField.group();
+            extensions.put("category", groupEntry.getGroup().name());
+            propertySchema.extensions(extensions);
+            SortedMap<Integer, SchemaImpl> groupProperties = orderedPropertiesByCategory.get(groupEntry.getGroup());
+            if (groupProperties.containsKey(groupEntry.getPositionInGroup())) {
+                errors.add("[ERROR] Position in group \"" + groupEntry.getGroup().name() + "\" for property \""
+                        + propertyName + "\" is used more than once for connector \"" + connectorName + "\".");
+            }
+            else {
+                groupProperties.put(groupEntry.getPositionInGroup(), propertySchema);
+            }
+
+            if (propertyName.equals(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY.name())) {
+                // todo: how to eventually support varied storage modules
+                KafkaSchemaHistory.ALL_FIELDS.forEach(historyField -> processField(schema, orderedPropertiesByCategory, historyField));
+            }
+        }
     }
 }

@@ -31,7 +31,6 @@ import io.opentracing.tag.Tags;
 @ApplicationScoped
 public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
 
-    public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
     private static final String OPERATION_NAME = "outbox-write";
     private static final String TRACING_COMPONENT = "debezium";
 
@@ -56,16 +55,18 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
-        try (final Scope outboxSpanScope = tracer.scopeManager().activate(spanBuilder.start())) {
-            final Span activeSpan = tracer.scopeManager().activeSpan();
-
+        final Span activeSpan = spanBuilder.start();
+        try (Scope outboxSpanScope = tracer.scopeManager().activate(activeSpan)) {
             Tags.COMPONENT.set(activeSpan, TRACING_COMPONENT);
             tracer.inject(activeSpan.context(), Format.Builtin.TEXT_MAP, exportedSpanData);
 
             // Define the entity map-mode object using property names and values
             final Map<String, Object> dataMap = getDataMapFromEvent(event);
-            dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
+            dataMap.put(OutboxConstants.TRACING_SPAN_CONTEXT, exportedSpanData.export());
             persist(dataMap);
+        }
+        finally {
+            activeSpan.finish();
         }
     }
 }

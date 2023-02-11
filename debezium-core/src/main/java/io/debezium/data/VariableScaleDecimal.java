@@ -14,6 +14,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.schema.SchemaFactory;
+
 /**
  * An arbitrary precision decimal value with variable scale.
  *
@@ -24,6 +26,7 @@ public class VariableScaleDecimal {
     public static final String LOGICAL_NAME = "io.debezium.data.VariableScaleDecimal";
     public static final String VALUE_FIELD = "value";
     public static final String SCALE_FIELD = "scale";
+    public static final int SCHEMA_VERSION = 1;
     public static final Struct ZERO = fromLogical(schema(), SpecialValueDecimal.ZERO);
 
     /**
@@ -33,12 +36,7 @@ public class VariableScaleDecimal {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
-                .name(LOGICAL_NAME)
-                .version(1)
-                .doc("Variable scaled decimal")
-                .field(SCALE_FIELD, Schema.INT32_SCHEMA)
-                .field(VALUE_FIELD, Schema.BYTES_SCHEMA);
+        return SchemaFactory.get().datatypeVariableScaleDecimalSchema();
     }
 
     /**
@@ -79,7 +77,7 @@ public class VariableScaleDecimal {
      * the scale of the number and a binary representation of the number.
      *
      * @param schema of the encoded value
-     * @param value the value or the decimal
+     * @param decimalValue the value or the decimal
      *
      * @return the encoded value
      */
@@ -100,6 +98,7 @@ public class VariableScaleDecimal {
      * @return the decoded value
      */
     public static SpecialValueDecimal toLogical(final Struct value) {
-        return new SpecialValueDecimal(new BigDecimal(new BigInteger(value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
+        return new SpecialValueDecimal(
+                new BigDecimal(new BigInteger(value.getBytes(VALUE_FIELD)), value.getInt32(SCALE_FIELD)));
     }
 }

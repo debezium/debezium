@@ -6,14 +6,17 @@
 package io.debezium.connector.mysql.signal;
 
 import java.util.List;
+import java.util.Optional;
 
-public class ExecuteSnapshotKafkaSignal {
+public class ExecuteSnapshotKafkaSignal implements KafkaSignal {
     private final List<String> dataCollections;
     private final long signalOffset;
+    private final Optional<String> additionalCondition;
 
-    public ExecuteSnapshotKafkaSignal(List<String> dataCollections, long signalOffset) {
+    public ExecuteSnapshotKafkaSignal(List<String> dataCollections, long signalOffset, Optional<String> additionalCondition) {
         this.dataCollections = dataCollections;
         this.signalOffset = signalOffset;
+        this.additionalCondition = additionalCondition;
     }
 
     public List<String> getDataCollections() {
@@ -22,5 +25,9 @@ public class ExecuteSnapshotKafkaSignal {
 
     public long getSignalOffset() {
         return signalOffset;
+    }
+
+    public Optional<String> getAdditionalCondition() {
+        return additionalCondition;
     }
 }

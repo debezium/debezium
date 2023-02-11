@@ -47,8 +47,8 @@ Here's an example of code that configures and runs an embedded MySQL connector:
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "my-app-connector")
-                                        .with("database.history", "io.debezium.relational.history.FileDatabaseHistory")
-                                        .with("database.history.file.filename", "/path/to/storage/dbhistory.dat")
+                                        .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                                        .with("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
                                         .build())
 
     // Create the engine with this configuration ...
@@ -88,8 +88,8 @@ The next few lines define the fields that are specific to the connector, which i
                                         .with("database.password", "mysqlpw")
                                         .with("server.id", 85744)
                                         .with("server.name", "products")
-                                        .with("database.history", "io.debezium.relational.history.FileDatabaseHistory")
-                                        .with("database.history.file.filename", "/path/to/storage/dbhistory.dat")
+                                        .with("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
+                                        .with("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
                                         .build())
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database. Note that for MySQL the username and password should correspond to a MySQL database user that has been granted the [`REPLICATION SLAVE` privilege](http://dev.mysql.com/doc/refman/5.7/en/replication-howto-repuser.html), allowing the database to read the server's binlog that is normally used for MySQL replication.
@@ -98,7 +98,7 @@ The configuration also includes a numeric identifier for the `server.id`. Since 
 
 The configuration also specifies a logical name for the MySQL server. The connector includes this logical name within the topic field of every source record it produces, enabling your application to discern the origin of those records. Our example uses a server name of "products", presumably because the database contains product information. Of course, you can name this anything meaningful to your application.
 
-When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server. Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events. The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset. How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileDatabaseHistory` class to store database schema history changes in the `/path/to/storage/dbhistory.dat` file on the local file system (again, this file can be named anything and stored anywhere). 
+When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server. Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events. The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset. How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileSchemaHistory` class to store database schema history changes in the `/path/to/storage/schemahistory.dat` file on the local file system (again, this file can be named anything and stored anywhere). 
 
 Finally the immutable configuration is built using the `build()` method. (Incidentally, rather than build it programmatically, we could have *read* the configuration from a properties file using one of the `Configuration.read(...)` methods.)
 

@@ -246,7 +246,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return the list of valid values
          */
-        public List<Object> validValues(Field field, Configuration config);
+        List<Object> validValues(Field field, Configuration config);
 
         /**
          * Set the visibility of the field given the current configuration values.
@@ -254,7 +254,7 @@ public final class Field {
          * @param config the configuration; may not be null
          * @return {@code true} if the field is to be visible, or {@code false} otherwise
          */
-        public boolean visible(Field field, Configuration config);
+        boolean visible(Field field, Configuration config);
     }
 
     public enum Group {
@@ -653,9 +653,7 @@ public final class Field {
         ConfigValue value = results.computeIfAbsent(this.name(), ConfigValue::new);
 
         // Apply the validator ...
-        validate(config, (f, v, problem) -> {
-            value.addErrorMessage(problem);
-        });
+        validate(config, (f, v, problem) -> value.addErrorMessage(validationOutput(f, problem)));
 
         // Apply the recommender ..
         if (recommender != null) {
@@ -766,7 +764,7 @@ public final class Field {
     public Field required() {
         return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
                 defaultValueGenerator, validator, recommender, true, group, allowedValues)
-                        .withValidation(Field::isRequired);
+                .withValidation(Field::isRequired);
     }
 
     public Field optional() {
@@ -1249,7 +1247,7 @@ public final class Field {
         }
         catch (Throwable e) {
         }
-        problems.accept(field, value, "A positive integer is expected");
+        problems.accept(field, value, "A positive, non-zero integer value is expected");
         return 1;
     }
 
@@ -1296,7 +1294,7 @@ public final class Field {
         }
         catch (Throwable e) {
         }
-        problems.accept(field, value, "A positive long value is expected");
+        problems.accept(field, value, "A positive, non-zero long value is expected");
         return 1;
     }
 
@@ -1359,5 +1357,9 @@ public final class Field {
             return 1;
         }
         return 0;
+    }
+
+    public static String validationOutput(Field field, String problem) {
+        return String.format("The '%s' value is invalid: %s", field.name(), problem);
     }
 }

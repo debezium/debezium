@@ -13,7 +13,7 @@ import io.debezium.connector.sqlserver.SqlServerPartition;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServerSnapshotPartitionMetrics>
@@ -36,6 +36,16 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
     @Override
     public void snapshotStarted(SqlServerPartition partition) {
         onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotStarted);
+    }
+
+    @Override
+    public void snapshotPaused(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotPaused);
+    }
+
+    @Override
+    public void snapshotResumed(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotResumed);
     }
 
     @Override

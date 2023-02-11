@@ -7,7 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Invoked whenever an important event or change of state happens during the snapshot phase.
@@ -17,6 +17,10 @@ import io.debezium.schema.DataCollectionId;
 public interface SnapshotProgressListener<P extends Partition> {
 
     void snapshotStarted(P partition);
+
+    void snapshotPaused(P partition);
+
+    void snapshotResumed(P partition);
 
     void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds);
 
@@ -37,6 +41,14 @@ public interface SnapshotProgressListener<P extends Partition> {
 
             @Override
             public void snapshotStarted(P partition) {
+            }
+
+            @Override
+            public void snapshotPaused(P partition) {
+            }
+
+            @Override
+            public void snapshotResumed(P partition) {
             }
 
             @Override

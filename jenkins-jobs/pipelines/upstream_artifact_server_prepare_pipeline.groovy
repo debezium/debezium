@@ -38,10 +38,10 @@ pipeline {
             steps {
                 script {
 //                    Configure images if provided
-                    env.IMAGE_TAG_SUFFIX="${BUILD_NUMBER}"
+                    env.IMAGE_TAG_SUFFIX = "${BUILD_NUMBER}"
 
 //                    Apicurio version
-                    env.APICURIO_ARTIFACT_VERSION="${APICURIO_VERSION}"
+                    env.APICURIO_ARTIFACT_VERSION = "${APICURIO_VERSION}"
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${QUAY_CREDENTIALS}", usernameVariable: 'QUAY_USERNAME', passwordVariable: 'QUAY_PASSWORD'),
@@ -52,7 +52,7 @@ pipeline {
                     cd ${WORKSPACE}/debezium
                     ORACLE_ARTIFACT_VERSION=$( mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
                     ORACLE_ARTIFACT_DIR="${HOME}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
-                    
+
                     mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get \\
                      -Dartifact=io.apicurio:apicurio-registry-distro-connect-converter:${APICURIO_ARTIFACT_VERSION}:zip \\
                      -Dmaven.repo.local=${WORKSPACE}/debezium/local-maven-repo
@@ -133,8 +133,8 @@ pipeline {
 
     post {
         always {
-            mail to: MAIL_TO, subject: "Debezium upstream artifact server preparation #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: params.MAIL_TO, subject: "Debezium upstream artifact server preparation #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
+${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
         success {

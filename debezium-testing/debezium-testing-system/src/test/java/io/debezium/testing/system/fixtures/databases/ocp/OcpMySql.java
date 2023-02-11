@@ -18,7 +18,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpMySql extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/mysql/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/mysql/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/mysql/service.yaml";
 
     public OcpMySql(ExtensionContext.Store store) {
@@ -32,7 +31,7 @@ public class OcpMySql extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MYSQL)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .build();
         return deployer.deploy();
     }

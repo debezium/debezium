@@ -49,8 +49,8 @@ pipeline {
 
     post {
         always {
-            mail to: MAIL_TO, subject: "Debezium artifact server preparation #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: params.MAIL_TO, subject: "Debezium artifact server preparation #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
+${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
         success {

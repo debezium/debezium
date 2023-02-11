@@ -6,7 +6,7 @@
 
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
@@ -21,13 +21,13 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,10 +49,12 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Testing;
 
 /**
@@ -65,6 +67,7 @@ public class MySqlAntlrDdlParserTest {
     private SimpleDdlParserListener listener;
     private MySqlValueConverters converters;
     private TableSchemaBuilder tableSchemaBuilder;
+    private Properties properties;
 
     @Before
     public void beforeEach() {
@@ -79,7 +82,154 @@ public class MySqlAntlrDdlParserTest {
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 new MySqlDefaultValueConverter(converters),
-                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(), false, false);
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false);
+        properties = new Properties();
+        properties.put("topic.prefix", "test");
+    }
+
+    @Test
+    @FixFor("DBZ-6003")
+    public void shouldProcessCreateUniqueBeforePrimaryKeyDefinitions() {
+        String ddl = "CREATE TABLE `dbz_6003_1` (\n"
+                + "`id` INT ( 11 ) NOT NULL,\n"
+                + "`name` VARCHAR ( 255 ),\n"
+                + "UNIQUE KEY `test` ( `name` ),\n"
+                + "PRIMARY KEY ( `id` )\n"
+                + ") ENGINE = INNODB;";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "dbz_6003_1");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY and UNIQUE KEY
+        ddl = "create table dbz_6003_2 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_2 add unique key dbz_6003_2_uk(name);"
+                + "alter table dbz_6003_2 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_2");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY and PRIMARY KEY
+        ddl = "create table dbz_6003_3 (id int not null, name varchar(255));"
+                + "alter table dbz_6003_3 add (primary key id(id), unique key dbz_6003_3_uk(name));";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_3");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add UNIQUE KEY, drop PRIMARY KEY
+        ddl = "create table dbz_6003_4 (id int not null, name varchar(255), primary key(id));"
+                + "alter table dbz_6003_4 add unique key dbz_6003_4_uk(name);"
+                + "alter table dbz_6003_4 drop primary key;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_4");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop PRIMARY KEY, add UNIQUE KEY
+        ddl = "create table dbz_6003_5 (id int not null, name varchar(255) not null, primary key(id));"
+                + "alter table dbz_6003_5 drop primary key;"
+                + "alter table dbz_6003_5 add unique key dbz_6003_5_uk(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_5");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("name");
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
+
+        // drop UNIQUE KEY, add PRIMARY KEY
+        ddl = "create table dbz_6003_6 (id int not null, name varchar(255), unique key dbz_6003_6_uk(name));"
+                + "alter table dbz_6003_6 drop index dbz_6003_6_uk;"
+                + "alter table dbz_6003_6 add primary key(id);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_6");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // add PRIMARY KEY, drop UNIQUE KEY
+        ddl = "create table dbz_6003_7 (id int not null, name varchar(255), unique key dbz_6003_7_uk(name));"
+                + "alter table dbz_6003_7 add primary key(id);"
+                + "alter table dbz_6003_7 drop index dbz_6003_7_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_7");
+        assertThat(table.primaryKeyColumnNames().get(0)).isEqualTo("id");
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // drop both PRIMARY and UNIQUE keys
+        ddl = "create table dbz_6003_8 (id int not null, name varchar(255), unique key dbz_6003_8_uk(name), primary key(id));"
+                + "alter table dbz_6003_8 drop primary key;"
+                + "alter table dbz_6003_8 drop index dbz_6003_8_uk;";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_8");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        // create unique index
+        ddl = "create table dbz_6003_9 (id int not null, name varchar(255));"
+                + "create unique index dbz_6003_9_uk on dbz_6003_9(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_9");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        assertThat(table.columnWithName("name").isOptional()).isTrue();
+
+        ddl = "create table dbz_6003_10 (id int not null, name varchar(255) not null);"
+                + "create unique index dbz_6003_10_uk on dbz_6003_10(name);";
+        parser.parse(ddl, tables);
+        table = tables.forTable(null, null, "dbz_6003_10");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.columnWithName("name").isOptional()).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-5623")
+    public void shouldProcessAlterAddDefinitions() {
+        String ddl = "create table `some_table` (id bigint(20) not null);"
+                + "alter table `some_table` add (primary key `id` (`id`),`k_id` int unsigned not null,`another_field` smallint not null,index `k_id` (`k_id`));"
+                + "alter table `some_table` add column (unique key `another_field` (`another_field`));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "some_table");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(1);
+        assertThat(table.columns().size()).isEqualTo(3);
+    }
+
+    @Test
+    @FixFor("DBZ-5424")
+    public void shouldProcessNoPrimaryKeyForTable() {
+        String ddl = "create table if not exists tbl_without_pk(\n"
+                + "id bigint(20) NOT Null,\n"
+                + "c1 bigint not null,\n"
+                + "c2 int not null,\n"
+                + "unique key (c1, (c2*2))\n"
+                + ");";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+
+        String createTable = "drop table if exists tbl_without_pk;\n"
+                + "create table if not exists tbl_without_pk(\n"
+                + "id bigint(20) NOT Null,\n"
+                + "c1 bigint not null,\n"
+                + "c2 int not null\n"
+                + ");\n";
+        parser.parse(createTable, tables);
+        parser.parse("alter table tbl_without_pk add unique key uk_func(id, (c2*2));", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+
+        parser.parse(createTable, tables);
+        parser.parse("create unique index uk_func_2 on tbl_without_pk(id, (c2*2));", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        table = tables.forTable(null, null, "tbl_without_pk");
+        assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
     }
 
     @Test
@@ -105,7 +255,7 @@ public class MySqlAntlrDdlParserTest {
     public void shouldProcessMultipleSignedUnsignedForTable() {
         String ddl = "create table if not exists tbl_signed_unsigned(\n"
                 + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
-                + "c1 int signed unsigned,\n"
+                + "c1 int signed unsigned default '',\n"
                 + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
                 + "c3 float SIGNED ZEROFILL,\n"
                 + "c4 double precision(18, 4) UNSIGNED SIGNED ZEROFILL,\n"
@@ -300,6 +450,31 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldProcessQueryWithIndexHintPrimary() {
+        String sp = "CREATE DEFINER=`my-user`@`%` PROCEDURE `my_table`()\n" +
+                "BEGIN\n" +
+                "  DECLARE i INT DEFAULT 0;\n" +
+                "  DECLARE minID INT DEFAULT 0;\n" +
+                "  DECLARE maxID INT DEFAULT 0;\n" +
+                "  DECLARE limitSize INT DEFAULT 1000;\n" +
+                "  DECLARE total_rows INT DEFAULT 0;\n" +
+                "  SET total_rows = (SELECT count(*) FROM db.my_table a);\n" +
+                "  WHILE i <= total_rows DO\n" +
+                "      SET minID = (select min(a.id) FROM db.my_table a);\n" +
+                "      SET maxID = (select max(id) from (select a.id FROM db.my_table a  USE INDEX(PRIMARY) order by a.id asc limit limitSize) top);\n" +
+                "      START TRANSACTION;\n" +
+                "        DELETE db.my_table FROM db.my_table USE INDEX(PRIMARY) WHERE db.my_table.id >= minId AND db.my_table.id <= maxID ;\n" +
+                "      COMMIT;\n" +
+                "    do SLEEP(1);\n" +
+                "    SET i = i + limitSize;\n" +
+                "  END WHILE;\n" +
+                "END";
+        parser.parse(sp, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
@@ -459,7 +634,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-2140")
     public void shouldUpdateSchemaForRemovedDefaultValue() {
-        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT);"
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, order_Id varchar(128) not null);"
                 + "ALTER TABLE mytable ADD COLUMN last_val INT DEFAULT 5;";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
@@ -470,7 +645,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columns()).hasSize(4);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("last_val")).isNotNull();
@@ -483,6 +658,15 @@ public class MySqlAntlrDdlParserTest {
         table = tables.forTable(null, null, "mytable");
         assertThat(table.columnWithName("last_val")).isNotNull();
         assertThat(table.columnWithName("last_val").hasDefaultValue()).isFalse();
+
+        parser.parse("ALTER TABLE mytable CHANGE COLUMN order_Id order_id varchar(255) NOT NULL;", tables);
+        table = tables.forTable(null, null, "mytable");
+        assertThat(table.columnWithName("order_id")).isNotNull();
+        assertThat(table.columnWithName("order_id").length()).isEqualTo(255);
+
+        parser.parse("ALTER TABLE mytable RENAME COLUMN order_id TO order_Id;", tables);
+        table = tables.forTable(null, null, "mytable");
+        assertThat(table.columnWithName("order_Id")).isNotNull();
     }
 
     @Test
@@ -541,15 +725,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(9);
 
-        Assertions.assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
-        Assertions.assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
-        Assertions.assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
-        Assertions.assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
+        assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
+        assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
+        assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
+        assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
+        assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
     }
 
     @Test
@@ -578,17 +762,17 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
 
         parser.parse("ALTER TABLE mytable DROP COLUMN id", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEmpty();
-        Assertions.assertThat(table.primaryKeyColumns()).isEmpty();
+        assertThat(table.primaryKeyColumnNames()).isEmpty();
+        assertThat(table.primaryKeyColumns()).isEmpty();
 
         parser.parse("ALTER TABLE mytable ADD PRIMARY KEY(id2)", tables);
         table = tables.forTable(null, null, "mytable");
-        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
-        Assertions.assertThat(table.primaryKeyColumns()).hasSize(1);
+        assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
+        assertThat(table.primaryKeyColumns()).hasSize(1);
     }
 
     @Test
@@ -1567,7 +1751,7 @@ public class MySqlAntlrDdlParserTest {
                 .stream()
                 .map(TableId::table)
                 .collect(Collectors.toSet()))
-                        .containsOnly("t1", "t2", "t3", "t4");
+                .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test
@@ -1920,6 +2104,22 @@ public class MySqlAntlrDdlParserTest {
         assertThat(t3.columnWithName("col1").position()).isEqualTo(1);
         assertThat(t3.columnWithName("col3").position()).isEqualTo(2);
         assertThat(t3.columnWithName("col2").position()).isEqualTo(3);
+
+        ddl = "ALTER TABLE t ADD COLUMN col4 INT(10) DEFAULT ' 29 ' COLLATE 'utf8_general_ci';";
+        parser.parse(ddl, tables);
+        Table t4 = tables.forTable(new TableId(null, null, "t"));
+        assertThat(t4).isNotNull();
+        assertThat(t4.retrieveColumnNames()).containsExactly("col1", "col3", "col2", "col4");
+        assertThat(t4.primaryKeyColumnNames()).isEmpty();
+        assertColumn(t4, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
+        assertColumn(t4, "col3", "FLOAT", Types.FLOAT, -1, -1, false, false, false);
+        assertColumn(t4, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
+        assertColumn(t4, "col4", "INT", Types.INTEGER, 10, -1, true, false, false);
+        assertThat(t4.columnWithName("col1").position()).isEqualTo(1);
+        assertThat(t4.columnWithName("col3").position()).isEqualTo(2);
+        assertThat(t4.columnWithName("col2").position()).isEqualTo(3);
+        assertThat(t4.columnWithName("col4").position()).isEqualTo(4);
+        assertThat(t4.columnWithName("col4").defaultValueExpression().get()).isEqualTo(" 29 ");
     }
 
     @FixFor("DBZ-660")
@@ -2883,6 +3083,14 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-5836")
+    public void parseCreateUserDdlStatement() {
+        String ddl = "CREATE USER 'test_crm_debezium'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*6BB4837EB74329105EE4568DDA7DC67ED2CA2AD9' PASSWORD EXPIRE NEVER COMMENT '-';";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-530")
     public void parsePartitionReorganize() {
         String ddl = "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"
@@ -3012,7 +3220,7 @@ public class MySqlAntlrDdlParserTest {
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
         ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
-        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal, null);
 
         assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
@@ -3167,7 +3375,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private String toIsoString(String timestamp) {
-        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null);
+        return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
 
     /**
@@ -3325,19 +3533,19 @@ public class MySqlAntlrDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
             this(changesListener, false, false, tableFilter);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
             this(changesListener, includeViews, false, TableFilter.includeAll());
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
+        MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments) {
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 
@@ -3352,7 +3560,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     private Schema getColumnSchema(Table table, String column) {
-        TableSchema schema = tableSchemaBuilder.create("test-1", "dummy", table, null, null, null);
+        TableSchema schema = tableSchemaBuilder.create(new DefaultTopicNamingStrategy(properties), table, null, null, null);
         return schema.getEnvelopeSchema().schema().field("after").schema().field(column).schema();
     }
 }

@@ -10,13 +10,13 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges.TableChange;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Ther serializer responsible for converting of {@link TableChanges} into an array of {@link Struct}s.
@@ -45,43 +45,19 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String AUTO_INCREMENTED_KEY = "autoIncremented";
     public static final String GENERATED_KEY = "generated";
     public static final String COMMENT_KEY = "comment";
+    public static final String DEFAULT_VALUE_EXPRESSION = "defaultValueExpression";
+    public static final String ENUM_VALUES = "enumValues";
 
     private final Schema columnSchema;
     private final Schema tableSchema;
     private final Schema changeSchema;
 
     public ConnectTableChangeSerializer(SchemaNameAdjuster schemaNameAdjuster) {
-        columnSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Column"))
-                .field(NAME_KEY, Schema.STRING_SCHEMA)
-                .field(JDBC_TYPE_KEY, Schema.INT32_SCHEMA)
-                .field(NATIVE_TYPE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(TYPE_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(TYPE_EXPRESSION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(LENGTH_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(SCALE_KEY, Schema.OPTIONAL_INT32_SCHEMA)
-                .field(POSITION_KEY, Schema.INT32_SCHEMA)
-                .field(OPTIONAL_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(AUTO_INCREMENTED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
+        columnSchema = SchemaFactory.get().schemaHistoryColumnSchema(schemaNameAdjuster);
 
-        tableSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Table"))
-                .field(DEFAULT_CHARSET_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(PRIMARY_KEY_COLUMN_NAMES_KEY, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-                .field(COLUMNS_KEY, SchemaBuilder.array(columnSchema).build())
-                .field(COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .build();
+        tableSchema = SchemaFactory.get().schemaHistoryTableSchema(schemaNameAdjuster);
 
-        changeSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Change"))
-                .field(TYPE_KEY, Schema.STRING_SCHEMA)
-                .field(ID_KEY, Schema.STRING_SCHEMA)
-                .field(TABLE_KEY, tableSchema)
-                .build();
+        changeSchema = SchemaFactory.get().schemaHistoryChangeSchema(schemaNameAdjuster);
     }
 
     public Schema getChangeSchema() {
@@ -144,6 +120,11 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         struct.put(AUTO_INCREMENTED_KEY, column.isAutoIncremented());
         struct.put(GENERATED_KEY, column.isGenerated());
         struct.put(COMMENT_KEY, column.comment());
+
+        column.defaultValueExpression().ifPresent(d -> struct.put(DEFAULT_VALUE_EXPRESSION, d));
+        if (column.enumValues() != null && !column.enumValues().isEmpty()) {
+            struct.put(ENUM_VALUES, column.enumValues());
+        }
 
         return struct;
     }

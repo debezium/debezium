@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.0.0-SNAPSHOT</version>
-	<relativePath>../debezium-parent/pom.xml</relativePath>
+        <version>2.2.0-SNAPSHOT</version>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-oracle</artifactId>
@@ -15,6 +15,14 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-file</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -36,8 +44,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-              <groupId>org.antlr</groupId>
-              <artifactId>antlr4-runtime</artifactId>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
         </dependency>
         <dependency>
             <groupId>org.infinispan</groupId>
@@ -81,8 +89,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.easytesting</groupId>
-            <artifactId>fest-assert</artifactId>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -102,6 +110,11 @@
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -114,6 +127,7 @@
     <properties>
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
+        <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
 
         <!--
@@ -129,7 +143,7 @@
         -->
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
-        <version.infinispan.server>12.1</version.infinispan.server>
+        <version.infinispan.server>14.0.2.Final</version.infinispan.server>
         <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
         <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
         <oracle.infinispan.port>11222</oracle.infinispan.port>
@@ -138,6 +152,9 @@
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <connector.assembly.ref>connector-distribution</connector.assembly.ref>
+        <!-- Apicurion container properties -->
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
 
     <build>
@@ -190,6 +207,10 @@
                             <name>log.mining.buffer.type</name>
                             <value>${log.mining.buffer.type.name}</value>
                         </property>
+                        <property>
+                            <name>internal.log.mining.read.only</name>
+                            <value>${log.mining.read.only.mode}</value>
+                        </property>
                     </systemProperties>
                 </configuration>
             </plugin>
@@ -218,8 +239,24 @@
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
+                        <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-schema-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-connector-metadata</id>
+                        <goals>
+                            <goal>generate-api-spec</goal>
+                        </goals>
+                        <phase>prepare-package</phase>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -384,57 +421,61 @@
             <build>
                 <plugins>
                     <plugin>
-                      <groupId>io.fabric8</groupId>
-                      <artifactId>docker-maven-plugin</artifactId>
-                      <configuration>
-                        <watchInterval>500</watchInterval>
-                        <logDate>default</logDate>
-                        <verbose>true</verbose>
-                        <!--autoPull>always</autoPull-->
-                        <images>
-                          <!-- A container for the data server replica set -->
-                          <image>
-                            <name>quay.io/rh_integration/dbz-oracle:${version.oracle.server}</name>
-                            <alias>oracle1</alias>
-                            <run>
-                              <namingStrategy>alias</namingStrategy>
-                              <ports>
-                                <port>1521:1521</port> 
-                              </ports>
-                              <log>
-                                <prefix>oracle1</prefix>
-                                <enabled>true</enabled>
-                                <color>yellow</color>
-                              </log>
-                              <wait>
-                                <log>DONE: Executing user defined scripts</log>
-                                <time>120000</time> <!-- 2 minutes max -->
-                              </wait>
-                            </run>
-                          </image>
-                        </images>
-                      </configuration>
-                      <!--
-                      Connect this plugin to the maven lifecycle around the integration-test phase:
-                      start the container in pre-integration-test and stop it in post-integration-test.
-                      -->
-                      <executions>
-                        <execution>
-                          <id>start</id>
-                          <phase>pre-integration-test</phase>
-                          <goals>
-                            <goal>build</goal>
-                            <goal>start</goal>
-                          </goals>
-                        </execution>
-                        <execution>
-                          <id>stop</id>
-                          <phase>post-integration-test</phase>
-                          <goals>
-                            <goal>stop</goal>
-                          </goals>
-                        </execution>
-                      </executions>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <!--autoPull>always</autoPull-->
+                            <images>
+                                <!-- A container for the data server replica set -->
+                                <image>
+                                    <name>quay.io/rh_integration/dbz-oracle:${version.oracle.server}</name>
+                                    <alias>oracle1</alias>
+                                    <run>
+                                        <namingStrategy>alias</namingStrategy>
+                                        <ports>
+                                            <port>1521:1521</port>
+                                        </ports>
+                                        <log>
+                                            <prefix>oracle1</prefix>
+                                            <enabled>true</enabled>
+                                            <color>yellow</color>
+                                        </log>
+                                        <wait>
+                                            <log>DONE: Executing user defined scripts</log>
+                                            <time>120000</time> <!-- 2 minutes max -->
+                                        </wait>
+                                    </run>
+                                    <external>
+                                        <type>properties</type>
+                                        <mode>override</mode>
+                                    </external>
+                                </image>
+                            </images>
+                        </configuration>
+                        <!--
+                        Connect this plugin to the maven lifecycle around the integration-test phase:
+                        start the container in pre-integration-test and stop it in post-integration-test.
+                        -->
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -491,6 +532,10 @@
                                             <log>Infinispan Server [0-9a-zA-z.]* started</log>
                                         </wait>
                                     </run>
+                                    <external>
+                                        <type>properties</type>
+                                        <mode>override</mode>
+                                    </external>
                                 </image>
                             </images>
                         </configuration>
@@ -517,6 +562,89 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>apicurio</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>apicurio</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <use.apicurio>true</use.apicurio>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <watchInterval>500</watchInterval>
+                            <logDate>default</logDate>
+                            <verbose>true</verbose>
+                            <!--autoPull>always</autoPull-->
+                            <images>
+                                <!-- A container for the data server replica set -->
+                                <image>
+                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <run>
+                                        <namingStrategy>none</namingStrategy>
+                                        <ports>
+                                            <port>${apicurio.port}:8080</port>
+                                        </ports>
+                                        <log>
+                                            <prefix>apicurio</prefix>
+                                            <enabled>true</enabled>
+                                            <color>blue</color>
+                                        </log>
+                                        <wait>
+                                            <log>.*apicurio-registry-app.*started in.*</log>
+                                            <time>${apicurio.init.timeout}</time>
+                                        </wait>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                        <!--
+                        Connect this plugin to the maven lifecycle around the integration-test phase:
+                        start the container in pre-integration-test and stop it in post-integration-test.
+                        -->
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>oracle-read-only</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.read.only.mode>true</log.mining.read.only.mode>
+            </properties>
         </profile>
     </profiles>
 </project>

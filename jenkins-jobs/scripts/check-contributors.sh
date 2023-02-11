@@ -10,7 +10,7 @@ ALIASES="jenkins-jobs/scripts/config/Aliases.txt"
 
 declare -a DEBEZIUM_REPOS
 if [ $# -eq 0 ];then
-    DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "docker-images")
+    DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "container-images")
 else
     DEBEZIUM_REPOS=( "$@" )
 fi

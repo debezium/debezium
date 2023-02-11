@@ -38,6 +38,7 @@ import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
+import io.debezium.util.BoundedConcurrentHashMap;
 
 /**
  * A delegate class having common logic between Outbox Event Routers for SQL DBs and MongoDB
@@ -47,7 +48,7 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
 public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     @FunctionalInterface
-    public static interface RecordConverter<R> {
+    public interface RecordConverter<R> {
         R convert(R record);
     }
 
@@ -68,12 +69,15 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
     private List<EventRouterConfigDefinition.AdditionalField> additionalFields;
 
-    private Schema defaultValueSchema;
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
+    private BoundedConcurrentHashMap<Schema, Schema> payloadSchemaCache;
 
     private boolean onlyHeadersInOutputMessage = false;
 
+    private EventRouterConfigDefinition.JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior;
     private boolean expandJsonPayload;
+    private JsonSchemaData jsonSchemaData;
+
     private ObjectMapper objectMapper;
 
     private SmtManager<R> smtManager;
@@ -157,8 +161,8 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                     // Parse and get Jackson JsonNode.
                     final JsonNode jsonPayload = parseJsonPayload(payloadString);
                     // Build a new Schema and new payload Struct that replace existing ones.
-                    payloadSchema = SchemaBuilderUtil.jsonNodeToSchema(jsonPayload);
-                    payload = StructBuilderUtil.jsonNodeToStruct(jsonPayload, payloadSchema);
+                    payloadSchema = jsonSchemaData.toConnectSchema(fieldPayload, jsonPayload);
+                    payload = jsonSchemaData.toConnectData(jsonPayload, payloadSchema);
                 }
                 catch (Exception e) {
                     LOGGER.warn("JSON expansion failed", e);
@@ -329,9 +333,12 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
                 config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
 
+        jsonPayloadNullFieldBehavior = EventRouterConfigDefinition.JsonPayloadNullFieldBehavior.parse(
+                config.getString(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_NULL_BEHAVIOR));
         expandJsonPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         if (expandJsonPayload) {
             objectMapper = new ObjectMapper();
+            jsonSchemaData = new JsonSchemaData(jsonPayloadNullFieldBehavior);
         }
 
         // Configure the default configuration provider
@@ -359,14 +366,18 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         additionalFields = parseAdditionalFieldsConfig(config);
         onlyHeadersInOutputMessage = !additionalFields.stream().anyMatch(field -> field.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE);
+
+        payloadSchemaCache = new BoundedConcurrentHashMap(10000, 10, BoundedConcurrentHashMap.Eviction.LRU);
     }
 
     private Schema getValueSchema(Schema payloadSchema, Schema debeziumEventSchema, String routedTopic) {
-        if (defaultValueSchema == null) {
-            defaultValueSchema = getSchemaBuilder(payloadSchema, debeziumEventSchema, routedTopic).build();
+        Schema valueSchema = payloadSchemaCache.get(payloadSchema);
+        if (valueSchema == null) {
+            valueSchema = getSchemaBuilder(payloadSchema, debeziumEventSchema, routedTopic).build();
+            payloadSchemaCache.put(payloadSchema, valueSchema);
         }
 
-        return defaultValueSchema;
+        return valueSchema;
     }
 
     private Schema getValueSchema(Schema payloadSchema, Schema debeziumEventSchema, Integer version, String routedTopic) {

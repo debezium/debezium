@@ -84,11 +84,11 @@ Configuration config = Configuration.create()
         .with("database.user", "mysqluser")
         .with("database.password", "mysqlpw")
         .with("database.server.id", 85744)
-        .with("database.server.name", "my-app-connector")
-        .with("database.history",
-              "io.debezium.relational.history.FileDatabaseHistory")
-        .with("database.history.file.filename",
-              "/path/to/storage/dbhistory.dat")
+        .with("topic.prefix", "my-app-connector")
+        .with("schema.history.internal",
+              "io.debezium.storage.file.history.FileSchemaHistory")
+        .with("schema.history.internal.file.filename",
+              "/path/to/storage/schemahistory.dat")
         .build();
 
 // Create the engine with this configuration ...
@@ -136,11 +136,11 @@ The next few lines define the fields that are specific to the connector, which i
         .with("database.user", "mysqluser")
         .with("database.password", "mysqlpw")
         .with("database.server.id", 85744)
-        .with("database.server.name", "products")
-        .with("database.history",
-              "io.debezium.relational.history.FileDatabaseHistory")
-        .with("database.history.file.filename",
-              "/path/to/storage/dbhistory.dat")
+        .with("topic.prefix", "products")
+        .with("schema.history.internal",
+              "io.debezium.storage.file.history.FileSchemaHistory")
+        .with("schema.history.internal.file.filename",
+              "/path/to/storage/schemahistory.dat")
         .build();
 ----
 
@@ -158,7 +158,7 @@ The configuration also includes a numeric identifier for the `server.id`. Since 
 
 The configuration also specifies a logical name for the MySQL server. The connector includes this logical name within the topic field of every source record it produces, enabling your application to discern the origin of those records. Our example uses a server name of "products", presumably because the database contains product information. Of course, you can name this anything meaningful to your application.
 
-When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server. Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events. The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset. How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileDatabaseHistory` class to store database schema history changes in the `/path/to/storage/dbhistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
+When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server. Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events. The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset. How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileSchemaHistory` class to store database schema history changes in the `/path/to/storage/schemahistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
 
 Finally the immutable configuration is built using the `build()` method. (Incidentally, rather than build it programmatically, we could have *read* the configuration from a properties file using one of the `Configuration.read(...)` methods.)
 
@@ -306,29 +306,21 @@ The default is a periodic commity policy based upon time intervals.
 |`offset.flush.timeout.ms`
 |`5000`
 |Maximum number of milliseconds to wait for records to flush and partition offset data to be committed to offset storage before cancelling the process and restoring the offset data to be committed in a future attempt. The default is 5 seconds.
-
-|`internal.key.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize key data for offsets. The default is JSON converter.
-
-|`internal.value.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
 |=======================
 
 [[database-history-properties]]
-=== Database history properties
+=== database schema history properties
 
-Some of the connectors also requires additional set of properties that configures database history:
+Some of the connectors also requires additional set of properties that configures database schema history:
 
 * MySQL
 * SQL Server
 * Oracle
 * Db2
 
-Without proper configuration of the database history the connectors will refuse to start.
+Without proper configuration of the database schema history the connectors will refuse to start.
 The default configuration expects a Kafka cluster to be available.
-For other deployments, a file-based database history storage implementation is available.
+For other deployments, a file-based database schema history storage implementation is available.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -336,26 +328,26 @@ For other deployments, a file-based database history storage implementation is a
 |Default
 |Description
 
-|`database.history`
-|`<...>.KafkaDatabaseHistory`
-|The name of the Java class that is responsible for persistence of the database history. +
-It must implement `<...>.DatabaseHistory` interface.
+|`schema.history.internal`
+|`<...>.KafkaSchemaHistory`
+|The name of the Java class that is responsible for persistence of the database schema history. +
+It must implement `<...>.SchemaHistory` interface.
 
-|`database.history.file.filename`
+|`schema.history.internal.file.filename`
 |`""`
-|Path to a file where the database history is stored. +
-Required when `database.history` is set to the `<...>.FileDatabaseHistory`.
+|Path to a file where the database schema history is stored. +
+Required when `schema.history.internal` is set to the `<...>.FileSchemaHistory`.
 
-|`database.history.kafka.topic`
+|`schema.history.internal.kafka.topic`
 |`""`
-|The Kafka topic where the database history is stored. +
-Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+|The Kafka topic where the database schema history is stored. +
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
-|`database.history.kafka.bootstrap.servers`
+|`schema.history.internal.kafka.bootstrap.servers`
 |`""`
 |The initial list of Kafka cluster servers to connect to.
-The cluster provides the topic to store the database history. +
-Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+The cluster provides the topic to store the database schema history. +
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
 |=======================
 

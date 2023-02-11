@@ -8,12 +8,15 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +58,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
+        // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
+        if (OracleConnectorConfig.SnapshotMode.ALWAYS == connectorConfig.getSnapshotMode()) {
+            LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
+            snapshotData = connectorConfig.getSnapshotMode().includeData();
+        }
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+        else if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("The previous offset has been found.");
             snapshotSchema = databaseSchema.isStorageInitializationExecuted();
             snapshotData = false;
@@ -131,7 +139,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             throws Exception {
         // Support the existence of the case when the previous offset.
         // e.g., schema_only_recovery snapshot mode
-        if (previousOffset != null) {
+        if (connectorConfig.getSnapshotMode() != OracleConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
@@ -235,6 +243,21 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 true);
     }
 
+    @Override
+    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext, TableId tableId) {
+        try {
+            Optional<OffsetDateTime> snapshotTs = jdbcConnection.getScnToTimestamp(snapshotContext.offset.getScn());
+            if (snapshotTs.isEmpty()) {
+                throw new ConnectException("Failed reading SCN timestamp from source database");
+            }
+
+            return snapshotTs.get().toInstant();
+        }
+        catch (SQLException e) {
+            throw new ConnectException("Failed reading SCN timestamp from source database", e);
+        }
+    }
+
     /**
      * Generate a valid Oracle query string for the specified table and columns
      *
@@ -253,7 +276,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void complete(SnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext) {
+    public void close() {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }
@@ -270,7 +293,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
+        OracleSnapshotContext(OraclePartition partition, String catalogName) throws SQLException {
             super(partition, catalogName);
         }
     }

@@ -12,11 +12,10 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * An immutable descriptor for the structure of Debezium message envelopes. An {@link Envelope} can be created for each message
@@ -27,10 +26,12 @@ import io.debezium.pipeline.txmetadata.TransactionMonitor;
  */
 public final class Envelope {
 
+    public static final int SCHEMA_VERSION = 1;
+
     /**
      * The constants for the values for the {@link FieldName#OPERATION operation} field in the message envelope.
      */
-    public static enum Operation {
+    public enum Operation {
         /**
          * The operation that read the current state of a record, most typically during snapshots.
          */
@@ -58,7 +59,7 @@ public final class Envelope {
 
         private final String code;
 
-        private Operation(String code) {
+        Operation(String code) {
             this.code = code;
         }
 
@@ -140,7 +141,7 @@ public final class Envelope {
     /**
      * A builder of an envelope schema.
      */
-    public static interface Builder {
+    public interface Builder {
         /**
          * Define the {@link Schema} used in the {@link FieldName#BEFORE} and {@link FieldName#AFTER} fields.
          *
@@ -196,52 +197,7 @@ public final class Envelope {
     }
 
     public static Builder defineSchema() {
-        return new Builder() {
-            private final SchemaBuilder builder = SchemaBuilder.struct();
-            private final Set<String> missingFields = new HashSet<>();
-
-            @Override
-            public Builder withSchema(Schema fieldSchema, String... fieldNames) {
-                for (String fieldName : fieldNames) {
-                    builder.field(fieldName, fieldSchema);
-                }
-                return this;
-            }
-
-            @Override
-            public Builder withName(String name) {
-                builder.name(name);
-                return this;
-            }
-
-            @Override
-            public Builder withDoc(String doc) {
-                builder.doc(doc);
-                return this;
-            }
-
-            @Override
-            public Envelope build() {
-                builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
-                builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
-                builder.field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
-                checkFieldIsDefined(FieldName.OPERATION);
-                checkFieldIsDefined(FieldName.BEFORE);
-                checkFieldIsDefined(FieldName.AFTER);
-                checkFieldIsDefined(FieldName.SOURCE);
-                checkFieldIsDefined(FieldName.TRANSACTION);
-                if (!missingFields.isEmpty()) {
-                    throw new IllegalStateException("The envelope schema is missing field(s) " + String.join(", ", missingFields));
-                }
-                return new Envelope(builder.build());
-            }
-
-            private void checkFieldIsDefined(String fieldName) {
-                if (builder.field(fieldName) == null) {
-                    missingFields.add(fieldName);
-                }
-            }
-        };
+        return SchemaFactory.get().datatypeEnvelopeSchema();
     }
 
     public static Envelope fromSchema(Schema schema) {
@@ -250,7 +206,7 @@ public final class Envelope {
 
     private final Schema schema;
 
-    private Envelope(Schema schema) {
+    public Envelope(Schema schema) {
         this.schema = schema;
     }
 

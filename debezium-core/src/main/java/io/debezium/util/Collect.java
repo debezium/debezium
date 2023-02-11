@@ -77,7 +77,7 @@ public class Collect {
         return Collections.unmodifiableSet(newSet);
     }
 
-    @SuppressWarnings("unchecked")
+    @SafeVarargs
     public static <T> Set<T> unmodifiableSet(T... values) {
         return unmodifiableSet(arrayListOf(values));
     }
@@ -116,6 +116,13 @@ public class Collect {
         for (T another : additional) {
             result.add(another);
         }
+        return result;
+    }
+
+    public static <T> List<T> arrayListOf(T first, List<T> additional) {
+        List<T> result = new ArrayList<>();
+        result.add(first);
+        result.addAll(additional);
         return result;
     }
 
@@ -283,7 +290,7 @@ public class Collect {
     /**
      * Remove the content of one set from an another one.
      *
-     * @param subtrahend the main set 
+     * @param subtrahend the main set
      * @param minuend the elements to be removed
      */
     public static <T> Set<T> minus(Set<T> subtrahend, Set<T> minuend) {

@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,7 +44,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -54,6 +54,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -62,7 +63,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
@@ -80,6 +80,7 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
+    private static final String ESCAPE_CHAR = "\\";
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -101,7 +102,7 @@ public class JdbcConnection implements AutoCloseable {
      */
     @FunctionalInterface
     @ThreadSafe
-    public static interface ConnectionFactory {
+    public interface ConnectionFactory {
         /**
          * Establish a connection to the database denoted by the given configuration.
          *
@@ -114,12 +115,10 @@ public class JdbcConnection implements AutoCloseable {
 
     private class ConnectionFactoryDecorator implements ConnectionFactory {
         private final ConnectionFactory defaultConnectionFactory;
-        private final Supplier<ClassLoader> classLoaderSupplier;
         private ConnectionFactory customConnectionFactory;
 
-        private ConnectionFactoryDecorator(ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier) {
+        private ConnectionFactoryDecorator(ConnectionFactory connectionFactory) {
             this.defaultConnectionFactory = connectionFactory;
-            this.classLoaderSupplier = classLoaderSupplier;
         }
 
         @Override
@@ -128,8 +127,7 @@ public class JdbcConnection implements AutoCloseable {
                 return defaultConnectionFactory.connect(config);
             }
             if (customConnectionFactory == null) {
-                customConnectionFactory = config.getInstance(JdbcConfiguration.CONNECTION_FACTORY_CLASS,
-                        ConnectionFactory.class, classLoaderSupplier);
+                customConnectionFactory = config.getInstance(JdbcConfiguration.CONNECTION_FACTORY_CLASS, ConnectionFactory.class);
             }
             return customConnectionFactory.connect(config);
         }
@@ -139,7 +137,7 @@ public class JdbcConnection implements AutoCloseable {
      * Defines multiple JDBC operations.
      */
     @FunctionalInterface
-    public static interface Operations {
+    public interface Operations {
         /**
          * Apply a series of operations against the given JDBC statement.
          *
@@ -153,7 +151,7 @@ public class JdbcConnection implements AutoCloseable {
      * Extracts a data of resultset..
      */
     @FunctionalInterface
-    public static interface ResultSetExtractor<T> {
+    public interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
@@ -261,6 +259,11 @@ public class JdbcConnection implements AutoCloseable {
         return filtered;
     }
 
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
+    }
+
     private static Field[] combineVariables(Field[] overriddenVariables,
                                             Field... defaultVariables) {
         Map<String, Field> fields = new HashMap<>();
@@ -327,18 +330,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param connectionFactory the connection factory; may not be null
      */
     public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
-        this(config, connectionFactory, null, null, openingQuoteCharacter, closingQuoteCharacter);
-    }
-
-    /**
-     * Create a new instance with the given configuration and connection factory.
-     *
-     * @param config the configuration; may not be null
-     * @param connectionFactory the connection factory; may not be null
-     */
-    public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Supplier<ClassLoader> classLoaderSupplier, String openingQuoteCharacter,
-                          String closingQuoteCharacter) {
-        this(config, connectionFactory, null, classLoaderSupplier, openingQuoteCharacter, closingQuoteCharacter);
+        this(config, connectionFactory, null, openingQuoteCharacter, closingQuoteCharacter);
     }
 
     /**
@@ -348,14 +340,13 @@ public class JdbcConnection implements AutoCloseable {
      * @param config the configuration; may not be null
      * @param connectionFactory the connection factory; may not be null
      * @param initialOperations the initial operations that should be run on each new connection; may be null
-     * @param classLoaderSupplier class loader supplier
      * @param openingQuotingChar the opening quoting character
      * @param closingQuotingChar the closing quoting character
      */
     protected JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             Supplier<ClassLoader> classLoaderSupplier, String openingQuotingChar, String closingQuotingChar) {
+                             String openingQuotingChar, String closingQuotingChar) {
         this.config = config;
-        this.factory = classLoaderSupplier == null ? connectionFactory : new ConnectionFactoryDecorator(connectionFactory, classLoaderSupplier);
+        this.factory = new ConnectionFactoryDecorator(connectionFactory);
         this.initialOps = initialOperations;
         this.openingQuoteCharacter = openingQuotingChar;
         this.closingQuoteCharacter = closingQuotingChar;
@@ -444,36 +435,36 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
-    public static interface ResultSetConsumer {
+    public interface ResultSetConsumer {
         void accept(ResultSet rs) throws SQLException;
     }
 
-    public static interface ResultSetMapper<T> {
+    public interface ResultSetMapper<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
-    public static interface BlockingResultSetConsumer {
+    public interface BlockingResultSetConsumer {
         void accept(ResultSet rs) throws SQLException, InterruptedException;
     }
 
-    public static interface ParameterResultSetConsumer {
+    public interface ParameterResultSetConsumer {
         void accept(List<?> parameters, ResultSet rs) throws SQLException;
     }
 
-    public static interface MultiResultSetConsumer {
+    public interface MultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException;
     }
 
-    public static interface BlockingMultiResultSetConsumer {
+    public interface BlockingMultiResultSetConsumer {
         void accept(ResultSet[] rs) throws SQLException, InterruptedException;
     }
 
-    public static interface StatementPreparer {
+    public interface StatementPreparer {
         void accept(PreparedStatement statement) throws SQLException;
     }
 
     @FunctionalInterface
-    public static interface CallPreparer {
+    public interface CallPreparer {
         void accept(CallableStatement statement) throws SQLException;
     }
 
@@ -1160,8 +1151,10 @@ public class JdbcConnection implements AutoCloseable {
         final Set<TableId> viewIds = new HashSet<>();
         final Set<TableId> tableIds = new HashSet<>();
 
+        Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
+
         int totalTables = 0;
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
+        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
                 final String catalogName = resolveCatalogName(rs.getString(1));
                 final String schemaName = rs.getString(2);
@@ -1172,11 +1165,13 @@ public class JdbcConnection implements AutoCloseable {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
+                        attributesByTable.putAll(getAttributeDetails(tableId));
                     }
                 }
                 else {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
+                    attributesByTable.putAll(getAttributeDetails(tableId));
                 }
             }
         }
@@ -1205,7 +1200,8 @@ public class JdbcConnection implements AutoCloseable {
             List<Column> columns = tableEntry.getValue();
             Collections.sort(columns);
             String defaultCharsetName = null; // JDBC does not expose character sets
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
+            List<Attribute> attributes = attributesByTable.getOrDefault(tableEntry.getKey(), Collections.emptyList());
+            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName, attributes);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -1228,11 +1224,18 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
+    protected String escapeEscapeSequence(String str) {
+        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    }
+
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
+            tableName = escapeEscapeSequence(tableName);
+        }
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
@@ -1254,6 +1257,11 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return columnsByTable;
+    }
+
+    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId) {
+        // no-op, allows connectors to populate table attributes during relational table creation
+        return Collections.emptyMap();
     }
 
     /**
@@ -1326,22 +1334,50 @@ public class JdbcConnection implements AutoCloseable {
 
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> uniqueIndexColumnNames = new ArrayList<>();
+        final Set<String> excludedIndexNames = new HashSet<>();
         try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, true)) {
             String firstIndexName = null;
             while (rs.next()) {
                 final String indexName = rs.getString(6);
                 final String columnName = rs.getString(9);
                 final int columnIndex = rs.getInt(8);
+
+                // Some databases return a null index name record, often as the first row.
+                // This index should be ignored, as should any row with an index that has been marked excluded
+                if (indexName == null || excludedIndexNames.contains(indexName)) {
+                    continue;
+                }
+
+                // Check whether the index and/or its column is included by the connector
+                boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
+                if (!indexIncluded) {
+                    // The connector considered the index and/or its column to be excluded.
+                    // Register the index as an excluded index.
+                    excludedIndexNames.add(indexName);
+
+                    if (firstIndexName == null || indexName.equals(firstIndexName)) {
+                        // We either have not yet found a valid first index or the index is the same as the
+                        // current index we have processed a column for. The later can happen when any
+                        // column after the first is seen as an excluded pattern, and in this case the
+                        // entire index state should be discarded and any future rows related to it will
+                        // also be discarded.
+                        firstIndexName = null;
+                        uniqueIndexColumnNames.clear();
+                        continue;
+                    }
+                }
+
                 if (firstIndexName == null) {
                     firstIndexName = indexName;
                 }
-                if (!isTableUniqueIndexIncluded(indexName, columnName)) {
-                    continue;
-                }
-                // Only first unique index is taken into consideration
-                if (indexName != null && !indexName.equals(firstIndexName)) {
+
+                if (!indexName.equals(firstIndexName)) {
+                    // This means we've reached a point in the result set where we've processed two index
+                    // mappings and both are included by the connector, so we return the first index we
+                    // completely mapped.
                     return uniqueIndexColumnNames;
                 }
+
                 if (columnName != null) {
                     // The returned columnIndex is 0 when columnName is null. These are related
                     // to table statistics that get returned as part of the index descriptors
@@ -1445,7 +1481,8 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
+                                           Optional<String> additionalCondition, String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
@@ -1455,6 +1492,14 @@ public class JdbcConnection implements AutoCloseable {
             sql
                     .append(" WHERE ")
                     .append(condition.get());
+            if (additionalCondition.isPresent()) {
+                sql.append(" AND ");
+                sql.append(additionalCondition.get());
+            }
+        }
+        else if (additionalCondition.isPresent()) {
+            sql.append(" WHERE ");
+            sql.append(additionalCondition.get());
         }
         sql
                 .append(" ORDER BY ")
@@ -1487,22 +1532,18 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Reads a value from JDBC result set and execute per-connector conversion if needed
      */
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return rs.getObject(columnIndex);
     }
 
     /**
      * Converts a {@link ResultSet} row to an array of Objects
      */
-    public <T extends DatabaseSchema<TableId>> Object[] rowToArray(Table table, T databaseSchema, ResultSet rs,
-                                                                   ColumnUtils.ColumnArray columnArray)
-            throws SQLException {
+    public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
         final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
         for (int i = 0; i < columnArray.getColumns().length; i++) {
             row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
-                    columnArray.getColumns()[i], table, databaseSchema);
+                    columnArray.getColumns()[i], table);
         }
         return row;
     }

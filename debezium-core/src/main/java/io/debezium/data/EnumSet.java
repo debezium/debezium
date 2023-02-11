@@ -10,6 +10,7 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.schema.SchemaFactory;
 import io.debezium.util.Strings;
 
 /**
@@ -21,6 +22,7 @@ public class EnumSet {
 
     public static final String LOGICAL_NAME = "io.debezium.data.EnumSet";
     public static final String VALUES_FIELD = "allowed";
+    public static final int SCHEMA_VERSION = 1;
 
     /**
      * Returns a {@link SchemaBuilder} for a set of enumerated values. You can use the resulting SchemaBuilder
@@ -30,10 +32,7 @@ public class EnumSet {
      * @return the schema builder
      */
     public static SchemaBuilder builder(String allowedValues) {
-        return SchemaBuilder.string()
-                .name(LOGICAL_NAME)
-                .parameter(VALUES_FIELD, allowedValues)
-                .version(1);
+        return SchemaFactory.get().datatypeEnumSetSchema(allowedValues);
     }
 
     /**

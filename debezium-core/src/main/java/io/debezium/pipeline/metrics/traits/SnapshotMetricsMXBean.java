@@ -18,11 +18,15 @@ public interface SnapshotMetricsMXBean extends SchemaMetricsMXBean {
 
     boolean getSnapshotRunning();
 
+    boolean getSnapshotPaused();
+
     boolean getSnapshotCompleted();
 
     boolean getSnapshotAborted();
 
     long getSnapshotDurationInSeconds();
+
+    long getSnapshotPausedDurationInSeconds();
 
     Map<String, Long> getRowsScanned();
 

@@ -25,7 +25,7 @@ The UI is implemented as a https://quarkus.io/[Quarkus]-based web application.  
 
 
 === Configure the Debezium UI
-The following table shows the environment variables for the https://hub.docker.com/r/debezium/debezium-ui[Debezium UI container image] and the related parameter names inside `application.properties` when running the Java application without the container.
+The following table shows the environment variables for the https://quay.io/repository/debezium/debezium-ui[Debezium UI container image] and the related parameter names inside `application.properties` when running the Java application without the container.
 
 [cols="1,2,2,2,6",options="header"]
 
@@ -55,7 +55,7 @@ For example, in some environments it might not be possible to reach the underlyi
 
 === Debezium UI container image
 
-The Debezium UI https://hub.docker.com/r/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
+The Debezium UI https://quay.io/repository/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
 
 ----
 $ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URIS=http://connect:8083 debezium/debezium-ui:{debezium-version}
@@ -79,9 +79,9 @@ A self-contained example https://github.com/debezium/debezium-examples/tree/main
 The main page of the UI displays all the registered connectors.  Some of the highlights of the main page are as follows:
 
 * *Kafka connect cluster* can be selected via the dropdown in the header.
-* Connector table shows each connector with it's type (MySQL, PostgreSQL, MongoDB), connector status and connector tasks.
+* Connector table shows each connector with its type (MongoDB, MySQL, Oracle, PostgreSQL, or SQL Server), connector status, and connector tasks.
 * A connector row can be expanded to show more details, as shown below with the 'testPostgres' connector.  Metrics are shown in the expansion area (*Note:* this feature is still under development and not functional yet).  Connector tasks are shown, with ability to *Restart* the task if desired.
-* The kebab menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
+* The overflow menu at the right of each connector row provides actions which allow the user to *Pause, Resume, Restart or Delete* the connector.
 
 image::debezium-ui-connectors-list.png[{prodname} UI connectors]
 
@@ -89,23 +89,26 @@ image::debezium-ui-connectors-list.png[{prodname} UI connectors]
 The user can create a connector by clicking on the *Create a connector* button on the main page.  The first two steps of the wizard are required, but the remaining steps are optional. Each step will validate the user entries and provide feedback if there are problems.  After completing steps 1 and 2 successfully, the user can proceed to the final page to review and create the connector.
 
 ==== Create Connector - Connector type (required)
-Choose the type of connector in step 1.  Currently the *MongoDB, MySQL and PostgreSQL* connector types are supported.  Addition of more connector types is currently in progress.
+Choose the type of connector in Step 1.  Currently, you can specify the following connector types: *MongoDB*, *MySQL*, *Oracle*, *PostgreSQL* and *SQL Server*.
 
-image::debezium-ui-create-connector-step1.png[{prodname} UI Create connector step1]
+image::debezium-ui-step1.png[{prodname} UI Create connector step1]
 
 ==== Create Connector - Properties (required)
-The basic connection properties for the selected connector are entered in step 2, and the properties must be validated before proceeding.  Advanced connection properties are also provided in a separate section of this step.  Upon successful validation, the user may proceed to the next steps (Additional properties) - or they can elect to bypass the additional properties and proceed directly to Review.
+In Step 2, you enter the basic connection properties for the selected connector and confirm that the properties validate successfully. You can also specify advanced connection properties in a separate section of this step.  After successful validation, you can proceed to the next steps (Additional properties), or click *Review and finish* in the wizard footer to bypass the additional properties and proceed directly to review.
 
-image::debezium-ui-create-connector-step2.png[{prodname} UI Create connector step2]
+image::debezium-ui-step2.png[{prodname} UI Create connector step2]
 
 ==== Create Connector - Additional properties (optional)
 The Additional properties are optional and can be summarized as follows:
 
 * *Filter definition* - entry of *regular expressions* which define the filters for inclusion/exclusion of the items that will be included for CDC.  The included items are displayed as the filters are entered and applied.
+* *Transformations* - Enable one-at-a-time modifications to individual messages. Single message transformations (SMTs) modify records before they are sent to Apache Kafka by applying them to the {prodname} connectors. For more information about single message transformations, see xref:{link-transformations}[Transformations].
+* *Topic creation* - Define default properties and groups for enabling automatic topic creation.
 * *Data options* - *Snapshot* and *Mapping* properties (optional).  The defaults can be viewed and changed if desired.
 * *Runtime options* - *Engine* and *Heartbeat* properties (optional).  The defaults can be viewed and changed if desired.
+* *Custom properties* - Enable pass-through of additional properties that are not specified in the previous sections, such as `database.*` and `database.history.*` options. You can enter any valid property name and value.
 
 ==== Create Connector - Review
-The *Review* step provides a summary of the configuration that will be used to create the connector.  If happy with the selections, click 'Finish' to create the connector.  If the properties need adjustment, navigate back to the earlier steps.
+The *Review* step provides a summary of the configuration that will be used to create the connector.  If you are satisfied with your selections, click *Finish* to create the connector.  To adjust any properties, navigate back to the earlier steps. You can also copy or download the JSON configuration payload for the connector.
 
-image::debezium-ui-create-connector-review.png[{prodname} UI Create connector review]
+image::debezium-ui-review-step.png[{prodname} UI Create connector review]

@@ -5,9 +5,12 @@
  */
 package io.debezium.relational;
 
+import java.util.List;
+
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Collect;
 
 /**
  * Unique identifier for a database table.
@@ -180,6 +183,21 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     @Override
     public String identifier() {
         return id;
+    }
+
+    @Override
+    public List<String> parts() {
+        return Collect.arrayListOf(catalogName, schemaName, tableName);
+    }
+
+    @Override
+    public List<String> databaseParts() {
+        return Collect.arrayListOf(catalogName, tableName);
+    }
+
+    @Override
+    public List<String> schemaParts() {
+        return Collect.arrayListOf(schemaName, tableName);
     }
 
     @Override

@@ -20,7 +20,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/db2/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/db2/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/db2/service.yaml";
 
     public OcpDb2(ExtensionContext.Store store) {
@@ -34,7 +33,7 @@ public class OcpDb2 extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_DB2)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .withPullSecrets(OCP_PULL_SECRET_PATH.get())
                 .build();
         return deployer.deploy();

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 
@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.SnapshotRecord;
@@ -27,7 +28,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
-                        .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                         .build());
         source = new SourceInfo(connectorConfig);
         source.setChangeLsn(Lsn.valueOf(new byte[]{ 0x01 }));

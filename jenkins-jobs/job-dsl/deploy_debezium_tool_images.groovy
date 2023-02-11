@@ -3,7 +3,7 @@ pipelineJob('release-deploy-debezium-tool-images') {
     description('Build and deploy debezium tool images to the registry')
 
     properties {
-        githubProjectUrl('https://github.com/debezium/docker-images')
+        githubProjectUrl('https://github.com/debezium/container-images')
     }
 
     logRotator {
@@ -17,14 +17,14 @@ pipelineJob('release-deploy-debezium-tool-images') {
 
     parameters {
         stringParam('MAIL_TO', 'jpechane@redhat.com')
-        stringParam('IMAGES_REPOSITORY', 'github.com/debezium/docker-images.git', 'Repository with Debezium Dockerfiles')
+        stringParam('IMAGES_REPOSITORY', 'github.com/debezium/container-images.git', 'Repository with Debezium Dockerfiles')
         stringParam('IMAGES_BRANCH', 'main', 'Branch used for images repository')
         stringParam('TAG', 'latest', 'Tag used for building images')
     }
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/build-debezium-tool-images.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/build_debezium_tool_images_pipeline.groovy'))
         }
     }
 }

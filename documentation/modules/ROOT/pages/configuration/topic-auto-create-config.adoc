@@ -71,7 +71,7 @@ and then explicitly create the topics, either manually, or through a custom depl
 Automatic topic creation in Kafka Connect is controlled by the `topic.creation.enable` property.
 The default value for the property is `true`, enabling automatic topic creation, as shown in the following example:
 
-[source,options="nowrap",shell]
+[source,shell,options="nowrap"]
 ----
 topic.creation.enable = true
 ----
@@ -93,7 +93,7 @@ ifdef::community[]
 ====
 If you don't want to allow automatic topic creation by Kafka Connect, set the value of `topic.creation.enable` to `false`
 in the Kafka Connect configuration (_connect-distributed.properties_ file or via environment variable
-_CONNECT_TOPIC_CREATION_ENABLE_ when using https://hub.docker.com/r/debezium/connect[{prodname}'s container image for Kafka Connect]).
+_CONNECT_TOPIC_CREATION_ENABLE_ when using https://quay.io/repository/debezium/connect[{prodname}'s container image for Kafka Connect]).
 ====
 endif::community[]
 
@@ -169,7 +169,7 @@ If no custom groups are registered, or if the `include` patterns for any registe
 then Kafka Connect uses the configuration of the `default` group to create topics.
 
 ifdef::community[]
-See xref:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} topics] in the
+See xref:{link-install-debezium}#configuring-debezium-topics[Configuring {prodname} topics] in the
 {prodname} installation guide on generic topic configuration considerations.
 endif::community[]
 
@@ -208,7 +208,7 @@ endif::product[]
 ifdef::community[]
 * To define properties for the `topic.creation.default` group, add them to the connector configuration JSON, as shown in the following example:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -301,7 +301,7 @@ list the properties for the custom group after the group name.
 +
 The following example shows sample configurations for the `inventory` and `applicationlogs` custom topic creation groups:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -411,7 +411,7 @@ ifdef::community[]
 +
 The following example registers the custom topic creation groups `inventory` and `applicationlogs`:
 +
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...
@@ -452,7 +452,7 @@ along with the configurations for an `inventory` and an `applicationlogs` custom
 .Example: Configuration for a default topic creation group and two custom groups
 ifdef::community[]
 
-[source,options="nowrap",json]
+[source,json,options="nowrap"]
 ----
 {
     ...

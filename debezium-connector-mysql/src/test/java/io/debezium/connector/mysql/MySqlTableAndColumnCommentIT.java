@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.MapAssert.entry;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -31,10 +31,10 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
 
     private static final String COLUMN_COMMENT_PARAMETER_KEY = "__debezium.source.column.comment";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-comment.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-comment.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("commentit", "table_column_comment_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -43,7 +43,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -52,7 +52,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -123,7 +123,7 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
                 .field("name")
                 .schema()
                 .parameters();
-        assertThat(nameSchemaParameters).includes(entry(COLUMN_COMMENT_PARAMETER_KEY, "this is name column"));
+        assertThat(nameSchemaParameters).contains(entry(COLUMN_COMMENT_PARAMETER_KEY, "this is name column"));
 
         // Bigint info
         Map<String, String> valueSchemaParameters = before
@@ -131,10 +131,10 @@ public class MySqlTableAndColumnCommentIT extends AbstractConnectorTest {
                 .field("value")
                 .schema()
                 .parameters();
-        assertThat(valueSchemaParameters).includes(entry(COLUMN_COMMENT_PARAMETER_KEY, "the value is bigint type"));
+        assertThat(valueSchemaParameters).contains(entry(COLUMN_COMMENT_PARAMETER_KEY, "the value is bigint type"));
 
         // Add a column with comment
-        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("ALTER TABLE dbz_4000_comment_test ADD COLUMN remark TEXT COMMENT 'description'");
         }
         records = consumeRecordsByTopic(1);

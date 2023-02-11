@@ -3,8 +3,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.0.0-SNAPSHOT</version>
-	<relativePath>../debezium-parent/pom.xml</relativePath>
+        <version>2.2.0-SNAPSHOT</version>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-mongodb</artifactId>
@@ -54,6 +54,21 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-testing-testcontainers</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.platform</groupId>
+                    <artifactId>junit-platform-launcher</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.junit.jupiter</groupId>
+                    <artifactId>junit-jupiter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
@@ -64,8 +79,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.easytesting</groupId>
-            <artifactId>fest-assert</artifactId>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -79,106 +94,81 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
     <properties>
-        <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->
-        <docker.image>mongo1,mongo-init</docker.image>
-
-        <!-- The command line args passed to each mongod service -->
-        <mongo.data.replicaset.name>rs0</mongo.data.replicaset.name>
-        <mongo.cfg.replicaset.name>cfg</mongo.cfg.replicaset.name>
-        <mongo.data.runOptions>--replSet ${mongo.data.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.data.runOptions>
-        <mongo.cfg.runOptions>--configsvr --replSet ${mongo.cfg.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.cfg.runOptions>
-        <mongo.router.runOptions>mongos --configdb ${mongo.cfg.replicaset.name}/config:27019</mongo.router.runOptions>
         <!-- 
         Set this property to 'true' in a profile to skip the integration tests and not even run the Docker containers.
         -->
         <docker.skip>false</docker.skip>
         <docker.exposeContainerInfo>docker.container</docker.exposeContainerInfo>
+        <!-- Apicurion container properties -->
+        <apicurio.port>8080</apicurio.port>
+        <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <!-- Mongo test containers -->
+        <mongodb.docker.desktop.ports>27017,27018,27019</mongodb.docker.desktop.ports>
+        <mongodb.replica.size>1</mongodb.replica.size>
     </properties>
     <build>
         <plugins>
             <plugin>
-              <groupId>io.fabric8</groupId>
-              <artifactId>docker-maven-plugin</artifactId>
-              <configuration>
-                <watchInterval>500</watchInterval>
-                <logDate>default</logDate>
-                <verbose>true</verbose>
-                <!--autoPull>always</autoPull-->
-                <images>
-                  <!-- A container for the data server replica set -->
-                  <image>
-                    <name>mongo:${version.mongo.server}</name>
-                    <alias>mongo1</alias>
-                    <run>
-                      <namingStrategy>alias</namingStrategy>
-                      <cmd>${mongo.data.runOptions}</cmd>
-                      <ports>
-                        <!-- We won't use it thru this port, but we don't want to take 27017 on docker host -->
-                        <port>27017:27017</port> 
-                      </ports>
-                      <log>
-                        <prefix>mongo1</prefix>
-                        <enabled>true</enabled>
-                        <color>yellow</color>
-                      </log>
-                      <wait>
-                        <log>.*[Ww]aiting for connections.*27017</log> <!-- internal port, multiline matching -->
-                        <time>30000</time> <!-- 30 seconds max -->
-                      </wait>
-                    </run>
-                  </image>
-                  <!-- A container that initiates the data replica set and adds it as shard to router -->
-                  <image>
-                    <name>debezium/mongo-initiator:${version.mongo.server}</name>
-                    <run>
-                      <namingStrategy>none</namingStrategy>
-                      <env>
-                        <VERBOSE>true</VERBOSE>
-                        <REPLICASET>${mongo.data.replicaset.name}</REPLICASET>
-                      </env>
-                      <links>
-                        <link>mongo1:mongo1</link>
-                      </links>
-                      <log>
-                        <prefix>mongo-init</prefix>
-                        <enabled>true</enabled>
-                        <color>green</color>
-                      </log>
-                      <wait>
-                        <exit>0</exit>
-                        <time>30000</time> <!-- 30 seconds max -->
-                      </wait>
-                    </run>
-                  </image>
-                </images>
-              </configuration>
-              <!--
-              Connect this plugin to the maven lifecycle around the integration-test phase:
-              start the container in pre-integration-test and stop it in post-integration-test.
-              -->
-              <executions>
-                <execution>
-                  <id>start</id>
-                  <phase>pre-integration-test</phase>
-                  <goals>
-                    <goal>build</goal>
-                    <goal>start</goal>
-                  </goals>
-                </execution>
-                <execution>
-                  <id>stop</id>
-                  <phase>post-integration-test</phase>
-                  <goals>
-                    <goal>stop</goal>
-                  </goals>
-                </execution>
-              </executions>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <watchInterval>500</watchInterval>
+                    <logDate>default</logDate>
+                    <verbose>true</verbose>
+                    <!--autoPull>always</autoPull-->
+                    <images>
+                        <image>
+                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <ports>
+                                    <port>${apicurio.port}:8080</port>
+                                </ports>
+                                <log>
+                                    <prefix>apicurio</prefix>
+                                    <enabled>true</enabled>
+                                    <color>blue</color>
+                                </log>
+                                <wait>
+                                    <log>.*apicurio-registry-app.*started in.*</log>
+                                    <time>${apicurio.init.timeout}</time>
+                                </wait>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <!--
+                Connect this plugin to the maven lifecycle around the integration-test phase:
+                start the container in pre-integration-test and stop it in post-integration-test.
+                -->
+                <executions>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!-- 
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
@@ -207,11 +197,13 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <connector.mongodb.hosts>${mongo.data.replicaset.name}/${docker.host.address}:27017</connector.mongodb.hosts>
-                        <connector.mongodb.members.auto.discover>false</connector.mongodb.members.auto.discover>
-                        <connector.mongodb.name>mongo1</connector.mongodb.name>
+                        <version.mongo.server>${version.mongo.server}</version.mongo.server>
+                        <mongodb.docker.desktop.ports>${mongodb.docker.desktop.ports}</mongodb.docker.desktop.ports>
+                        <mongodb.replica.size>${mongodb.replica.size}</mongodb.replica.size>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -307,21 +299,46 @@
                 <docker.skip>true</docker.skip>
             </properties>
         </profile>
-      <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Do not perform any Docker-related functionality
-            To use, specify "-DskipITs" on the Maven command line.
-            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-      <profile>
-        <id>skip-integration-tests</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-          <property>
-            <name>skipITs</name>
-          </property>
-        </activation>
-        <properties>
-          <docker.skip>true</docker.skip>
-        </properties>
-      </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>skipITs</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>apicurio</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>apicurio</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <use.apicurio>true</use.apicurio>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <properties>
+                <docker.filter>apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+            </properties>
+        </profile>
     </profiles>
 </project>

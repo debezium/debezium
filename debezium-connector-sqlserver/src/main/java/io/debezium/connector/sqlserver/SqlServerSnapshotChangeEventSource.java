@@ -217,7 +217,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                             .collect(Collectors.toList());
 
                     snapshotContext.tables.overwriteTable(sourceTable.id(), cdcEnabledSourceColumns,
-                            cdcEnabledPkColumns, sourceTable.defaultCharsetName());
+                            cdcEnabledPkColumns, sourceTable.defaultCharsetName(), sourceTable.attributes());
                 }
             });
         }
@@ -233,7 +233,16 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected void complete(SnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
+    protected void completed(SnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
+        close(snapshotContext);
+    }
+
+    @Override
+    protected void aborted(SnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
+        close(snapshotContext);
+    }
+
+    private void close(SnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((SqlServerSnapshotContext) snapshotContext).isolationLevelBeforeStart);
             LOGGER.info("Removing locking timeout");
@@ -289,7 +298,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
+        SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
             super(partition, partition.getDatabaseName());
         }
     }

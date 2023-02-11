@@ -22,14 +22,21 @@ jobs:
           while IFS=" " read -r AUTHOR;
           do
             if [[ $AUTHOR == *"null"* ]]; then
-              echo "::set-output name=OCTOCAT_COMMIT_FOUND::true"
+              echo "OCTOCAT_COMMIT_FOUND=true" >> $GITHUB_OUTPUT
             fi
           done < SORTED_AUTHORS.txt
       - name: Create comment
         if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Hi @${{ github.event.pull_request.user.login }}. Thank you for your valuable contribution.
             Please author your commit(s) using an email [linked to your GitHub account](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile).
+      - name: Check failure
+        if: ${{ steps.check.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
+        uses: actions/github-script@v6
+        continue-on-error: false
+        with:
+          script: |
+            throw new Error('Octocat commits found')

@@ -17,14 +17,17 @@ import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.infinispan.client.hotrod.impl.ConfigurationProperties;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.processor.infinispan.CacheProvider;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -34,7 +37,7 @@ public class TestHelper {
     private static final String DATABASE_PREFIX = "database.";
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
-    public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
 
     public static final String CONNECTOR_USER = "c##dbzuser";
     public static final String CONNECTOR_NAME = "oracle";
@@ -130,12 +133,17 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
+        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
         }
         else {
             // Tests will always use the online catalog strategy due to speed.
             builder.withDefault(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog");
+
+            final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
+            if (readOnly) {
+                builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);
+            }
 
             final String bufferTypeName = System.getProperty(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE.name());
             final LogMiningBufferType bufferType = LogMiningBufferType.parse(bufferTypeName);
@@ -159,9 +167,9 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
         }
 
-        return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
-                .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
@@ -229,7 +237,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
+        builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 
@@ -243,7 +251,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME);
+        builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
     }
 
@@ -319,7 +327,7 @@ public class TestHelper {
      * @return the connection
      */
     private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
-        OracleConnection connection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
+        OracleConnection connection = new OracleConnection(jdbcConfig);
         try {
             connection.setAutoCommit(autoCommit);
 
@@ -339,7 +347,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -354,7 +362,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
-        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig))) {
             if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
                 jdbcConnection.resetSessionToCdb();
             }
@@ -500,9 +508,9 @@ public class TestHelper {
         return 120;
     }
 
-    public static OracleConnectorConfig.ConnectorAdapter adapter() {
+    public static ConnectorAdapter adapter() {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
-        return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.LOG_MINER : OracleConnectorConfig.ConnectorAdapter.parse(s);
+        return (s == null || s.length() == 0) ? ConnectorAdapter.LOG_MINER : ConnectorAdapter.parse(s);
     }
 
     /**
@@ -609,5 +617,31 @@ public class TestHelper {
         }
         // if the property is not specified, we default to using PDB mode.
         return Strings.isNullOrEmpty(properties.get(PDB_NAME));
+    }
+
+    /**
+     * Returns the connector adapter from the provided configuration.
+     *
+     * @param config the connector configuration, must not be {@code null}
+     * @return the connector adapter being used.
+     */
+    public static ConnectorAdapter getAdapter(Configuration config) {
+        return ConnectorAdapter.parse(config.getString(OracleConnectorConfig.CONNECTOR_ADAPTER));
+    }
+
+    /**
+     * Returns the current system change number in the database.
+     *
+     * @return the current system change number, never {@code null}
+     * @throws SQLException if a database error occurred
+     */
+    public static Scn getCurrentScn() throws SQLException {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+            // Force the connection to the CDB$ROOT if we're operating w/a PDB
+            if (isUsingPdb()) {
+                admin.resetSessionToCdb();
+            }
+            return admin.getCurrentScn();
+        }
     }
 }

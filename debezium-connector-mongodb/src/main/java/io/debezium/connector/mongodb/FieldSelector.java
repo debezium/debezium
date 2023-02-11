@@ -36,7 +36,7 @@ public final class FieldSelector {
      * This filter is designed to exclude or rename fields in a document.
      */
     @ThreadSafe
-    public static interface FieldFilter {
+    public interface FieldFilter {
 
         /**
          * Applies this filter to the given document to exclude or rename fields.
@@ -194,8 +194,6 @@ public final class FieldSelector {
             List<Path> pathsApplyingToCollection = paths.stream()
                     .filter(path -> path.matches(namespace))
                     .collect(Collectors.toList());
-            final Map<String, Path> pathsByAddress = paths.stream()
-                    .collect(Collectors.toMap(Path::toString, Function.identity()));
             if (pathsApplyingToCollection.size() == 1) {
                 return new FieldFilter() {
                     final Path path = pathsApplyingToCollection.get(0);
@@ -552,7 +550,7 @@ public final class FieldSelector {
 
         /**
          * Verifies whether a parameter representing path is the same or belongs under this path.
-         * 
+         *
          * @param other - the string representing the other path
          * @return - true if this path is the same or parent of the path passed
          */

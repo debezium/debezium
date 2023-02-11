@@ -6,10 +6,11 @@
 package io.debezium.transforms.outbox;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -988,6 +989,91 @@ public class EventRouterTest {
     }
 
     @Test
+    public void canExpandJsonWithNestedArraysWhereFirstArrayIsEmpty() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"petObjects\": [{\"type\": \"dog\", \"colors\": []}, {\"type\": \"cat\", \"colors\": [{\"name\": \"white\"}]}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+
+        assertThat(valueSchema.fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("petObjects").schema().type().getName()).isEqualTo("array");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().type().getName()).isEqualTo("struct");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("type").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("colors").schema().type().getName()).isEqualTo("array");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("colors").schema().valueSchema().type().getName()).isEqualTo("struct");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("colors").schema().valueSchema().fields().size()).isEqualTo(1);
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("colors").schema().valueSchema().field("name").schema().type().getName())
+                .isEqualTo("string");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        List<Object> petObjects = valueStruct.getArray("petObjects");
+        assertThat(petObjects.size()).isEqualTo(2);
+        assertThat(asStruct(petObjects.get(0)).get("type")).isEqualTo("dog");
+        assertThat(asStruct(petObjects.get(0)).getArray("colors")).hasSize(0);
+        assertThat(asStruct(petObjects.get(1)).get("type")).isEqualTo("cat");
+        assertThat(asStruct(petObjects.get(1)).getArray("colors")).hasSize(1);
+        List<Object> colors = asStruct(petObjects.get(1)).getArray("colors");
+        assertThat(asStruct(colors.get(0)).get("name")).isEqualTo("white");
+    }
+
+    @Test
+    public void shouldExpandJSONPayloadWithEmptyArrayAndRemoveThatArray() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"petObjects\": [{\"type\": \"dog\", \"colors\": []}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+
+        assertThat(valueSchema.fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("petObjects").schema().type().getName()).isEqualTo("array");
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().fields().size()).isEqualTo(1);
+        assertThat(valueSchema.field("petObjects").schema().valueSchema().field("type").schema().type().getName()).isEqualTo("string");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        List<Object> petObjects = valueStruct.getArray("petObjects");
+        assertThat(petObjects.size()).isEqualTo(1);
+        assertThat(asStruct(petObjects.get(0)).get("type")).isEqualTo("dog");
+    }
+
+    @Test
     public void shouldNotExpandJSONPayloadIfNotConfigured() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         router.configure(new HashMap<>());
@@ -1045,6 +1131,84 @@ public class EventRouterTest {
 
         Struct payloadStruct = valueStruct.getStruct("payload");
         assertThat(payloadStruct.get("fullName")).isEqualTo("John Doe");
+    }
+
+    @Test
+    public void canExpandJsonArrayWithFirstElementNull() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{\"fullName\": \"John Doe\", \"numbers\": [null, 2, 3]}",
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+
+        assertThat(valueSchema.fields().size()).isEqualTo(2);
+        assertThat(valueSchema.field("fullName").schema().type().getName()).isEqualTo("string");
+        assertThat(valueSchema.field("numbers").schema().type().getName()).isEqualTo("array");
+        assertThat(valueSchema.field("numbers").schema().valueSchema().type().getName()).isEqualTo("int32");
+
+        Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("fullName")).isEqualTo("John Doe");
+        List<Object> numbers = valueStruct.getArray("numbers");
+        assertThat(numbers.size()).isEqualTo(3);
+        assertThat(numbers.get(0)).isEqualTo(null);
+        assertThat(numbers.get(1)).isEqualTo(2);
+        assertThat(numbers.get(2)).isEqualTo(3);
+    }
+
+    @Test
+    public void canExpandJsonArrayWithComplexElements() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "59875832-7f44-11ed-954e-1a5354ab5dd0|",
+                "UserCreated",
+                "6a3f12a0",
+                "User",
+                "{\"id\":\"1028cbab-c55b-4dab-a367-7d9471466a59\",\"attributes\":[{\"id\":\"10911586\",\"adr\":null,\"eans\":[{\"code\":\"2007000013656\",\"createdAt\":\"2022-06-08T11:33:16.465Z\"}],\"purchaseBusinessStatus\":\"BLOCOM\",\"isCanBeReturnToSupplier\":false,\"purchaseWarehouseStatus\":\"NONAUT\"}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        SourceRecord eventRouted = router.apply(eventRecord);
+        assertThat(eventRouted).isNotNull();
+        Struct valueStruct = (Struct) eventRouted.value();
+        List<Struct> eans = (ArrayList) ((Struct) ((ArrayList) valueStruct.get("attributes")).get(0)).get("eans");
+        assertThat(eans.size()).isEqualTo(1);
+
+        final SourceRecord eventRecord2 = createEventRecord(
+                "59875832-7f44-11ed-954e-1a5354ab5dd0|",
+                "UserCreated",
+                "6a3f12a0",
+                "User",
+                "{\"id\":\"1028cbab-c55b-4dab-a367-7d9471466a59\",\"attributes\":[{\"id\":\"10911586\",\"adr\":null,\"eans\":[{\"code\":\"2007000013656\",\"createdAt\":\"2022-06-08T11:33:16.465Z\"},{\"code\":\"2000630108556\",\"createdAt\":\"2022-06-23T07:57:54.717Z\"}],\"purchaseBusinessStatus\":\"BLOCOM\",\"isCanBeReturnToSupplier\":false,\"purchaseWarehouseStatus\":\"NONAUT\"}]}",
+                new HashMap<>(),
+                new HashMap<>());
+        SourceRecord eventRouted2 = router.apply(eventRecord2);
+        assertThat(eventRouted2).isNotNull();
+        Struct valueStruct2 = (Struct) eventRouted2.value();
+        List<Struct> eans2 = (ArrayList) ((Struct) ((ArrayList) valueStruct2.get("attributes")).get(0)).get("eans");
+        assertThat(eans2.size()).isEqualTo(2);
+
+        assertThat(eventRouted.valueSchema()).isEqualTo(eventRouted2.valueSchema());
     }
 
     private SourceRecord createEventRecord() {

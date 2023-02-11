@@ -7,15 +7,17 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,11 +61,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
                 // DBZ-4272 required to allow dropping columns just before an incremental snapshot
                 .with("database.autosave", "conservative");
@@ -73,18 +74,17 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         final String tableIncludeList;
         if (signalTableOnly) {
-            tableIncludeList = "s1.b,s1.debezium_signal";
+            tableIncludeList = "s1.b";
         }
         else {
-            tableIncludeList = "s1.a,s1.b,s1.debezium_signal";
+            tableIncludeList = "s1.a,s1.b";
         }
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 // DBZ-4272 required to allow dropping columns just before an incremental snapshot
@@ -170,7 +170,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a4",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -192,7 +192,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.a42",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -200,7 +200,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     public void insertsNumericPk() throws Exception {
         // Testing.Print.enable();
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection, "s1.anumeric");
         }
         startConnector();
@@ -216,7 +216,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 "test_server.s1.anumeric",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -232,12 +232,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         TestHelper.execute(SETUP_TABLES);
 
         // insert records
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection, "s1.part");
         }
 
         // start connector
-        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part, s1.part1, s1.part2, s1.debezium_signal"));
+        startConnector(x -> x.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part, s1.part1, s1.part2"));
         waitForConnectorToStart();
 
         sendAdHocSnapshotSignal("s1.part");
@@ -270,22 +270,45 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 null);
 
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
         for (int i = 0; i < expectedPartRecordCount; i++) {
-            Assertions.assertThat(dbChangesPart1).includes(MapAssert.entry(i + 1, i));
-            Assertions.assertThat(dbChangesPart2).includes(MapAssert.entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
+            assertThat(dbChangesPart1).contains(entry(i + 1, i));
+            assertThat(dbChangesPart2).contains(entry(i + 1 + expectedPartRecordCount, i + expectedPartRecordCount));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-4329")
+    public void obsoleteSourceInfoIsExcludedFromRecord() throws Exception {
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        final Map<Integer, Struct> dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                record -> ((Struct) record.value()).getStruct("source"),
+                x -> true,
+                null,
+                topicName());
+        Set<Map.Entry<Integer, Struct>> entries = dbChanges.entrySet();
+        assertThat(ROW_COUNT == entries.size());
+        for (Map.Entry<Integer, Struct> e : entries) {
+            Assert.assertTrue(e.getValue().getInt64("xmin") == null);
+            Assert.assertTrue(e.getValue().getInt64("lsn") == null);
+            Assert.assertTrue(e.getValue().getInt64("txId") == null);
         }
     }
 
     protected void populate4PkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a4");
         }
     }
 
     protected void populate4WithoutPkTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a42");
         }
     }

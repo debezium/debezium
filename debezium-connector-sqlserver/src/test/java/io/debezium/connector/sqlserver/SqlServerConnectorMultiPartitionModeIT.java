@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +47,7 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
         TestHelper.enableTableCdc(connection, "tableC");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -60,7 +59,7 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
 
     @Test
     public void snapshotAndStreaming() throws Exception {
-        final Configuration config = TestHelper.defaultMultiPartitionConfig(
+        final Configuration config = TestHelper.defaultConfig(
                 TestHelper.TEST_DATABASE_1,
                 TestHelper.TEST_DATABASE_2)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
@@ -72,19 +71,19 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
         SourceRecords records = consumeRecordsByTopic(4);
 
         List<SourceRecord> tableA1 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA1.get(0), "colA", "a1");
 
         List<SourceRecord> tableB = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableB"));
-        Assertions.assertThat(tableB).hasSize(1);
+        assertThat(tableB).hasSize(1);
         assertValue(tableB.get(0), "colB", "b");
 
         List<SourceRecord> tableA2 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableA"));
-        Assertions.assertThat(tableA2).hasSize(1);
+        assertThat(tableA2).hasSize(1);
         assertValue(tableA2.get(0), "colA", "a2");
 
         List<SourceRecord> tableC = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableC"));
-        Assertions.assertThat(tableC).hasSize(1);
+        assertThat(tableC).hasSize(1);
         assertValue(tableC.get(0), "colC", "c");
 
         connection.execute(
@@ -94,15 +93,15 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTes
                 "USE " + TestHelper.TEST_DATABASE_2,
                 "INSERT INTO tableA VALUES(6, 'a2s')");
 
-        TestHelper.waitForTaskStreamingStarted();
+        TestHelper.waitForStreamingStarted();
         records = consumeRecordsByTopic(2);
 
         tableA1 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_1, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA1.get(0), "colA", "a1s");
 
         tableA2 = records.recordsForTopic(TestHelper.topicName(TestHelper.TEST_DATABASE_2, "tableA"));
-        Assertions.assertThat(tableA1).hasSize(1);
+        assertThat(tableA1).hasSize(1);
         assertValue(tableA2.get(0), "colA", "a2s");
     }
 

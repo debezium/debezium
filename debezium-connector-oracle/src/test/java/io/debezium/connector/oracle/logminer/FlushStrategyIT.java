@@ -6,7 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +23,10 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.junit.SkipOnReadOnly;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnReadOnly;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -37,12 +39,15 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Flush strategy only applies to LogMiner implementation")
+@SkipOnReadOnly(reason = "Test expects flush table, not applicable during read only.")
 public class FlushStrategyIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
     @Rule
     public final TestRule skipOptionRule = new SkipTestDependingOnDatabaseOptionRule();
+    @Rule
+    public final TestRule skipReadOnly = new SkipTestDependingOnReadOnly();
 
     private static OracleConnection connection;
 
@@ -62,7 +67,7 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @Test

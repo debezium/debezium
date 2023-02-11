@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -494,6 +494,42 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()[4]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
         assertThat(entry.getOldValues()[5]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
         assertThat(entry.getOldValues()[6]).isEqualTo(OracleValueConverters.UNAVAILABLE_VALUE);
+        assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-5521")
+    public void shouldNotInterpretConcatenationSyntaxInSingleQuotedValuesAsConcatenation() throws Exception {
+        final Table table = Table.editor()
+                .tableId(new TableId(null, "UNKNOWN", "TABLE"))
+                .addColumn(Column.editor().name("COL1").create())
+                .addColumn(Column.editor().name("COL2").create())
+                .create();
+
+        String sql = "insert into \"UNKNOWN\".\"TABLE\" (\"COL1\",\"COL2\") values ('I||am','test||case');";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("I||am");
+        assertThat(entry.getNewValues()[1]).isEqualTo("test||case");
+
+        sql = "update \"UNKNOWN\".\"TABLE\" set \"COL1\" = 'I||am||updated' where \"COL1\" = 'I||am' and \"COL2\" = 'test||case';";
+        entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("I||am");
+        assertThat(entry.getOldValues()[1]).isEqualTo("test||case");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("I||am||updated");
+        assertThat(entry.getNewValues()[1]).isEqualTo("test||case");
+
+        sql = "delete from \"UNKNOWN\".\"TABLE\" where \"COL1\" = 'I||am' and \"COL2\" = 'test||case';";
+        entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("I||am");
+        assertThat(entry.getOldValues()[1]).isEqualTo("test||case");
         assertThat(entry.getNewValues()).isEmpty();
     }
 }

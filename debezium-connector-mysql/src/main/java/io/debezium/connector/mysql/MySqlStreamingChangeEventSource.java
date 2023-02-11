@@ -53,6 +53,7 @@ import com.github.shyiko.mysql.binlog.event.QueryEventData;
 import com.github.shyiko.mysql.binlog.event.RotateEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TransactionPayloadEventData;
 import com.github.shyiko.mysql.binlog.event.UpdateRowsEventData;
 import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDataDeserializationException;
@@ -77,6 +78,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -175,7 +177,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     @FunctionalInterface
-    private static interface BinlogChangeEmitter<T> {
+    private interface BinlogChangeEmitter<T> {
         void emit(TableId tableId, T data) throws InterruptedException;
     }
 
@@ -233,6 +235,22 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     if (event.getHeader().getEventType() == EventType.TABLE_MAP) {
                         TableMapEventData tableMapEvent = event.getData();
                         tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
+                    }
+
+                    // DBZ-2663 Handle for transaction payload and capture the table map event and add it to the map
+                    if (event.getHeader().getEventType() == EventType.TRANSACTION_PAYLOAD) {
+                        TransactionPayloadEventData transactionPayloadEventData = (TransactionPayloadEventData) event.getData();
+                        /**
+                         * Loop over the uncompressed events in the transaction payload event and add the table map
+                         * event in the map of table events
+                         **/
+                        for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
+                            if (uncompressedEvent.getHeader().getEventType() == EventType.TABLE_MAP
+                                    && uncompressedEvent.getData() != null) {
+                                TableMapEventData tableMapEvent = (TableMapEventData) uncompressedEvent.getData();
+                                tableMapEventByTableId.put(tableMapEvent.getTableId(), tableMapEvent);
+                            }
+                        }
                     }
 
                     // DBZ-5126 Clean cache on rotate event to prevent it from growing indefinitely.
@@ -578,6 +596,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
+                if (tableId != null && !connectorConfig.getSkippedOperations().contains(Operation.TRUNCATE)
+                        && schemaChangeEvent.getType().equals(SchemaChangeEventType.TRUNCATE)) {
+                    eventDispatcher.dispatchDataChangeEvent(partition, tableId,
+                            new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.TRUNCATE, null, null));
+                }
                 eventDispatcher.dispatchSchemaChangeEvent(partition, tableId, (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(schemaChangeEvent);
@@ -632,6 +655,28 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     /**
+     * Handle an event of type TRANSACTION_PAYLOAD_EVENT
+     * <p>
+     * This method should be called whenever a transaction payload event is encountered by the mysql binlog connector.
+     * A Transaction payload event is propagated from the binlog connector when compression is turned on over binlog.
+     * This method loops over the individual events in the compressed binlog and calls the respective atomic event
+     * handlers.
+     *
+     */
+    protected void handleTransactionPayload(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
+        TransactionPayloadEventData transactionPayloadEventData = (TransactionPayloadEventData) event.getData();
+        /**
+         * Loop over the uncompressed events in the transaction payload event and add the table map
+         * event in the map of table events
+         **/
+        EventType eventType = null;
+        for (Event uncompressedEvent : transactionPayloadEventData.getUncompressedEvents()) {
+            eventType = uncompressedEvent.getHeader().getEventType();
+            eventHandlers.getOrDefault(eventType, (e) -> ignoreEvent(offsetContext, uncompressedEvent)).accept(uncompressedEvent);
+        }
+    }
+
+    /**
      * If we receive an event for a table that is monitored but whose metadata we
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
@@ -645,7 +690,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 LOGGER.error(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), eventHeader.getPosition(),
                         eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
@@ -654,7 +699,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
             else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 LOGGER.warn(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
@@ -662,7 +707,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             }
             else {
                 LOGGER.debug(
-                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database history topic. Take a new snapshot in this case.{}"
+                        "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
                         event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
@@ -846,6 +891,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         eventHandlers.put(EventType.ROTATE, (event) -> handleRotateLogsEvent(effectiveOffsetContext, event));
         eventHandlers.put(EventType.TABLE_MAP, (event) -> handleUpdateTableMetadata(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.QUERY, (event) -> handleQueryEvent(partition, effectiveOffsetContext, event));
+        eventHandlers.put(EventType.TRANSACTION_PAYLOAD, (event) -> handleTransactionPayload(partition, effectiveOffsetContext, event));
 
         if (!skippedOperations.contains(Operation.CREATE)) {
             eventHandlers.put(EventType.WRITE_ROWS, (event) -> handleInsert(partition, effectiveOffsetContext, event));

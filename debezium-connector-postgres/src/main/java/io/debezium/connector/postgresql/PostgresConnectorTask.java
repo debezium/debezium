@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -36,11 +37,11 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
@@ -61,9 +62,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
-        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         if (snapshotter == null) {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
@@ -92,8 +93,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final PostgresDefaultValueConverter defaultValueConverter = jdbcConnection.getDefaultValueConverter();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, defaultValueConverter, topicSelector, valueConverterBuilder.build(typeRegistry));
-        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
+        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverterBuilder.build(typeRegistry));
+        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                 new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
@@ -125,9 +126,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
-                final boolean doSnapshot = snapshotter.shouldSnapshot();
                 replicationConnection = createReplicationConnection(this.taskContext,
-                        doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
+                        connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
                 // we need to create the slot before we start streaming if it doesn't exist
                 // otherwise we can't stream back changes happening while the snapshot is taking place
@@ -169,7 +169,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             final PostgresEventDispatcher<TableId> dispatcher = new PostgresEventDispatcher<>(
                     connectorConfig,
-                    topicSelector,
+                    topicNamingStrategy,
                     schema,
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -177,7 +177,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
                     connectorConfig.createHeartbeat(
-                            topicSelector,
+                            topicNamingStrategy,
                             schemaNameAdjuster,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
@@ -193,8 +193,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                         break;
                                 }
                             }),
-                    schemaNameAdjuster,
-                    jdbcConnection);
+                    schemaNameAdjuster);
 
             ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffsets,
@@ -228,14 +227,14 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
     }
 
-    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean doSnapshot, int maxRetries, Duration retryDelay)
+    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, int maxRetries, Duration retryDelay)
             throws ConnectException {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(doSnapshot, jdbcConnection);
+                return taskContext.createReplicationConnection(jdbcConnection);
             }
             catch (SQLException ex) {
                 retryCount++;

@@ -15,7 +15,7 @@ import io.debezium.pipeline.meters.SnapshotMeter;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The default implementation of metrics related to the snapshot phase of a connector.
@@ -56,6 +56,11 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     }
 
     @Override
+    public boolean getSnapshotPaused() {
+        return snapshotMeter.getSnapshotPaused();
+    }
+
+    @Override
     public boolean getSnapshotCompleted() {
         return snapshotMeter.getSnapshotCompleted();
     }
@@ -68,6 +73,11 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     @Override
     public long getSnapshotDurationInSeconds() {
         return snapshotMeter.getSnapshotDurationInSeconds();
+    }
+
+    @Override
+    public long getSnapshotPausedDurationInSeconds() {
+        return snapshotMeter.getSnapshotPausedDurationInSeconds();
     }
 
     @Override
@@ -88,6 +98,16 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     @Override
     public void snapshotStarted(P partition) {
         snapshotMeter.snapshotStarted();
+    }
+
+    @Override
+    public void snapshotPaused(P partition) {
+        snapshotMeter.snapshotPaused();
+    }
+
+    @Override
+    public void snapshotResumed(P partition) {
+        snapshotMeter.snapshotResumed();
     }
 
     @Override

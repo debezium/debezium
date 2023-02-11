@@ -13,7 +13,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
 
@@ -45,10 +45,14 @@ class PostgresEventMetadataProvider implements EventMetadataProvider {
         if (source == null) {
             return null;
         }
-        Long xmin = sourceInfo.getInt64(SourceInfo.XMIN_KEY);
+        final Long xmin = sourceInfo.getInt64(SourceInfo.XMIN_KEY);
+        final Long lsn = sourceInfo.getInt64(SourceInfo.LSN_KEY);
+        if (lsn == null) {
+            return null;
+        }
 
         Map<String, String> r = Collect.hashMapOf(
-                SourceInfo.LSN_KEY, Long.toString(sourceInfo.getInt64(SourceInfo.LSN_KEY)));
+                SourceInfo.LSN_KEY, Long.toString(lsn));
         if (xmin != null) {
             r.put(SourceInfo.XMIN_KEY, Long.toString(xmin));
         }
@@ -64,6 +68,10 @@ class PostgresEventMetadataProvider implements EventMetadataProvider {
         if (source == null) {
             return null;
         }
-        return Long.toString(sourceInfo.getInt64(SourceInfo.TXID_KEY));
+        Long txId = sourceInfo.getInt64(SourceInfo.TXID_KEY);
+        if (txId == null) {
+            return null;
+        }
+        return Long.toString(txId);
     }
 }

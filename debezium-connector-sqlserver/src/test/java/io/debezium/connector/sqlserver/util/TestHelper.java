@@ -29,12 +29,13 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.Lsn;
-import io.debezium.connector.sqlserver.SourceTimestampMode;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
+import io.debezium.connector.sqlserver.SqlServerJdbcConfiguration;
 import io.debezium.connector.sqlserver.SqlServerValueConverters;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -42,7 +43,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Strings;
@@ -55,8 +56,7 @@ public class TestHelper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
-    public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
-    public static final String TEST_DATABASE = "testDB";
+    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE_1 = "testDB1";
     public static final String TEST_DATABASE_2 = "testDB2";
     public static final String TEST_SERVER_NAME = "server1";
@@ -76,6 +76,7 @@ public class TestHelper {
     private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
     private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0, @captured_column_list = %s";
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
+    private static final String ADJUST_CDC_POLLING_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = #";
     private static final String CDC_WRAPPERS_DML;
 
     /**
@@ -126,9 +127,9 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
-                .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+                .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
@@ -137,24 +138,19 @@ public class TestHelper {
      * in individual tests as needed.
      */
     public static Configuration.Builder defaultConfig() {
-        return defaultConnectorConfig()
-                .with(SqlServerConnectorConfig.DATABASE_NAME.name(), TEST_DATABASE);
+        return defaultConfig(TEST_DATABASE_1);
     }
 
     /**
      * Returns a default configuration for connectors in multi-partition mode.
      */
-    public static Configuration.Builder defaultMultiPartitionConfig(String... databaseNames) {
+    public static Configuration.Builder defaultConfig(String... databaseNames) {
         return defaultConnectorConfig()
                 .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), String.join(",", databaseNames));
     }
 
-    public static Configuration.Builder defaultMultiPartitionConfig() {
-        return defaultMultiPartitionConfig(TEST_DATABASE);
-    }
-
     public static void createTestDatabase() {
-        createTestDatabase(TEST_DATABASE);
+        createTestDatabase(TEST_DATABASE_1);
     }
 
     public static void createTestDatabases(String... databaseNames) {
@@ -185,7 +181,7 @@ public class TestHelper {
     public static void dropTestDatabase() {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            dropTestDatabase(connection, TEST_DATABASE);
+            dropTestDatabase(connection, TEST_DATABASE_1);
         }
         catch (SQLException e) {
             throw new IllegalStateException("Error while dropping test database", e);
@@ -242,13 +238,13 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
-                Collections.emptySet(), true);
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(defaultJdbcConfig()),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnection() {
-        return testConnection(TEST_DATABASE);
+        return testConnection(TEST_DATABASE_1);
     }
 
     /**
@@ -268,19 +264,19 @@ public class TestHelper {
     }
 
     public static SqlServerConnection testConnection(JdbcConfiguration config) {
-        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
-                Collections.emptySet(), true);
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
+                Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
         JdbcConfiguration config = JdbcConfiguration.adapt(defaultJdbcConfig()
                 .edit()
-                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + TEST_DATABASE + "]")
+                .with(JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
 
-        return new SqlServerConnection(config, SourceTimestampMode.getDefaultMode(),
-                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null), () -> TestHelper.class.getClassLoader(),
+        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
+                new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                 Collections.emptySet(), true, true);
     }
 
@@ -297,7 +293,7 @@ public class TestHelper {
             Objects.requireNonNull(name);
             connection.execute(ENABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
 
-            // make sure testDB has cdc-enabled before proceeding; throwing exception if it fails
+            // make sure the test database has cdc-enabled before proceeding; throwing exception if it fails
             Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
                 final String sql = IS_CDC_ENABLED.replace(STATEMENTS_PLACEHOLDER, name);
                 return connection.queryAndMap(sql, connection.singleResultMapper(rs -> rs.getLong(1), "")) == 1L;
@@ -425,8 +421,23 @@ public class TestHelper {
         connection.execute(disableCdcForTableStmt);
     }
 
+    /**
+     * Sets new polling interval in which SQL server should poll changes.
+     *
+     * SQL server polls new changes and copies them into CDC in predefined interval.
+     * By default, this interval is 5 seconds. For the tests it may be too long and test may need shorter interval.
+     *
+     * @param interval
+     *          new CDC polling interval, in seconds
+     * @throws SQLException if anything unexpected fails
+     */
+    public static void adjustCdcPollingInterval(JdbcConnection connection, int interval) throws SQLException {
+        String adjustCdcPollingIntervalStmt = ADJUST_CDC_POLLING_INTERVAL.replace(STATEMENTS_PLACEHOLDER, Integer.toString(interval));
+        connection.execute(adjustCdcPollingIntervalStmt);
+    }
+
     public static void waitForSnapshotToBeCompleted() {
-        waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1"));
+        waitForDatabaseSnapshotToBeCompleted(TEST_DATABASE_1);
     }
 
     public static void waitForDatabaseSnapshotToBeCompleted(String databaseName) {
@@ -464,14 +475,8 @@ public class TestHelper {
                 "context", "streaming")));
     }
 
-    public static void waitForTaskStreamingStarted() {
-        waitForTaskStreamingStarted(TEST_TASK_ID);
-    }
-
     public static void waitForStreamingStarted() {
-        waitForStreamingStarted(getObjectName(Collect.linkMapOf(
-                "context", "streaming",
-                "server", "server1")));
+        waitForTaskStreamingStarted(TEST_TASK_ID);
     }
 
     public static void waitForStreamingStarted(ObjectName objectName) {
@@ -493,7 +498,7 @@ public class TestHelper {
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection) throws Exception {
-        waitForMaxLsnAvailable(connection, TEST_DATABASE);
+        waitForMaxLsnAvailable(connection, TEST_DATABASE_1);
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection, String databaseName) throws Exception {
@@ -540,6 +545,10 @@ public class TestHelper {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "5"));
     }
 
+    public static int waitTimeForLogEntries() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "log.waittime", "15"));
+    }
+
     /**
      * Utility method that will poll the CDC change tables and provide the record handler with the changes detected.
      * The record handler can then make a determination as to whether to return {@code true} if the expected outcome
@@ -556,19 +565,19 @@ public class TestHelper {
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn(TEST_DATABASE).isAvailable()) {
+                        if (!connection.getMaxLsn(TEST_DATABASE_1).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE_1)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE, ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE);
+                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(TEST_DATABASE, tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(TEST_DATABASE_1, tables, minLsn, maxLsn, consumer);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -611,19 +620,19 @@ public class TestHelper {
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn(TEST_DATABASE).isAvailable()) {
+                        if (!connection.getMaxLsn(TEST_DATABASE_1).isAvailable()) {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE)) {
+                        for (SqlServerChangeTable ct : connection.getChangeTables(TEST_DATABASE_1)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE, ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE);
+                                    final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(TEST_DATABASE, tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(TEST_DATABASE_1, tables, minLsn, maxLsn, consumer);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -644,6 +653,20 @@ public class TestHelper {
         }
     }
 
+    public static void waitForCdcTransactionPropagation(SqlServerConnection connection, String dbName, int expectedTransactions) throws SQLException {
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollDelay(1, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+                    int transactions = connection.queryAndMap(String.format("SELECT COUNT(start_lsn) FROM [%s].cdc.lsn_time_mapping WHERE tran_id <> 0x00", dbName),
+                            (rs) -> {
+                                rs.next();
+                                return rs.getInt(1);
+                            });
+                    return expectedTransactions == transactions;
+                });
+    }
+
     public static String topicName(String databaseName, String tableName) {
         return String.join(".", TEST_SERVER_NAME, databaseName, "dbo", tableName);
     }
@@ -661,7 +684,7 @@ public class TestHelper {
         private final CdcRecordHandler handler;
         private boolean found;
 
-        public CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
+        CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
             this.handler = handler;
         }
 

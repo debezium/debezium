@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-testing</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.2.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -19,10 +19,14 @@
     <version.strimzi>0.28.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.junit5>5.7.2</version.junit5>
+    <version.junit.platform.launcher>1.7.2</version.junit.platform.launcher>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.2.0.Final</version.apicurio>
     <version.apicurio.model>2.2.0.Final</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
+
+    <product.build>false</product.build>
+    <prepare.strimzi>true</prepare.strimzi>
 
     <!--KC image configuration-->
     <image.build.registry>quay.io</image.build.registry>
@@ -40,13 +44,13 @@
     <!--OCP configuration-->
     <ocp.request.retry.backoff.limit>5</ocp.request.retry.backoff.limit>
     <ocp.project.debezium>debezium</ocp.project.debezium>
-    <ocp.project.registry>debezium-registry</ocp.project.registry>
-    <ocp.project.mysql>debezium-mysql</ocp.project.mysql>
-    <ocp.project.postgresql>debezium-postgresql</ocp.project.postgresql>
-    <ocp.project.mongo>debezium-mongo</ocp.project.mongo>
-    <ocp.project.sqlserver>debezium-sqlserver</ocp.project.sqlserver>
-    <ocp.project.db2>debezium-db2</ocp.project.db2>
-    <ocp.project.oracle>debezium-oracle</ocp.project.oracle>
+    <ocp.project.registry>${ocp.project.debezium}-registry</ocp.project.registry>
+    <ocp.project.mysql>${ocp.project.debezium}-mysql</ocp.project.mysql>
+    <ocp.project.postgresql>${ocp.project.debezium}-postgresql</ocp.project.postgresql>
+    <ocp.project.mongo>${ocp.project.debezium}-mongo</ocp.project.mongo>
+    <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
+    <ocp.project.db2>${ocp.project.debezium}-db2</ocp.project.db2>
+    <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
     <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
@@ -56,14 +60,15 @@
     <ocp.image.oracle>${docker.image.oracle}</ocp.image.oracle>
 
     <!--Strimzi configuration-->
+    <strimzi.operator.channel>stable</strimzi.operator.channel>
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
-    <strimzi.crd.version>v1beta2</strimzi.crd.version>
     <strimzi.kc.build>true</strimzi.kc.build>
     <strimzi.kc.log.level.dbz>DEBUG</strimzi.kc.log.level.dbz>
 
     <!--Apicurio configuration-->
     <apicurio.crd.version>v1</apicurio.crd.version>
     <apicurio.log.level>INFO</apicurio.log.level>
+    <apicurio.operator.channel>2.x</apicurio.operator.channel>
 
     <!--MySQL configuration-->
     <database.mysql.port>3306</database.mysql.port>
@@ -85,9 +90,9 @@
     <database.sqlserver.port>5432</database.sqlserver.port>
     <database.sqlserver.username>sa</database.sqlserver.username>
     <database.sqlserver.password>Debezium1$</database.sqlserver.password>
-    <database.sqlserver.dbz.username>sa</database.sqlserver.dbz.username>
-    <database.sqlserver.dbz.password>Debezium$1</database.sqlserver.dbz.password>
-    <database.sqlserver.dbname>TestDB</database.sqlserver.dbname>
+    <database.sqlserver.dbz.username>${database.sqlserver.username}</database.sqlserver.dbz.username>
+    <database.sqlserver.dbz.password>${database.sqlserver.password}</database.sqlserver.dbz.password>
+    <database.sqlserver.dbnames>testDB</database.sqlserver.dbnames>
 
     <!--MongoDB configuration-->
     <database.mongo.port>27017</database.mongo.port>
@@ -307,6 +312,13 @@
     </dependency>
 
     <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <version>${version.junit.platform.launcher}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${version.assertj}</version>
@@ -399,6 +411,7 @@
 
       <properties>
         <as.apicurio.url>${as.url}/service-registry-${as.apicurio.version}-distro-connect-converter.zip</as.apicurio.url>
+        <product.build>true</product.build>
       </properties>
     </profile>
     <profile>
@@ -442,8 +455,11 @@
               <skipTests>${skipITs}</skipTests>
               <enableAssertions>true</enableAssertions>
               <trimStackTrace>false</trimStackTrace>
+              <runOrder>${runOrder}</runOrder>
               <systemPropertyVariables>
                 <test.wait.scale>1</test.wait.scale>
+                <test.product.build>${product.build}</test.product.build>
+                <test.prepare.strimzi>${prepare.strimzi}</test.prepare.strimzi>
 
                 <test.artifact.server.url>${as.url}</test.artifact.server.url>
                 <!--Docker Configuration-->
@@ -471,9 +487,9 @@
                 <test.ocp.project.oracle>${ocp.project.oracle}</test.ocp.project.oracle>
 
                 <!--Strimzi Configuration-->
+                <test.strimzi.operator.channel>${strimzi.operator.channel}</test.strimzi.operator.channel>
                 <test.strimzi.version.kafka>${version.strimzi.kafka}</test.strimzi.version.kafka>
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
-                <test.strimzi.crd.version>${strimzi.crd.version}</test.strimzi.crd.version>
                 <test.strimzi.kc.build>${strimzi.kc.build}</test.strimzi.kc.build>
                 <test.strimzi.kc.image>${image.kc}</test.strimzi.kc.image>
                 <test.strimzi.kc.log.level.dbz>${strimzi.kc.log.level.dbz}</test.strimzi.kc.log.level.dbz>
@@ -481,6 +497,7 @@
                 <!--Apicurio configuration-->
                 <test.apicurio.crd.version>${apicurio.crd.version}</test.apicurio.crd.version>
                 <test.apicurio.log.level>${apicurio.log.level}</test.apicurio.log.level>
+                <test.apicurio.operator.channel>${apicurio.operator.channel}</test.apicurio.operator.channel>
 
                 <!--MySQL configuration-->
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
@@ -498,6 +515,15 @@
                 <test.database.postgresql.dbz.username>${database.postgresql.dbz.username}</test.database.postgresql.dbz.username>
                 <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
                 <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
+
+                <!--SqlServer configuration-->
+                <test.database.sqlserver.host>${database.sqlserver.host}</test.database.sqlserver.host>
+                <test.database.sqlserver.port>${database.sqlserver.port}</test.database.sqlserver.port>
+                <test.database.sqlserver.username>${database.sqlserver.username}</test.database.sqlserver.username>
+                <test.database.sqlserver.password>${database.sqlserver.password}</test.database.sqlserver.password>
+                <test.database.sqlserver.dbz.username>${database.sqlserver.dbz.username}</test.database.sqlserver.dbz.username>
+                <test.database.sqlserver.dbz.password>${database.sqlserver.dbz.password}</test.database.sqlserver.dbz.password>
+                <test.database.sqlserver.dbnames>${database.sqlserver.dbnames}</test.database.sqlserver.dbnames>
 
                 <!--Mongo configuration-->
                 <test.database.mongo.host>${database.mongo.host}</test.database.mongo.host>

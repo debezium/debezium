@@ -5,10 +5,8 @@
  */
 package io.debezium.relational.ddl;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -149,14 +147,20 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
     }
 
     private final AtomicLong counter = new AtomicLong();
-    private final List<Event> events = new ArrayList<>();
 
     public SimpleDdlParserListener() {
     }
 
     @Override
+    public DdlChanges reset() {
+        super.reset();
+        counter.set(0L);
+        return this;
+    }
+
+    @Override
     public void handle(Event event) {
-        events.add(event);
+        super.handle(event);
         counter.incrementAndGet();
     }
 

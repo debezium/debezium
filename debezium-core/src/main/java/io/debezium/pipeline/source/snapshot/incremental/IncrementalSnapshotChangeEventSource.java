@@ -6,14 +6,15 @@
 package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.util.List;
+import java.util.Optional;
 
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A Contract t
- * 
+ *
  * @author Jiri Pechanec
  *
  * @param <T> data collection id class
@@ -22,11 +23,15 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
+    void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException;
+
+    void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException;
+
     void processMessage(P partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException;
 
     void init(P partition, OffsetContext offsetContext);
 
-    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext)
+    void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, OffsetContext offsetContext)
             throws InterruptedException;
 
     void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext);

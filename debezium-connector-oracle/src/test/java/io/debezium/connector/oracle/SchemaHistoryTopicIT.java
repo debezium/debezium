@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.List;
 
@@ -12,7 +14,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         connection.execute("ALTER TABLE debezium.tablec ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -97,26 +98,26 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         // DDL for 3 tables
         SourceRecords records = consumeRecordsByTopic(3);
         final List<SourceRecord> schemaRecords = records.allRecordsInOrder();
-        Assertions.assertThat(schemaRecords).hasSize(3);
+        assertThat(schemaRecords).hasSize(3);
         schemaRecords.forEach(record -> {
-            Assertions.assertThat(record.topic()).isEqualTo("server1");
-            Assertions.assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
-            Assertions.assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.topic()).isEqualTo("server1");
+            assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
         });
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("schema")).isEqualTo("DEBEZIUM");
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE");
-        Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getString("schemaName")).isEqualTo("DEBEZIUM");
+        assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("schema")).isEqualTo("DEBEZIUM");
+        assertThat(((Struct) schemaRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE");
+        assertThat(((Struct) schemaRecords.get(0).value()).getString("schemaName")).isEqualTo("DEBEZIUM");
 
         final List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
-        Assertions.assertThat(tableChanges).hasSize(1);
-        Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
+        assertThat(tableChanges).hasSize(1);
+        assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLEA")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLEB")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLEA")).hasSize(RECORDS_PER_TABLE);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLEB")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.DEBEZIUM.TABLEB").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),

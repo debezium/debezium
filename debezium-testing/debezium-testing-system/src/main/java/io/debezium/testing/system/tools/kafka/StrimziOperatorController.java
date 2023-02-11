@@ -5,12 +5,15 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
-import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.OperatorController;
+import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -20,15 +23,18 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class StrimziOperatorController extends OperatorController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafkaController.class);
-    private static final String DEPLOYMENT_NAME = "strimzi-cluster-operator";
+    private static final Map<String, String> OPERATOR_LABELS = Map.of("strimzi.io/kind", "cluster-operator");
 
     public static StrimziOperatorController forProject(String project, OpenShiftClient ocp) {
-        Deployment operator = ocp.apps().deployments().inNamespace(project).withName("strimzi-cluster-operator").get();
-        return new StrimziOperatorController(operator, ocp);
+        LOGGER.info("Looking for " + OpenshiftOperatorEnum.STRIMZI.getName() + " operator");
+        var ocpUtils = new OpenShiftUtils(ocp);
+        Optional<Deployment> operator = ocpUtils.deploymentsWithPrefix(project, "amq-streams", "strimzi");
+
+        return new StrimziOperatorController(operator.orElseThrow(), ocp);
     }
 
     private StrimziOperatorController(Deployment operator, OpenShiftClient ocp) {
-        super(operator, Collections.singletonMap("strimzi.io/kind", "cluster-operator"), ocp);
+        super(operator, OPERATOR_LABELS, ocp);
     }
 
     /**

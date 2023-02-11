@@ -162,7 +162,7 @@ public class OperatorController {
         return getPullSecret().map(ps -> ps.getMetadata().getName());
     }
 
-    private Deployment waitForAvailable() {
+    public Deployment waitForAvailable() {
         return ocp.apps().deployments().inNamespace(project).withName(name)
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
     }

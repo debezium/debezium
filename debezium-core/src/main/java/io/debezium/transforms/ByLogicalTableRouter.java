@@ -29,7 +29,7 @@ import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -114,7 +114,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                     ". This will be used to create the physical table identifier in the record's key.");
     private static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
-            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
+            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.NONE)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription(

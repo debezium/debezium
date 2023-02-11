@@ -7,7 +7,7 @@ package io.debezium.connector.oracle.logminer.processor;
 
 import static io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer.LobFragment;
 import static io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer.LobUnderConstruction;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Random;

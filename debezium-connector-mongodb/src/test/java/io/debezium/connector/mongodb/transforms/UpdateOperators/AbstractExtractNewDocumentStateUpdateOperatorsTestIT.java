@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import static org.fest.assertions.Assertions.assertThat;
-
-import java.util.function.Consumer;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -35,19 +33,24 @@ abstract class AbstractExtractNewDocumentStateUpdateOperatorsTestIT extends Abst
     }
 
     SourceRecord executeSimpleUpdateOperation(String updateDocument) throws InterruptedException {
-        primary().execute("insert", createInsertItemDefault(1));
+
+        try (var client = connect()) {
+            createInsertItemDefault(client, 1);
+        }
 
         SourceRecords records = consumeRecordsByTopic(1);
 
         assertThat(records.recordsForTopic(this.topicName())).hasSize(1);
 
-        primary().execute("update", createUpdateOneItem(1, updateDocument));
+        try (var client = connect()) {
+            createUpdateOneItem(client, 1, updateDocument);
+        }
 
         return getUpdateRecord();
     }
 
-    private Consumer<MongoClient> createInsertItemDefault(int id) {
-        return client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+    private void createInsertItemDefault(MongoClient client, int id) {
+        client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                 .insertOne(Document.parse("{" +
                         "'_id': " + id + "," +
                         "'dataStr': 'hello'," +
@@ -65,8 +68,8 @@ abstract class AbstractExtractNewDocumentStateUpdateOperatorsTestIT extends Abst
                         "}}"));
     }
 
-    private Consumer<MongoClient> createUpdateOneItem(int id, String document) {
-        return client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+    private void createUpdateOneItem(MongoClient client, int id, String document) {
+        client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                 .updateOne(Document.parse(String.format("{'_id' : %d}", id)), Document.parse(document));
     }
 }

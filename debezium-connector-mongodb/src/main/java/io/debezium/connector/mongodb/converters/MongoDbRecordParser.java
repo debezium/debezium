@@ -33,7 +33,7 @@ public class MongoDbRecordParser extends RecordParser {
             COLLECTION);
 
     public MongoDbRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.AFTER, MongoDbFieldName.PATCH, MongoDbFieldName.FILTER,
+        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.PATCH, MongoDbFieldName.FILTER,
                 MongoDbFieldName.UPDATE_DESCRIPTION);
     }
 

@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -28,7 +28,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Delta;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,7 +41,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
 
@@ -51,9 +51,9 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-regression.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-regression.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("regression", "regression_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
 
@@ -64,7 +64,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -73,7 +73,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -288,7 +288,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
             else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -349,14 +349,14 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();
-        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
         assertThat(rec1.get("nnc1")).isEqualTo(0);
         assertThat(rec1.get("nnc2")).isEqualTo(0L);
         assertThat(rec1.get("nnc3")).isEqualTo(0L);
         assertThat(rec2.get("c1")).isNull();
         assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("c3")).isNull();
-        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
+        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00.00Z");
         assertThat(rec2.get("nnc1")).isEqualTo(0);
         assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
         assertThat(rec2.get("nnc3")).isEqualTo(0L);
@@ -565,7 +565,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
         });
     }
@@ -744,7 +744,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
-                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Assertions.offset(0.01));
             }
             else if (record.topic().endsWith("dbz_195_numvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -851,7 +851,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             // Use the DB configuration to define the connector's configuration ...
             config = DATABASE.defaultConfig()
                     .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_85_fractest"))
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .build();
             // Start the connector ...
             start(MySqlConnector.class, config);
@@ -960,7 +960,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(Double.class);
                 Double doubleValue = (Double) decimalValue;
-                assertThat(doubleValue).isEqualTo(12345.67, Delta.delta(0.01));
+                assertThat(doubleValue).isEqualTo(12345.67, Assertions.offset(0.01));
             }
         });
     }
@@ -1012,7 +1012,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
         // Start the connector ...

@@ -6,13 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -61,8 +62,8 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
-        Assertions.assertThat(recordsByTopic.get("test_server.over.t1")).hasSize(3);
-        Assertions.assertThat(recordsByTopic.get("test_server.over.t2")).hasSize(6);
+        assertThat(recordsByTopic.get("test_server.over.t1")).hasSize(3);
+        assertThat(recordsByTopic.get("test_server.over.t2")).hasSize(6);
     }
 
     @Test
@@ -80,8 +81,8 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
-        Assertions.assertThat(recordsByTopic.get("test_server.over.t1")).hasSize(2);
-        Assertions.assertThat(recordsByTopic.get("test_server.over.t2")).hasSize(3);
+        assertThat(recordsByTopic.get("test_server.over.t1")).hasSize(2);
+        assertThat(recordsByTopic.get("test_server.over.t2")).hasSize(3);
     }
 
     private void buildProducer(Configuration.Builder config) {

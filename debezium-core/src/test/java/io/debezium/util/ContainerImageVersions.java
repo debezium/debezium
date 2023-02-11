@@ -19,7 +19,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class ContainerImageVersions {
 
-    private static final String BASE_URL = "https://hub.docker.com/v2/repositories/%s/tags/";
+    private static final String BASE_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
 
     public static String getStableImage(String image) {
         return image + ":" + getStableVersion(image);

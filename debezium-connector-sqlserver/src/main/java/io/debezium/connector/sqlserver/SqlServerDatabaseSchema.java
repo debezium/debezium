@@ -17,8 +17,8 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import io.debezium.schema.TopicSelector;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Logical representation of SQL Server schema.
@@ -30,17 +30,17 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SqlServerDefaultValueConverter defaultValueConverter,
-                                   ValueConverterProvider valueConverter, TopicSelector<TableId> topicSelector,
+                                   ValueConverterProvider valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
                                    SchemaNameAdjuster schemaNameAdjuster) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+        super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,
                         defaultValueConverter,
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames(),
-                        connectorConfig.isMultiPartitionModeEnabled()),
+                        connectorConfig.getFieldNamer(),
+                        true),
                 false, connectorConfig.getKeyMapper());
     }
 

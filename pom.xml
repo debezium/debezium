@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.2.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -56,7 +56,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <maven.compiler.release>11</maven.compiler.release>
-        <maven.compiler.testRelease>17</maven.compiler.testRelease>
+        <maven.compiler.testRelease>11</maven.compiler.testRelease>
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
         <jdk.min.version>11</jdk.min.version>
@@ -73,15 +73,15 @@
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
         <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.docker.maven.plugin>0.40.2</version.docker.maven.plugin>
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
-        <version.code.formatter>2.16.0</version.code.formatter>
+        <version.code.formatter>2.20.0</version.code.formatter>
         <version.surefire.plugin>3.0.0-M6</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.6.2</version.impsort>
+        <version.impsort>1.7.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
@@ -93,48 +93,55 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.2.0</version.kafka>
+        <version.kafka>3.3.2</version.kafka>
         <version.zookeeper>3.6.3</version.zookeeper>
-        <!-- Kafka uses 2.12.6 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
-        <version.jackson>2.13.2</version.jackson>
-        <version.jackson.databind>2.13.2.2</version.jackson.databind>
+        <version.jackson>2.13.4</version.jackson>
+        <version.jackson.databind>2.13.4.2</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.73.Final</version.netty>
+        <version.netty>4.1.78.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
-        <version.antlr>4.8</version.antlr>
+        <version.antlr>4.10.1</version.antlr>
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
-        <quarkus.version>2.10.0.Final</quarkus.version>
+        <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
+        <quarkus.version>2.16.0.Final</quarkus.version>
 
         <!-- Apicurio -->
-        <version.apicurio>2.2.3.Final</version.apicurio>
+        <version.apicurio>2.4.1.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.4.0</version.postgresql.driver>
+        <version.postgresql.driver>42.5.1</version.postgresql.driver>
         <version.mysql.driver>8.0.29</version.mysql.driver>
-        <version.mysql.binlog>0.25.6</version.mysql.binlog>
-        <version.mongo.driver>4.6.1</version.mongo.driver>
-        <version.sqlserver.driver>9.4.1.jre8</version.sqlserver.driver>
+        <version.mysql.binlog>0.27.2</version.mysql.binlog>
+        <version.mongo.driver>4.7.1</version.mongo.driver>
+        <version.sqlserver.driver>10.2.1.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.6.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mongo.server>4.0</version.mongo.server>
+        <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
-        <version.com.google.protobuf>3.19.2</version.com.google.protobuf>
+        <version.com.google.protobuf>3.19.6</version.com.google.protobuf>
+
+        <!-- Infinispan version for Oracle and Debezium Server sink -->
+        <version.infinispan>14.0.4.Final</version.infinispan>
+        <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
+
+        <!-- RocketMQ version for RocketMQ storage and Server sink -->
+        <version.rocketmq>4.9.4</version.rocketmq>
     </properties>
 
     <modules>
@@ -155,12 +162,14 @@
         <module>debezium-connector-oracle</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
+        <module>debezium-quarkus-outbox-common</module>
         <module>debezium-quarkus-outbox</module>
+        <module>debezium-quarkus-outbox-reactive</module>
         <module>debezium-scripting</module>
-        <module>debezium-server</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
+        <module>debezium-storage</module>
     </modules>
 
     <distributionManagement>

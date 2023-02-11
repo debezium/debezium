@@ -5,13 +5,14 @@
  */
 package io.debezium.relational;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
 import java.util.Collections;
+import java.util.Properties;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -30,15 +31,21 @@ import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.schema.SchemaTopicNamingStrategy;
+import io.debezium.spi.common.ReplacementFunction;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.time.Date;
-import io.debezium.util.SchemaNameAdjuster;
 
 public class TableSchemaBuilderTest {
 
     private static final String AVRO_UNSUPPORTED_NAME = "9-`~!@#$%^&*()+=[]{}\\|;:\"'<>,.?/";
-    private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "_9_______________________________";
+    private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "________________________________";
+    private static final String AVRO_UNICODE_NAME_CONVERTED = "_u0039_u002d_u0060_u007e_u0021_u0040_u0023_u0024_u0025_u005e_u0026_u002a_u0028_u0029_u002b_u003d_u005b_u005d_u007b_u007d_u005c_u007c_u003b_u003a_u0022_u0027_u003c_u003e_u002c_u002e_u003f_u002f";
 
-    private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
     private final Object[] data = new Object[]{ "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114 }, null, "c7value",
             "c8value", "c9value", null };
@@ -56,14 +63,23 @@ public class TableSchemaBuilderTest {
     private Column c10;
 
     private TableSchema schema;
+    private TopicNamingStrategy topicNamingStrategy;
     private SchemaNameAdjuster adjuster;
     private final CustomConverterRegistry customConverterRegistry = new CustomConverterRegistry(null);
+    private Properties topicProperties;
+    private FieldNamer<Column> defaultFieldNamer;
+    private FieldNamer<Column> avroFieldNamer;
 
     @Before
     public void beforeEach() {
-        adjuster = SchemaNameAdjuster.create("_", (original, replacement, conflict) -> {
+        adjuster = SchemaNameAdjuster.create(ReplacementFunction.UNDERSCORE_REPLACEMENT, (original, replacement, conflict) -> {
             fail("Should not have come across an invalid schema name");
         });
+        defaultFieldNamer = FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP);
+        avroFieldNamer = FieldNameSelector.defaultSelector(SchemaNameAdjuster.AVRO_FIELD_NAMER);
+        topicProperties = new Properties();
+        topicProperties.put("topic.prefix", "test");
+        topicNamingStrategy = new SchemaTopicNamingStrategy(topicProperties, false);
         schema = null;
         table = Table.editor()
                 .tableId(id)
@@ -141,15 +157,15 @@ public class TableSchemaBuilderTest {
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
         new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", null, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, null, null, null, null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
     }
 
@@ -158,11 +174,11 @@ public class TableSchemaBuilderTest {
     public void shouldBuildCorrectSchemaNames() {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("schema.table.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.schema.table.Value");
 
         // only catalog
         table = table.edit()
@@ -170,12 +186,12 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testDb.testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testDb.testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testDb.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testDb.testTable.Value");
 
         // only schema
         table = table.edit()
@@ -183,12 +199,12 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testSchema.testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testSchema.testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testSchema.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testSchema.testTable.Value");
 
         // neither catalog nor schema
         table = table.edit()
@@ -196,12 +212,12 @@ public class TableSchemaBuilderTest {
                 .create();
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
 
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testTable.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testTable.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.testTable.Value");
     }
 
     @Test
@@ -209,19 +225,19 @@ public class TableSchemaBuilderTest {
     public void shouldBuildCorrectSchemaNamesInMultiPartitionMode() {
         // table id with catalog and schema
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, true)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, true)
+                .create(new SchemaTopicNamingStrategy(topicProperties, true), table, null, null, null);
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("catalog.schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("catalog.schema.table.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("test.catalog.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.catalog.schema.table.Value");
     }
 
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();
@@ -281,8 +297,8 @@ public class TableSchemaBuilderTest {
     public void shouldSanitizeFieldNamesAndBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), true, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), avroFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();
@@ -311,9 +327,9 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("7C7")).isNull();
 
         // Column starting with digit is prefixed with _
-        assertThat(values.field("_7C7").name()).isEqualTo("_7C7");
-        assertThat(values.field("_7C7").index()).isEqualTo(6);
-        assertThat(values.field("_7C7").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(values.field("_C7").name()).isEqualTo("_C7");
+        assertThat(values.field("_C7").index()).isEqualTo(6);
+        assertThat(values.field("_C7").schema()).isEqualTo(SchemaBuilder.string().build());
 
         // Column containing '-' should have '-' replaced with '_', field should not exist
         assertThat(values.field("C-8")).isNull();
@@ -323,7 +339,7 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C_8").index()).isEqualTo(7);
         assertThat(values.field("C_8").schema()).isEqualTo(SchemaBuilder.string().build());
 
-        // Column AVRO_UNSUPPORTED_NAME should be all underscroes
+        // Column AVRO_UNSUPPORTED_NAME should be all underscores
         assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).name()).isEqualTo(AVRO_UNSUPPORTED_NAME_CONVERTED);
         assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).index()).isEqualTo(8);
         assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).schema()).isEqualTo(SchemaBuilder.string().build());
@@ -344,15 +360,86 @@ public class TableSchemaBuilderTest {
     }
 
     @Test
+    @FixFor("DBZ-5743")
+    public void shouldSanitizeUnicodeFieldNamesAndBuildTableSchemaFromTableWithoutPrimaryKey() {
+        table = table.edit().setPrimaryKeyNames().create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), FieldNameSelector.defaultSelector(SchemaNameAdjuster.AVRO_UNICODE_FIELD_NAMER), false)
+                .create(topicNamingStrategy, table, null, null, null);
+        assertThat(schema).isNotNull();
+        // Check the keys ...
+        assertThat(schema.keySchema()).isNull();
+        assertThat(schema.keyFromColumnData(data)).isNull();
+        // Check the values ...
+        Schema values = schema.valueSchema();
+        assertThat(values).isNotNull();
+        assertThat(values.field("C1").name()).isEqualTo("C1");
+        assertThat(values.field("C1").index()).isEqualTo(0);
+        assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(values.field("C2").name()).isEqualTo("C2");
+        assertThat(values.field("C2").index()).isEqualTo(1);
+        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).parameter("connect.decimal.precision", "5").optional().build()); // scale of 3
+        assertThat(values.field("C3").name()).isEqualTo("C3");
+        assertThat(values.field("C3").index()).isEqualTo(2);
+        assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date
+        assertThat(values.field("C4").name()).isEqualTo("C4");
+        assertThat(values.field("C4").index()).isEqualTo(3);
+        assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
+        assertThat(values.field("C5").index()).isEqualTo(4);
+        assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
+        assertThat(values.field("C6").index()).isEqualTo(5);
+        assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
+
+        // Column starting with digit should be prefixed, original field should not exist
+        assertThat(values.field("7C7")).isNull();
+
+        // Column starting with digit is prefixed with _
+        assertThat(values.field("_u0037C7").name()).isEqualTo("_u0037C7");
+        assertThat(values.field("_u0037C7").index()).isEqualTo(6);
+        assertThat(values.field("_u0037C7").schema()).isEqualTo(SchemaBuilder.string().build());
+
+        // Column containing '-' should have '-' replaced with '_', field should not exist
+        assertThat(values.field("C-8")).isNull();
+
+        // Column C-8 has - replaced with _
+        assertThat(values.field("C_u002d8").name()).isEqualTo("C_u002d8");
+        assertThat(values.field("C_u002d8").index()).isEqualTo(7);
+        assertThat(values.field("C_u002d8").schema()).isEqualTo(SchemaBuilder.string().build());
+
+        // Column AVRO_UNSUPPORTED_NAME should be all underscores
+        assertThat(values.field(AVRO_UNICODE_NAME_CONVERTED).name()).isEqualTo(AVRO_UNICODE_NAME_CONVERTED);
+        assertThat(values.field(AVRO_UNICODE_NAME_CONVERTED).index()).isEqualTo(8);
+        assertThat(values.field(AVRO_UNICODE_NAME_CONVERTED).schema()).isEqualTo(SchemaBuilder.string().build());
+
+        // Column UP$ID should has $ converted to underscore
+        assertThat(values.field("UP_u0024ID").name()).isEqualTo("UP_u0024ID");
+        assertThat(values.field("UP_u0024ID").index()).isEqualTo(9);
+        assertThat(values.field("UP_u0024ID").schema()).isEqualTo(SchemaBuilder.int32().build());
+
+        Struct value = schema.valueFromColumnData(data);
+        assertThat(value).isNotNull();
+        assertThat(value.get("C1")).isEqualTo("c1value");
+        assertThat(value.get("C2")).isEqualTo(BigDecimal.valueOf(3.142d));
+        assertThat(value.get("C3")).isEqualTo(11626);
+        assertThat(value.get("C4")).isEqualTo(4);
+        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114 }));
+        assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
+        assertThat(value.get("_u0037C7")).isEqualTo("c7value");
+        assertThat(value.get("C_u002d8")).isEqualTo("c8value");
+        assertThat(value.get(AVRO_UNICODE_NAME_CONVERTED)).isEqualTo("c9value");
+        assertThat(value.get("UP_u0024ID")).isEqualTo(0);
+    }
+
+    @Test
     @FixFor({ "DBZ-1044", "DBZ-2849" })
     public void shouldSanitizeFieldNamesAndValidateSerialization() {
         LogInterceptor logInterceptor = new LogInterceptor(TableSchemaBuilder.class);
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), true, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), avroFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
 
-        Struct key = (Struct) schema.keyFromColumnData(keyData);
+        Struct key = schema.keyFromColumnData(keyData);
         Struct value = schema.valueFromColumnData(data);
 
         SourceRecord record = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "sometopic", schema.keySchema(), key, schema.valueSchema(), value);
@@ -368,8 +455,8 @@ public class TableSchemaBuilderTest {
     public void shouldBuildTableSchemaFromTableWithCustomKey() {
         table = table.edit().setPrimaryKeyNames().create();
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -382,8 +469,8 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1015")
     public void shouldOverrideIdentityKey() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, CustomKeyMapper.getInstance("(.*).table:C2,C3", null));
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -397,8 +484,8 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1015")
     public void shouldFallbackToIdentyKeyWhenCustomMapperIsNull() {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
         assertThat(keys).isNotNull();
@@ -429,8 +516,8 @@ public class TableSchemaBuilderTest {
         KeyMapper keyMapper = CustomKeyMapper.getInstance("(.*).table:C2,C3;(.*).table2:C1", null);
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table, null, null, keyMapper);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, keyMapper);
 
         assertThat(schema).isNotNull();
         Schema keys = schema.keySchema();
@@ -441,8 +528,8 @@ public class TableSchemaBuilderTest {
         assertThat(keys.field("C3").name()).isEqualTo("C3");
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, null, keyMapper);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table2, null, null, keyMapper);
 
         assertThat(schema2).isNotNull();
         Schema key2 = schema2.keySchema();
@@ -469,8 +556,8 @@ public class TableSchemaBuilderTest {
                 .create();
 
         TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, null, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table2, null, null, null);
 
         Schema key2 = schema2.keySchema();
         assertThat(key2).isNotNull();
@@ -498,11 +585,11 @@ public class TableSchemaBuilderTest {
 
         Object[] data = new Object[]{ null };
 
-        ColumnMappers mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+        ColumnMappers mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, null, null, 0));
 
         schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), false, false)
-                        .create(prefix, "sometopic", table2, null, mappers, null);
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table2, null, mappers, null);
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value.get("C1")).isEqualTo(0);

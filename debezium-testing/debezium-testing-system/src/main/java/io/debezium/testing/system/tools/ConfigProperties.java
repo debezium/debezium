@@ -24,6 +24,9 @@ public final class ConfigProperties {
 
     public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
+    public static final boolean PRODUCT_BUILD = booleanProperty("test.product.build");
+    public static final boolean PREPARE_NAMESPACES_AND_STRIMZI = booleanProperty("test.prepare.strimzi");
+
     // DockerConfiguration configuration
     public static final String DOCKER_IMAGE_KAFKA_RHEL = System.getProperty("test.docker.image.kc");
     public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", "quay.io/debezium/example-mysql:latest");
@@ -34,30 +37,32 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
 
     // OpenShift configuration
-    public static final String OCP_URL = System.getProperty("test.ocp.url");
+    public static final Optional<String> OCP_URL = stringOptionalProperty("test.ocp.url");
     public static final int OCP_REQUEST_RETRY_BACKOFF_LIMIT = Integer.parseInt(System.getProperty("test.ocp.request.retry.backoff.limit", "5"));
-    public static final String OCP_USERNAME = System.getProperty("test.ocp.username");
-    public static final String OCP_PASSWORD = System.getProperty("test.ocp.password");
+    public static final Optional<String> OCP_USERNAME = stringOptionalProperty("test.ocp.username");
+    public static final Optional<String> OCP_PASSWORD = stringOptionalProperty("test.ocp.password");
     public static final String OCP_PROJECT_DBZ = System.getProperty("test.ocp.project.debezium");
-    public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", "debezium-registry");
-    public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", "debezium-mysql");
-    public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", "debezium-postgresql");
-    public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", "debezium-sqlserver");
-    public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", "debezium-mongo");
-    public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", "debezium-db2");
-    public static final String OCP_PROJECT_ORACLE = System.getProperty("test.ocp.project.oracle", "debezium-oracle");
+    public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", OCP_PROJECT_DBZ + "-registry");
+    public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", OCP_PROJECT_DBZ + "-mysql");
+    public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", OCP_PROJECT_DBZ + "-postgresql");
+    public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", OCP_PROJECT_DBZ + "-sqlserver");
+    public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", OCP_PROJECT_DBZ + "-mongo");
+    public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", OCP_PROJECT_DBZ + "-db2");
+    public static final String OCP_PROJECT_ORACLE = System.getProperty("test.ocp.project.oracle", OCP_PROJECT_DBZ + "-oracle");
 
     public static final Optional<String> OCP_PULL_SECRET_PATH = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     // Strimzi configuration
+    public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
+
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
-    public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
     public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
     public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
     // Apicurio Registry configuration
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
+    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
 
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
@@ -81,7 +86,7 @@ public final class ConfigProperties {
     public static final String DATABASE_SQLSERVER_SA_PASSWORD = System.getProperty("test.database.sqlserver.password", "Debezium1$");
     public static final String DATABASE_SQLSERVER_DBZ_USERNAME = System.getProperty("test.database.sqlserver.dbz.username", DATABASE_SQLSERVER_USERNAME);
     public static final String DATABASE_SQLSERVER_DBZ_PASSWORD = System.getProperty("test.database.sqlserver.dbz.password", DATABASE_SQLSERVER_SA_PASSWORD);
-    public static final String DATABASE_SQLSERVER_DBZ_DBNAME = System.getProperty("test.database.sqlserver.dbname", "testDB");
+    public static final String DATABASE_SQLSERVER_DBZ_DBNAMES = System.getProperty("test.database.sqlserver.dbnames", "testDB");
     public static final Optional<String> DATABASE_SQLSERVER_HOST = stringOptionalProperty("test.database.sqlserver.host");
     public static final int DATABASE_SQLSERVER_PORT = Integer.parseInt(System.getProperty("test.database.sqlserver.port", "1433"));
 

@@ -96,7 +96,7 @@ The following example shows what a CloudEvents change event record emitted by a 
 }
 ----
 <1> Unique ID that the connector generates for the change event based on the change event's content.
-<2> The source of the event, which is the logical name of the database as specified by the `database.server.name` property in the connector's configuration.
+<2> The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
 <3> The CloudEvents specification version.
 <4> Connector type that generated the change event. The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`. The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
 <5> Time of the change in the source database.
@@ -202,6 +202,6 @@ The value can be `json` or `avro`.
 |Any configuration options to be passed through to the underlying converter when using Avro. The `avro.` prefix is removed. For example, for Avro `data`, you would specify the `avro.schema.registry.url` option.
 
 |[[cloud-events-converter-schema-name-adjustment-mode]]xref:cloud-events-converter-schema-name-adjustment-mode[`schema.name.adjustment.mode`]
-|`avro`
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. The value can be `avro` or `none`.
+|none
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. The value can be `none` or `avro`.
 |===

@@ -28,7 +28,7 @@ public @interface SkipWhenConnectorUnderTest {
 
     String description() default "";
 
-    public enum Connector {
+    enum Connector {
         SQL_SERVER {
 
             @Override

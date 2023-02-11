@@ -5,14 +5,13 @@
  */
 package io.debezium.transforms;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
@@ -21,12 +20,11 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * @author Jiri Pechanec
  */
-public class ExtractNewRecordStateTest {
+public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
 
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
@@ -35,26 +33,13 @@ public class ExtractNewRecordStateTest {
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
-
-    final Schema recordSchema = SchemaBuilder.struct()
-            .field("id", Schema.INT8_SCHEMA)
-            .field("name", Schema.STRING_SCHEMA)
-            .build();
-
-    final Schema sourceSchema = SchemaBuilder.struct()
-            .field("lsn", Schema.INT32_SCHEMA)
-            .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
-            .build();
-
-    final Envelope envelope = Envelope.defineSchema()
-            .withName("dummy.Envelope")
-            .withRecord(recordSchema)
-            .withSource(sourceSchema)
-            .build();
+    private static final String DROP_FIELDS_HEADER_NAME = "drop.fields.header.name";
+    private static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
+    private static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
 
     @Test
     public void testTombstoneDroppedByDefault() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -65,7 +50,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testTombstoneDroppedConfigured() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_TOMBSTONES, "true");
             transform.configure(props);
@@ -77,7 +62,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testTombstoneForwardConfigured() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_TOMBSTONES, "false");
             transform.configure(props);
@@ -87,124 +72,15 @@ public class ExtractNewRecordStateTest {
         }
     }
 
-    private SourceRecord createDeleteRecord() {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
+    @Test
+    public void testTruncateDroppedByDefault() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            transform.configure(props);
 
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createTombstoneRecord() {
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
-    }
-
-    private SourceRecord createCreateRecord() {
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("ts_ms", 12836);
-        final Struct payload = envelope.create(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createCreateRecordWithOptionalNull() {
-        final Schema recordSchema = SchemaBuilder.struct()
-                .field("id", Schema.INT8_SCHEMA)
-                .field("name", SchemaBuilder.string().optional().defaultValue("default_str").build())
-                .build();
-
-        final Envelope envelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(sourceSchema)
-                .build();
-
-        final Struct after = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        after.put("id", (byte) 1);
-        after.put("name", null);
-        source.put("lsn", 1234);
-        source.put("ts_ms", 12836);
-        final Struct payload = envelope.create(after, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createUpdateRecord() {
-        final Struct before = new Struct(recordSchema);
-        final Struct after = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
-
-        before.put("id", (byte) 1);
-        before.put("name", "myRecord");
-        after.put("id", (byte) 1);
-        after.put("name", "updatedRecord");
-        source.put("lsn", 1234);
-        transaction.put("id", "571");
-        transaction.put("total_order", 42L);
-        transaction.put("data_collection_order", 42L);
-        final Struct payload = envelope.update(before, after, source, Instant.now());
-        payload.put("transaction", transaction);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createComplexCreateRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
-        final Schema sourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-        Envelope envelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(sourceSchema)
-                .build();
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
-
-        before.put("id", (byte) 1);
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = envelope.create(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
-    }
-
-    private SourceRecord createUnknownRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().name("unknown")
-                .field("id", SchemaBuilder.int8())
-                .build();
-        final Struct before = new Struct(recordSchema);
-        before.put("id", (byte) 1);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
-    }
-
-    private SourceRecord createUnknownUnnamedSchemaRecord() {
-        final Schema recordSchema = SchemaBuilder.struct()
-                .field("id", SchemaBuilder.int8())
-                .build();
-        final Struct before = new Struct(recordSchema);
-        before.put("id", (byte) 1);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
+            final SourceRecord truncate = createTruncateRecord();
+            assertThat(transform.apply(truncate)).isNull();
+        }
     }
 
     private String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
@@ -214,13 +90,12 @@ public class ExtractNewRecordStateTest {
         }
 
         Object value = operationHeader.next().value();
-
         return value != null ? value.toString() : null;
     }
 
     @Test
     public void testDeleteDroppedByDefault() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -231,7 +106,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteDrop() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "drop");
             transform.configure(props);
@@ -243,7 +118,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteNone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "none");
             transform.configure(props);
@@ -256,7 +131,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             transform.configure(props);
@@ -269,7 +144,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testHandleCreateRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_HEADERS, "op");
@@ -286,7 +161,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testUnwrapCreateRecord() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -300,7 +175,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-5166")
     public void testUnwrapCreateRecordWithOptionalDefaultValue() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -313,7 +188,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testIgnoreUnknownRecord() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -328,7 +203,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-971")
     public void testUnwrapPropagatesRecordHeaders() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -348,7 +223,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op");
             transform.configure(props);
@@ -362,7 +237,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-2984")
     public void testAddTimestamp() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props1 = new HashMap<>();
             props1.put(ADD_FIELDS, "ts_ms");
             transform.configure(props1);
@@ -384,7 +259,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-1452", "DBZ-2504" })
     public void testAddFields() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op , lsn,id");
             props.put(ADD_FIELDS_PREFIX, "prefix.");
@@ -401,7 +276,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-2606" })
     public void testNewFieldAndHeaderMapping() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             String fieldPrefix = "";
             String headerPrefix = "prefix.";
@@ -434,7 +309,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsForMissingOptionalField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,lsn,id");
             transform.configure(props);
@@ -450,7 +325,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStruct() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,source.lsn,transaction.id,transaction.total_order");
             transform.configure(props);
@@ -467,7 +342,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeader() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op");
             transform.configure(props);
@@ -483,7 +358,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeaders() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op , lsn,id");
             transform.configure(props);
@@ -503,7 +378,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddHeadersForMissingOptionalField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,lsn,id");
             transform.configure(props);
@@ -523,7 +398,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor({ "DBZ-1452", "DBZ-2504" })
     public void testAddHeadersSpecifyStruct() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,source.lsn,transaction.id,transaction.total_order");
             props.put(ADD_HEADERS_PREFIX, "prefix.");
@@ -545,7 +420,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testAddTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             transform.configure(props);
@@ -558,7 +433,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testUpdateTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             transform.configure(props);
@@ -571,7 +446,7 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testDeleteTopicRoutingField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ROUTE_BY_FIELD, "name");
             props.put(HANDLE_DELETES, "none");
@@ -586,7 +461,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1876")
     public void testAddHeadersHandleDeleteRewriteAndTombstone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_HEADERS, "op,source.lsn");
@@ -609,7 +484,7 @@ public class ExtractNewRecordStateTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testAddFieldNonExistantField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "nope");
             transform.configure(props);
@@ -624,7 +499,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op");
@@ -640,7 +515,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,lsn");
@@ -657,7 +532,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1876")
     public void testAddFieldsHandleDeleteRewriteAndTombstone() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,lsn");
@@ -678,7 +553,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStructHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
             props.put(ADD_FIELDS, "op,source.lsn");
@@ -695,7 +570,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-1517")
     public void testSchemaChangeEventWithOperationHeader() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op");
             transform.configure(props);
@@ -707,4 +582,315 @@ public class ExtractNewRecordStateTest {
             assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
         }
     }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueWithSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Create has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueWithoutSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE, "false");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Create has a key with one optional field name
+            // "id" is retained in the key, but dropped in the value due to disabling schema compatibility.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has a key with one optional field name
+            // "id" is retained in the key, but dropped in the value due to disabling schema compatibility.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueAndKeyWithSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_FROM_KEY, "true");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Create has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has no key, only a value
+            // "id" is retained because its non-optional in the value.
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Update has a key with one optional field name
+            // "id" should be retained in the key & value because drop key is not enabled & is non-optional.
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNotNull();
+            assertThat(((Struct) after.key()).get("id")).isEqualTo((byte) 1);
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNotNull();
+            assertThat(((Struct) after.value()).get("id")).isEqualTo((byte) 1);
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5283")
+    public void dropFieldsFromValueAndKeyWithoutSchemaCompatibility() {
+        final List<String> dropFields = List.of("id", "name");
+        final String dropHeaderName = "drop-fields";
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(dropHeaderName)
+                .build();
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(DROP_FIELDS_HEADER_NAME, "drop-fields");
+            props.put(DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE, "false");
+            props.put(DROP_FIELDS_FROM_KEY, "true");
+            transform.configure(props);
+
+            // Create has no key, only a value
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            SourceRecord before = addDropFieldsHeader(createCreateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            SourceRecord after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Create has a key with one optional field name
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createCreateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNull();
+            assertThat(after.key()).isEqualTo(new Struct(after.keySchema()));
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has no key, only a value
+            // "id" is not optional, but it's dropped from the value because schema compatibility is disabled
+            // "name" should be dropped because its optional
+            before = addDropFieldsHeader(createUpdateRecordWithOptionalNull(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.key()).isNull(); // no key was specified in original event
+            assertThat(after.keySchema()).isNull();
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Update has a key with one optional field name
+            // "id" is not optional, but it's dropped from the key and value because schema compatibility is disabled
+            // "name" should be dropped in the value because it's optional and not a key column.
+            before = addDropFieldsHeader(createUpdateRecordWithKey(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after.keySchema().field("id")).isNull();
+            assertThat(after.key()).isEqualTo(new Struct(after.keySchema()));
+            assertThat(after.valueSchema().field("name")).isNull();
+            assertThat(after.valueSchema().field("id")).isNull();
+            assertThat(after.value()).isNotNull();
+            assertThat(((Struct) after.value())).isEqualTo(new Struct(after.valueSchema()));
+
+            // Delete
+            before = addDropFieldsHeader(createDeleteRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+
+            // Tombstones
+            before = addDropFieldsHeader(createTombstoneRecord(), dropHeaderName, dropFields);
+            after = transform.apply(before);
+            assertThat(after).isNull(); // drop tombstones are enabled by default
+        }
+    }
+
+    protected SourceRecord addDropFieldsHeader(SourceRecord record, String name, List<String> values) {
+        final org.apache.kafka.connect.data.Schema dropFieldsSchema = SchemaBuilder
+                .array(SchemaBuilder.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .name(name)
+                .build();
+        record.headers().add(name, values, dropFieldsSchema);
+        return record;
+    }
+
 }

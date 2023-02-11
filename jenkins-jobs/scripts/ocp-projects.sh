@@ -7,7 +7,7 @@ SCC_PRIVILEGED="db2"
 CREATE=false
 DELETE=false
 
-OPTS=$(getopt -o p:t: --long project:,tag:,create,delete,envfile:,components:,privileged:,skiproot -n 'parse-options' -- "$@")
+OPTS=$(getopt -o p:t: --long project:,tag:,create,delete,envfile:,components:,privileged:,skiproot,testsuite -n 'parse-options' -- "$@")
 eval set -- "$OPTS"
 
 while true; do
@@ -21,6 +21,7 @@ while true; do
     --create )          CREATE=true;                  shift;;
     --delete )          DELETE=true;                  shift;;
     --skiproot)         SKIP_ROOT=true;               shift;;
+    --testsuite)        TESTSUITE=true;          shift;;
     -h | --help )       PRINT_HELP=true;              shift;;
     -- ) shift; break ;;
     * ) break ;;
@@ -81,6 +82,11 @@ function process_component() {
 # Process ROOT project
 if [ -z "${SKIP_ROOT}" ]; then
   process_component  "debezium" "${PROJECT}" "OCP_PROJECT_DEBEZIUM"
+fi
+
+# Process TESTSUITE project
+if [ -n "${TESTSUITE}" ]; then
+  process_component  "debezium" "${PROJECT}-testsuite" "OCP_PROJECT_DEBEZIUM_TESTSUITE"
 fi
 
 # Process component projects

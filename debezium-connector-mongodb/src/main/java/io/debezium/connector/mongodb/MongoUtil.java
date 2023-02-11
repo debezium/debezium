@@ -17,7 +17,9 @@ import java.util.regex.Pattern;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
+import org.slf4j.Logger;
 
+import com.mongodb.MongoQueryException;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -27,6 +29,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.DebeziumException;
@@ -227,6 +230,22 @@ public class MongoUtil {
         return null;
     }
 
+    public static BsonDocument getOplogEntry(MongoClient client, int sortOrder, Logger logger) throws MongoQueryException {
+        try {
+            MongoCollection<BsonDocument> oplog = client.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
+            return oplog.find().sort(new Document("$natural", sortOrder)).limit(1).first();
+        }
+        catch (MongoQueryException e) {
+            if (e.getMessage().contains("$natural:") && e.getMessage().contains("is not supported")) {
+                final String sortOrderType = sortOrder == -1 ? "descending" : "ascending";
+                // Amazon DocumentDB does not support $natural, assume no oplog entries when this occurs
+                logger.info("Natural {} sort is not supported on oplog, treating situation as no oplog entry exists.", sortOrderType);
+                return null;
+            }
+            throw e;
+        }
+    }
+
     /**
      * Helper function to extract the session transaction-id from an oplog event.
      *
@@ -350,37 +369,43 @@ public class MongoUtil {
         return Strings.join(ADDRESS_DELIMITER, addresses);
     }
 
-    protected static ServerAddress getPrimaryAddress(MongoClient client) {
+    protected static ServerAddress getPreferredAddress(MongoClient client, ReadPreference preference) {
+        ClusterDescription clusterDescription = clusterDescription(client);
 
-        ClusterDescription clusterDescription = client.getClusterDescription();
-
-        if (clusterDescription == null || !clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
-            client.listDatabaseNames().first(); // force connection attempt and make async client wait/block
-            clusterDescription = client.getClusterDescription();
-        }
-
-        if (clusterDescription == null) {
-            throw new DebeziumException("Unable to read cluster description from MongoDB connection.");
-        }
-        else if (!clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
+        if (!clusterDescription.hasReadableServer(preference)) {
             throw new DebeziumException("Unable to use cluster description from MongoDB connection: " + clusterDescription);
         }
 
-        List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+        List<ServerDescription> serverDescriptions = preference.choose(clusterDescription);
 
-        if (serverDescriptions == null || serverDescriptions.size() == 0) {
+        if (serverDescriptions.size() == 0) {
             throw new DebeziumException("Unable to read server descriptions from MongoDB connection (Null or empty list).");
         }
 
-        Optional<ServerDescription> primaryDescription = serverDescriptions.stream().filter(ServerDescription::isPrimary).findFirst();
+        Optional<ServerDescription> preferredDescription = serverDescriptions.stream().findFirst();
 
-        if (!primaryDescription.isPresent()) {
-            throw new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'");
+        return preferredDescription
+                .map(ServerDescription::getAddress)
+                .map(address -> new ServerAddress(address.getHost(), address.getPort()))
+                .orElseThrow(() -> new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'"));
+    }
+
+    /**
+     * Retrieves cluster description, forcing a connection if not yet available
+     *
+     * @param client cluster connection client
+     * @return cluster description
+     */
+    public static ClusterDescription clusterDescription(MongoClient client) {
+        ClusterDescription description = client.getClusterDescription();
+
+        if (description.getType() == ClusterType.UNKNOWN) {
+            // force the connection and try again
+            client.listDatabaseNames().first(); // force the connection
+            description = client.getClusterDescription();
         }
 
-        ServerAddress primaryAddress = primaryDescription.get().getAddress();
-
-        return new ServerAddress(primaryAddress.getHost(), primaryAddress.getPort());
+        return description;
     }
 
     private MongoUtil() {

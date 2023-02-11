@@ -24,15 +24,19 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String COMMIT_SCN_KEY = "commit_scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
+    public static final String USERNAME_KEY = "user_name";
 
     private Scn scn;
     private CommitScn commitScn;
     private Scn eventScn;
     private String lcrPosition;
     private String transactionId;
+    private String userName;
     private Instant sourceTime;
     private Set<TableId> tableIds;
     private Integer redoThread;
+    private String rsId;
+    private int ssn;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -76,6 +80,30 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getRsId() {
+        return rsId;
+    }
+
+    public void setRsId(String rsId) {
+        this.rsId = rsId;
+    }
+
+    public int getSsn() {
+        return ssn;
+    }
+
+    public void setSsn(int ssn) {
+        this.ssn = ssn;
     }
 
     public Instant getSourceTime() {

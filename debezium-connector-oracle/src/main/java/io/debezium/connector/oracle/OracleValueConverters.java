@@ -123,6 +123,14 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
     }
 
+    public byte[] getUnavailableValuePlaceholderBinary() {
+        return unavailableValuePlaceholderBinary;
+    }
+
+    public String getUnavailableValuePlaceholderString() {
+        return unavailableValuePlaceholderString;
+    }
+
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         logger.debug("Building schema for column {} of type {} named {} with constraints ({},{})",
@@ -648,7 +656,17 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
             }
         }
-        return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
+        final Object javaData = fromOracleTimeClasses(column, data);
+        return convertValue(column, fieldDefn, javaData, fallbackTimestampWithTimeZone, (r) -> {
+            try {
+                // Fractional width for zoned timestamp is set in scale if schema obtained via snapshot
+                // if obtained via streaming then it is in length
+                final Integer fraction = column.scale().orElse(column.length());
+                r.deliver(ZonedTimestamp.toIsoString(javaData, defaultOffset, adjuster, fraction));
+            }
+            catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {

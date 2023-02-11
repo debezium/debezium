@@ -1,0 +1,135 @@
+:page-aliases: configuration/partition-routing.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: routing-records-to-partitions-based-on-column-values
+// Title: Routing records to partitions based on column values
+[id="partition-routing"]
+= Partition Routing
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+
+By default, when {prodname} detects a change in a data collection, the change event that it emits is sent to a topic that uses a single Apache Kafka partition.
+As described in {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[Customization of Kafka Connect automatic topic creation], you can customize the default configuration to route events to multiple partitions, based on a hash of the primary key.
+
+However, in some cases, you might want {prodname} to  route events to a specific partition.
+The partition routing SMT enables you to route events to specific destination partitions based on a specified column name value. {prodname} uses the hash of the specified value to determine the destination partition.
+
+// Type: concept
+// Title: Example: Basic configuration of the {prodname} partition routing SMT
+// ModuleID: basic-configuration-of-the-debezium-partition-routing-smt
+[[example-basic-partition-routing-configuration-example]]
+== Example: Basic configuration
+
+You configure the partition routing transformation in the {prodname} connector's Kafka Connect configuration.
+The configuration specifies the following parameters:
+
+* The data collection column to use to calculate the destination partition.
+* The maximum number of partitions permitted for the data collection.
+
+Only events that come from configured data collections will be processed. The others will be simply leaved as is.
+
+To configure a {prodname} connector to route events to a specific partition, configure the `ComputePartition` SMT in the Kafka Connect configuration for the {prodname} connector.
+
+For example, you might add the following configuration in your connector configuration.
+
+[source]
+----
+...
+topic.creation.default.partitions=2
+topic.creation.default.replication.factor=1
+...
+transforms=ComputePartition
+transforms.ComputePartition.type=io.debezium.transforms.partitions.ComputePartition
+transforms.ComputePartition.partition.data-collections.field.mappings=inventory.products:name,inventory.orders:purchaser
+transforms.ComputePartition.partition.data-collections.partition.num.mappings=inventory.products:2,inventory.orders:2
+...
+----
+
+The preceding example specifies to enable partition routing computation for `products` and `orders` tables.
+It specifies that `name` column will be used to compute the partition for the `products` data-collections and that the number of partition for this data-collections is `2`.
+Note that the number of partitions must be the number that you have configured for the topic. As you can see in the example we have defined that every topic will have `2` partitions.
+
+Given this `Products` table
+
+.Products table
+[cols="25%a,25%a,25%a,25%a"]
+|===
+|id
+|name
+|description
+|weight
+
+|101
+|scooter
+|Small 2-wheel scooter
+|   3.14
+
+|102
+|car battery
+|12V car battery
+|   8.1
+|103
+|12-pack drill bits
+|12-pack of drill bits with sizes ranging from #40 to #3
+|   0.8
+|104
+|hammer
+|12oz carpenter's hammer
+|  0.75
+|105
+|hammer
+|14oz carpenter's hammer
+| 0.875
+|106
+|hammer
+|16oz carpenter's hammer
+|   1.0
+|107
+|rocks
+|box of assorted rocks
+|   5.3
+|108
+|jacket
+|water resistent black wind breaker
+|   0.1
+|109
+|spare tire
+|24 inch spare tire
+|  22.2
+|===
+
+Based on the configuration, the SMT routes change events for the records that have the field name `hammer` to the same partition.
+That is, the items with `id` values `104`, `105`, and `106` are routed to the same partition.
+
+// Type: reference
+// ModuleID: options-for-configuring-the-partition-routing-transformation
+// Title: Options for configuring the partition routing transformation
+[[partition-routing-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the partition routing SMT.
+
+.Partition routing SMT (`ComputePartition`) configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[partition-routing-data-collections-field-mappings]]<<partition-routing-data-collections-field-mappings, `partition.data-collections.field.mappings`>>
+|
+|A comma-separated list of colon-delimited pairs that specify the columns to use for a specific data-collection, for example, `inventory.products:name,inventory.orders:purchaser`.
+
+|[[partition-routing-data-collections-partition-num-mappings]]<<partition-routing-data-collections-partition-num-mappings, `partition.data-collections.partition.num.mappings`>>
+|
+|A comma-separated list of colon-delimited pairs that specify the number of partitions to use for a specific data-collection, for example, `inventory.products:2,inventory.orders:3`.
+|
+
+|===

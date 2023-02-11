@@ -18,18 +18,17 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.pipeline.Sizeable;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
-import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -41,7 +40,7 @@ import io.debezium.util.Threads.Timer;
  * time to sleep (block) between two subsequent poll calls. See the
  * {@link Builder} for the different options. The queue applies back-pressure
  * semantics, i.e. if it holds the maximum number of elements, subsequent calls
- * to {@link #enqueue(Object)} will block until elements have been removed from
+ * to {@link #enqueue(T)} will block until elements have been removed from
  * the queue.
  * <p>
  * If an exception occurs on the producer side, the producer should make that
@@ -53,13 +52,13 @@ import io.debezium.util.Threads.Timer;
  * @author Gunnar Morling
  *
  * @param <T>
- *            the type of events in this queue. Usually {@link SourceRecord} is
+ *            the type of events in this queue. Usually {@link Sizeable} is
  *            used, but in cases where additional metadata must be passed from
- *            producers to the consumer, a custom type wrapping source records
+ *            producers to the consumer, a custom type extending source records
  *            may be used.
  */
 @ThreadSafe
-public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
+public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
@@ -107,7 +106,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         this.buffering = buffering;
     }
 
-    public static class Builder<T> {
+    public static class Builder<T extends Sizeable> {
 
         private Duration pollInterval;
         private int maxQueueSize;
@@ -206,8 +205,8 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     }
 
     protected void doEnqueue(T record) throws InterruptedException {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Enqueuing source record '{}'", record);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Enqueuing source record '{}'", record);
         }
 
         try {
@@ -223,7 +222,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             queue.add(record);
             // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
-                long messageSize = ObjectSizeCalculator.getObjectSize(record);
+                long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);
                 currentQueueSizeInBytes += messageSize;
             }
@@ -290,7 +289,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             return records.size();
         }
         int recordsToDrain = Math.min(queueSize, maxElements);
-        T[] drainedRecords = (T[]) new Object[recordsToDrain];
+        T[] drainedRecords = (T[]) new Sizeable[recordsToDrain];
         for (int i = 0; i < recordsToDrain; i++) {
             T record = queue.poll();
             drainedRecords[i] = record;

@@ -18,7 +18,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 
@@ -34,26 +34,26 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     protected final static Logger LOGGER = LoggerFactory.getLogger(PostgresTaskContext.class);
 
     private final PostgresConnectorConfig config;
-    private final TopicSelector<TableId> topicSelector;
+    private final TopicNamingStrategy<TableId> topicNamingStrategy;
     private final PostgresSchema schema;
 
     private ElapsedTimeStrategy refreshXmin;
     private Long lastXmin;
 
-    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector<TableId> topicSelector) {
+    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy) {
         super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
 
         this.config = config;
         if (config.xminFetchInterval().toMillis() > 0) {
             this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, config.xminFetchInterval().toMillis());
         }
-        this.topicSelector = topicSelector;
+        this.topicNamingStrategy = topicNamingStrategy;
         assert schema != null;
         this.schema = schema;
     }
 
-    protected TopicSelector<TableId> topicSelector() {
-        return topicSelector;
+    protected TopicNamingStrategy<TableId> topicNamingStrategy() {
+        return topicNamingStrategy;
     }
 
     protected PostgresSchema schema() {
@@ -95,7 +95,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
-    protected ReplicationConnection createReplicationConnection(boolean doSnapshot, PostgresConnection jdbcConnection) throws SQLException {
+    protected ReplicationConnection createReplicationConnection(PostgresConnection jdbcConnection) throws SQLException {
         final boolean dropSlotOnStop = config.dropSlotOnStop();
         if (dropSlotOnStop) {
             LOGGER.warn(
@@ -113,8 +113,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .dropSlotOnClose(dropSlotOnStop)
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())
-                .withTypeRegistry(schema.getTypeRegistry())
-                .doSnapshot(doSnapshot)
+                .withTypeRegistry(jdbcConnection.getTypeRegistry())
                 .withSchema(schema)
                 .jdbcMetadataConnection(jdbcConnection)
                 .build();

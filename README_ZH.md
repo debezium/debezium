@@ -9,7 +9,7 @@ Copyright Debezium Authors.
 Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 The Antlr grammars within the debezium-ddl-parser module are licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
-中文 | [English](README.md) | [Japanese](README_JA.md)
+中文 | [English](README.md) | [Japanese](README_JA.md) | [Korean](README_KO.md)
 
 # Debezium 简介
 
@@ -53,7 +53,7 @@ Debezium有很多非常有价值的使用场景，我们在这儿仅仅列出几
 使用Debezium代码库并在本地配置它需要以下软件：
 
 * [Git](https://git-scm.com) 2.2.1 or later
-* JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* JDK 17 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
 * [Apache Maven](https://maven.apache.org/index.html) 3.8.4
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 

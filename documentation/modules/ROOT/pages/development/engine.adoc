@@ -96,11 +96,11 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.user", "mysqluser");
     props.setProperty("database.password", "mysqlpw");
     props.setProperty("database.server.id", "85744");
-    props.setProperty("database.server.name", "my-app-connector");
-    props.setProperty("database.history",
-          "io.debezium.relational.history.FileDatabaseHistory");
-    props.setProperty("database.history.file.filename",
-          "/path/to/storage/dbhistory.dat");
+    props.setProperty("topic.prefix", "my-app-connector");
+    props.setProperty("schema.history.internal",
+          "io.debezium.storage.file.history.FileSchemaHistory");
+    props.setProperty("schema.history.internal.file.filename",
+          "/path/to/storage/schemahistory.dat");
     
     // Create the engine with this configuration ...
     try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
@@ -151,11 +151,11 @@ The next few lines define the fields that are specific to the connector (documen
     props.setProperty("database.user", "mysqluser")
     props.setProperty("database.password", "mysqlpw")
     props.setProperty("database.server.id", "85744")
-    props.setProperty("database.server.name", "my-app-connector")
-    props.setProperty("database.history",
-          "io.debezium.relational.history.FileDatabaseHistory")
-    props.setProperty("database.history.file.filename",
-          "/path/to/storage/dbhistory.dat")
+    props.setProperty("topic.prefix", "my-app-connector")
+    props.setProperty("schema.history.internal",
+          "io.debezium.storage.file.history.FileSchemaHistory")
+    props.setProperty("schema.history.internal.file.filename",
+          "/path/to/storage/schemahistory.dat")
 ----
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database.
@@ -181,7 +181,7 @@ Our example uses a server name of "products", presumably because the database co
 When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server.
 Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events.
 The connector records the schema information so that, should the connector be restarted and resume reading from the last recorded offset, it knows exactly what the database schemas looked like at that offset.
-How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileDatabaseHistory` class to store database schema history changes in the `/path/to/storage/dbhistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
+How the connector records the database schema history is defined in the last two fields of our configuration, namely that our connector should use the `FileSchemaHistory` class to store database schema history changes in the `/path/to/storage/schemahistory.dat` file on the local file system (again, this file can be named anything and stored anywhere).
 
 Finally the immutable configuration is built using the `build()` method.
 (Incidentally, rather than build it programmatically, we could have *read* the configuration from a properties file using one of the `Configuration.read(...)` methods.)
@@ -259,10 +259,17 @@ Allowed values are:
 
 * `Connect.class` - the output value is change event wrapping Kafka Connect's `SourceRecord`
 * `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
+* `JsonByteArray.class` - the output value is a pair of key and value formatted as `JSON` and encoded as UTF-8 byte arrays
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records (see xref:{link-avro-serialization}[Avro Serialization] for more details)
 * `CloudEvents.class` - the output value is a pair of key and value encoded as xref:{link-cloud-events}[Cloud Events] messages
 
-Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
+The header format can also be specified when calling `DebeziumEngine#create()`.
+Allowed values are:
+
+* `Json.class` - the header values are encoded as `JSON` strings
+* `JsonByteArray.class` - the header values are formatted as `JSON` and encoded as UTF-8 byte arrays
+
+Internally, the engine uses the appropriate Kafka Connect converter implementation to which the conversion is delegated.
 The converter can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
@@ -310,6 +317,33 @@ props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterT
 2. Implementation of the `router` transformation is `org.apache.kafka.connect.transforms.RegexRouter`
 3. The `router` transformation has two configurations options -`regex` and `replacement`
 4. Implementation of the `filter` transformation is `io.debezium.embedded.ExampleFilterTransform`
+
+[[engine-message-transformations-predicates]]
+== Message Transformation Predicates
+
+Predicates can be applied to transformations to make the transformations optional.
+
+An example of the configuration is
+[source,java,indent=0]
+----
+final Properties props = new Properties();
+...
+props.setProperty("transforms", "filter");                                                 // (1)
+props.setProperty("predicates", "headerExists");                                           // (2)
+props.setProperty("predicates.headerExists.type", "org.apache.kafka.connect.transforms.predicates.HasHeaderKey"); //(3)
+props.setProperty("predicates.headerExists.name", "header.name");                          // (4)
+props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterTransform");// (5)
+props.setProperty("transforms.filter.predicate", "headerExists");                          // (6)
+props.setProperty("transforms.filter.negate", "true");                                     // (7)
+----
+
+1. One transformation is defined - `filter`
+2. One predicate is defined - `headerExists`
+3. Implementation of the `headerExists` predicate is `org.apache.kafka.connect.transforms.predicates.HasHeaderKey`
+4. The `headerExists` predicate has one configuration option - `name`
+5. Implementation of the `filter` transformation is `io.debezium.embedded.ExampleFilterTransform`
+6. The `filter` transformation requires the predicate `headerExists`
+7. The `filter` transformation expects the value of the predicate to be negated, making the predicate determine if the header does not exist
 
 [[advanced-consuming]]
 == Advanced Record Consuming
@@ -432,28 +466,32 @@ The default is a periodic commity policy based upon time intervals.
 |`5000`
 |Maximum number of milliseconds to wait for records to flush and partition offset data to be committed to offset storage before cancelling the process and restoring the offset data to be committed in a future attempt. The default is 5 seconds.
 
-|`internal.key.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize key data for offsets. The default is JSON converter.
+|`errors.max.retries`
+|`-1`
+|The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
 
-|`internal.value.converter`
-|`<...>.JsonConverter`
-|The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
+|`errors.retry.delay.initial.ms`
+|`300`
+|Initial delay (in ms) for retries when encountering connection errors. This value will be doubled upon every retry but won't exceed `errors.retry.delay.max.ms`.
+
+|`errors.retry.delay.max.ms`
+|`10000`
+|Max delay (in ms) between retries when encountering connection errors.
 |===
 
 [[database-history-properties]]
-=== Database history properties
+=== Database schema history properties
 
-Some of the connectors also requires additional set of properties that configures database history:
+Some of the connectors also requires additional set of properties that configures database schema history:
 
 * MySQL
 * SQL Server
 * Oracle
 * Db2
 
-Without proper configuration of the database history the connectors will refuse to start.
+Without proper configuration of the database schema history the connectors will refuse to start.
 The default configuration expects a Kafka cluster to be available.
-For other deployments, a file-based database history storage implementation is available.
+For other deployments, a file-based database schema history storage implementation is available.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -461,26 +499,26 @@ For other deployments, a file-based database history storage implementation is a
 |Default
 |Description
 
-|`database.history`
-|`<...>.KafkaDatabaseHistory`
-|The name of the Java class that is responsible for persistence of the database history. +
-It must implement `<...>.DatabaseHistory` interface.
+|`schema.history.internal`
+|`<...>.KafkaSchemaHistory`
+|The name of the Java class that is responsible for persistence of the database schema history. +
+It must implement `<...>.SchemaHistory` interface.
 
-|`database.history.file.filename`
+|`schema.history.internal.file.filename`
 |`""`
-|Path to a file where the database history is stored. +
-Required when `database.history` is set to the `<...>.FileDatabaseHistory`.
+|Path to a file where the database schema history is stored. +
+Required when `schema.history.internal` is set to the `<...>.FileSchemaHistory`.
 
-|`database.history.kafka.topic`
+|`schema.history.internal.kafka.topic`
 |`""`
-|The Kafka topic where the database history is stored. +
-Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+|The Kafka topic where the database schema history is stored. +
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
-|`database.history.kafka.bootstrap.servers`
+|`schema.history.internal.kafka.bootstrap.servers`
 |`""`
 |The initial list of Kafka cluster servers to connect to.
-The cluster provides the topic to store the database history. +
-Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+The cluster provides the topic to store the database schema history. +
+Required when `schema.history.internal` is set to the `<...>.KafkaSchemaHistory`.
 
 |=======================
 

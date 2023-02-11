@@ -7,10 +7,13 @@ package io.debezium.connector.mysql;
 
 import java.io.Serializable;
 
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
 /**
@@ -46,11 +49,17 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
 
     @Override
     protected Object[] getOldColumnValues() {
-        return before != null ? before : null;
+        return before;
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return after != null ? after : null;
+        return after;
+    }
+
+    @Override
+    protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
+        Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 }

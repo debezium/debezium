@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -37,10 +36,10 @@ import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.TopicSelector;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -56,9 +55,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
-
-    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
-
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" is already specified";
@@ -190,19 +186,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.HIGH)
             .required()
             .withDescription("The name of the database from which the connector should capture changes");
-
-    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
-            .withDisplayName("Namespace")
-            .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .required()
-            .withValidation(RelationalDatabaseConnectorConfig::validateServerName)
-            .withDescription("Unique name that identifies the database server and all "
-                    + "recorded offsets, and that is used as a prefix for all schemas and topics. "
-                    + "Each distinct installation should have a separate namespace and be monitored by "
-                    + "at most one Debezium connector.");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
@@ -379,7 +362,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
                     + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision; "
                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                    + "which uses millisecond precision regardless of the database columns' precision .");
+                    + "which uses millisecond precision regardless of the database columns' precision.");
 
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
             .withDisplayName("Snapshot lock timeout (ms)")
@@ -402,7 +385,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
                     + "the same name as the database server ID. Each schema change will be recorded using a key that "
                     + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s). "
-                    + "The default is 'true'. This is independent of how the connector internally records database history.")
+                    + "The default is 'true'. This is independent of how the connector internally records database schema history.")
             .withDefault(true);
 
     public static final Field INCLUDE_SCHEMA_COMMENTS = Field.create("include.schema.comments")
@@ -481,7 +464,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
-                    SERVER_NAME)
+                    CommonConnectorConfig.TOPIC_PREFIX)
             .connector(
                     DECIMAL_HANDLING_MODE,
                     TIME_PRECISION_MODE,
@@ -509,28 +492,28 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
     private final ColumnNameFilter columnFilter;
+    private final boolean columnsFiltered;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
+    private final FieldNamer<Column> fieldNamer;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
+    protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
-                                                ColumnFilterMode columnFilterMode) {
-        super(config, logicalName, defaultSnapshotFetchSize);
+                                                ColumnFilterMode columnFilterMode, boolean useCatalogBeforeSchema) {
+        super(config, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
         this.tableIdMapper = tableIdMapper;
 
         this.jdbcConfig = JdbcConfiguration.adapt(
-                config.filter(x -> !x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING)
-                        || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name()))
-                        .subset(DATABASE_CONFIG_PREFIX, true));
+                config.subset(DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
-            this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
+            this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
         }
         // handled by sub-classes for the time being
         else {
@@ -540,6 +523,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String columnExcludeList = config.getString(COLUMN_EXCLUDE_LIST);
         String columnIncludeList = config.getString(COLUMN_INCLUDE_LIST);
 
+        columnsFiltered = !(Strings.isNullOrEmpty(columnExcludeList) && Strings.isNullOrEmpty(columnIncludeList));
+
         if (columnIncludeList != null) {
             this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
         }
@@ -548,6 +533,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
+        this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -565,7 +551,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
-     * Returns the temporal precision mode mode Enum for {@code time.precision.mode}
+     * Returns the temporal precision mode Enum for {@code time.precision.mode}
      * configuration. This defaults to {@code adaptive} if nothing is provided.
      */
     public TemporalPrecisionMode getTemporalPrecisionMode() {
@@ -615,6 +601,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public ColumnNameFilter getColumnFilter() {
         return columnFilter;
+    }
+
+    public boolean isColumnsFiltered() {
+        return columnsFiltered;
     }
 
     public Boolean isFullColummnScanRequired() {
@@ -690,19 +680,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     @Override
-    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
             return new DatabaseHeartbeatImpl(
                     getHeartbeatInterval(),
-                    topicSelector.getHeartbeatTopic(),
+                    topicNamingStrategy.heartbeatTopic(),
                     getLogicalName(),
                     connectionProvider.get(),
                     getHeartbeatActionQuery(),
                     errorHandler,
                     schemaNameAdjuster);
         }
-        return super.createHeartbeat(topicSelector, schemaNameAdjuster, connectionProvider, errorHandler);
+        return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
@@ -746,15 +736,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return problemCount;
     }
 
-    private static int validateServerName(Configuration config, Field field, Field.ValidationOutput problems) {
-        String serverName = config.getString(SERVER_NAME);
-
-        if (serverName != null) {
-            if (!SERVER_NAME_PATTERN.asPredicate().test(serverName)) {
-                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
-                return 1;
-            }
-        }
-        return 0;
+    public FieldNamer<Column> getFieldNamer() {
+        return fieldNamer;
     }
 }

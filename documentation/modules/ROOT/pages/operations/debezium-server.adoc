@@ -17,7 +17,7 @@ Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar or Redis (Stream).
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
@@ -52,6 +52,11 @@ debezium-server/
 ----
 
 The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `conf` contains configuration files.
+[NOTE]
+====
+In case of using the Oracle connector you will have to add to the `lib` directory the ORACLE JDBC driver (if using XStream also the XStream API files),
+explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files]
+====
 
 == Configuration
 
@@ -65,6 +70,7 @@ There are multiple sections configured:
 * `debezium.sink` is for the sink system configuration
 * `debezium.format` is for the output serialization format configuration
 * `debezium.transforms` is for the configuration of message transformations
+* `debezium.predicates` is for the configuration of message transformation predicates
 
 An example configuration file can look like so:
 
@@ -79,7 +85,7 @@ debezium.source.database.port=5432
 debezium.source.database.user=postgres
 debezium.source.database.password=postgres
 debezium.source.database.dbname=postgres
-debezium.source.database.server.name=tutorial
+debezium.source.topic.prefix=tutorial
 debezium.source.schema.include.list=inventory
 ----
 
@@ -166,7 +172,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,838 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.hostname = localhost
 2020-05-15 11:33:12,838 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.password = ********
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    name = kinesis
-2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.server.name = tutorial
+2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    topic.prefix = tutorial
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.port = 5432
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    schema.include.list = inventory
 2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server 1.2.0-SNAPSHOT (powered by Quarkus 1.4.1.Final) started in 1.198s. Listening on: http://0.0.0.0:8080
@@ -192,7 +198,7 @@ The source configuration uses the same configuration properties that are describ
 |[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
 |`org.apache.kafka.connect.storage.FileOffsetBackingStore`
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
-To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingStore`
+To use Redis to store offsets, use `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
 
 |[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
 |
@@ -218,56 +224,131 @@ To use Redis to store offsets, use `io.debezium.server.redis.RedisOffsetBackingS
 |
 |(Optional)  If using Redis to store offsets, whether or not to use SSL to communicate with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.ssl.enabled`. Default is 'false'
 
+|[[debezium-source-offset-redis-key]]<<debezium-source-offset-redis-key, `debezium.source.offset.storage.redis.key`>>
+|
+|(Optional)  If using Redis to store offsets, define the hash key in redis. If the `redis.key` configuration is not supplied, and the default value is `metadata:debezium:offsets`
 
-|[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
-|`io.debezium.relational.history.KafkaDatabaseHistory`
+|[[debezium-source-offset-redis-wait-enabled]]<<redis-wait-enabled, `debezium.source.offset.storage.redis.wait.enabled`>>
+|`false`
+|If using Redis to store offsets, enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[debezium-source-offset-redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.source.offset.storage.redis.wait.timeout.ms`>>
+|`1000`
+|If using Redis to store offsets, defines the timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[debezium-source-offset-redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.source.offset.storage.redis.wait.retry.enabled`>>
+|`false`
+|If using Redis to store offsets, enables retry on wait for replica failure.
+
+|[[debezium-source-offset-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.offset.storage.redis.wait.retry.delay.ms`>>
+|`1000`
+|If using Redis to store offsets, defines the delay of retry on wait for replica failure.
+
+|[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
+|`io.debezium.storage.kafka.history.KafkaSchemaHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
 This is by default based on Kafka.
 There are also other options available
 
-* `io.debezium.relational.history.FileDatabaseHistory` for non-Kafka deployments
-* `io.debezium.relational.history.MemoryDatabaseHistory` volatile store for test environments
-* `io.debezium.server.redis.RedisDatabaseHistory` volatile store for test environments
+* `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
+* `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
+* `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deploments
+* `io.debezium.storage.redis.history.RocketMqSchemaHistory` for RocketMQ deploments
 
-|[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.database.history.file.filename`>>
+|[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
-|The name and location of the file to which `FileDatabaseHistory` persists its data.
+|The name and location of the file to which `FileSchemaHistory` persists its data.
 
-|[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.database.history.redis.address`>>
+|[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.schema.history.internal.redis.address`>>
 |
-|The Redis host:port to connect to if using `RedisDatabaseHistory`.
+|The Redis host:port to connect to if using `RedisSchemaHistory`.
 
-|[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.database.history.redis.user`>>
+|[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.schema.history.internal.redis.user`>>
 |
-|The Redis user to use if using `RedisDatabaseHistory`.
+|The Redis user to use if using `RedisSchemaHistory`.
 
-|[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.database.history.redis.password`>>
+|[[debezium-source-database-history-redis-password]]<<debezium-source-database-history-redis-password, `debezium.source.schema.history.internal.redis.password`>>
 |
-|The Redis password to use if using `RedisDatabaseHistory`.
+|The Redis password to use if using `RedisSchemaHistory`.
 
-|[[debezium-source-database-history-redis-ssl-enabled]]<<debezium-source-database-history-redis-ssl-enabled, `debezium.source.database.history.redis.ssl.enabled`>>
+|[[debezium-source-database-history-redis-ssl-enabled]]<<debezium-source-database-history-redis-ssl-enabled, `debezium.source.schema.history.internal.redis.ssl.enabled`>>
 |
-|Use SSL connection if using `RedisDatabaseHistory`.
+|Use SSL connection if using `RedisSchemaHistory`.
 
-|[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.database.history.redis.key`>>
+|[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.schema.history.internal.redis.key`>>
 |
-|The Redis key to use for storage if using `RedisDatabaseHistory`. Default: metadata:debezium:db_history
+|The Redis key to use for storage if using `RedisSchemaHistory`. Default: metadata:debezium:schema_history
 
-|[[debezium-source-database-history-redis-retry-initial-delay-ms]]<<debezium-source-database-history-redis-retry-initial-delay-ms, `debezium.source.database.history.redis.retry.initial.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-initial-delay-ms]]<<debezium-source-database-history-redis-retry-initial-delay-ms, `debezium.source.schema.history.internal.redis.retry.initial.delay.ms`>>
 |
-|The initial delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 300 (ms)
+|The initial delay in case of a connection retry to Redis if using `RedisSchemaHistory`. Default: 300 (ms)
 
-|[[debezium-source-database-history-redis-retry-max-delay-ms]]<<debezium-source-database-history-redis-retry-max-delay-ms, `debezium.source.database.history.redis.retry.max.delay.ms`>>
+|[[debezium-source-database-history-redis-retry-max-delay-ms]]<<debezium-source-database-history-redis-retry-max-delay-ms, `debezium.source.schema.history.internal.redis.retry.max.delay.ms`>>
 |
-|The maximum delay in case of a connection retry to Redis if using `RedisDatabaseHistory`. Default: 10000 (ms)
+|The maximum delay in case of a connection retry to Redis if using `RedisSchemaHistory`. Default: 10000 (ms)
 
-|[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.database.history.redis.connection.timeout.ms`>>
+|[[debezium-source-database-history-redis-connection-timeout-ms]]<<debezium-source-database-history-redis-connection-timeout-ms, `debezium.source.schema.history.internal.redis.connection.timeout.ms`>>
 |
-|Connection timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
+|Connection timeout of Redis client if using `RedisSchemaHistory`. Default: 2000 (ms)
 
-|[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.database.history.redis.socket.timeout.ms`>>
+|[[debezium-source-database-history-redis-socket-timeout-ms]]<<debezium-source-database-history-redis-socket-timeout-ms, `debezium.source.schema.history.internal.redis.socket.timeout.ms`>>
 |
-|Socket timeout of Redis client if using `RedisDatabaseHistory`. Default: 2000 (ms)
+|Socket timeout of Redis client if using `RedisSchemaHistory`. Default: 2000 (ms)
+
+|[[debezium-source-database-history-redis-wait-enabled]]<<redis-wait-enabled, `debezium.source.schema.history.internal.redis.wait.enabled`>>
+|`false`
+|If using Redis to store schema history, enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[debezium-source-database-history-redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.source.schema.history.internal.redis.wait.timeout.ms`>>
+|`1000`
+|If using Redis to store schema history, defines the timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[debezium-source-database-history-redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.source.schema.history.internal.redis.wait.retry.enabled`>>
+|`false`
+|If using Redis to store schema history, enables retry on wait for replica failure.
+
+|[[debezium-source-database-history-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.schema.history.internal.redis.wait.retry.delay.ms`>>
+|`1000`
+|If using Redis to store schema history, defines the delay of retry on wait for replica failure.
+
+
+|[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
+|
+|The name of the rocketmq topic for the database schema history.
+
+|[[schema-history-internal-rocketmq-namesrvAddr]]<<schema-history-internal-rocketmq-namesrvAddr, `debezium.source.schema.history.internal.rocketmq.name.srv.addr`>>
+|`localhost:9876`
+|RocketMq service discovery NameServer address configuration.
+
+|[[schema-history-internal-rocketmq-acl-enabled]]<<schema-history-internal-rocketmq-acl-enabled, `debezium.source.schema.history.internal.rocketmq.acl.enabled`>>
+|`false`
+|RocketMq access control enable configuration, default is 'false'.
+
+|[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key, `debezium.source.schema.history.internal.rocketmq.access.key`>>
+|
+|RocketMq access key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key, `debezium.source.schema.history.internal.rocketmq.secret.key`>>
+|
+|RocketMq secret key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`debezium.source.schema.history.internal.rocketmq.recovery.attempts`>>
+| `60`
+|The maximum number of attempts to recover database schema history.
+
+|[[schema-history-internal-rocketmq-recovery-poll-interval-ms]]<<schema-history-internal-rocketmq-recovery-poll-interval-ms,`debezium.source.schema.history.internal.rocketmq.recovery.poll.interval.ms`>>
+| `1000`
+|The number of milliseconds to wait while polling for persisted
+data during recovery.
+
+|[[schema-history-internal-rocketmq-store-record-timeout-ms]]<<schema-history-internal-rocketmq-store-record-timeout-ms,`debezium.source.schema.history.internal.rocketmq.store.record.timeout.ms`>>
+| `60000`
+|Timeout for sending messages to RocketMq.
+
 
 |===
 
@@ -285,7 +366,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`avro`/`protobuf`.
+|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -293,11 +374,19 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`avro`/`protobuf`.
+|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
 |Configuration properties passed to the value converter.
+
+|[[debezium-format-header]]<<debezium-format-header, `debezium.format.header`>>
+|`json`
+|The name of the output format for value, one of `json`/`jsonbytearray`.
+
+|[[debezium-format-header-props]]<<debezium-format-header-props, `debezium.format.header.*`>>
+|
+|Configuration properties passed to the header converter.
 
 |===
 
@@ -329,8 +418,47 @@ The configuration will need to contain the list of transformations, implementati
 |
 |Configuration properties passed to the transformation with name `<name>`.
 
+[id="debezium-transforms-name-predicate"]
+|`debezium.transforms.<name>.predicate`
+|
+|The name of the predicate to be applied to the transformation with name `<name>`.
+
+[id="debezium-transforms-name-negate"]
+|`debezium.transforms.<name>.negate`
+| false
+|Determines if the result of the predicate to the transformation with name `<name>` will be negated.
+
 |===
 
+[id="debezium-predicates-configuration-options"]
+=== Predicates configuration
+
+A Predicate can be associated with a transformation in order to make the transformation optional.
+The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[Filter and Conditional SMTs] defined by Kafka Connect.
+The configuration will need to contain the list of predicates, implementation class for each predicate and configuration options for each of the predicates.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+[id="debezium-predicates"]
+|`debezium.predicates`
+|
+|The comma separated list of symbolic names of predicates.
+
+[id="debezium-predicates-name-type"]
+|`debezium.predicates.<name>.type`
+|
+|The name of Java class implementing the predicate with name `<name>`.
+
+[id="debezium-predicates-name"]
+|`debezium.predicates.<name>.*`
+|
+|Configuration properties passed to the predicate with name `<name>`.
+
+|===
 
 [id="debezium-additional-configuration-options"]
 === Additional configuration
@@ -629,6 +757,14 @@ Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Sourc
 |60000
 |The number of seconds to wait for a response from the server before timing out. (default of 60s)
 
+|[[httpclient-retries]]<<httpclient-retries, `debezium.sink.http.retries` >>
+|5
+|The number retries before exception is thrown (default 5 times).
+
+|[[httpclient-retry-interval]]<<httpclient-retry-interval, `debezium.sink.http.retry.interval.ms` >>
+|1000
+|The number of milliseconds to wait before another attempt to send record is made after failure (default of 1s).
+
 |===
 
 ==== Apache Pulsar
@@ -662,6 +798,14 @@ The `topic` is set by Debezium.
 |`default`
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pulsar so a surrogate key must be used.
+
+|[[pulsar-tenant]]<<pulsar-tenant, `debezium.sink.pusar.tenant`>>
+|`public`
+|The target tenant used to deliver the message.
+
+|[[pulsar-namespace]]<<pulsar-namespace, `debezium.sink.pusar.namespace`>>
+|`default`
+|The target namespace used to deliver the message.
 
 |===
 
@@ -798,8 +942,63 @@ This value will be doubled upon every retry but won't exceed `debezium.sink.redi
 |`2000`
 |Socket timeout for Redis client.
 
+|[[redis-wait-enabled]]<<redis-wait-enabled, `debezium.sink.redis.wait.enabled`>>
+|`false`
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+For more information see Redis https://redis.io/commands/wait/[WAIT] command.
+
+|[[redis-wait-timeout-ms]]<<redis-wait-timeout-ms, `debezium.sink.redis.wait.timeout.ms`>>
+|`1000`
+|Timeout in milliseconds when waiting for replica. Must have a positive value.
+
+|[[redis-wait-retry-enabled]]<<redis-wait-retry-enabled, `debezium.sink.redis.wait.retry.enabled`>>
+|`false`
+|Enables retry on wait for replica failure.
+
+|[[redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.sink.redis.wait.retry.delay.ms`>>
+|`1000`
+|Delay of retry on wait for replica failure.
+
+|[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
+|`compact`
+|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format). 
+Read more about the message format xref:#p-redis-message-format[below].
+
+|[[redis-memory-threshold-percentage]]<<redis-memory-threshold-percentage, `debezium.sink.redis.memory.threshold.percentage`>>
+|`85`
+|The sink will stop consuming records if the `used_memory` percentage (out of Redis configured `maxmemory`) is higher or equal to this threshold.
+If the configured value is `0` then this threshold is disabled.
+
+|[[redis-memory-limit-mb]]<<redis-memory-limit-mb, `debezium.sink.redis.memory.limit.mb`>>
+|`0`
+|If Redis `maxmemory` is not available or `0`, the `xref:#redis-memory-threshold-percentage[debezium.sink.redis.memory.threshold.percentage]`
+will apply to this value (if this value is positive).
+By default it is `0` (disabled).
+
 |===
 
+[id="p-redis-message-format"]
+===== Message Format
+We have seen xref:#redis-message-format[above] the `debezium.sink.redis.message.format` property which configures the message format in two ways which look like this in Redis:
+
+- the `extended` format, using two pairs {1), 2)}={"key", "message key"} and {3), 4)}={"value", "message value"}:
+[source]
+----
+1) 1) "1639304527499-0"
+   2) 1) "key"
+      2) "{\"schema\": {\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}], \"optional\": false, \"name\": \"redislabs.dbo.emp.Key\"}, \"payload\": {\"empno\": 11}}"
+      3) "value"
+      4) "{\"schema\": {\"type\": \"struct\", \"fields\": [{\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"fname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"lname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"job\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"mgr\"}, {\"type\": \"int64\", \"optional\": true, \"name\": \"io.debezium.time.Timestamp\", \"version\": 1, \"field\": \"hiredate\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"sal\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"comm\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"dept\"}], \"optional\": true, \"name\": \"redislabs.dbo.emp.Value\", \"field\": \"before\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"fname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"lname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"job\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"mgr\"}, {\"type\": \"int64\", \"optional\": true, \"name\": \"io.debezium.time.Timestamp\", \"version\": 1, \"field\": \"hiredate\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"sal\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"comm\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"dept\"}], \"optional\": true, \"name\": \"redislabs.dbo.emp.Value\", \"field\": \"after\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"string\", \"optional\": false, \"field\": \"version\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"connector\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"name\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"ts_ms\"}, {\"type\": \"string\", \"optional\": true, \"name\": \"io.debezium.data.Enum\", \"version\": 1, \"parameters\": {\"allowed\": \"true,last,false\"}, \"default\": \"false\", \"field\": \"snapshot\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"db\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"sequence\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"schema\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"table\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"change_lsn\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"commit_lsn\"}, {\"type\": \"int64\", \"optional\": true, \"field\": \"event_serial_no\"}], \"optional\": false, \"name\": \"io.debezium.connector.sqlserver.Source\", \"field\": \"source\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"op\"}, {\"type\": \"int64\", \"optional\": true, \"field\": \"ts_ms\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"string\", \"optional\": false, \"field\": \"id\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"total_order\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"data_collection_order\"}], \"optional\": true, \"field\": \"transaction\"}], \"optional\": false, \"name\": \"redislabs.dbo.emp.Envelope\"}, \"payload\": {\"before\": {\"empno\": 11, \"fname\": \"Yossi\", \"lname\": \"Mague\", \"job\": \"PFE\", \"mgr\": 1, \"hiredate\": 1562630400000, \"sal\": \"dzWUAA==\", \"comm\": \"AYag\", \"dept\": 3}, \"after\": null, \"source\": {\"version\": \"1.6.0.Final\", \"connector\": \"sqlserver\", \"name\": \"redislabs\", \"ts_ms\": 1637859764960, \"snapshot\": \"false\", \"db\": \"RedisConnect\", \"sequence\": null, \"schema\": \"dbo\", \"table\": \"emp\", \"change_lsn\": \"0000003a:00002f50:0002\", \"commit_lsn\": \"0000003a:00002f50:0005\", \"event_serial_no\": 1}, \"op\": \"d\", \"ts_ms\": 1637859769370, \"transaction\": null}}"
+----
+
+- and the `compact` format, using only one pair {1), 2)}={"message key", "message value"}:
+[source]
+----
+1) 1) "1639304527499-0"
+   2) 1) "{\"schema\": {\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}], \"optional\": false, \"name\": \"redislabs.dbo.emp.Key\"}, \"payload\": {\"empno\": 11}}"
+      2) "{\"schema\": {\"type\": \"struct\", \"fields\": [{\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"fname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"lname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"job\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"mgr\"}, {\"type\": \"int64\", \"optional\": true, \"name\": \"io.debezium.time.Timestamp\", \"version\": 1, \"field\": \"hiredate\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"sal\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"comm\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"dept\"}], \"optional\": true, \"name\": \"redislabs.dbo.emp.Value\", \"field\": \"before\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"int32\", \"optional\": false, \"field\": \"empno\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"fname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"lname\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"job\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"mgr\"}, {\"type\": \"int64\", \"optional\": true, \"name\": \"io.debezium.time.Timestamp\", \"version\": 1, \"field\": \"hiredate\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"sal\"}, {\"type\": \"bytes\", \"optional\": true, \"name\": \"org.apache.kafka.connect.data.Decimal\", \"version\": 1, \"parameters\": {\"scale\": \"4\", \"connect.decimal.precision\": \"19\"}, \"field\": \"comm\"}, {\"type\": \"int32\", \"optional\": true, \"field\": \"dept\"}], \"optional\": true, \"name\": \"redislabs.dbo.emp.Value\", \"field\": \"after\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"string\", \"optional\": false, \"field\": \"version\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"connector\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"name\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"ts_ms\"}, {\"type\": \"string\", \"optional\": true, \"name\": \"io.debezium.data.Enum\", \"version\": 1, \"parameters\": {\"allowed\": \"true,last,false\"}, \"default\": \"false\", \"field\": \"snapshot\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"db\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"sequence\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"schema\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"table\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"change_lsn\"}, {\"type\": \"string\", \"optional\": true, \"field\": \"commit_lsn\"}, {\"type\": \"int64\", \"optional\": true, \"field\": \"event_serial_no\"}], \"optional\": false, \"name\": \"io.debezium.connector.sqlserver.Source\", \"field\": \"source\"}, {\"type\": \"string\", \"optional\": false, \"field\": \"op\"}, {\"type\": \"int64\", \"optional\": true, \"field\": \"ts_ms\"}, {\"type\": \"struct\", \"fields\": [{\"type\": \"string\", \"optional\": false, \"field\": \"id\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"total_order\"}, {\"type\": \"int64\", \"optional\": false, \"field\": \"data_collection_order\"}], \"optional\": true, \"field\": \"transaction\"}], \"optional\": false, \"name\": \"redislabs.dbo.emp.Envelope\"}, \"payload\": {\"before\": {\"empno\": 11, \"fname\": \"Yossi\", \"lname\": \"Mague\", \"job\": \"PFE\", \"mgr\": 1, \"hiredate\": 1562630400000, \"sal\": \"dzWUAA==\", \"comm\": \"AYag\", \"dept\": 3}, \"after\": null, \"source\": {\"version\": \"1.6.0.Final\", \"connector\": \"sqlserver\", \"name\": \"redislabs\", \"ts_ms\": 1637859764960, \"snapshot\": \"false\", \"db\": \"RedisConnect\", \"sequence\": null, \"schema\": \"dbo\", \"table\": \"emp\", \"change_lsn\": \"0000003a:00002f50:0002\", \"commit_lsn\": \"0000003a:00002f50:0005\", \"event_serial_no\": 1}, \"op\": \"d\", \"ts_ms\": 1637859769370, \"transaction\": null}}"
+----
+You can read more about Redis Streams https://redis.io/docs/data-types/streams/[here].
 
 ===== Injection points
 
@@ -868,6 +1067,61 @@ When the alternative implementations are not available then the default ones are
 |[[nats-streaming-ext-stream-name-mapper]]<<nats-streaming-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
 |Custom implementation maps the planned destination (topic) name into a physical NATS Streaming subject name.
+By default the same name is used.
+
+|===
+
+==== NATS JetStream
+NATS has a built-in distributed persistence system called https://docs.nats.io/nats-concepts/jetstream[JetStream] which enables new functionalities and higher qualities of service on top of the base 'Core NATS' functionalities and qualities of service.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[nats-jetstream-type]]<<nats-jetstream-type, `debezium.sink.type`>>
+|
+|Must be set to `nats-jetstream`.
+
+|[[nats-jetstream-url]]<<nats-jetstream-url, `debezium.sink.nats-jetstream.url`>>
+|
+| URL (or comma separated list of URLs) to a node or nodes in the cluster formatted as `nats://host:port`.
+
+|[[nats-jetstream-create-stream]]<<nats-jetstream-create-stream, `debezium.sink.nats-jetstream.create-stream`>>
+|
+|If true, a basic stream will be created.
+
+|[[nats-jetstream-subjects]]<<nats-jetstream-subjects, `debezium.sink.nats-jetstream.subjects`>>
+| \*.*.*
+|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.*
+
+|[[nats-jetstream-storage]]<<nats-jetstream-storage, `debezium.sink.nats-jetstream.storage`>>
+| memory
+| Controls how the messages are saved in the stream. Can be memory or file.
+
+|===
+
+If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
+
+===== Injection points
+
+The NATS JetStream sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[jetstream_connection]]<<streaming_connection, `io.nats.client.JetStream`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `JetStream` used to publish messages to target subjects.
+
+|[[jetstream-ext-stream-name-mapper]]<<nats-streaming-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical NATS JetStream subject name.
 By default the same name is used.
 
 |===
@@ -942,6 +1196,126 @@ By default the same name is used.
 
 |===
 
+==== Infinispan
+
+https://infinispan.org/[Infinispan] is open-source in-memory data grid that offers rich set of caches types as well as cache stores.
+Due to very fast data access, Infinispan can be used, besides others, as a data source for various data processing and analytical tools.
+
+The Infinispan sink expects that the destination cache is already defined and created within the Infinispan cluster.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[infinispan-type]]<<infinispan-type, `debezium.sink.type`>>
+|
+|Must be set to `infinispan`.
+
+|[[infisnipan-server-host]]<<infisnipan-server-host, `debezium.sink.infinispan.server.host`>>
+|
+|The host name of one of the servers of the Infinispan cluster (can be also a comma-separated list of servers).
+
+|[[infisnipan-server-port]]<<infisnipan-server-port, `debezium.sink.infinispan.server.port`>>
+| 11222
+|The port of the Infinispan server.
+
+|[[infisnipan-cache]]<<infisnipan-cache, `debezium.sink.infinispan.cache`>>
+|
+|The name of the (exiting) cache where the records will be stored.
+
+|[[infisnipan-user]]<<infisnipan-user, `debezium.sink.infinispan.user`>>
+|
+|(Optional) The user name used for connecting to Infinispan cluster.
+
+|[[infisnipan-password]]<<infisnipan-password, `debezium.sink.infinispan.password`>>
+|
+|(Optional) The password used for connecting to Infinispan cluster.
+
+|===
+
+===== Injection points
+
+The Infinispan sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[infinispan-ext-hotrod-cache]]<<infinispan-ext-hotrod-cache, `org.infinispan.client.hotrod.RemoteCache`>>
+|`@CustomConsumerBuilder`
+|Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
+|===
+
+==== Apache RocketMQ
+
+https://rocketmq.apache.org/[Apache RocketMQ] is a distributed messaging and streaming platform with low latency, high
+performance and reliability, trillion-level capacity and flexible scalability.Debezium server supports publishing
+captured change events to a configured RocketMQ.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rocketmq-type]]<<rocketmq-type, `debezium.sink.type`>>
+|
+|Must be set to `rocketmq`.
+
+|[[rocketmq-namesrv-addr]]<<rocketmq-namesrv-addr, `debezium.sink.rocketmq.producer.name.srv.addr`>>
+|
+|Name server address of Apache RocketMQ .
+
+|[[rocketmq-producer-group]]<<rocketmq-producer-group, `debezium.sink.rocketmq.producer.group`>>
+|
+|Producer group of Apache RocketMQ.
+
+|[[rocketmq-max-message-size]]<<rocketmq-max-message-size, `debezium.sink.rocketmq.producer.max.message.size`>>
+| 4M, Suggest less than 4 MB.
+|(Optional)Maximum number of bytes of sent message body.
+
+|[[rocketmq-send-timeout]]<<rocketmq-send-timeout, `debezium.sink.rocketmq.producer.send.msg.timeout`>>
+| 3000ms
+|(Optional) The send message timeout duration is the waiting time for local synchronous invocation of clients. Set a
+proper value based on the actual application to avoid long thread blocking time.
+
+|[[rocketmq-acl-enabled]]<<rocketmq-acl-enabled, `debezium.sink.rocketmq.producer.acl.enabled`>>
+| false
+|(Optional) The configuration is used to enable access authorization.
+
+|[[rocketmq-access-key]]<<rocketmq-access-key, `debezium.sink.rocketmq.producer.access.key`>>
+|
+|(Optional) The access key used for connecting to Apache RocketMQ cluster .
+
+|[[rocketmq-secret-key]]<<rocketmq-secret-key, `debezium.sink.rocketmq.producer.secret.key`>>
+|
+|(Optional) The access secret used for connecting to Apache RocketMQ cluster .
+
+|===
+
+===== Injection points
+
+The rocketmq sink behaviour can be modified by a custom logic providing alternative implementations for specific
+functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[rocketmq-producer]]<<rocketmq-producer, `org.apache.rocketmq.client.producer.DefaultMQProducer`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a RocketMQ used to publish messages to target topic.
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
@@ -968,3 +1342,53 @@ Some of the sinks exposes dependency injections points that enable users to prov
 Typical examples are fine tuning of the target client setup, the destination naming etc.
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
+
+== Cassandra connector
+
+=== Running Debezium Server with Cassandra connector
+
+Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
+
+```
+JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
+```
+
+=== Sample of basic `application.properties` for running Cassandra connector with Redis sink
+
+```
+# Sink
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+
+# Connector
+debezium.source.connector.class=io.debezium.connector.cassandra.Cassandra4Connector
+## node.id must be unique per each connector running on each Cassandra node
+debezium.source.cassandra.node.id=sample_node_01
+debezium.source.cassandra.hosts=127.0.0.1
+debezium.source.cassandra.port=9042
+debezium.source.cassandra.config=/opt/cassandra/conf/cassandra.yaml
+debezium.source.commit.log.relocation.dir=cassandra/relocdir
+debezium.source.offset.storage=io.debezium.server.redis.RedisOffsetBackingStore
+debezium.source.topic.prefix=sample_prefix
+## internal Cassandra http port
+debezium.source.http.port=8040
+```
+
+=== Transformation for Operation Code
+
+By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with Debezium Operation Codes.
+If needed, a specific transform can be defined in Debezium Server's `application.properties` to enable the conversion:
+
+```
+debezium.transforms=EnvelopeTransformation
+debezium.transforms.EnvelopeTransformation.type=io.debezium.connector.cassandra.transforms.EnvelopeTransformation
+```
+
+This will convert Operation Codes as follows:
+
+```
+INSERT "i"          -> CREATE "c"
+UPDATE "u"          -> UPDATE "u"
+DELETE "d"          -> DELETE "d"
+RANGE_TOMBSTONE "r" -> TRUNCATE "t"
+```

@@ -15,7 +15,9 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -32,7 +34,6 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -45,7 +46,6 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -63,6 +63,8 @@ public class PostgresConnection extends JdbcConnection {
     public static final String CONNECTION_HEARTBEAT = "Debezium Heartbeat";
     public static final String CONNECTION_GENERAL = "Debezium General";
 
+    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_.]+\\((?:.+(?:, ?.+)*)?\\)");
+    private static final Pattern EXPRESSION_DEFAULT_PATTERN = Pattern.compile("\\(+(?:.+(?:[+ - * / < > = ~ ! @ # % ^ & | ` ?] ?.+)+)+\\)");
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
@@ -92,7 +94,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
-        super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
+        super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
 
         if (Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -113,7 +115,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage) {
-        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, null, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -509,7 +511,7 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public String quotedColumnIdString(String columnName) {
         if (columnName.contains("\"")) {
-            columnName = columnName.replaceAll("\"", "\"\"");
+            columnName = columnName.replace("\"", "\"\"");
         }
 
         return super.quotedColumnIdString(columnName);
@@ -602,13 +604,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         try {
             final ResultSetMetaData metaData = rs.getMetaData();
             final String columnTypeName = metaData.getColumnTypeName(columnIndex);
-            final PostgresType type = ((PostgresSchema) schema).getTypeRegistry().get(columnTypeName);
+            final PostgresType type = getTypeRegistry().get(columnTypeName);
 
             LOGGER.trace("Type of incoming data is: {}", type.getOid());
             LOGGER.trace("ColumnTypeName is: {}", columnTypeName);
@@ -657,7 +657,7 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             // not a known type
-            return super.getColumnValue(rs, columnIndex, column, table, schema);
+            return super.getColumnValue(rs, columnIndex, column, table);
         }
     }
 
@@ -669,6 +669,30 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     protected boolean isTableType(String tableType) {
         return "TABLE".equals(tableType) || "PARTITIONED TABLE".equals(tableType);
+    }
+
+    @Override
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        if (columnName != null) {
+            return !FUNCTION_DEFAULT_PATTERN.matcher(columnName).matches()
+                    && !EXPRESSION_DEFAULT_PATTERN.matcher(columnName).matches();
+        }
+        return false;
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in a given database catalog, including partitioned tables.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return readTableNames(
+                catalogName,
+                null,
+                null,
+                new String[]{ "TABLE", "PARTITIONED TABLE" });
     }
 
     @FunctionalInterface

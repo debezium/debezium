@@ -114,17 +114,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            ConnectHeaders headers = new ConnectHeaders();
-            headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
-
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
-
-            headers = new ConnectHeaders();
-            headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
-
-            envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
+            emitUpdateAsPrimaryKeyChangeRecord(receiver, tableSchema, oldKey, newKey, oldValue, newValue);
         }
     }
 
@@ -165,5 +155,21 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
      */
     protected boolean skipEmptyMessages() {
         return false;
+    }
+
+    protected void emitUpdateAsPrimaryKeyChangeRecord(Receiver<P> receiver, TableSchema tableSchema, Struct oldKey,
+                                                      Struct newKey, Struct oldValue, Struct newValue)
+            throws InterruptedException {
+        ConnectHeaders headers = new ConnectHeaders();
+        headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
+
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
+
+        headers = new ConnectHeaders();
+        headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
+
+        envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(getPartition(), tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
     }
 }

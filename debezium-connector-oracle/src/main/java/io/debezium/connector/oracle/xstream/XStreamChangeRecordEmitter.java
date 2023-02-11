@@ -8,6 +8,8 @@ package io.debezium.connector.oracle.xstream;
 import java.util.Map;
 
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -25,16 +27,13 @@ import oracle.streams.RowLCR;
 public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnValue> {
 
     private final RowLCR lcr;
-    private final Map<String, Object> oldChunkValues;
-    private final Map<String, Object> newChunkValues;
 
-    public XStreamChangeRecordEmitter(Partition partition, OffsetContext offset, RowLCR lcr,
+    public XStreamChangeRecordEmitter(OracleConnectorConfig connectorConfig, Partition partition, OffsetContext offset, RowLCR lcr,
                                       Map<String, Object> oldChunkValues, Map<String, Object> newChunkValues,
-                                      Table table, Clock clock) {
-        super(partition, offset, table, clock);
+                                      Table table, OracleDatabaseSchema schema, Clock clock) {
+        super(connectorConfig, partition, offset, schema, table, clock, getColumnValues(table, lcr.getOldValues(), oldChunkValues),
+                getColumnValues(table, lcr.getNewValues(), newChunkValues));
         this.lcr = lcr;
-        this.oldChunkValues = oldChunkValues;
-        this.newChunkValues = newChunkValues;
     }
 
     @Override
@@ -53,21 +52,13 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         }
     }
 
-    @Override
-    protected Object[] getOldColumnValues() {
-        return getColumnValues(lcr.getOldValues(), oldChunkValues);
-    }
-
-    @Override
-    protected Object[] getNewColumnValues() {
-        return getColumnValues(lcr.getNewValues(), newChunkValues);
-    }
-
-    private Object[] getColumnValues(ColumnValue[] columnValues, Map<String, Object> chunkValues) {
+    private static Object[] getColumnValues(Table table, ColumnValue[] columnValues, Map<String, Object> chunkValues) {
         Object[] values = new Object[table.columns().size()];
-        for (ColumnValue columnValue : columnValues) {
-            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
-            values[index] = columnValue.getColumnData();
+        if (columnValues != null) {
+            for (ColumnValue columnValue : columnValues) {
+                int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
+                values[index] = columnValue.getColumnData();
+            }
         }
 
         // Overlay chunk values into non-chunk value array
@@ -78,5 +69,4 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
         return values;
     }
-
 }

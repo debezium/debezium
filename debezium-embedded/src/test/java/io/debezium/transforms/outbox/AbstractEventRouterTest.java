@@ -7,7 +7,7 @@ package io.debezium.transforms.outbox;
 
 import static io.debezium.data.VerifyRecord.assertConnectSchemasAreEqual;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Collections;

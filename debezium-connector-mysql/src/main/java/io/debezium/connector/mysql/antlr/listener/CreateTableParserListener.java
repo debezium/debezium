@@ -13,11 +13,8 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
-import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 
 /**
@@ -25,17 +22,10 @@ import io.debezium.relational.TableId;
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
-public class CreateTableParserListener extends MySqlParserBaseListener {
-
-    private final List<ParseTreeListener> listeners;
-
-    private final MySqlAntlrDdlParser parser;
-    private TableEditor tableEditor;
-    private ColumnDefinitionParserListener columnDefinitionListener;
+public class CreateTableParserListener extends TableCommonParserListener {
 
     public CreateTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
-        this.parser = parser;
-        this.listeners = listeners;
+        super(parser, listeners);
     }
 
     @Override
@@ -81,52 +71,10 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         TableId originalTableId = parser.parseQualifiedTableId(ctx.tableName(1).fullId());
         Table original = parser.databaseTables().forTable(originalTableId);
         if (original != null) {
-            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName());
+            parser.databaseTables().overwriteTable(tableId, original.columns(), original.primaryKeyColumnNames(), original.defaultCharsetName(), original.attributes());
             parser.signalCreateTable(tableId, ctx);
         }
         super.exitCopyCreateTable(ctx);
-    }
-
-    @Override
-    public void enterColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
-        parser.runIfNotNull(() -> {
-            String columnName = parser.parseName(ctx.uid());
-            ColumnEditor columnEditor = Column.editor().name(columnName);
-            if (columnDefinitionListener == null) {
-                columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
-                listeners.add(columnDefinitionListener);
-            }
-            else {
-                columnDefinitionListener.setColumnEditor(columnEditor);
-            }
-        }, tableEditor);
-        super.enterColumnDeclaration(ctx);
-    }
-
-    @Override
-    public void exitColumnDeclaration(MySqlParser.ColumnDeclarationContext ctx) {
-        parser.runIfNotNull(() -> {
-            tableEditor.addColumn(columnDefinitionListener.getColumn());
-        }, tableEditor, columnDefinitionListener);
-        super.exitColumnDeclaration(ctx);
-    }
-
-    @Override
-    public void enterPrimaryKeyTableConstraint(MySqlParser.PrimaryKeyTableConstraintContext ctx) {
-        parser.runIfNotNull(() -> {
-            parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-        }, tableEditor);
-        super.enterPrimaryKeyTableConstraint(ctx);
-    }
-
-    @Override
-    public void enterUniqueKeyTableConstraint(MySqlParser.UniqueKeyTableConstraintContext ctx) {
-        parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey()) {
-                parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
-            }
-        }, tableEditor);
-        super.enterUniqueKeyTableConstraint(ctx);
     }
 
     @Override

@@ -48,7 +48,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
-  * xref:how-debezium-oracle-connectors-handle-faults-and-problems[]
+  * xref:oracle-frequently-asked-questions[]
 endif::product[]
 
 // Type: assembly
@@ -105,6 +105,10 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 |===
 |Setting |Description
 
+|`always`
+|Perform snapshot on each connector start.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
 |`initial`
 |The connector performs a database snapshot as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
@@ -116,9 +120,9 @@ After the snapshot completes, the connector begins to stream event records for s
 |The connector captures the structure of all relevant tables, performing all of the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 6).
 
 |`schema_only_recovery`
-|Set this option to restore a database history topic that is lost or corrupted.
+|Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
-You can also set the property to periodically prune a database history topic that experiences unexpected growth. +
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
  +
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 |===
@@ -141,6 +145,18 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 The {prodname} connector for Oracle does not support schema changes while an incremental snapshot is running.
 ====
 
+// Type: procedure
+[id="oracle-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="oracle-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} Oracle change event records
@@ -150,11 +166,11 @@ The {prodname} connector for Oracle does not support schema changes while an inc
 By default, the Oracle connector writes change events for all `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
 The connector uses the following convention to name change event topics:
 
-_serverName.schemaName.tableName_
+_topicPrefix.schemaName.tableName_
 
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the server as specified by the xref:oracle-property-database-server-name[`database.server.name`] connector configuration property.
+_topicPrefix_:: The topic prefix as specified by the xref:oracle-property-topic-prefix[`topic.prefix`] connector configuration property.
 
 _schemaName_:: The name of the schema in which the operation occurred.
 
@@ -169,7 +185,7 @@ fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
 
-The connector applies similar naming conventions to label its internal database history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:oracle-schema-change-topic[schema change topics], and xref:oracle-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -182,7 +198,7 @@ For more information about using the logical topic routing SMT to customize topi
 === Schema change topic
 
 You can configure a {prodname} Oracle connector to produce schema change events that describe structural changes that are applied to captured tables in the database.
-The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:oracle-property-database-server-name[`database.server.name`] configuration property.
+The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_topicName_` is the namespace that is specified in the xref:oracle-property-topic-prefix[`topic.prefix`] configuration property.
 
 {prodname} emits a new message to this topic whenever it streams data from a new table.
 
@@ -198,20 +214,32 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+By default, the connector uses the `ALL_TABLES` database view to identify the table names to store in the schema history topic.
+Within that view, the connector can access data only from tables that are available to the user account through which it connects to the database.
+
+You can modify settings so that the schema history topic stores a different subset of tables.
+Use one of the following methods to alter the set of tables that the topic stores:
+
+* Change the permissions of the account that {prodname} uses to access the database so that a different set of tables are visible in the `ALL_TABLES` view.
+* Set the connector property link:#oracle-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `true`.
+====
+
+[IMPORTANT]
+====
+When the connector is configured to capture a table, it stores the history of the table's schema changes not only in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
 [IMPORTANT]
 ====
-Never partition the database history topic.
-For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
 
 To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
 
-* If you create the database history topic manually, specify a partition count of `1`.
-* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
 ifdef::community[]
@@ -226,7 +254,7 @@ ifdef::community[]
 
 [NOTE]
 ====
-Following a change in table structure, you must follow (the xref:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure]).
+Following a change in table structure, you must follow (the xref:{link-oracle-connector}#surrogate-schema-evolution[schema evolution procedure]).
 ====
 endif::community[]
 
@@ -256,7 +284,8 @@ The message contains a logical representation of the table schema.
       "lcr_position" : null,
       "rs_id": "001234.00012345.0124",
       "ssn": 1,
-      "redo_thread": 1
+      "redo_thread": 1,
+      "user_name": "user"
     },
     "ts_ms": 1588252618953, // <1>
     "databaseName": "ORCLPDB1", // <2>
@@ -328,6 +357,11 @@ The message contains a logical representation of the table schema.
               "autoIncremented": false,
               "generated": false
             }
+          ],
+          "attributes": [ // <10>
+            {
+              "customAttribute": "attributeValue"
+            }
           ]
         }
       }
@@ -385,6 +419,10 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 |`columns`
 |Metadata for each column in the changed table.
 
+|10
+|`attributes`
+|Custom attribute metadata for each table change.
+
 |===
 
 In messages that the connector sends to the schema change topic, the message key is the name of the database that contains the schema change.
@@ -430,11 +468,12 @@ Database transactions are represented by a statement block that is enclosed betw
 {prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
 Transaction boundary events contain the following fields:
 
-`status`:: `BEGIN` or `END`
-`id`:: String representation of unique transaction identifier.
-`ts_ms`:: The time of `BEGIN` or `END` transaction.
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emmitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates number of events that the connector emits for changes that originate from a data collection.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 The following example shows a typical transaction boundary message:
 
@@ -445,6 +484,7 @@ The following example shows a typical transaction boundary message:
 {
   "status": "BEGIN",
   "id": "5.6.641",
+  "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
 }
@@ -452,6 +492,7 @@ The following example shows a typical transaction boundary message:
 {
   "status": "END",
   "id": "5.6.641",
+  "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
     {
@@ -466,8 +507,8 @@ The following example shows a typical transaction boundary message:
 }
 ----
 
-Unless overridden via the xref:oracle-property-transaction-topic[`transaction.topic`] option,
-the connector emits transaction events to the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
+Unless overridden via the xref:oracle-property-topic-transaction[`topic.transaction`] option,
+the connector emits transaction events to the xref:oracle-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
 
 // Type: concept
 // ModuleID: how-the-debezium-oracle-connector-enriches-change-event-messages-with-transaction-metadata
@@ -539,7 +580,10 @@ For example, the following illustrates what an embedded configuration would look
 ----
 <local-cache name="transactions">
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" path="./data" />
+    <file-store read-only="false" preload="true" shared="false">
+      <data path="./data"/>
+      <index path="./index"/>
+    </file-store>
   </persistence>
 </local-cache>
 ----
@@ -560,7 +604,10 @@ Another example, the following illustrates the same cache configured with an Inf
 <distributed-cache name="transactions" statistics="true">
   <encoding media-type="application/x-protostream" />
   <persistence passivation="false">
-    <file-store fetch-state="true" read-only="false" preload="true" shared="false" segmented="false" />
+   <file-store read-only="false" preload="true" shared="false">
+     <data path="./data"/>
+     <index path="./index"/>
+   </file-store>
   </persistence>
 </distributed-cache>
 ----
@@ -705,7 +752,7 @@ CREATE TABLE customers (
 );
 ----
 
-If the value of the xref:oracle-property-database-server-name[`_<database.server.name>_`]`.transaction` configuration property is set to `server1`,
+If the value of the xref:oracle-property-topic-prefix[`_<topic.prefix>_`]`.transaction` configuration property is set to `server1`,
 the JSON representation for every change event that occurs in the `customers` table in the database features the following key structure:
 
 [source,json,indent=0,sub="attributes"]
@@ -779,6 +826,7 @@ In the case of the Oracle connector, the structure includes the following fields
 * The transaction id (not includes for snapshots).
 * The SCN of the change.
 * A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
+* Username who made the change
 +
 [TIP]
 ====
@@ -787,6 +835,13 @@ ifdef::community[]
 This field is only present when using the LogMiner connection adapter.
 endif::community[]
 ====
+ifdef::community[]
++
+[TIP]
+====
+The `user_name` field is only populated when using the LogMiner connection adapter.
+====
+endif::community[]
 
 `ts_ms`:: An optional field that, if present, contains the time (based on the system clock in the JVM that runs the Kafka Connect task) at which the connector processed the event.
 
@@ -920,6 +975,11 @@ The following example shows the value of a _create_ event value from the `custom
                         "field": "redo_thread"
                     },
                     {
+                        "type": "string",
+                        "optional": true,
+                        "field": "user_name"
+                    },
+                    {
                         "type": "boolean",
                         "optional": true,
                         "field": "snapshot"
@@ -961,6 +1021,7 @@ The following example shows the value of a _create_ event value from the `custom
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "c",
@@ -1024,6 +1085,7 @@ The following example shows an _update_ change event that the connector captures
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "u",
@@ -1085,6 +1147,7 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
+            "user_name": "user",
             "snapshot": false
         },
         "op": "d",
@@ -1143,7 +1206,8 @@ The message key is `null` in this case, the message value looks like this:
             "lcr_position": null,
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
-            "redo_thread": 1
+            "redo_thread": 1,
+            "user_name": "user"
         },
         "op": "t", // <2>
         "ts_ms": 1638974558961, // <3>
@@ -1169,6 +1233,7 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 * ID of the transaction in which the operation was performed
 * SCN of the operation
 * Timestamp for when the change was made in the database
+* Username who performed the change
 
 |2
 |`op`
@@ -1296,7 +1361,7 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`CLOB`
 |`STRING`
@@ -1444,6 +1509,21 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 When the `decimal.handling.mode` property is set to `string`, the connector represents `REAL` values as their formatted string representation with schema type `STRING`.
 
 |===
+
+As mention above, Oracle allows negative scales in `NUMBER` type.
+This can cause an issue during conversion to the Avro format when the number is represented as the `Decimal`.
+`Decimal` type includes scale information, but https://avro.apache.org/docs/1.11.1/specification/#decimal[Avro specification] allows only positive values for the scale.
+Depending on the schema registry used, it may result into Avro serialization failure.
+To avoid this issue, you can use `NumberToZeroScaleConverter`, which converts sufficiently high numbers (P - S >= 19) with negative scale into `Decimal` type with zero scale.
+It can be configured as follows:
+[source]
+----
+converters=zero_scale
+zero_scale.type=io.debezium.connector.oracle.converters.NumberToZeroScaleConverter
+zero_scale.decimal.mode=precise
+----
+
+By default, the number is converted to `Decimal` type (`zero_scale.decimal.mode=precise`), but for completeness remaining two supported types (`double` and `string`) are supported as well.
 
 [id="oracle-boolean-types"]
 === Boolean types
@@ -1687,13 +1767,8 @@ endif::product[]
 [id="compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types"]
 === Compatibility with Oracle installation types
 
-ifdef::community[]
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
-endif::community[]
-ifdef::product[]
-The {prodname} Oracle connector is compatible with Oracle installed as a standalone instance.
-endif::product[]
 
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
@@ -1723,6 +1798,20 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 
 To enable the connector to capture changes from a table, the table must use a schema that is not named in the preceding list.
 
+// Type: concept
+// Title: Tables that the {prodname} Oracle connector excludes when capturing change events
+[id="tables-that-the-debezium-oracle-connector-excludes-when-capturing-change-events"]
+=== Tables excluded from capture
+
+When the {prodname} Oracle connector captures tables, it automatically excludes tables that match the following rules:
+
+* Compression Advisor tables matching the pattern `CMP[3|4]$[0-9]+`.
+* Index-organized tables matching the pattern `SYS_IOT_OVER_%`.
+* Spatial tables matching the patterns `MDRT_%`, `MDRS_%`, or `MDXT_%`.
+* Nested tables
+
+To enable the connector to capture a table with a name that matches any of the preceding rules, you must rename the table.
+
 // Type: procedure
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
 // Title: Preparing Oracle databases for use with {prodname}
@@ -1746,6 +1835,30 @@ archive log list
 exit;
 ----
 
+Oracle AWS RDS does not allow you to execute the commands above nor does it allow you to log in as sysdba. AWS provides these alternative commands to configure LogMiner. Before executing these commands, ensure that your Oracle AWS RDS instance is enabled for backups.
+
+To confirm that Oracle has backups enabled, execute the command below first. The LOG_MODE should say ARCHIVELOG. If it does not, you may need to reboot your Oracle AWS RDS instance.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+SQL> SELECT LOG_MODE FROM V$DATABASE;
+
+LOG_MODE
+------------
+ARCHIVELOG
+----
+
+Once LOG_MODE is set to ARCHIVELOG, execute the commands to complete LogMiner configuration. The first command set the database to archivelogs and the second adds supplemental logging.
+
+.Configuration needed for Oracle AWS RDS LogMiner
+[source,indent=0]
+----
+exec rdsadmin.rdsadmin_util.set_configuration('archivelog retention hours',24);
+
+exec rdsadmin.rdsadmin_util.alter_supplemental_logging('ADD');
+----
+
 To enable {prodname} to capture the _before_ state of changed database rows, you must also enable supplemental logging for captured tables or for the entire database.
 The following example illustrates how to configure supplemental logging for all columns in a single `inventory.customers` table.
 
@@ -1765,7 +1878,7 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
 ----
 
 // Type: concept
-// Title: Resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
+// Title: Resizing Oracle redo logs to accommodate the data dictionary
 // ModuleID: resizing-oracle-redo-logs-to-accommodate-the-data-dictionary
 [id="oracle-redo-log-sizing"]
 === Redo log sizing
@@ -1900,7 +2013,7 @@ The flush table allows the connector to explicitly control flushing of the LGWR 
 If snapshot locks are explicitly disabled via configuration, this grant can be safely ignored.
 
 |12
-|CREATE ANY SEQUENCE
+|CREATE SEQUENCE
 |Enables the connector to create a sequence in its default tablespace.
 
 |13
@@ -2067,19 +2180,37 @@ For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
 +
+=====================================================================
+
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-oracle.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
-RUN curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc8/21.1.0.0/ojdbc8-21.1.0.0.jar
 USER 1001
 EOF
 ----
-<1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-oracle.yaml` in the current directory.
 
@@ -2114,6 +2245,7 @@ docker push _<myregistry.io>_/debezium-container-for-oracle:latest
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
 For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -2123,12 +2255,22 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true" // <1>
 spec:
-  #...
-  image: debezium-container-for-oracle  // <2>
+  image: debezium-container-for-oracle // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
-<2>  `spec.image` specifies the name of the image that you created to run your {prodname} connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
@@ -2167,9 +2309,9 @@ spec:
     database.password: dbz // <6>
     database.dbname: ORCLCDB // <7>
     database.pdb.name : ORCLPDB1, <8>
-    database.server.name: server1 // <9>
-    database.history.kafka.bootstrap.servers: kafka:9092 // <10>
-    database.history.kafka.topic: schema-changes.inventory // <11>
+    topic.prefix: server1 // <9>
+    schema.history.internal.kafka.bootstrap.servers: kafka:9092 // <10>
+    schema.history.internal.kafka.topic: schema-changes.inventory // <11>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2202,13 +2344,13 @@ spec:
 |The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
 
 |9
-|Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+|Topic prefix identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 
 |10
-|The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
+|The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
 
 |11
-|The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 |===
 
@@ -2245,11 +2387,11 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.user" : "c##dbzuser",  // <5>
         "database.password" : "dbz",   // <6>
         "database.dbname" : "ORCLCDB",  // <7>
-        "database.server.name" : "server1",  // <8>
+        "topic.prefix" : "server1",  // <8>
         "tasks.max" : "1",  // <9>
         "database.pdb.name" : "ORCLPDB1",  // <10>
-        "database.history.kafka.bootstrap.servers" : "kafka:9092", // <11>
-        "database.history.kafka.topic": "schema-changes.inventory"  // <12>
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092", // <11>
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"  // <12>
     }
 }
 ----
@@ -2260,14 +2402,14 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
 <6> The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
 <7> The name of the database to capture changes from.
-<8> Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+<8> Topic prefix that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 <9> The maximum number of tasks to create for this connector.
 <10> The name of the Oracle pluggable database that the connector captures changes from. Used in container database (CDB) installations only.
-<11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
-<12> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+<11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
+<12> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 In the previous example, the `database.hostname` and `database.port` properties are used to define the connection to the database host.
-However, in more complex Oracle deployments, or in deployments that use TNS names, you can use an alternative method in which you specify a JDBC URL.
+However, in more complex Oracle deployments, or in deployments that use Transparent Network Substrate (TNS) names, you can use an alternative method in which you specify a JDBC URL.
 
 The following JSON example shows the same configuration as in the preceding example, except that it uses a JDBC URL to connect to the database.
 
@@ -2279,84 +2421,19 @@ The following JSON example shows the same configuration as in the preceding exam
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
 }
 ----
 endif::community[]
 
-// Type: concept
-// ModuleID: configuration-of-container-databases-and-non-container-databases
-// Title: Configuration of container databases and non-container-databases
-[[pluggable-vs-non-pluggable-databases]]
-=== Pluggable vs Non-Pluggable databases
-[[oracle-database-mode]]
-
-
-Oracle Database supports the following deployment types:
-
-Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
-Database clients connect to each PDB as if it were a standard, non-CDB database.
-
-Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
-
-
-ifdef::community[]
-
-
-.Example: {prodname} connector configuration for CDB deployments
-[source,json,indent=0]
-----
-{
-  "config": {
-    "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-    "tasks.max" : "1",
-    "database.server.name" : "server1",
-    "database.hostname" : "<oracle ip>",
-    "database.port" : "1521",
-    "database.user" : "c##dbzuser",
-    "database.password" : "dbz",
-    "database.dbname" : "ORCLCDB",
-    "database.pdb.name" : "ORCLPDB1",
-    "database.history.kafka.bootstrap.servers" : "kafka:9092",
-    "database.history.kafka.topic": "schema-changes.inventory"
-  }
-}
-----
-
-[IMPORTANT]
-====
-When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
-For non-CDB installation, do *not* specify the `database.pdb.name` property.
-====
-
-.Example: {prodname} Oracle connector configuration for non-CDB deployments
-[source,json,indent=0]
-----
-{
-    "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
-    }
-}
-----
-
-endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
 
@@ -2390,6 +2467,71 @@ endif::community[]
 After the connector starts, it xref:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
+// Type: concept
+// ModuleID: configuration-of-container-databases-and-non-container-databases
+// Title: Configuration of container databases and non-container-databases
+[[pluggable-vs-non-pluggable-databases]]
+=== Pluggable vs Non-Pluggable databases
+[[oracle-database-mode]]
+
+
+Oracle Database supports the following deployment types:
+
+Container database (CDB):: A database that can contain multiple pluggable databases (PDBs).
+Database clients connect to each PDB as if it were a standard, non-CDB database.
+
+Non-container database (non-CDB):: A standard Oracle database, which does not support the creation of pluggable databases.
+
+
+ifdef::community[]
+
+
+.Example: {prodname} connector configuration for CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "topic.prefix" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+[IMPORTANT]
+====
+When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
+For non-CDB installation, do *not* specify the `database.pdb.name` property.
+====
+
+.Example: {prodname} Oracle connector configuration for non-CDB deployments
+[source,json,indent=0]
+----
+{
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "topic.prefix" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+endif::community[]
 ifdef::product[]
 // Type: procedure
 [id="verifying-that-the-debezium-oracle-connector-is-running"]
@@ -2410,8 +2552,8 @@ Many properties have default values.
 Information about the properties is organized as follows:
 
 * xref:required-debezium-oracle-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
-* xref:debezium-oracle-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-oracle-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-oracle-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="required-debezium-{context}-connector-configuration-properties"]
@@ -2481,29 +2623,24 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
-ifdef::community[]
 Valid values include raw TNS names and RAC connection strings.
-endif::community[]
-ifdef::product[]
-Valid values include raw TNS names connection strings.
-endif::product[]
 
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |No default
 |Name of the Oracle pluggable database to connect to. Use this property with container database (CDB) installations only.
 
-|[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `+database.server.name+`>>
+|[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Logical name that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
+|Topic prefix that provides a namespace for the Oracle database server from which the connector captures changes.
 The value that you set is used as a prefix for all Kafka topic names that the connector emits.
-Specify a logical name that is unique among all connectors in your {prodname} environment.
-The following characters are valid: alphanumeric characters, hyphens, dots, and underscores.
-+
+Specify a topic prefix that is unique among all connectors in your {prodname} environment.
+The following characters are valid: alphanumeric characters, hyphens, dots, and underscores. +
+ +
 [WARNING]
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
@@ -2519,8 +2656,12 @@ endif::community[]
 |Specifies the mode that the connector uses to take snapshots of a captured table.
 You can set the following values:
 
+`always`:: The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables on each connector start.
+
 `initial`:: The snapshot includes the structure and data of the captured tables.
 Specify this value to populate topics with a complete representation of the data from the captured tables.
+If the snapshot completes successfully, upon next connector start snapshot is not executed again.
 
 `initial_only`:: The snapshot includes the structure and data of the captured tables.
 The connector performs an initial snapshot and then stops, without processing any subsequent changes.
@@ -2529,9 +2670,9 @@ The connector performs an initial snapshot and then stops, without processing an
 Specify this value if you want the connector to capture data only for changes that occur after the snapshot.
 
 `schema_only_recovery`:: This is a recovery setting for a connector that has already been capturing changes.
-When you restart the connector, this setting enables recovery of a corrupted or lost database history topic.
-You might set it periodically to "clean up" a database history topic that has been growing unexpectedly.
-Database history topics require infinite retention.
+When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic.
+You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly.
+Database schema history topics require infinite retention.
 Note this mode is only safe to be used when it is guaranteed that no schema changes happened since the point in time the connector was shut down before and the point in time the snapshot is taken.
 
 After the snapshot is complete, the connector continues to read change events from the database's redo logs except when `snapshot.mode` is configured as `initial_only`.
@@ -2552,10 +2693,18 @@ You can set the following values:
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
 The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
+This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
 
-This property does not affect the behavior of incremental snapshots.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2590,8 +2739,19 @@ In the resulting snapshot, the connector includes only the records for which `de
 
 |[[oracle-property-schema-include-list]]<<oracle-property-schema-include-list, `+schema.include.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
+Any schema name not included in `schema.include.list` is excluded from having its changes captured.
+By default, all non-system schemas have their changes captured. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not also set the `schema.exclude.list` property.
 
 |[[oracle-property-include-schema-comments]]<<oracle-property-include-schema-comments, `+include.schema.comments+`>>
 |`false`
@@ -2599,50 +2759,93 @@ In environments that use the LogMiner implementation, you must use POSIX regular
 
 |[[oracle-property-schema-exclude-list]]<<oracle-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
-In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only. +
+endif::community[]
+Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name. +
+If you include this property in the configuration, do not set the`schema.include.list` property.
 
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
-Tables that are not included in the include list are excluded from monitoring.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+endif::community[]
+When this property is set, the connector captures changes only from the specified tables.
 Each table identifier uses the following format: +
  +
 `__<schema_name>.<table_name>__` +
  +
-By default, the connector monitors every non-system table in each captured database.
-Do not use this property in combination with `table.exclude.list`.
-If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+By default, the connector monitors every non-system table in each captured database. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+endif::community[]
 The connector captures change events from any table that is not specified in the exclude list.
 Specify the identifier for each table using the following format: +
  +
 `_<schemaName>.<tableName>_`.
 
-Do not use this property in combination with `table.include.list`.
-If you use the LogMiner implementation, use only POSIX regular expressions with this property.
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-Fully-qualified names for columns use the following format: `_+
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
+Fully-qualified names for columns use the following format: +
  +
-`<Schema_name>.<table_name>.<column_name>_` +
+`_<Schema_name>.<table_name>.<column_name>_` +
  +
-The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value.
+The primary key column is always included in an event's key, even if you do not use this property to explicitly include its value. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not also set the `column.exclude.list` property.
 
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
+ifdef::product[]
+Only POSIX regular expressions are valid.
+endif::product[]
+ifdef::community[]
+In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
+endif::community[]
 Fully-qualified column names use the following format: +
  +
 `_<schema_name>.<table_name>.<column_name>_` +
  +
-The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value.
+The primary key column is always included in an event's key, even if you use this property to explicitly exclude its value. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.include.list` property.
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
@@ -2650,7 +2853,8 @@ If you include this property in the configuration, do not set the `column.includ
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Fully-qualified names for columns are of the form `_<schemaName>_._<tableName>_._<columnName>_`. +
- +
+To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name. +
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2672,15 +2876,26 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-binary-handling-mode]]<<oracle-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
-|Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
+|Specifies how binary (`blob`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `base64-url-safe` represents binary data as base64-url-safe-encoded String, `hex` represents binary data as hex-encoded (base16) String
 
 
 |[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
-|avro
+|none
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
 
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+|[[oracle-property-field-name-adjustment-mode]]<<oracle-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
@@ -2733,7 +2948,7 @@ If xref:oracle-property-max-queue-size[`max.queue.size`] is also set, writing to
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000` (1 second)
+|`500` (0.5 second)
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear.
 
 |[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `+tombstones.on.delete+`>>
@@ -2775,9 +2990,16 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 |[[oracle-property-column-truncate-to-length-chars]]<<oracle-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns to be truncated in change event messages if their length exceeds the specified number of characters.
-Length is specified as a positive integer. A configuration can include multiple properties that specify different lengths.
-Specify the fully-qualified name for columns by using the following format: `_<schemaName>_._<tableName>_._<columnName>_`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
+Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
+Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
+
+The fully-qualified name of a column observes the following format: `_<schemaName>_._<tableName>_._<columnName>_`.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
 
 |[[oracle-property-column-mask-with-length-chars]]<<oracle-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |No default
@@ -2791,20 +3013,37 @@ The connector configuration can include multiple properties that specify differe
 
 |[[oracle-property-column-propagate-source-type]]<<oracle-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
-The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length`, and `pass:[_]pass:[_]debezium.source.column.scale` are used to propagate the original type name and length (for variable-width types), respectively.
-Useful to properly size corresponding columns in sink databases. +
- +
-Fully-qualified names for columns are of the form `_<tableName>_._<columnName>_`, or `_<schemaName>_._<tableName>_._<columnName>_`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
+When this property is set, the connector adds the following fields to the schema of event records:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<columnName>_`, or `_<schemaName>_._<tableName>_._<columnName>_`. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
 |[[oracle-property-datatype-propagate-source-type]]<<oracle-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
-The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` are used to propagate the original type name and length (for variable-width types), respectively.
-Useful to properly size corresponding columns in sink databases. +
- +
-Fully-qualified data type names are of the form `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`. +
-See the xref:{link-oracle-connector}#oracle-data-type-mappings[list of Oracle-specific data type names].
+|An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
+When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
+
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
+
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
+
+The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`.  +
+To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
+
+For the list of Oracle-specific data type names, see the xref:oracle-data-type-mappings[Oracle data type mappings].
 
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
@@ -2829,11 +3068,6 @@ The connector runs the query after it emits a xref:oracle-property-heartbeat-int
 Set this property and create a heartbeat table to receive the heartbeat messages to resolve situations in which xref:low-change-frequency-offset-management[{prodname} fails to synchronize offsets on low-traffic databases that are on the same host as a high-traffic database].
 After the connector inserts records into the configured table, it is able to receive changes from the low-traffic database and acknowledge SCN changes in the database, so that offsets can be synchronized with the broker.
 
-|[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Specifies the string that prefixes the name of the topic to which the connector sends heartbeat messages. +
-The topic is named according to the pattern `_<heartbeat.topics.prefix>.<serverName>_`.
-
 |[[oracle-property-snapshot-delay-ms]]<<oracle-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |Specifies an interval in milliseconds that the connector waits after it starts before it takes a snapshot. +
@@ -2849,20 +3083,11 @@ The connector reads table contents in multiple batches of the specified size.
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
 Defaults to the JDBC driver's default fetch size.
 
-|[[oracle-property-sanitize-field-names]]<<oracle-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` when the connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Specifies whether field names are normalized to comply with Avro naming requirements.
-For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming].
-
 |[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See xref:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
-
-|[[oracle-property-transaction-topic]]<<oracle-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`
@@ -2925,7 +3150,7 @@ The default behavior is that the buffer state is always retained between restart
 Set to `true` only in testing or development environments.
 endif::community[]
 
-|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.xs+`>>
+|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.ms+`>>
 |`0`
 |The maximum number of milliseconds that a LogMiner session can be active before a new session is used. +
  +
@@ -3025,17 +3250,19 @@ By default, change events have large object columns, but the columns contain no 
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
 
+ifdef::product[]
 NOTE: Use of large object data types is a Technology Preview feature.
+endif::product[]
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is unchanged and not provided by the database.
 
-ifdef::community[]
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |No default
 |A comma-separated list of Oracle Real Application Clusters (RAC) node host names or addresses.
-This field is required to enable Oracle RAC support.
+This field is required to enable compatibility with an Oracle RAC deployment.
+
 Specify the list of RAC nodes by using one of the following methods:
 
 * Specify a value for xref:oracle-property-database-port[`database.port`], and use the specified port value for each address in the `rac.nodes` list.
@@ -3058,10 +3285,10 @@ rac.nodes=192.168.1.100,192.168.1.101:1522
 ----
 
 If you supply a raw JDBC URL for the database by using the xref:oracle-property-database-url[`database.url`] property, instead of defining a value for `database.port`, each RAC node entry must explicitly specify a port value.
-endif::community[]
+
 
 |[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
-|No default
+|`t`
 |A comma-separated list of the operation types that you want the connector to skip during streaming.
 You can configure the connector to skip the following types of operations:
 
@@ -3070,11 +3297,12 @@ You can configure the connector to skip the following types of operations:
 * `d` (delete)
 * `t` (truncate)
 
-By default, no operations are skipped.
+By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-a|Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
+a|Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
@@ -3085,10 +3313,38 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[oracle-property-topic-naming-strategy]]<<oracle-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.SchemaTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
+
+|[[oracle-property-topic-delimiter]]<<oracle-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[oracle-property-topic-cache-size]]<<oracle-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[oracle-property-topic-heartbeat-prefix]]<<oracle-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[oracle-property-topic-transaction]]<<oracle-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
 |===
 
 [id="debezium-oracle-connector-database-history-configuration-properties"]
-==== {prodname} Oracle connector database history configuration properties
+==== {prodname} Oracle connector database schema history configuration properties
 include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
@@ -3453,7 +3709,7 @@ Instead, it contains the complete new schema structure.
 
 |===
 
-After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
+After the `schema-changes` signal is inserted, the connector must be restarted with an altered configuration that includes specifying the  <<{context}-property-database-history-skip-unparseable-ddl, `+schema.history.internal.skip.unparseable.ddl+`>> option as `true`.
 After the connector's commit SCN advances beyond the DDL change, to prevent unparseable DDL statements from being skipped unexpectedly, return the connector configuration to its previous state.
 
 .Example of a logging record
@@ -3717,15 +3973,15 @@ The following configuration example adds the properties `database.connection.ada
     "config": {
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
-        "database.server.name" : "server1",
+        "topic.prefix" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory",
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory",
         "database.connection.adapter": "xstream",
         "database.out.server.name" : "dbzxout"
     }
@@ -3806,104 +4062,86 @@ This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[
 
 endif::community[]
 
-// Type: concept
-// ModuleID: how-debezium-oracle-connectors-handle-faults-and-problems
-// Title: How {prodname} Oracle connectors handle faults and problems
-[[oracle-when-things-go-wrong]]
-== Behavior when things go wrong
+[[oracle-frequently-asked-questions]]
+== Frequently Asked Questions
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
-When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+*Is Oracle 11g supported?*::
+Oracle 11g is not supported; however, we do aim to be backward compatible with Oracle 11g on a best-effort basis.
+We rely on the community to communicate compatibility concerns with Oracle 11g as well as provide bug fixes when a regression is identified.
 
-If a fault occurs, {prodname} does not lose any events.
-However, while it is recovering from the fault, it might repeat some change events.
-In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+*Isn't Oracle LogMiner deprecated?*::
+No, Oracle only deprecated the continuous mining option with Oracle LogMiner in Oracle 12c and removed that option starting with Oracle 19c.
+The {prodname} Oracle connector does not rely on this option to function, and therefore can safely be used with newer versions of Oracle without any impact.
 
-The rest of this section describes how {prodname} handles various kinds of faults and problems.
+*How do I change the position in the offsets?*::
+The {prodname} Oracle connector maintains two critical values in the offsets, a field named `scn` and another named `commit_scn`.
+The `scn` field is a string that represents the low-watermark starting position the connector used when capturing changes.
 
-[id="oracle-logs-do-not-contain-offset-perform-new-snapshot"]
-=== Logs do not contain offset, perform a new snapshot
+. Find out the name of the topic that contains the connector offsets.
+This is configured based on the value set as the  `offset.storage.topic` configuration property.
 
-In some cases, after the {prodname} Oracle connector restarts, it reports the following error:
-
-[source]
+. Find out the last offset for the connector, the key under which it is stored and identify the partition used to store the offset.
+This can be done using the `kafkacat` utility script provided by the Kafka broker installation.
+An example might look like this:
++
+[source,shell]
 ----
-Online REDO LOG files or archive logs do not contain the offset scn xxxxxxx. Please perform a new snapshot.
+kafkacat -b localhost -C -t my_connect_offsets -f 'Partition(%p) %k %s\n'
+Partition(11) ["inventory-connector",{"server":"server1"}] {"scn":"324567897", "commit_scn":"324567897: 0x2832343233323:1"}
 ----
-
-After the connector examines the redo and archive logs, if it cannot find the SCN that is recorded in the connector offsets, it returns the preceding error.
-Because the connector uses the SCN to determine where to resume processing, if the expected SCN if not found, a new snapshot must be completed.
-
-You might find that the `V$ARCHIVED_LOG` table contains a record with an SCN that matches the expected range.
-However, the record might not be available for mining.
-To be available for mining, a record must include a filename in the `NAME` column, a value of `NO` in the `DELETED` column, and a value of `A` (available) in the `STATUS` column.
-If a record does not match any of these criteria, it is considered incomplete and cannot be mined.
-
-At a minimum, archive logs must be retained for as long as the longest downtime window of the connector.
-
-[NOTE]
-====
-Records that have no value in the `NAME` column no longer exist in the file system.
-In such records, the value of the `DELETED` field is set to `YES`, and the `STATUS` field is set to `D` to indicate that the log is deleted.
-====
-
-[id="oracle-cannot-reference-overflow-table"]
-=== ORA-25191 - Cannot reference overflow table of an index-organized table
-
-Oracle might issue this error during the snapshot phase when encountering an index-organized table (IOT).
-This error means that the connector has attempted to execute an operation that must be executed against the parent index-organized table that contains the specified overflow table.
-
-To resolve this, the IOT name used in the SQL operation should be replaced with the parent index-organized table name.
-To determine the parent index-organized table name, use the following SQL:
-
-[source,sql]
++
+The key for `inventory-connector` is `["inventory-connector",{"server":"server1"}]`, the partition is `11` and the last offset is the contents that follows the key.
+. To move back to a previous offset the connector should be stopped and the following command has to be issued:
++
+[source,shell]
 ----
-SELECT IOT_NAME
-  FROM DBA_TABLES
- WHERE OWNER='<tablespace-owner>'
-   AND TABLE_NAME='<iot-table-name-that-failed>'
+echo '["inventory-connector",{"server":"server1"}]|{"scn":"3245675000","commit_scn":"324567500"}' | \
+kafkacat -P -b localhost -t my_connect_offsets -K \| -p 11
 ----
++
+This writes to partition `11` of the `my_connect_offsets` topic the given key and offset value.
+In this example, we are reversing the connector back to SCN `3245675000` rather than `324567897`.
 
-The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
+*What happens if the connector cannot find logs with a given offset SCN?*::
+The {prodname} connector maintains a low and high -watermark SCN value in the connector offsets.
+The low-watermark SCN represents the starting position and must exist in the available online redo or archive logs in order for the connector to start successfully.
+When the connector reports it cannot find this offset SCN, this indicates that the logs that are still available do not contain the SCN and therefore the connector cannot mine changes from where it left off.
++
+When this happens, there are two options.
+The first is to remove the history topic and offsets for the connector and restart the connector, taking a new snapshot as suggested.
+This will guarantee that no data loss will occur for any topic consumers.
+The second is to manually manipulate the offsets, advancing the SCN to a position that is available in the redo or archive logs.
+This will cause changes that occurred between the old SCN value and the newly provided SCN value to be lost and not written to the topics.
+This is not recommended.
 
-[id="oracle-pga-aggregate-limit"]
-=== ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
+*What's the difference between the various mining strategies?*::
+The {prodname} Oracle connector provides two options for `log.mining.strategy`.
++
+The default is `redo_in_catalog`, and this instructs the connector to write the Oracle data dictionary to the redo logs everytime a log switch is detected.
+This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
+This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
+This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
++
+The alternative option, `online_catalog`, does not write the data dictionary to the redo logs.
+Instead, Oracle LogMiner will always use the online data dictionary that contains the current state of the table's structure.
+This also means that if a table's structure changes and no longer matches the online data dictionary, Oracle LogMiner will be unable to resolve table or column names if the table's structure is changed.
+This mining strategy option should not be used if the tables being captured are subject to frequent schema changes.
+It's important that all data changes be lock-stepped with the schema change such that all changes have been captured from the logs for the table, stop the connector, apply the schema change, and restart the connector and resume data changes on the table.
+This option requires less Oracle database memory and Oracle LogMiner sessions generally start substantially faster since the data dictionary does not need to be loaded or primed by the LogMiner process.
 
-Oracle might report this error when {prodname} connects to a database in which changes occur infrequently.
-The {prodname} connector starts an Oracle LogMiner session and reuses this session until a log switch is detected.
-The reuse is both a performance and resource utilization optimization; however, a long-running mining session can cause high Program Global Area (PGA) memory usage.
+*Why are changes made by SYS or SYSTEM users not captured?*::
+The Oracle database uses the `SYS` and `SYSTEM` user accounts to perform a multitude of internal operations in the redo logs that are not important for change data capture.
+When the {prodname} Oracle connector reads changes from Oracle LogMiner, changes made by these two user accounts are filtered out automatically.
+So if you are using either of these two user accounts and not seeing change events, this is why changes made by those users are not captured.
+You should use a designated non-system user account to perform all changes you wish to be captured.
 
-If your redo log switches infrequently, you can avoid the ORA-04036 error by specifying how frequently Oracle switches logs.
-A log switch causes the connector to restart the mining session, thereby avoiding high PGA memory usage.
-The following configuration forces Oracle to switch log files every 20 minutes if a log switch does not occur during that interval:
-
-[source,sql]
-----
-ALTER SYSTEM SET archive_lag_target=1200 scope=both;
-----
-
-Running the preceding query requires specific administrative privileges.
-Coordinate with your database administrator to implement the change.
-
-As alternative to adjusting the Oracle `ARCHIVE_LAG_TARGET` parameter, you can limit the duration of an Oracle LogMiner session by setting the connector configuration option xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`].
-The `log.mining.session.max.ms` option causes the LogMiner session to restart regularly, whether or not the switch to a new database log occurs.
-
-[id="oracle-sys-system-change-not-emitted"]
-=== LogMiner adapter does not capture changes made by SYS or SYSTEM
-
-Oracle uses the `SYS` and `SYSTEM` accounts to carry out many internal changes.
-When the {prodname} Oracle connector fetches changes from LogMiner, it automatically filters changes that originate from these administrator accounts.
-To ensure that the connector emit event records when you change a table, never use the `SYS` or `SYSTEM` user accounts to modify the table.
-
-[id="oracle-stops-capturing-changes-aws"]
-=== Connector stops capturing changes from Oracle on AWS
-
+*Why does the connector appear to stop capturing changes on AWS?*::
 Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
 JDBC calls that require more than 350 seconds to complete can hang indefinitely.
-
++
 In situations where calls to the Oracle LogMiner API take more than 350 seconds to complete, a timeout can be triggered, causing the AWS Gateway Load Balancer to hang.
 For example, such timeouts can occur when a LogMiner session that processes large amounts of data runs concurrently with Oracle's periodic checkpointing task.
-
++
 ifdef::product[]
 To prevent timeouts from occurring on the AWS Gateway Load Balancer, enable keep-alive packets from the Kafka Connect environment, by performing the following steps as root or a super-user:
 endif::product[]
@@ -3927,17 +4165,60 @@ net.ipv4.tcp_keepalive_time=60
 database.url=jdbc:oracle:thin:username/password!@(DESCRIPTION=(ENABLE=broken)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(Host=hostname)(Port=port)))(CONNECT_DATA=(SERVICE_NAME=serviceName)))
 ```
 
++
 The preceding steps configure the TCP network stack to send keep-alive packets every 60 seconds.
 As a result, the AWS Gateway Load Balancer does not timeout when JDBC calls to the LogMiner API take more than 350 seconds to complete, enabling the connector to continue to read changes from the database's transaction logs.
 
-[id="oracle-oracle-11-exception-ora01882"]
-=== Connection fails with error `ORA-01882: timezone region not found`
+*What's the cause for ORA-01555 and how to handle it?*::
+The {prodname} Oracle connector uses flashback queries when the initial snapshot phase executes.
+A flashback query is a special type of query that relies on the flashback area, maintained by the database's `UNDO_RETENTION` database parameter, to return the results of a query based on what the contents of the table had at a given time, or in our case at a given SCN.
+By default, Oracle generally only maintains an undo or flashback area for approximately 15 minutes unless this has been increased or decreased by your database administrator.
+For configurations that capture large tables, it may take longer than 15 minutes or your configured `UNDO_RETENTION` to perform the initial snapshot and this will eventually lead to this exception:
++
+```
+ORA-01555: snapshot too old: rollback segment number 12345 with name "_SYSSMU11_1234567890$" too small
+```
++
+The first way to deal with this exception is to work with your database administrator and see whether they can increase the `UNDO_RETENTION` database parameter temporarily.
+This does not require a restart of the Oracle database, so this can be done online without impacting database availability.
+However, changing this may still lead to the above exception or a "snapshot too old" exception if the tablespace has inadequate space to store the necessary undo data.
++
+The second way to deal with this exception is to not rely on the initial snapshot at all, setting the `snapshot.mode` to `schema_only` and then instead relying on incremental snapshots.
+An incremental snapshot does not rely on a flashback query and therefore isn't subject to ORA-01555 exceptions.
 
-When you start a connector that the Oracle JDBC driver (`ojdbc8.jar`) to access an Oracle 11g database, the connector might report the following error:
+*What's the cause for ORA-04036 and how to handle it?*::
+The {prodname} Oracle connector may report an ORA-04036 exception when the database changes occur infrequently.
+An Oracle LogMiner session is started and re-used until a log switch is detected.
+The session is re-used as it provides the optimal performance utilization with Oracle LogMiner, but should a long-running mining session occur, this can lead to excessive PGA memory usage, eventually causing an exception like this:
++
+```
+ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMIT
+```
++
+This exception can be avoided by specifying how frequent Oracle switches redo logs or how long the {prodname} Oracle connector is allowed to re-use the mining session.
+The {prodname} Oracle connector provides a configuration option, xref:oracle-property-log-mining-session-max-ms[`log.mining.session.max.ms`], which controls how long the current Oracle LogMiner session can be re-used for before being closed and a new session started.
+This allows the database resources to be kept in-check without exceeding the PGA memory allowed by the database.
 
-```shell
-Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
+*What's the cause for ORA-01882 and how to handle it?*::
+The {prodname} Oracle connector may report the following exception when connecting to an Oracle database:
++
+```
 ORA-01882: timezone region not found
 ```
++
+This happens when the timezone information cannot be correctly resolved by the JDBC driver.
+In order to solve this driver related problem, the driver needs to be told to not resolve the timezone details using regions.
+This can be done by specifying a driver pass through property using `driver.oracle.jdbc.timezoneAsRegion=false`.
 
-To prevent the preceding error from occurring, add the following setting to the connector configuration: `database.oracle.jdbc.timezoneAsRegion=false`.
+
+*What's the cause for ORA-25191 and how to handle it?*::
+The {prodname} Oracle connector automatically ignores index-organized tables (IOT) as they are not supported by Oracle LogMiner.
+However, if an ORA-25191 exception is thrown, this could be due to a unique corner case for such a mapping and the additional rules may be necessary to exclude these automatically.
+An example of an ORA-25191 exception might look like this:
++
+```
+ORA-25191: cannot reference overflow table of an index-organized table
+```
++
+If an ORA-25191 exception is thrown, please raise a Jira issue with the details about the table and it's mappings, related to other parent tables, etc.
+As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.

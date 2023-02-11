@@ -130,6 +130,23 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         try {
             MessageType type = MessageType.forType((char) buffer.get());
             LOGGER.trace("Message Type: {}", type);
+            switch (type) {
+                case TYPE:
+                case ORIGIN:
+                    // TYPE/ORIGIN
+                    // These should be skipped without calling shouldMessageBeSkipped. DBZ-5792
+                    LOGGER.trace("{} messages are always skipped without calling shouldMessageBeSkipped", type);
+                    return true;
+                case TRUNCATE:
+                    if (!isTruncateEventsIncluded()) {
+                        LOGGER.trace("{} messages are being skipped without calling shouldMessageBeSkipped", type);
+                        return true;
+                    }
+                    // else delegate to super.shouldMessageBeSkipped
+                    break;
+                default:
+                    // call super.shouldMessageBeSkipped for rest of the types
+            }
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
                 case COMMIT:
@@ -147,7 +164,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN/LOGICAL_DECODING_MESSAGE
+                    // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
@@ -312,7 +329,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
             Boolean optional = columnOptionality.get(columnName);
             if (optional == null) {
-                LOGGER.warn("Column '{}' optionality could not be determined, defaulting to true", columnName);
+                if (decoderContext.getConfig().getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
+                    LOGGER.warn("Column '{}' optionality could not be determined, defaulting to true", columnName);
+                }
                 optional = true;
             }
 
@@ -714,6 +733,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final String typeExpression = column.typeExpression();
             final boolean optional = column.isOptional();
 
+            final Column replicationMessageColumn;
+
             // Read the sub-message type
             // 't' : Value is represented as text
             // 'u' : An unchanged TOAST-ed value, actual value is not sent.
@@ -721,41 +742,46 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             char type = (char) buffer.get();
             if (type == 't') {
                 final String valueStr = readColumnValueAsString(buffer);
-                columns.add(
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
-                            @Override
-                            public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                                return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
-                                        typeRegistry);
-                            }
+                replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
+                    @Override
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                        return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
+                                typeRegistry);
+                    }
 
-                            @Override
-                            public String toString() {
-                                return columnName + "(" + typeExpression + ")=" + valueStr;
-                            }
-                        });
+                    @Override
+                    public String toString() {
+                        return columnName + "(" + typeExpression + ")=" + valueStr;
+                    }
+                };
             }
             else if (type == 'u') {
-                columns.add(
-                        new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
-                            @Override
-                            public String toString() {
-                                return columnName + "(" + typeExpression + ") - Unchanged toasted column";
-                            }
-                        });
+                replicationMessageColumn = new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
+                    @Override
+                    public String toString() {
+                        return columnName + "(" + typeExpression + ") - Unchanged toasted column";
+                    }
+                };
             }
             else if (type == 'n') {
-                columns.add(
-                        new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
-                            @Override
-                            public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                                return null;
-                            }
-                        });
+                replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
+                    @Override
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                        return null;
+                    }
+                };
+            }
+            else {
+                replicationMessageColumn = null;
+                LOGGER.trace("Unsupported type '{}' for column: '{}'", type, column);
+            }
+
+            if (replicationMessageColumn != null) {
+                columns.add(replicationMessageColumn);
+                LOGGER.trace("Column: {}", replicationMessageColumn);
             }
         }
 
-        columns.forEach(c -> LOGGER.trace("Column: {}", c));
         return columns;
     }
 

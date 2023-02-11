@@ -8,10 +8,7 @@ package io.debezium.testing.system.fixtures;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-import io.debezium.testing.system.tools.ConfigProperties;
-import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.openshift.client.DefaultOpenShiftClient;
+import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import fixture5.TestFixture;
@@ -19,7 +16,7 @@ import fixture5.annotations.FixtureContext;
 
 @FixtureContext(provides = { OpenShiftClient.class })
 public class OcpClient extends TestFixture {
-    private DefaultOpenShiftClient client;
+    private OpenShiftClient client;
 
     public OcpClient(@NotNull ExtensionContext.Store store) {
         super(store);
@@ -27,15 +24,7 @@ public class OcpClient extends TestFixture {
 
     @Override
     public void setup() {
-        Config cfg = new ConfigBuilder()
-                .withMasterUrl(ConfigProperties.OCP_URL)
-                .withUsername(ConfigProperties.OCP_USERNAME)
-                .withPassword(ConfigProperties.OCP_PASSWORD)
-                .withRequestRetryBackoffLimit(ConfigProperties.OCP_REQUEST_RETRY_BACKOFF_LIMIT)
-                .withTrustCerts(true)
-                .build();
-
-        client = new DefaultOpenShiftClient(cfg);
+        client = OpenShiftUtils.createOcpClient();
         store(OpenShiftClient.class, client);
     }
 

@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
-import org.fest.assertions.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -68,6 +67,7 @@ public class DebeziumEngineIT {
     public void before() throws SQLException {
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
         OFFSET_STORE_PATH.toFile().delete();
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
         TestHelper.execute(
                 "CREATE SCHEMA engine;",
@@ -90,18 +90,18 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
+        try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {
-                        Assertions.assertThat(r.key()).isNotNull();
-                        Assertions.assertThat(r.value()).isNotNull();
+                        assertThat(r.key()).isNotNull();
+                        assertThat(r.value()).isNotNull();
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
                             final Document value = DocumentReader.defaultReader().read(r.value());
-                            Assertions.assertThat(key.getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("after").getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(key.getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("after").getString("val")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -138,7 +138,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+        try (DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
                     Assert.fail("Should not be invoked due to serialization error");
                 })
@@ -146,8 +146,8 @@ public class DebeziumEngineIT {
 
                     @Override
                     public void handle(boolean success, String message, Throwable error) {
-                        Assertions.assertThat(success).isFalse();
-                        Assertions.assertThat(message).contains("Failed to serialize Avro data from topic test_server.engine.test");
+                        assertThat(success).isFalse();
+                        assertThat(message).contains("Failed to serialize Avro data from topic test_server.engine.test");
                         allLatch.countDown();
                     }
                 })
@@ -177,19 +177,19 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
+        try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
                 .notifying((records, committer) -> {
 
                     for (ChangeEvent<String, String> r : records) {
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
-                            Assertions.assertThat(key.getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(r.value()).isNotNull();
+                            assertThat(key.getInteger("id")).isEqualTo(1);
+                            assertThat(r.value()).isNotNull();
 
                             final Document value = DocumentReader.defaultReader().read(r.value());
-                            Assertions.assertThat(value.getString("id")).contains("txId");
-                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
-                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
+                            assertThat(value.getString("id")).contains("txId");
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
+                            assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
                         }
                         catch (IOException e) {
                             throw new IllegalStateException(e);
@@ -244,6 +244,7 @@ public class DebeziumEngineIT {
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty("offset.flush.interval.ms", "3000");
         props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("slot.drop.on.stop", "false");
         props.setProperty("offset.storage",
                 TestOffsetStore.class.getName());
 
@@ -278,7 +279,7 @@ public class DebeziumEngineIT {
         }
         engine.close();
 
-        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
+        assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
         offsetStoreSetCalls.set(0);
 
         for (int i = 0; i < 100; i++) {
@@ -290,7 +291,7 @@ public class DebeziumEngineIT {
         }
         engine.close();
 
-        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
-        Assertions.assertThat(exception.get()).isNull();
+        assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
+        assertThat(exception.get()).isNull();
     }
 }

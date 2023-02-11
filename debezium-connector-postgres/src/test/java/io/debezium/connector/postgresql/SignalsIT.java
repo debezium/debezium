@@ -6,12 +6,13 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,8 +73,8 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')");
 
         final SourceRecords records = consumeRecordsByTopic(2);
-        Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
-        Assertions.assertThat(logInterceptor.containsMessage("Received signal")).isTrue();
+        assertThat(records.allRecordsInOrder()).hasSize(2);
+        assertThat(logInterceptor.containsMessage("Received signal")).isTrue();
     }
 
     @Test
@@ -102,8 +103,8 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.execute(INSERT_STMT);
 
         final SourceRecords records = consumeRecordsByTopic(2);
-        Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);
-        Assertions.assertThat(logInterceptor.containsMessage("Received signal")).isFalse();
+        assertThat(records.allRecordsInOrder()).hasSize(2);
+        assertThat(logInterceptor.containsMessage("Received signal")).isFalse();
     }
 
     @Test
@@ -168,16 +169,16 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.execute(INSERT_STMT);
 
         final SourceRecords records = consumeRecordsByTopic(3);
-        Assertions.assertThat(records.allRecordsInOrder()).hasSize(3);
+        assertThat(records.allRecordsInOrder()).hasSize(3);
 
         final SourceRecord pre = records.allRecordsInOrder().get(0);
         final SourceRecord post = records.allRecordsInOrder().get(2);
 
-        Assertions.assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
+        assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
 
         final Struct postKey = (Struct) post.key();
-        Assertions.assertThat(postKey.schema().fields()).hasSize(2);
-        Assertions.assertThat(postKey.schema().field("pk")).isNotNull();
-        Assertions.assertThat(postKey.schema().field("aa")).isNotNull();
+        assertThat(postKey.schema().fields()).hasSize(2);
+        assertThat(postKey.schema().field("pk")).isNotNull();
+        assertThat(postKey.schema().field("aa")).isNotNull();
     }
 }

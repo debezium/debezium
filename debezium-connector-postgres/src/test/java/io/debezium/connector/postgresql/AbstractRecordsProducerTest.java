@@ -7,7 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -420,12 +420,20 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForByteaBase64UrlSafe() {
+        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+    }
+
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
         return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("<(10.0,20.0),10.0>".getBytes(StandardCharsets.UTF_8))));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64() {
         return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA+"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64UrlSafe() {
+        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA-"));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHex() {
@@ -1143,7 +1151,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected static class SchemaAndValueField {
         @FunctionalInterface
-        protected static interface Condition {
+        protected interface Condition {
             void assertField(String fieldName, Object expectedValue, Object actualValue);
         }
 

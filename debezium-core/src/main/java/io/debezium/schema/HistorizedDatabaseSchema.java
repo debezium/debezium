@@ -11,6 +11,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * A database schema that is historized, i.e. it undergoes schema changes and can be recovered from a persistent schema
@@ -24,11 +25,11 @@ import io.debezium.relational.TableId;
 public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends DatabaseSchema<I> {
 
     @FunctionalInterface
-    public static interface SchemaChangeEventConsumer {
+    interface SchemaChangeEventConsumer {
 
         void consume(SchemaChangeEvent event, Collection<TableId> tableIds);
 
-        static SchemaChangeEventConsumer NOOP = (x, y) -> {
+        SchemaChangeEventConsumer NOOP = (x, y) -> {
         };
     }
 

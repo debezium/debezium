@@ -25,7 +25,7 @@ import io.debezium.util.Clock;
 /**
  * Custom PostgreSQL implementation of the {@link SignalBasedIncrementalSnapshotChangeEventSource} implementation
  * which performs an explicit schema refresh of a table prior to the incremental snapshot starting.
- * 
+ *
  * @author Chris Cranford
  */
 public class PostgresSignalBasedIncrementalSnapshotChangeEventSource

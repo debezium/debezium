@@ -1,38 +1,42 @@
-{prodname} provides a set of `database.history.*` properties that control how the connector interacts with the schema history topic.
+{prodname} provides a set of `schema.history.internal.*` properties that control how the connector interacts with the schema history topic.
 
-The following table describes the `database.history` properties for configuring the {prodname} connector.
+The following table describes the `schema.history.internal` properties for configuring the {prodname} connector.
 
-.Connector database history configuration properties
+.Connector database schema history configuration properties
 [cols="33%a,17%a,50%a",options="header",subs="+attributes"]
 |===
 |Property |Default |Description
-|[[{context}-property-database-history-kafka-topic]]<<{context}-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
-|
+|[[{context}-property-database-history-kafka-topic]]<<{context}-property-database-history-kafka-topic, `+schema.history.internal.kafka.topic+`>>
+|No default
 |The full name of the Kafka topic where the connector stores the database schema history.
 
-|[[{context}-property-database-history-kafka-bootstrap-servers]]<<{context}-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
-|
+|[[{context}-property-database-history-kafka-bootstrap-servers]]<<{context}-property-database-history-kafka-bootstrap-servers, `+schema.history.internal.kafka.bootstrap.servers+`>>
+|No default
 |A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. This connection is used for retrieving the database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[{context}-property-database-history-kafka-recovery-poll-interval-ms]]<<{context}-property-database-history-kafka-recovery-poll-interval-ms, `+database.history.kafka.recovery.poll.interval.ms+`>>
+|[[{context}-property-database-history-kafka-recovery-poll-interval-ms]]<<{context}-property-database-history-kafka-recovery-poll-interval-ms, `+schema.history.internal.kafka.recovery.poll.interval.ms+`>>
 |`100`
 |An integer value that specifies the maximum number of milliseconds the connector should wait during startup/recovery while polling for persisted data. The default is 100ms.
 
-|[[{context}-property-database-history-kafka-query-timeout-ms]]<<{context}-property-database-history-kafka-query-timeout-ms, `+database.history.kafka.query.timeout.ms+`>>
+|[[{context}-property-database-history-kafka-query-timeout-ms]]<<{context}-property-database-history-kafka-query-timeout-ms, `+schema.history.internal.kafka.query.timeout.ms+`>>
 |`3000`
 |An integer value that specifies the maximum number of milliseconds the connector should wait while fetching cluster information using Kafka admin client.
 
-|[[{context}-property-database-history-kafka-recovery-attempts]]<<{context}-property-database-history-kafka-recovery-attempts, `+database.history.kafka.recovery.attempts+`>>
-|`4`
-|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
+|[[{context}-property-database-history-kafka-create-timeout-ms]]<<{context}-property-database-history-kafka-create-timeout-ms, `+schema.history.internal.kafka.create.timeout.ms+`>>
+|`30000`
+|An integer value that specifies the maximum number of milliseconds the connector should wait while create kafka history topic using Kafka admin client.
 
-|[[{context}-property-database-history-skip-unparseable-ddl]]<<{context}-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>>
+|[[{context}-property-database-history-kafka-recovery-attempts]]<<{context}-property-database-history-kafka-recovery-attempts, `+schema.history.internal.kafka.recovery.attempts+`>>
+|`100`
+|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` × `recovery.poll.interval.ms`.
+
+|[[{context}-property-database-history-skip-unparseable-ddl]]<<{context}-property-database-history-skip-unparseable-ddl, `+schema.history.internal.skip.unparseable.ddl+`>>
 |`false`
 |A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue.
 The safe default is `false`.
 Skipping should be used only with care as it can lead to data loss or mangling when the binlog is being processed.
 
-|[[{context}-property-database-history-store-only-captured-tables-ddl]]<<{context}-property-database-history-store-only-captured-tables-ddl, `+database.history.store.only.captured.tables.ddl+`>>
+|[[{context}-property-database-history-store-only-captured-tables-ddl]]<<{context}-property-database-history-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
 |`false`
 |A Boolean value that specifies whether the connector should record all DDL statements +
 
@@ -42,28 +46,28 @@ The safe default is `false`.
 |===
 
 [id="{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-.Pass-through database history properties for configuring producer and consumer clients
+.Pass-through database schema history properties for configuring producer and consumer clients
 {empty} +
-{prodname} relies on a Kafka producer to write schema changes to database history topics.
-Similarly, it relies on a Kafka consumer to read from database history topics when a connector starts.
-You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.\*` and `database.history.consumer.*` prefixes.
-The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+{prodname} relies on a Kafka producer to write schema changes to database schema history topics.
+Similarly, it relies on a Kafka consumer to read from database schema history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `schema.history.internal.producer.\*` and `schema.history.internal.consumer.*` prefixes.
+The pass-through producer and consumer database schema history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
 
 [source,indent=0]
 ----
-database.history.producer.security.protocol=SSL
-database.history.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
-database.history.producer.ssl.keystore.password=test1234
-database.history.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
-database.history.producer.ssl.truststore.password=test1234
-database.history.producer.ssl.key.password=test1234
+schema.history.internal.producer.security.protocol=SSL
+schema.history.internal.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+schema.history.internal.producer.ssl.keystore.password=test1234
+schema.history.internal.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+schema.history.internal.producer.ssl.truststore.password=test1234
+schema.history.internal.producer.ssl.key.password=test1234
 
-database.history.consumer.security.protocol=SSL
-database.history.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
-database.history.consumer.ssl.keystore.password=test1234
-database.history.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
-database.history.consumer.ssl.truststore.password=test1234
-database.history.consumer.ssl.key.password=test1234
+schema.history.internal.consumer.security.protocol=SSL
+schema.history.internal.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+schema.history.internal.consumer.ssl.keystore.password=test1234
+schema.history.internal.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+schema.history.internal.consumer.ssl.truststore.password=test1234
+schema.history.internal.consumer.ssl.key.password=test1234
 ----
 
 {prodname} strips the prefix from the property name before it passes the property to the Kafka client.

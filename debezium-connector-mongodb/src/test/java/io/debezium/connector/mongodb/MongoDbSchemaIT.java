@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.After;
 import org.junit.Test;
@@ -44,8 +44,8 @@ public class MongoDbSchemaIT {
 
     private static MongoDbSchema getSchema(Configuration config, MongoDbTaskContext taskContext) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        return new MongoDbSchema(taskContext.filters(), taskContext.topicSelector(),
+        return new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(),
                 connectorConfig.getSourceInfoStructMaker().schema(),
-                connectorConfig.schemaNameAdjustmentMode().createAdjuster());
+                connectorConfig.schemaNameAdjuster());
     }
 }

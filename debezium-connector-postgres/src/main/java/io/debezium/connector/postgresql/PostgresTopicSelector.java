@@ -13,7 +13,9 @@ import io.debezium.schema.TopicSelector;
  * Factory for this connector's {@link TopicSelector}.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
+ * @deprecated Use {@link io.debezium.schema.SchemaTopicNamingStrategy} instead.
  */
+@Deprecated
 public class PostgresTopicSelector {
 
     public static TopicSelector<TableId> create(PostgresConnectorConfig connectorConfig) {

@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import javax.xml.bind.DatatypeConverter;
 
 import org.apache.kafka.connect.data.Struct;
-import org.fest.assertions.Delta;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,7 +36,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "Function ST_GeomFromText not added until MySQL 5.6")
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
     private UniqueDatabase DATABASE;
     private DatabaseGeoDifferences databaseDifferences;
@@ -49,11 +49,11 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         databaseDifferences = databaseGeoDifferences(MySqlTestConnection.isMySQL5());
 
         DATABASE = new UniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -62,7 +62,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -235,8 +235,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                 @Override
                 public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
                                                  Double actualY) {
-                    assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
-                    assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+                    assertThat(actualX).isEqualTo(expectedX, Assertions.offset(0.01));
+                    assertThat(actualY).isEqualTo(expectedY, Assertions.offset(0.01));
                 }
             };
         }
@@ -262,8 +262,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
                 @Override
                 public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
                                                  Double actualY) {
-                    assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
-                    assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
+                    assertThat(actualX).isEqualTo(expectedY, Assertions.offset(0.01));
+                    assertThat(actualY).isEqualTo(expectedX, Assertions.offset(0.01));
                 }
             };
         }

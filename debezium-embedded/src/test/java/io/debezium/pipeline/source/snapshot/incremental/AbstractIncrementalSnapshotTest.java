@@ -5,12 +5,19 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,8 +30,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -44,9 +49,9 @@ import io.debezium.util.Testing;
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
     protected static final int ROW_COUNT = 1_000;
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 3;
+    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
 
-    protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
+    protected static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
 
     protected abstract Class<T> connectorClass();
@@ -70,6 +75,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected abstract Configuration.Builder config();
 
     protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
+
+    protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
+    }
 
     protected String alterTableAddColumnStatement(String tableName) {
         return "ALTER TABLE " + tableName + " add col3 int default 0";
@@ -107,13 +115,30 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void populateTable() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
         }
     }
 
+    protected void populateTableWithSpecificValue(int startRow, int count, int value) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTableWithSpecificValue(connection, tableName(), startRow, count, value);
+        }
+    }
+
+    private void populateTableWithSpecificValue(JdbcConnection connection, String tableName, int startRow, int count, int value)
+            throws SQLException {
+        connection.setAutoCommit(false);
+        for (int i = startRow + 1; i <= startRow + count; i++) {
+            connection.executeWithoutCommitting(
+                    String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                            tableName, connection.quotedColumnIdString(pkFieldName()), count + i, value));
+        }
+        connection.commit();
+    }
+
     protected void populateTables() throws SQLException {
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             populateTables(connection);
         }
     }
@@ -168,7 +193,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
-                Assertions.assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
+                assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
                         .isLessThanOrEqualTo(MAXIMUM_NO_RECORDS_CONSUMES);
                 continue;
             }
@@ -191,7 +216,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             }
         }
 
-        Assertions.assertThat(dbChanges).hasSize(recordCount);
+        assertThat(dbChanges).hasSize(recordCount);
         return dbChanges;
     }
 
@@ -225,13 +250,25 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.empty(), dataCollectionIds);
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalCondition(Optional<String> additionalCondition, String... dataCollectionIds) {
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
                 .map(x -> '"' + x + '"')
                 .collect(Collectors.joining(", "));
-        try (final JdbcConnection connection = databaseConnection()) {
-            String query = String.format(
-                    "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
-                    signalTableName(), dataCollectionIdsList);
+        try (JdbcConnection connection = databaseConnection()) {
+            String query;
+            if (additionalCondition.isPresent()) {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"additional-condition\": %s}')",
+                        signalTableName(), dataCollectionIdsList, additionalCondition.get());
+            }
+            else {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
+                        signalTableName(), dataCollectionIdsList);
+            }
             logger.info("Sending signal with query {}", query);
             connection.execute(query);
         }
@@ -249,7 +286,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             collections = ",\"data-collections\": [" + dataCollectionIdsList + "]";
         }
 
-        try (final JdbcConnection connection = databaseConnection()) {
+        try (JdbcConnection connection = databaseConnection()) {
             String query = String.format(
                     "INSERT INTO %s VALUES('ad-hoc', 'stop-snapshot', '{\"type\": \"INCREMENTAL\"" + collections + "}')",
                     signalTableName());
@@ -263,6 +300,28 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
         sendAdHocSnapshotSignal(tableDataCollectionId());
+    }
+
+    protected void sendPauseSignal() {
+        try (JdbcConnection connection = databaseConnection()) {
+            String query = String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", signalTableName());
+            logger.info("Sending pause signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send pause signal", e);
+        }
+    }
+
+    protected void sendResumeSignal() {
+        try (JdbcConnection connection = databaseConnection()) {
+            String query = String.format("INSERT INTO %s VALUES('test-resume', 'resume-snapshot', '')", signalTableName());
+            logger.info("Sending resume signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send resume signal", e);
+        }
     }
 
     protected void startConnector(DebeziumEngine.CompletionCallback callback) {
@@ -310,7 +369,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -326,7 +385,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -354,7 +413,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -386,7 +445,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -435,7 +494,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -456,7 +515,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+            assertThat(dbChanges).contains(entry(i + 1, i + 2000));
         }
     }
 
@@ -490,7 +549,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                     }
                 });
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -519,7 +578,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         // Initiate a schema change to the table immediately before the adhoc-snapshot
@@ -534,7 +593,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -547,7 +606,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -571,7 +630,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Stopping incremental snapshot")).isTrue();
 
         // stop the connector
@@ -580,7 +639,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -599,7 +658,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -623,7 +682,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
-        Assertions.assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
+        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
                 interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
 
         // stop the connector
@@ -632,7 +691,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // restart the connector
         // should start with no available records, should not have any incremental snapshot state
         startConnector();
-        Assertions.assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
+        assertThat(interceptor.containsMessage("No incremental snapshot in progress")).isTrue();
 
         sendAdHocSnapshotSignal();
 
@@ -651,7 +710,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -667,13 +726,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(1);
         final String tableToSnapshot = tableNames.get(0);
@@ -702,7 +761,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -718,13 +777,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
         final List<String> collectionIds = tableDataCollectionIds();
-        Assertions.assertThat(collectionIds).hasSize(2);
+        assertThat(collectionIds).hasSize(2);
 
         final List<String> tableNames = tableNames();
-        Assertions.assertThat(tableNames).hasSize(2);
+        assertThat(tableNames).hasSize(2);
 
         final List<String> topicNames = topicNames();
-        Assertions.assertThat(topicNames).hasSize(2);
+        assertThat(topicNames).hasSize(2);
 
         final String collectionIdToRemove = collectionIds.get(0);
         final String tableToSnapshot = tableNames.get(1);
@@ -753,7 +812,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT * 2;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
 
@@ -781,10 +840,128 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
-            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+            assertThat(dbChanges).contains(entry(i + 1, i));
         }
 
         stopConnector();
+    }
+
+    @Test
+    public void testPauseDuringSnapshot() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+        consumeRecords(100, record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+
+        sendPauseSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+        });
+        int beforeResume = records.size();
+
+        sendResumeSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        if ((expectedRecordCount - beforeResume) > 0) {
+            Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
+            for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
+                assertThat(dbChanges).contains(entry(i + 1, i));
+            }
+        }
+    }
+
+    @Test
+    public void snapshotWithAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 10, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
+                tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void shouldExecuteRegularSnapshotWhenAdditionalConditionEmpty() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        final int recordsCount = ROW_COUNT;
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of("\"\""), tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(recordsCount,
+                x -> true, null);
+        assertEquals(recordsCount, dbChanges.size());
+    }
+
+    @Test
+    public void snapshotWithAdditionalConditionWithRestart() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 1000, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalCondition(Optional.of(String.format("\"aa = %s\"", expectedValue)),
+                tableDataCollectionId());
+
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, x -> {
+                    if (recordCounter.addAndGet(x.size()) > 50 && !restarted.get()) {
+                        stopConnector();
+                        assertConnectorNotRunning();
+
+                        start(connectorClass(), config);
+                        waitForConnectorToStart();
+                        restarted.set(true);
+                    }
+                });
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> v.equals(expectedValue)));
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {

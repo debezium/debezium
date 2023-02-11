@@ -48,14 +48,14 @@ public final class Tables {
         /**
          * Creates a {@link TableFilter} from the given predicate.
          */
-        public static TableFilter fromPredicate(Predicate<TableId> predicate) {
+        static TableFilter fromPredicate(Predicate<TableId> predicate) {
             return t -> predicate.test(t);
         }
 
         /**
          * Creates a {@link TableFilter} that includes all tables.
          */
-        public static TableFilter includeAll() {
+        static TableFilter includeAll() {
             return t -> true;
         }
     }
@@ -179,16 +179,18 @@ public final class Tables {
      * @param columnDefs the list of column definitions; may not be null or empty
      * @param primaryKeyColumnNames the list of the column names that make up the primary key; may be null or empty
      * @param defaultCharsetName the name of the character set that should be used by default
+     * @param attributes the list of attribute definitions; may not be null or empty
      * @return the previous table definition, or null if there was no prior table definition
      */
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames,
-                                String defaultCharsetName) {
+                                String defaultCharsetName, List<Attribute> attributes) {
         return lock.write(() -> {
             Table updated = Table.editor()
                     .tableId(tableId)
                     .addColumns(columnDefs)
                     .setPrimaryKeyNames(primaryKeyColumnNames)
                     .setDefaultCharsetName(defaultCharsetName)
+                    .addAttributes(attributes)
                     .create();
 
             Table existing = tablesByTableId.get(tableId);
@@ -251,7 +253,7 @@ public final class Tables {
             }
             tablesByTableId.remove(existing.id());
             TableImpl updated = new TableImpl(newTableId, existing.columns(),
-                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment());
+                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment(), existing.attributes());
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -276,7 +278,7 @@ public final class Tables {
             Table updated = changer.apply(existing);
             if (updated != existing) {
                 tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
-                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment()));
+                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment(), updated.attributes()));
             }
             changes.add(tableId);
             return existing;
@@ -418,7 +420,7 @@ public final class Tables {
         private final boolean tableIdCaseInsensitive;
         private final ConcurrentMap<TableId, Table> values;
 
-        public TablesById(boolean tableIdCaseInsensitive) {
+        TablesById(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new ConcurrentHashMap<>();
         }
@@ -503,7 +505,7 @@ public final class Tables {
         private final boolean tableIdCaseInsensitive;
         private final Set<TableId> values;
 
-        public TableIds(boolean tableIdCaseInsensitive) {
+        TableIds(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new HashSet<>();
         }

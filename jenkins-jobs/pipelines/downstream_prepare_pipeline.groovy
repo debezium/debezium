@@ -46,7 +46,7 @@ pipeline {
                         --dest-login="${QUAY_USERNAME}"                             \\
                         --dest-pass="${QUAY_PASSWORD}"                              \\
                         --deployment-desc="${STRZ_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
-                        --img-output="${WORKSPACE}/published_images.txt"            
+                        --img-output="${WORKSPACE}/published_images.txt"
                     '''
                     zip(archive: true, zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi')
                 }
@@ -95,8 +95,8 @@ pipeline {
 
     post {
         always {
-            mail to: MAIL_TO, subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
-${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: params.MAIL_TO, subject: "Debezium OpenShift test run #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
+${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
         success {

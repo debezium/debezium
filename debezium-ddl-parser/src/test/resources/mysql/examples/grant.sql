@@ -92,9 +92,11 @@ GRANT XA_RECOVER_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT reader TO 'mysqluser'@'localhost'
 GRANT reader TO topreader
 GRANT 'db_old_ro'@'%' TO 'oghalawinji'@'%'
+GRANT FLUSH_OPTIMIZER_COSTS, FLUSH_STATUS, FLUSH_TABLES, FLUSH_USER_RESOURCES, PASSWORDLESS_USER_ADMIN ON *.* TO "@"
 REVOKE reader FROM 'mysqluser'@'localhost'
 REVOKE reader FROM topreader
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'retool'@
+REVOKE `cloudsqlsuperuser`@`%` FROM `sarmonitoring`@`10.90.29.%`
 
 -- MariaDB
 GRANT BINLOG_MONITOR ON *.* TO 'mysqluser'@'localhost'
@@ -111,3 +113,5 @@ SET ROLE ALL EXCEPT 'role1', 'role2';
 -- Set Default Role
 SET DEFAULT ROLE 'admin', 'developer' TO 'joe'@'10.0.0.1';
 SET DEFAULT ROLE `admin`@'%' to `dt_user`@`%`;
+-- MySQL on Amazon RDS
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, LOAD FROM S3, SELECT INTO S3, INVOKE LAMBDA ON *.* TO 'debezium_user'@'127.0.0.1';

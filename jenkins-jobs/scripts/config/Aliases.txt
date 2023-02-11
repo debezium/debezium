@@ -130,6 +130,7 @@ miphik,Andrey Savchuk
 narzdavid,Narz David
 LarsWerkman,Lars Werkman
 chadthamn,Chad Marmon
+xinbinhuang,Xinbin Huang
 xqshe,Xinquan She
 wangminchao,Wang Min Chao
 markallanson,Mark Allanson
@@ -145,3 +146,43 @@ Eliran,Eliran Agranovich
 rahulkhanna,Rahul Khanna
 ProofOfPizza,Chai Stofkoper
 kanha gupta,Kanha Gupta
+gongzhongqiang,Zhongqiang Gong
+doupengwei,Pengwei Dou
+fisache,Inki Hwang
+ggaborg,Gabor Andras
+comil4444,崔世杰
+BetaCat,合龙 张
+tjwornjs,Seo Jae-kwon
+druud,Ruud H.G. van Tol
+thangdc94,Phạm Ngọc Thắng
+debjeetsarkar,Debjeet Sarkar
+nicholas-fwang,Inki Hwang
+gmouss,Moustapha Mahfoud
+avis408,Avinash Vishwakarma
+nirolevy,Niro Levy
+nirlevy,Nir Levy
+rajdangwal,Rajendra Dangwal
+Sage-Pierce,Sage Pierce
+joschi,Jochen Schalanda
+janjwerner-confluent,Jan Werner
+enzo-cappa,Enzo Cappa
+zhanghelong,Helong Zhang
+Théophile Helleboid - chtitux,Théophile Helleboid
+dude0001,Mark Lambert
+adasari,Anil Dasari
+mkobayas,Masazumi Kobayashi
+Skezzowski,Balázs Sipos
+subodh,Subodh Kant Chaturvedi
+sahapasci,Sahap Asci
+mfvitale,Mario Fiore Vitale
+Raul Estrada,Raúl Estrada
+xiaowu,Wu Zhenhua
+yoheimuta,Yohei Yoshimuta
+nancyxu123,Nancy Xu
+govi20,Govinda Sakhare
+akshansh,Akshansh Jain
+erdinc,Erdinç Taşkın
+luca.scannapieco,Luca Scannapieco
+sunxiaojian,Sun Xiao Jian
+Sanapalli Lokesh,Lokesh Sanapalli
+TimLoes,Tim Loes

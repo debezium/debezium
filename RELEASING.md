@@ -204,27 +204,27 @@ Before continuing, using this lower frame of the window to collect the following
 
 #### Validating the staged artifacts
 
-At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium Docker images](https://github.com/debezium/docker-images) used in the [Debezium tutorial](https://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through the tutorial using those locally-built Docker images.
+At this time, the best way to verify the staged artifacts are valid is to locally update the [Debezium container images](https://github.com/debezium/container-images) used in the [Debezium tutorial](https://debezium.io/docs/tutorial) to use the latest connector plugins, and then to run through the tutorial using those locally-built container images.
 
-This [GitHub repository](https://github.com/debezium/docker-images) containing the Docker images contains separate Dockerfiles for each major and minor release of Debezium. Start by checking out and getting the latest commits from the [Debezium Docker images](https://github.com/debezium/docker-images) repository and creating a topic branch (using an appropriate branch name):
+This [GitHub repository](https://github.com/debezium/container-images) with the container images contains separate Dockerfiles for each major and minor release of Debezium. Start by checking out and getting the latest commits from the [Debezium container images](https://github.com/debezium/container-images) repository and creating a topic branch (using an appropriate branch name):
 
     $ git checkout master
     $ git pull upstream master
     $ git checkout -b <branch-name>
 
-For Debezium patch releases, we simply update the Dockerfiles that correspond to the minor release's parent. For example, when 0.2 was released, we created new Docker images by copying and updating the images from 0.1. However, when 0.2.1 was released, we simply updated the 0.2 Docker images.
+For Debezium patch releases, we simply update the Dockerfiles that correspond to the minor release's parent. For example, when 0.2 was released, we created new container images by copying and updating the images from 0.1. However, when 0.2.1 was released, we simply updated the 0.2 container images.
 
-Currently, the only Docker image that contains Debezium code is the [Connect service image](https://github.com/debezium/docker-images/connect), which means this is the only Dockerfile that you will need to change to point to the Maven staging repository. To do this, edit the Dockerfile for the Connect service, and:
+Currently, the only container image that contains Debezium code is the [Connect service image](https://github.com/debezium/container-images/connect), which means this is the only Dockerfile that you will need to change to point to the Maven staging repository. To do this, edit the Dockerfile for the Connect service, and:
 
 * change the `DEBEZIUM_VERSION` environment variable value to match the _major.minor.patch_ version number for the release (e.g., `0.2.1`)
 * temporarily replace the Maven Central repository URL with that URL of the staging repository created in [Perform the Release](#perform-the-release), which again looks something like `https://oss.sonatype.org/content/repositories/iodebezium-1002`.
 * update the MD5 literal string used to check the `...-plugin.tar.gz` file
 
-After all of the Docker files have been created or updated, go to the top of your local Git repository and run the following command to build the Docker images:
+After all of the Docker files have been created or updated, go to the top of your local Git repository and run the following command to build the container images:
 
     $ ./build-debezium.sh 0.2
 
-or using the correct Debezium version. After this successfully builds the images, run through the tutorial, being sure to use the same Docker image label (e.g., `0.2`) that you just built.
+or using the correct Debezium version. After this successfully builds the images, run through the tutorial, being sure to use the same container image label (e.g., `0.2`) that you just built.
 
 When the tutorial can be successfully run with the new version, edit the Dockerfile for the Connect service to again use the official Maven Central repository URL.
 
@@ -232,21 +232,21 @@ It is also necessary to update the Connect snapshot(nightly) image with a new de
 
 Now you can commit the changes locally
 
-    $ git commit -m "Updated Docker images for release 0.2.1" .
+    $ git commit -m "Updated container images for release 0.2.1" .
     $ git push origin <branch-name>
 
 and create a new pull request (or if rerunning the release process update your existing pull request), but do not merge the pull request yet.
 
-If you discover any problems, log issues for the problems and fix them in the code base. Then start this process over from the beginning (though you can force-update the changes to your still-unmerged pull request for the Docker images.
+If you discover any problems, log issues for the problems and fix them in the code base. Then start this process over from the beginning (though you can force-update the changes to your still-unmerged pull request for the container images.
 
 #### Updating the Java version
 
-If you need to update the base Docker image for the JDK to use a different JDK version, then:
+If you need to update the base container image for the JDK to use a different JDK version, then:
 
 1. create a new folder under `jdk8` for the new Java versoin by copying the folder for the most recent existing JDK version,
 2. edit the Dockerfile to use the specific version of the JDK and save the file,
-3. run the `./build-java.sh` script to locally build the new `debezium/jdk:<version>` Docker image,
-4. update all of the Docker images for Zookeeper, Kafka, and Debezium services to use the new base image,
+3. run the `./build-java.sh` script to locally build the new `debezium/jdk:<version>` container image,
+4. update all of the container images for Zookeeper, Kafka, and Debezium services to use the new base image,
 5. re-run the `./build-debezium.sh <version>` command to make sure everything builds,
 6. commit the changes locally and add to your still-unmerged pull request.
 
@@ -260,23 +260,23 @@ Select the staging repository (by checking the box) and press the "Release" butt
 
 It may take some time for the artifacts to actually be [visible in Maven Central search](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22) or [directly in Maven Central](https://repo1.maven.org/maven2/io/debezium/debezium-core/).
 
-### Merge your pull request to update the Docker images
+### Merge your pull request to update the container images
 
-Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium Docker images. As soon as your changes are merged, Docker Hub will automatically build and deploy the Docker images that were previously configured. If you've just released a patch release and only updated existing Docker images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
+Only after the artifacts are available on Maven Central can you merge the pull request for the Debezium container images. As soon as your changes are merged, Docker Hub will automatically build and deploy the container images that were previously configured. If you've just released a patch release and only updated existing container images, then you can proceed to [updating the documentation and blog](#update-the-documentation-and-blog).
 
-Otherwise, for major and minor releases your pull request should have added new Docker images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
+Otherwise, for major and minor releases your pull request should have added new container images, and you need to log into [Debezium's Docker Hub organization](https://hub.docker.com/r/debezium/) and add/update the build settings for each of the affected images.
 
-With every release the Docker image for PostgreSQL needs to be updated as well.
+With every release the container image for PostgreSQL needs to be updated as well.
 First create a tag in the [postgres-decoderbufs](https://github.com/debezium/postgres-decoderbufs) repository:
 
     $ git tag v<%version%> && git push upstream v<%version%>
 
-Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/docker-images/blob/main/postgres/9.6/Dockerfile#L22)
+Then update the Debezium version referenced in the [Postgres Docker file](https://github.com/debezium/container-images/blob/main/postgres/9.6/Dockerfile#L22)
 and push that commit which will cause the image to be re-published on Docker Hub automatically.
 
 ### Reconfigure Docker Hub builds
 
-If a new version of Docker images is going to be added it is necessary in Docker Hub build settings to
+If a new version of container images is going to be added it is necessary in Docker Hub build settings to
 
 * add a new build for each image with new version
 * remove builds for obsolete versions

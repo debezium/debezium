@@ -7,25 +7,20 @@ package io.debezium.connector.sqlserver;
 
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
-import io.debezium.schema.TopicSelector.DataCollectionTopicNamer;
 
 /**
  * The topic naming strategy based on connector configuration and table name
  *
  * @author Jiri Pechanec
- *
+ * @deprecated Use {@link io.debezium.schema.SchemaTopicNamingStrategy} instead.
  */
+@Deprecated
 public class SqlServerTopicSelector {
 
     public static TopicSelector<TableId> defaultSelector(SqlServerConnectorConfig connectorConfig) {
-        DataCollectionTopicNamer<TableId> topicNamer;
-        if (connectorConfig.isMultiPartitionModeEnabled()) {
-            topicNamer = (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.catalog(), tableId.schema(), tableId.table());
-        }
-        else {
-            topicNamer = (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table());
-        }
 
-        return TopicSelector.defaultSelector(connectorConfig, topicNamer);
+        return TopicSelector.defaultSelector(
+                connectorConfig,
+                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.catalog(), tableId.schema(), tableId.table()));
     }
 }

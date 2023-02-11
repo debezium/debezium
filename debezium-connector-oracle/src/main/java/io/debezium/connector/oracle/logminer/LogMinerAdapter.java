@@ -9,12 +9,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -44,7 +45,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
-import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -111,6 +111,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             throws SQLException {
 
         final Scn latestTableDdlScn = getLatestTableDdlScn(ctx, connection).orElse(null);
+        final String tableName = getTransactionTableName(connectorConfig);
 
         final Map<String, Scn> pendingTransactions = new LinkedHashMap<>();
 
@@ -119,7 +120,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
             currentScn = getCurrentScn(latestTableDdlScn, connection);
         }
         else {
-            currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions);
+            currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions, tableName);
         }
 
         if (!currentScn.isPresent()) {
@@ -130,13 +131,13 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
         // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
         // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
         // point as well. A separate connection is necessary to preserve the save point.
-        try (OracleConnection conn = new OracleConnection(connection.config(), () -> getClass().getClassLoader(), false)) {
+        try (OracleConnection conn = new OracleConnection(connection.config(), false)) {
             conn.setAutoCommit(false);
             if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();
             }
-            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions);
+            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions, tableName);
         }
     }
 
@@ -152,11 +153,11 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     }
 
     private Optional<Scn> getPendingTransactions(Scn latestTableDdlScn, OracleConnection connection,
-                                                 Map<String, Scn> transactions)
+                                                 Map<String, Scn> transactions, String transactionTableName)
             throws SQLException {
         final String query = "SELECT d.CURRENT_SCN, t.XID, t.START_SCN "
                 + "FROM V$DATABASE d "
-                + "LEFT OUTER JOIN V$TRANSACTION t "
+                + "LEFT OUTER JOIN " + transactionTableName + " t "
                 + "ON t.START_SCN < d.CURRENT_SCN ";
 
         Scn currentScn = null;
@@ -179,11 +180,15 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 }
             }
             catch (SQLException e) {
-                LOGGER.warn("Could not query the V$TRANSACTION view: {}", e.getMessage(), e);
+                LOGGER.warn("Could not query the {} view: {}", transactionTableName, e.getMessage(), e);
                 throw e;
             }
 
         } while (areSameTimestamp(latestTableDdlScn, currentScn, connection));
+
+        for (Map.Entry<String, Scn> transaction : transactions.entrySet()) {
+            LOGGER.trace("\tPending Transaction '{}' started at SCN {}", transaction.getKey(), transaction.getValue());
+        }
 
         return Optional.ofNullable(currentScn);
     }
@@ -191,75 +196,19 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     private OracleOffsetContext determineSnapshotOffset(OracleConnectorConfig connectorConfig,
                                                         OracleConnection connection,
                                                         Scn currentScn,
-                                                        Map<String, Scn> pendingTransactions)
+                                                        Map<String, Scn> pendingTransactions,
+                                                        String transactionTableName)
             throws SQLException {
 
         if (isPendingTransactionSkip(connectorConfig)) {
             LOGGER.info("\tNo in-progress transactions will be captured.");
         }
         else if (isPendingTransactionViewOnly(connectorConfig)) {
-            LOGGER.info("\tSkipping transaction logs for resolving snapshot offset, only using V$TRANSACTION.");
+            LOGGER.info("\tSkipping transaction logs for resolving snapshot offset, only using {}.", transactionTableName);
         }
         else {
-            LOGGER.info("\tConsulting V$TRANSACTION and transaction logs for resolving snapshot offset.");
-            final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
-            final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
-
-            // Simple sanity check
-            // While this should never be the case, this is to guard against NPE or other errors that could
-            // result from below if there is some race condition/corner case not considered
-            if (logFiles.isEmpty()) {
-                throw new DebeziumException("Failed to get log files from Oracle");
-            }
-
-            // Locate the index in the log files where we should begin
-            // This is the log where the current SCN exists
-            int logIndex = 0;
-            for (int i = 0; i < logFiles.size(); ++i) {
-                if (logFiles.get(i).isScnInLogFileRange(currentScn)) {
-                    logIndex = i;
-                    break;
-                }
-            }
-
-            // Starting from the log position (logIndex), we begin mining from it going backward.
-            // Each iteration will include the prior log along with the logs up to the logIndex to locate the start pos
-            for (int pos = logIndex; pos >= 0; pos--) {
-                try {
-                    addLogsToSession(logFiles, pos, logIndex, connection);
-                    startSession(connection);
-
-                    final Optional<String> transactionId = getTransactionIdForScn(currentScn, connection);
-                    if (!transactionId.isPresent()) {
-                        throw new DebeziumException("Failed to get transaction id for current SCN " + currentScn);
-                    }
-
-                    if (pendingTransactions.containsKey(transactionId.get())) {
-                        // The transaction was already captured in the pending transactions list.
-                        // There is nothing special to do here, it is safe to end the session
-                        LOGGER.info("\tCurrent SCN transaction '{}' was found in V$TRANSACTION", transactionId.get());
-                        break;
-                    }
-
-                    // The current SCN transaction is not in the pending transaction list.
-                    // We need to attempt to fully mine the transaction to see how to handle it.
-                    Scn startScn = getTransactionStartScn(transactionId.get(), currentScn, connection);
-                    if (startScn.isNull() && pos == 0) {
-                        LOGGER.warn("Failed to find start SCN for transaction '{}', transaction will not be included.",
-                                transactionId.get());
-                    }
-                    else {
-                        pendingTransactions.put(transactionId.get(), startScn);
-                        break;
-                    }
-                }
-                catch (InterruptedException e) {
-                    throw new DebeziumException("Failed to resolve snapshot offset", e);
-                }
-                finally {
-                    stopSession(connection);
-                }
-            }
+            LOGGER.info("\tConsulting {} and transaction logs for resolving snapshot offset.", transactionTableName);
+            getPendingTransactionsFromLogs(connection, currentScn, pendingTransactions);
         }
 
         if (!pendingTransactions.isEmpty()) {
@@ -281,9 +230,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 .build();
     }
 
-    private void addLogsToSession(List<LogFile> logs, int from, int to, OracleConnection connection) throws SQLException {
-        for (int i = from; i <= to; ++i) {
-            final LogFile logFile = logs.get(i);
+    private void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
+        for (LogFile logFile : logs) {
             LOGGER.debug("\tAdding log: {}", logFile.getFileName());
             connection.executeWithoutCommitting(SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName()));
         }
@@ -338,54 +286,59 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 .collect(Collectors.toList());
     }
 
-    private Optional<String> getTransactionIdForScn(Scn scn, OracleConnection connection) throws SQLException, InterruptedException {
-        LOGGER.debug("\tGet transaction id for SCN {}", scn);
-        final AtomicReference<String> transactionId = new AtomicReference<>();
-        for (int attempt = 1; attempt <= GET_TRANSACTION_SCN_ATTEMPTS; ++attempt) {
-            connection.call("SELECT XID FROM V$LOGMNR_CONTENTS WHERE SCN = ?",
-                    s -> s.setLong(1, scn.longValue()),
-                    rs -> {
-                        if (rs.next()) {
-                            transactionId.set(HexConverter.convertToHexString(rs.getBytes("XID")));
-                        }
-                    });
-            if (!Strings.isNullOrEmpty(transactionId.get())) {
-                break;
+    private void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
+        final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
+        final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
+        if (!logFiles.isEmpty()) {
+            try {
+                addLogsToSession(getMostRecentLogFilesForSearch(logFiles), connection);
+                startSession(connection);
+
+                LOGGER.info("\tQuerying transaction logs, please wait...");
+                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN < " + currentScn,
+                        rs -> {
+                            while (rs.next()) {
+                                final String transactionId = HexConverter.convertToHexString(rs.getBytes("XID"));
+                                final String startScnStr = rs.getString("START_SCN");
+                                if (!Strings.isNullOrBlank(startScnStr)) {
+                                    final Scn startScn = Scn.valueOf(rs.getString("START_SCN"));
+                                    if (!pendingTransactions.containsKey(transactionId)) {
+                                        LOGGER.info("\tTransaction '{}' started at SCN '{}'", transactionId, startScn);
+                                        pendingTransactions.put(transactionId, startScn);
+                                    }
+                                }
+                            }
+                        });
             }
-            LOGGER.debug("\tFailed to find transaction for SCN {}, trying again.", scn);
-            Metronome.sleeper(GET_TRANSACTION_SCN_PAUSE, Clock.SYSTEM).pause();
+            catch (Exception e) {
+                throw new DebeziumException("Failed to resolve snapshot offset", e);
+            }
+            finally {
+                stopSession(connection);
+            }
         }
-        return Optional.ofNullable(transactionId.get());
     }
 
-    private Scn getTransactionStartScn(String transactionId, Scn currentScn, OracleConnection connection) throws SQLException, InterruptedException {
-        LOGGER.debug("\tGet start SCN for transaction '{}'", transactionId);
-        // We perform this operation a maximum of 5 times before we fail.
-        final AtomicReference<Scn> startScn = new AtomicReference<>(Scn.NULL);
-        for (int attempt = 1; attempt <= GET_TRANSACTION_SCN_ATTEMPTS; ++attempt) {
-            connection.call("SELECT SCN, START_SCN, OPERATION FROM V$LOGMNR_CONTENTS WHERE XID=HEXTORAW(UPPER(?))",
-                    s -> s.setString(1, transactionId),
-                    rs -> {
-                        while (rs.next()) {
-                            if (!Strings.isNullOrEmpty(rs.getString("START_SCN"))) {
-                                final Scn value = Scn.valueOf(rs.getString("START_SCN"));
-                                if (currentScn.compareTo(value) == 0) {
-                                    startScn.set(value.subtract(Scn.ONE));
-                                    LOGGER.debug("\tCurrent SCN {} starts a transaction, using value-1.", value);
-                                    break;
-                                }
-                                startScn.set(Scn.valueOf(rs.getString("START_SCN")));
-                                LOGGER.debug("\tCurrent SCN transaction starts at SCN {}", value);
-                                break;
-                            }
-                        }
-                    });
-            if (!startScn.get().isNull()) {
-                break;
+    private List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
+        Map<Integer, List<LogFile>> recentLogsPerThread = new HashMap<>();
+        for (LogFile logFile : allLogFiles) {
+            if (!recentLogsPerThread.containsKey(logFile.getThread())) {
+                if (logFile.isCurrent()) {
+                    recentLogsPerThread.put(logFile.getThread(), new ArrayList<>());
+                    recentLogsPerThread.get(logFile.getThread()).add(logFile);
+                    final Optional<LogFile> maxArchiveLogFile = allLogFiles.stream()
+                            .filter(f -> logFile.getThread() == f.getThread() && logFile.getSequence().compareTo(f.getSequence()) > 0)
+                            .max(Comparator.comparing(LogFile::getSequence));
+                    maxArchiveLogFile.ifPresent(file -> recentLogsPerThread.get(logFile.getThread()).add(file));
+                }
             }
-            Metronome.sleeper(GET_TRANSACTION_SCN_PAUSE, Clock.SYSTEM).pause();
         }
-        return startScn.get();
+
+        final List<LogFile> logs = new ArrayList<>();
+        for (Map.Entry<Integer, List<LogFile>> entry : recentLogsPerThread.entrySet()) {
+            logs.addAll(entry.getValue());
+        }
+        return logs;
     }
 
     private boolean isPendingTransactionSkip(OracleConnectorConfig config) {
@@ -394,5 +347,20 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
 
     public boolean isPendingTransactionViewOnly(OracleConnectorConfig config) {
         return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY;
+    }
+
+    /**
+     * Under Oracle RAC, the V$ tables are specific the node that the JDBC connection is established to and
+     * not every V$ is synchronized across the cluster.  Therefore, when Oracle RAC is in play, we should
+     * use the GV$ tables instead.
+     *
+     * @param config the connector configuration, should not be {@code null}
+     * @return the pending transaction table name
+     */
+    private static String getTransactionTableName(OracleConnectorConfig config) {
+        if (config.getRacNodes() == null || config.getRacNodes().isEmpty()) {
+            return "V$TRANSACTION";
+        }
+        return "GV$TRANSACTION";
     }
 }

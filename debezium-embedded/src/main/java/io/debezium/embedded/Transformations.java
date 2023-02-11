@@ -9,20 +9,23 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 
 /**
  * Composite class representing transformation chain.
  *
  * @author Jiri Pechanec
- *
  */
 public class Transformations implements Closeable {
 
@@ -30,11 +33,16 @@ public class Transformations implements Closeable {
 
     private static final String TYPE_SUFFIX = ".type";
 
+    private static final String PREDICATE_SUFFIX = ".predicate";
+    private static final String NEGATE_SUFFIX = ".negate";
+
     private final Configuration config;
     private final List<Transformation<SourceRecord>> transforms = new ArrayList<>();
+    private final Predicates predicates;
 
     public Transformations(Configuration config) {
         this.config = config;
+        this.predicates = new Predicates(config);
         final String transformationList = config.getString(EmbeddedEngine.TRANSFORMS);
         if (transformationList == null) {
             return;
@@ -42,28 +50,38 @@ public class Transformations implements Closeable {
         for (String transfName : transformationList.split(",")) {
             transfName = transfName.trim();
             final Transformation<SourceRecord> transformation = getTransformation(transfName);
-            transformation.configure(config.subset(transformationConfigNamespace(transfName), true).asMap());
             transforms.add(transformation);
         }
     }
 
-    private String transformationConfigNamespace(final String name) {
+    private static String transformationConfigNamespace(final String name) {
         return EmbeddedEngine.TRANSFORMS.name() + "." + name;
     }
 
+    @VisibleForTesting
     @SuppressWarnings("unchecked")
-    private Transformation<SourceRecord> getTransformation(String name) {
-        Transformation<SourceRecord> transformation = null;
+    Transformation<SourceRecord> getTransformation(String name) {
+        Transformation<SourceRecord> transformation;
+        String transformPrefix = transformationConfigNamespace(name);
 
         try {
-            transformation = config.getInstance(EmbeddedEngine.TRANSFORMS.name() + "." + name + TYPE_SUFFIX, Transformation.class);
+            transformation = config.getInstance(transformPrefix + TYPE_SUFFIX, Transformation.class);
         }
         catch (Exception e) {
             throw new DebeziumException("Error while instantiating transformation '" + name + "'", e);
         }
 
         if (transformation == null) {
-            throw new DebeziumException("Cannot instatiate transformation '" + name + "'");
+            throw new DebeziumException("Cannot instantiate transformation '" + name + "'");
+        }
+
+        transformation.configure(config.subset(transformPrefix, true).asMap());
+
+        String predicateName = config.getString(transformPrefix + PREDICATE_SUFFIX);
+        if (predicateName != null) {
+            Boolean negate = config.getBoolean(transformPrefix + NEGATE_SUFFIX);
+            Predicate<SourceRecord> predicate = this.predicates.getPredicate(predicateName);
+            transformation = createPredicateTransformation(negate != null && negate, predicate, transformation);
         }
 
         return transformation;
@@ -79,8 +97,44 @@ public class Transformations implements Closeable {
         return record;
     }
 
+    private static Transformation<SourceRecord> createPredicateTransformation(boolean negate,
+                                                                              Predicate<SourceRecord> predicate,
+                                                                              Transformation<SourceRecord> transformation) {
+
+        return new Transformation<>() {
+            @Override
+            public SourceRecord apply(SourceRecord sourceRecord) {
+                if (negate ^ predicate.test(sourceRecord)) {
+                    return transformation.apply(sourceRecord);
+                }
+                return sourceRecord;
+            }
+
+            @Override
+            public ConfigDef config() {
+                return null;
+            }
+
+            @Override
+            public void close() {
+                // predicate will be closed via the Predicates class
+                try {
+                    transformation.close();
+                }
+                catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void configure(Map<String, ?> map) {
+            }
+        };
+    }
+
     @Override
     public void close() throws IOException {
+
         for (Transformation<SourceRecord> t : transforms) {
             try {
                 t.close();
@@ -89,5 +143,7 @@ public class Transformations implements Closeable {
                 LOGGER.warn("Error while closing transformation", e);
             }
         }
+
+        this.predicates.close();
     }
 }

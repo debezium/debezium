@@ -22,14 +22,15 @@ final class TableImpl implements Table {
     private final Map<String, Column> columnsByLowercaseName;
     private final String defaultCharsetName;
     private final String comment;
+    private final List<Attribute> attributes;
 
     @PackagePrivate
     TableImpl(Table table) {
-        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName(), table.comment());
+        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName(), table.comment(), table.attributes());
     }
 
     @PackagePrivate
-    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment) {
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment, List<Attribute> attributes) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
@@ -40,6 +41,7 @@ final class TableImpl implements Table {
         this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
         this.defaultCharsetName = defaultCharsetName;
         this.comment = comment;
+        this.attributes = attributes;
     }
 
     @Override
@@ -77,6 +79,19 @@ final class TableImpl implements Table {
     @Override
     public String comment() {
         return comment;
+    }
+
+    @Override
+    public List<Attribute> attributes() {
+        return attributes;
+    }
+
+    @Override
+    public Attribute attributeWithName(String name) {
+        if (attributes == null) {
+            return null;
+        }
+        return attributes.stream().filter(a -> name.equalsIgnoreCase(a.name())).findFirst().orElse(null);
     }
 
     @Override
@@ -118,6 +133,11 @@ final class TableImpl implements Table {
         sb.append(prefix).append("primary key: ").append(primaryKeyColumnNames()).append(System.lineSeparator());
         sb.append(prefix).append("default charset: ").append(defaultCharsetName()).append(System.lineSeparator());
         sb.append(prefix).append("comment: ").append(comment()).append(System.lineSeparator());
+        sb.append(prefix).append("attributes: {").append(System.lineSeparator());
+        for (Attribute attribute : attributes) {
+            sb.append(prefix).append("  ").append(attribute).append(System.lineSeparator());
+        }
+        sb.append(prefix).append("}").append(System.lineSeparator());
     }
 
     @Override

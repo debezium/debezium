@@ -52,7 +52,7 @@ import io.debezium.converters.spi.RecordParser;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Implementation of Converter that express schemas and objects with CloudEvents specification. The serialization
@@ -192,7 +192,7 @@ public class CloudEventsConverter implements Converter {
             }
 
             if (avroConverter == null) {
-                avroConverter = Instantiator.getInstance(useApicurio ? APICURIO_AVRO_CONVERTER_CLASS : CONFLUENT_AVRO_CONVERTER_CLASS, null, null);
+                avroConverter = Instantiator.getInstance(useApicurio ? APICURIO_AVRO_CONVERTER_CLASS : CONFLUENT_AVRO_CONVERTER_CLASS);
                 LOGGER.info("Using Avro converter {}", avroConverter.getClass().getName());
                 avroConverter.configure(avroConfig.asMap(), false);
             }

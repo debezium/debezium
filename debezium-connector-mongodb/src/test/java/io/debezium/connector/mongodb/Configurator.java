@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.Testing;
@@ -34,7 +35,7 @@ public class Configurator {
     }
 
     public Configurator serverName(String serverName) {
-        return with(MongoDbConnectorConfig.LOGICAL_NAME, serverName);
+        return with(CommonConnectorConfig.TOPIC_PREFIX, serverName);
     }
 
     public Configurator hosts(String hosts) {
@@ -74,8 +75,16 @@ public class Configurator {
         return with(MongoDbConnectorConfig.FIELD_RENAMES, renames);
     }
 
+    public Configurator signalingCollection(String signalingCollection) {
+        return with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, signalingCollection);
+    }
+
     public Filters createFilters() {
         return new Filters(configBuilder.build());
+    }
+
+    public Configuration config() {
+        return configBuilder.build();
     }
 
 }

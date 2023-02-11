@@ -22,6 +22,7 @@ import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
+import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
@@ -45,12 +46,12 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 @Incubating
 public interface DebeziumEngine<R> extends Runnable, Closeable {
 
-    public static final String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
+    String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
 
     /**
      * A callback function to be notified when the connector completes.
      */
-    public interface CompletionCallback {
+    interface CompletionCallback {
         /**
          * Handle the completion of the embedded connector engine.
          *
@@ -65,7 +66,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     /**
      * Callback function which informs users about the various stages a connector goes through during startup
      */
-    public interface ConnectorCallback {
+    interface ConnectorCallback {
 
         /**
          * Called after a connector has been successfully started by the engine; i.e. {@link SourceConnector#start(Map)} has
@@ -104,7 +105,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Contract passed to {@link ChangeConsumer}s, allowing them to commit single records as they have been processed
      * and to signal that offsets may be flushed eventually.
      */
-    public static interface RecordCommitter<R> {
+    interface RecordCommitter<R> {
 
         /**
          * Marks a single record as processed, must be called for each
@@ -142,7 +143,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Contract that should be passed to {@link RecordCommitter#markProcessed(Object, Offsets)} for marking a record
      * as processed with updated offsets.
      */
-    public interface Offsets {
+    interface Offsets {
 
         /**
          * Associates a key with a specific value, overwrites the value if the key is already present.
@@ -157,7 +158,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
      * to process multiple records in one go, acknowledging their processing once that's done.
      */
-    public static interface ChangeConsumer<R> {
+    interface ChangeConsumer<R> {
 
         /**
          * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(Object)}
@@ -180,7 +181,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     /**
      * A builder to set up and create {@link DebeziumEngine} instances.
      */
-    public static interface Builder<R> {
+    interface Builder<R> {
 
         /**
          * Call the specified function for every {@link SourceRecord data change event} read from the source database.
@@ -269,7 +270,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <T> Builder<ChangeEvent<T, T>> create(Class<? extends SerializationFormat<T>> format) {
+    static <T> Builder<ChangeEvent<T, T>> create(Class<? extends SerializationFormat<T>> format) {
         return create(format, format);
     }
 
@@ -281,22 +282,33 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <K, V> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
-                                                           Class<? extends SerializationFormat<V>> valueFormat) {
+    static <K, V> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                    Class<? extends SerializationFormat<V>> valueFormat) {
 
         return create(KeyValueChangeEventFormat.of(keyFormat, valueFormat));
     }
 
-    public static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
-        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
-        final Iterator<BuilderFactory> iterator = loader.iterator();
-        if (!iterator.hasNext()) {
-            throw new DebeziumException("No implementation of Debezium engine builder was found");
-        }
-        final BuilderFactory builder = iterator.next();
-        if (iterator.hasNext()) {
-            LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
-        }
+    /**
+     * Obtain a new {@link Builder} instance that can be used to construct runnable {@link DebeziumEngine} instances.
+     * Different formats are used for key, value, and headers of emitted change events.
+     * <p>
+     * Convenience method, equivalent to calling {@code create(KeyValueChangeEventFormat.of(MyKeyFormat.class, MyValueFormat.class, MyHeaderFormat.class)}.
+     *
+     * @return the new builder; never null
+     */
+    static <K, V, H> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                       Class<? extends SerializationFormat<V>> valueFormat,
+                                                       Class<? extends SerializationFormat<H>> headerFormat) {
+        return create(KeyValueHeaderChangeEventFormat.of(keyFormat, valueFormat, headerFormat));
+    }
+
+    static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
+        final BuilderFactory builder = determineBuilderFactory();
+        return builder.builder(format);
+    }
+
+    static <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> create(KeyValueHeaderChangeEventFormat<K, V, H> format) {
+        final BuilderFactory builder = determineBuilderFactory();
         return builder.builder(format);
     }
 
@@ -306,7 +318,12 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
+    static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
+        final BuilderFactory builder = determineBuilderFactory();
+        return builder.builder(format);
+    }
+
+    private static BuilderFactory determineBuilderFactory() {
         final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
         final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
@@ -316,14 +333,14 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         if (iterator.hasNext()) {
             LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
         }
-        return builder.builder(format);
+        return builder;
     }
 
     /**
      * Internal contract between the API and implementation, for bootstrapping the latter.
      * Not intended for direct usage by application code.
      */
-    public static interface BuilderFactory {
+    interface BuilderFactory {
 
         /**
          * Prescribe the output format used by the {@link DebeziumEngine}.
@@ -340,5 +357,15 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @return this builder object so methods can be chained together; never null
          */
         <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> builder(KeyValueChangeEventFormat<K, V> format);
+
+        /**
+         * Prescribe the output and header formats to be used by the {@link DebeziumEngine}.
+         * Usually called by {@link DebeziumEngine#create}.
+         * @param format
+         * @return this builder object so methods can be chained together; never null
+         */
+        default <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> builder(KeyValueHeaderChangeEventFormat<K, V, H> format) {
+            throw new UnsupportedOperationException("Method must be implemented in order to support headers");
+        }
     }
 }

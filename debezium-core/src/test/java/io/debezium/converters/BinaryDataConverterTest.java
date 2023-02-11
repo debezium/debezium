@@ -7,7 +7,7 @@
 package io.debezium.converters;
 
 import static junit.framework.TestCase.fail;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import java.nio.ByteBuffer;

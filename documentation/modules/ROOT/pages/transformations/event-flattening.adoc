@@ -140,7 +140,7 @@ transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 ----
 
-As for any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
+As with any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect to apply the SMTs.
 
 The following `.properties` example sets several event flattening SMT options:
 
@@ -167,6 +167,10 @@ transforms.unwrap.add.fields=table,lsn
 ----
 
 `add.fields=table,lsn`:: Adds change event metadata for the `table` and `lsn` fields to the simplified Kafka record.
+
+.Customizing the configuration
+The connector might emit many types of event messages (heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
+To apply the transformation to a subset of events, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
 // Type: concept
 // ModuleID: example-of-adding-debezium-metadata-to-the-kafka-record
@@ -224,7 +228,7 @@ To add metadata to a simplified Kafka record that is for a `DELETE` operation, y
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 
-For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
 ifdef::community[]
 [id="configuration-options"]
@@ -299,4 +303,22 @@ Optionally, you can override the field name via `<field name>:<new field name>`,
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
+
+[id="extract-new-record-state-drop-fields-header-name"]
+|xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`]
+|
+|The Kafka message header name to use for listing field names in the source message that you want to drop from the output message.
+
+[id="extract-new-record-state-drop-fields-from-key"]
+|xref:extract-new-record-state-drop-fields-from-key[`drop.fields.from.key`]
+|`false`
+|Specifies whether you want the SMT to remove fields that are listed in `drop.fields.header.name` from the event's key.
+
+[id="extract-new-record-state-drop-fields-keep-schema-compatible"]
+|xref:extract-new-record-state-drop-fields-keep-schema-compatible[`drop.fields.keep.schema.compatible`]
+|`true`
+|Specifies whether you want the SMT to remove non-optional fields that are included in the xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`] configuration property. +
+ +
+By default, the SMT only removes fields that are marked `optional`.
+
 |===

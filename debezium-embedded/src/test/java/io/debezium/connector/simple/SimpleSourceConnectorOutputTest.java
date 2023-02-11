@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.simple;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -134,6 +134,16 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         runConnector("simple-test-e", "src/test/resources/simple/test/e");
     }
 
+    @Test
+    public void shouldRecoverFromRetriableExceptionMaxRetriesIs1() {
+        runConnector("simple-test-f", "src/test/resources/simple/test/f");
+    }
+
+    @Test
+    public void shouldRecoverFromRetriableExceptionMaxRetriesIsNegative1() {
+        runConnector("simple-test-g", "src/test/resources/simple/test/g");
+    }
+
     protected void writeConfigurationFileWithDefaultName(Path dir, Properties props) throws IOException {
         Path configFilePath = dir.resolve(DEFAULT_CONNECTOR_PROPERTIES_FILENAME);
         writeConfigurationFile(configFilePath, props);
@@ -169,7 +179,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
     }
 
     protected void appendCommand(Path results, Document command) throws IOException {
-        assertThat(command).isNotNull();
+        assertThat((Comparable<Document>) command).isNotNull();
         assertThat(Files.exists(results)).isTrue();
         Array arrayOfDocuments = readResults(results.toFile());
         arrayOfDocuments.add(command);

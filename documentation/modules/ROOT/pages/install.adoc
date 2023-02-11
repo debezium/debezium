@@ -6,8 +6,6 @@
 :sectanchors:
 :linkattrs:
 :icons: font
-:install-version: {debezium-version}
-:install-dev-version: {debezium-dev-version}
 
 There are several ways to install and use {prodname} connectors, so we've documented a few of the most common ways to do this.
 
@@ -35,9 +33,10 @@ ifeval::['{page-version}' == 'master']
 * {link-sqlserver-plugin-snapshot}[SQL Server Connector plugin archive]
 * {link-oracle-plugin-snapshot}[Oracle Connector plugin archive]
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
-* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive] (incubating)
-* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive] (incubating)
+* {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
+* {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
@@ -48,9 +47,10 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
 endif::[]
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
@@ -64,8 +64,7 @@ Alternatively, you can add further directories to the plugin path by specifying 
 (e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
 When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
 
-Note that Java 8 or later is required to run the {prodname} connectors.
-Java 11 or later is required for running {prodname} UI.
+Note that Java 11 or later is required to run the {prodname} connectors or {prodname} UI.
 
 ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
@@ -79,7 +78,7 @@ endif::[]
 
 To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
 xref:connectors/mysql.adoc[MySQL Connector],
-xref:connectors/postgresql.adoc#postgresql-deploying-a-connector[Postgres Connector],
+xref:connectors/postgresql.adoc#postgresql-deployment[Postgres Connector],
 xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
 xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connector],
 xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
@@ -92,12 +91,13 @@ for each inserted, updated, and deleted row or document.
 
 See the {prodname} xref:connectors/index.adoc[Connectors] documentation for more information.
 
+[[configuring-debezium-topics]]
 == Configuring {prodname} Topics
 {prodname} uses (either via Kafka Connect or directly) multiple topics for storing data.
 The topics have to be either created by an administrator or by Kafka itself by enabling auto-creation for topics.
 There are certain limitations and recommendations which apply to topics:
 
-* Database history topic (for the {prodname} connectors for MySQL and SQL Server)
+* Database schema history topic (for the {prodname} connectors for MySQL and SQL Server)
 ** Infinite (or very long) retention (no compaction!)
 ** Replication factor at least 3 for production
 ** Single partition

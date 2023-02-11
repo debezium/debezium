@@ -77,7 +77,9 @@ public class DebeziumContainerTest {
             .withNetwork(network); // <2>
 
     public static PostgreSQLContainer<?> postgresContainer =
-            new PostgreSQLContainer<>("debezium/postgres:11")
+            new PostgreSQLContainer<>(
+                    DockerImageName.parse("debezium/postgres:11")
+                        .asCompatibleSubstituteFor("postgres"))
                 .withNetwork(network)
                 .withNetworkAliases("postgres"); // <3>
 
@@ -127,7 +129,7 @@ public void canRegisterPostgreSqlConnector() throws Exception {
 
         ConnectorConfiguration connector = ConnectorConfiguration
                 .forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver1");
+                .with("topic.prefix", "dbserver1");
 
         debeziumContainer.registerConnector("my-connector",
                 connector); // <2>
@@ -170,7 +172,7 @@ private KafkaConsumer<String, String> getConsumer(
             KafkaContainer kafkaContainer) {
 
     return new KafkaConsumer<>(
-            ImmutableMap.of(
+            Map.of(
                     ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                             kafkaContainer.getBootstrapServers(),
                     ConsumerConfig.GROUP_ID_CONFIG,

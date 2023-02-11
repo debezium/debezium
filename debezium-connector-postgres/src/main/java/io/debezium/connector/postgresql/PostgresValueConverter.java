@@ -155,9 +155,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final JsonFactory jsonFactory;
 
-    private final String toastPlaceholderString;
-    private final byte[] toastPlaceholderBinary;
-
+    private final UnchangedToastedPlaceholder unchangedToastedPlaceholder;
     private final int moneyFractionDigits;
 
     public static PostgresValueConverter of(PostgresConnectorConfig connectorConfig, Charset databaseCharset, TypeRegistry typeRegistry) {
@@ -172,7 +170,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 connectorConfig.hStoreHandlingMode(),
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.intervalHandlingMode(),
-                connectorConfig.getUnavailableValuePlaceholder(),
+                new UnchangedToastedPlaceholder(connectorConfig),
                 connectorConfig.moneyFractionDigits());
     }
 
@@ -180,7 +178,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                                      TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                      BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
                                      HStoreHandlingMode hStoreMode, BinaryHandlingMode binaryMode, IntervalHandlingMode intervalMode,
-                                     byte[] toastPlaceholder, int moneyFractionDigits) {
+                                     UnchangedToastedPlaceholder unchangedToastedPlaceholder, int moneyFractionDigits) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode, binaryMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
@@ -188,9 +186,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
         this.typeRegistry = typeRegistry;
         this.hStoreMode = hStoreMode;
         this.intervalMode = intervalMode;
-        this.toastPlaceholderBinary = toastPlaceholder;
-        this.toastPlaceholderString = new String(toastPlaceholder);
         this.moneyFractionDigits = moneyFractionDigits;
+        this.unchangedToastedPlaceholder = unchangedToastedPlaceholder;
     }
 
     @Override
@@ -787,7 +784,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(moneyFractionDigits), (r) -> {
             switch (mode) {
                 case DOUBLE:
-                    if (data instanceof Double) {
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).doubleValue());
+                    }
+                    else if (data instanceof Double) {
                         r.deliver(data);
                     }
                     else if (data instanceof Number) {
@@ -795,7 +795,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     }
                     break;
                 case PRECISE:
-                    if (data instanceof Double) {
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
+                    }
+                    else if (data instanceof Double) {
                         r.deliver(BigDecimal.valueOf((Double) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
                     else if (data instanceof Number) {
@@ -804,7 +807,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     }
                     break;
                 case STRING:
-                    r.deliver(String.valueOf(data));
+                    if (data instanceof BigDecimal) {
+                        r.deliver(((BigDecimal) data).toPlainString());
+                    }
+                    else {
+                        r.deliver(String.valueOf(data));
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown decimalMode");
@@ -1087,7 +1095,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertBinaryToBytes(Column column, Field fieldDefn, Object data) {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
-            return toastPlaceholderBinary;
+            return unchangedToastedPlaceholder.getToastPlaceholderBinary();
         }
         if (data instanceof PgArray) {
             data = ((PgArray) data).toString();
@@ -1098,6 +1106,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
         return super.convertBinaryToBase64(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+    }
+
+    @Override
+    protected Object convertBinaryToBase64UrlSafe(Column column, Field fieldDefn, Object data) {
+        return super.convertBinaryToBase64UrlSafe(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
     @Override
@@ -1117,15 +1130,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertString(Column column, Field fieldDefn, Object data) {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
-            return toastPlaceholderString;
+            return unchangedToastedPlaceholder.getToastPlaceholderString();
         }
         return super.convertString(column, fieldDefn, data);
     }
 
     @Override
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
-        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
-            return toastPlaceholderString;
+        Optional<Object> toastedArrayPlaceholder = unchangedToastedPlaceholder.getValue(data);
+        if (toastedArrayPlaceholder.isPresent()) {
+            return toastedArrayPlaceholder.get();
         }
         return super.handleUnknownData(column, fieldDefn, data);
     }

@@ -32,7 +32,7 @@ public class Threads {
     /**
      * Measures the amount time that has elapsed since the last {@link #reset() reset}.
      */
-    public static interface TimeSince {
+    public interface TimeSince {
         /**
          * Reset the elapsed time to 0.
          */
@@ -50,7 +50,7 @@ public class Threads {
      * Expires after defined time period.
      *
      */
-    public static interface Timer {
+    public interface Timer {
 
         /**
          * @return true if current time is greater than start time plus requested time period

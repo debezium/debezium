@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -88,7 +87,7 @@ public class SignalsIT extends AbstractConnectorTest {
         connection.execute("delete from debezium.debezium_signal");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @Test
@@ -96,7 +95,7 @@ public class SignalsIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -126,12 +125,12 @@ public class SignalsIT extends AbstractConnectorTest {
         final SourceRecord pre = records.get(0);
         final SourceRecord post = records.get(7);
 
-        Assertions.assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
+        assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
 
         final Struct postKey = (Struct) post.key();
-        Assertions.assertThat(postKey.schema().fields()).hasSize(2);
-        Assertions.assertThat(postKey.schema().field("ID")).isNotNull();
-        Assertions.assertThat(postKey.schema().field("NAME")).isNotNull();
+        assertThat(postKey.schema().fields()).hasSize(2);
+        assertThat(postKey.schema().field("ID")).isNotNull();
+        assertThat(postKey.schema().field("NAME")).isNotNull();
 
         stopConnector();
 
@@ -146,8 +145,8 @@ public class SignalsIT extends AbstractConnectorTest {
 
         final SourceRecord post2 = records.get(0);
         final Struct postKey2 = (Struct) post2.key();
-        Assertions.assertThat(postKey2.schema().fields()).hasSize(2);
-        Assertions.assertThat(postKey2.schema().field("ID")).isNotNull();
-        Assertions.assertThat(postKey2.schema().field("NAME")).isNotNull();
+        assertThat(postKey2.schema().fields()).hasSize(2);
+        assertThat(postKey2.schema().field("ID")).isNotNull();
+        assertThat(postKey2.schema().field("NAME")).isNotNull();
     }
 }

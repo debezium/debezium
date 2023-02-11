@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The context holds internal state necessary for book-keeping of events in active transaction.

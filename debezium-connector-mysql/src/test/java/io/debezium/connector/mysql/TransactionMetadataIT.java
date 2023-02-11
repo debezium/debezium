@@ -6,7 +6,7 @@
 
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -27,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -37,10 +38,10 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     private static final String CUSTOMER_INSERT_STMT_2 = "INSERT INTO customers (first_name, last_name, email) VALUES ('Rajesh', 'Agarwal', 'test2@abc.com' ); ";
     private static final String ORDER_INSERT_STMT = "INSERT INTO orders (order_date, purchaser, quantity, product_id) VALUES ('2016-01-16', 1001, 1, 1); ";
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-tm.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-tm.txt").toAbsolutePath();
 
     private static final String SERVER_NAME = "tm_test";
-    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transaction_metadata_test").withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "transaction_metadata_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -49,7 +50,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -58,7 +59,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -115,7 +116,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "tx.of.${database.server.name}")
+                .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "tx.of.server")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -134,7 +135,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // TX BEGIN + 4 changes + TX END
         SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
-        List<SourceRecord> txnEvents = records.recordsForTopic("tx.of." + DATABASE.getServerName());
+        List<SourceRecord> txnEvents = records.recordsForTopic(DATABASE.getServerName() + ".tx.of.server");
         assertThat(txnEvents).hasSize(2);
     }
 
@@ -145,7 +146,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .with(MySqlConnectorConfig.TRANSACTION_TOPIC, "mytransactions")
+                .with(AbstractTopicNamingStrategy.TOPIC_TRANSACTION, "mytransactions")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -164,7 +165,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // TX BEGIN + 4 changes + TX END
         SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
-        List<SourceRecord> txnEvents = records.recordsForTopic("mytransactions");
+        List<SourceRecord> txnEvents = records.recordsForTopic(DATABASE.getServerName() + ".mytransactions");
         assertThat(txnEvents).hasSize(2);
     }
 

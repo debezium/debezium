@@ -8,7 +8,7 @@ package io.debezium.connector.mongodb.transforms;
 import static io.debezium.junit.EqualityCheck.GREATER_THAN_OR_EQUAL;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion.KAFKA_241;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,18 +26,18 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Configurator;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoDbTopicSelector;
 import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Unit test for {@link ExtractNewDocumentState}.
@@ -50,7 +50,7 @@ public class ExtractNewDocumentStateTest {
 
     private Filters filters;
     private SourceInfo source;
-    private TopicSelector<CollectionId> topicSelector;
+    private TopicNamingStrategy topicNamingStrategy;
     private List<SourceRecord> produced;
 
     private ExtractNewDocumentState<SourceRecord> transformation;
@@ -64,14 +64,15 @@ public class ExtractNewDocumentStateTest {
     @Before
     public void setup() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(new MongoDbConnectorConfig(
+        MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(
                 Configuration.create()
-                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
-                        .build()));
-        topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+                        .build());
+        source = new SourceInfo(connectorConfig);
+        topicNamingStrategy = DefaultTopicNamingStrategy.create(connectorConfig);
         produced = new ArrayList<>();
 
-        transformation = new ExtractNewDocumentState<SourceRecord>();
+        transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collections.singletonMap("array.encoding", "array"));
     }
 

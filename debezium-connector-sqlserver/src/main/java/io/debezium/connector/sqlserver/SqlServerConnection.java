@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -31,15 +30,16 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DatabaseSchema;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -101,9 +101,10 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
-    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
+    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}";
 
-    private final boolean multiPartitionMode;
+    private final SqlServerJdbcConfiguration config;
+    private final boolean useSingleDatabase;
     private final String getAllChangesForTable;
     private final int queryFetchSize;
 
@@ -111,24 +112,27 @@ public class SqlServerConnection extends JdbcConnection {
 
     private boolean optionRecompile;
 
+    private static final Field AGENT_STATUS_QUERY = Field.create("sqlserver.agent.status.query")
+            .withDescription("Query to get the running status of the SQL Server Agent")
+            .withDefault(
+                    "SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';");
+
     /**
      * Creates a new connection using the supplied configuration.
      *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
-     * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
+     * @param config              {@link Configuration} instance, may not be null.
+     * @param valueConverters     {@link SqlServerValueConverters} instance
+     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
-    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
-                               SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode) {
-        super(config, createConnectionFactory(multiPartitionMode), classLoaderSupplier, OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
+    public SqlServerConnection(SqlServerJdbcConfiguration config, SqlServerValueConverters valueConverters,
+                               Set<Envelope.Operation> skippedOperations,
+                               boolean useSingleDatabase) {
+        super(config, createConnectionFactory(config, useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
 
-        if (!skippedOperations.isEmpty()) {
+        if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();
             StringBuilder getAllChangesForTableStatement = new StringBuilder(
                     "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') WHERE __$operation NOT IN (");
@@ -158,8 +162,9 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
-                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement()));
-        this.multiPartitionMode = multiPartitionMode;
+                Matcher.quoteReplacement(", " + LSN_TIMESTAMP_SELECT_STATEMENT));
+        this.config = config;
+        this.useSingleDatabase = useSingleDatabase;
 
         this.optionRecompile = false;
     }
@@ -167,35 +172,57 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Creates a new connection using the supplied configuration.
      *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param valueConverters {@link SqlServerValueConverters} instance
-     * @param classLoaderSupplier class loader supplier
-     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
-     * @param optionRecompile Includes query option RECOMPILE on incremental snapshots
+     * @param config              {@link Configuration} instance, may not be null.
+     * @param valueConverters     {@link SqlServerValueConverters} instance
+     * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
+     * @param optionRecompile     Includes query option RECOMPILE on incremental snapshots
      */
-    public SqlServerConnection(JdbcConfiguration config, SourceTimestampMode sourceTimestampMode,
-                               SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier,
-                               Set<Envelope.Operation> skippedOperations, boolean multiPartitionMode, boolean optionRecompile) {
-        this(config, sourceTimestampMode, valueConverters, classLoaderSupplier, skippedOperations, multiPartitionMode);
+    public SqlServerConnection(SqlServerJdbcConfiguration config, SqlServerValueConverters valueConverters,
+                               Set<Envelope.Operation> skippedOperations, boolean useSingleDatabase,
+                               boolean optionRecompile) {
+        this(config, valueConverters, skippedOperations, useSingleDatabase);
 
         this.optionRecompile = optionRecompile;
     }
 
-    private static String createUrlPattern(boolean multiPartitionMode) {
+    private boolean hasSkippedOperations(Set<Envelope.Operation> skippedOperations) {
+        if (!skippedOperations.isEmpty()) {
+            for (Envelope.Operation operation : skippedOperations) {
+                switch (operation) {
+                    case CREATE:
+                    case UPDATE:
+                    case DELETE:
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static ConnectionFactory createConnectionFactory(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
+        return JdbcConnection.patternBasedFactory(createUrlPattern(config, useSingleDatabase),
+                SQLServerDriver.class.getName(),
+                SqlServerConnection.class.getClassLoader(),
+                JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
+    }
+
+    @VisibleForTesting
+    protected static String createUrlPattern(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
         String pattern = URL_PATTERN;
-        if (!multiPartitionMode) {
+        if (config.getInstance() != null) {
+            pattern += "\\" + config.getInstance();
+            if (config.getPortAsString() != null) {
+                pattern += ":${" + JdbcConfiguration.PORT + "}";
+            }
+        }
+        else {
+            pattern += ":${" + JdbcConfiguration.PORT + "}";
+        }
+        if (useSingleDatabase) {
             pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
         }
 
         return pattern;
-    }
-
-    private static ConnectionFactory createConnectionFactory(boolean multiPartitionMode) {
-        return JdbcConnection.patternBasedFactory(createUrlPattern(multiPartitionMode),
-                SQLServerDriver.class.getName(),
-                SqlServerConnection.class.getClassLoader(),
-                JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
     }
 
     /**
@@ -204,7 +231,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
      */
     public String connectionString() {
-        return connectionString(createUrlPattern(multiPartitionMode));
+        return connectionString(createUrlPattern(config, useSingleDatabase));
     }
 
     @Override
@@ -349,11 +376,11 @@ public class SqlServerConnection extends JdbcConnection {
      * access to CDC table.
      *
      * @return boolean indicating the presence/absence of access
-     * @throws SQLException
      */
-    public boolean checkIfConnectedUserHasAccessToCDCTable() throws SQLException {
+    public boolean checkIfConnectedUserHasAccessToCDCTable(String databaseName) throws SQLException {
         final AtomicBoolean userHasAccess = new AtomicBoolean();
-        this.query("EXEC sys.sp_cdc_help_change_data_capture", rs -> userHasAccess.set(rs.next()));
+        final String query = replaceDatabaseNamePlaceholder("EXEC [#db].sys.sp_cdc_help_change_data_capture", databaseName);
+        this.query(query, rs -> userHasAccess.set(rs.next()));
         return userHasAccess.get();
     }
 
@@ -532,9 +559,7 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
-                                                                     Table table, T schema)
-            throws SQLException {
+    public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         final ResultSetMetaData metaData = rs.getMetaData();
         final int columnType = metaData.getColumnType(columnIndex);
 
@@ -542,13 +567,13 @@ public class SqlServerConnection extends JdbcConnection {
             return rs.getTimestamp(columnIndex);
         }
         else {
-            return super.getColumnValue(rs, columnIndex, column, table, schema);
+            return super.getColumnValue(rs, columnIndex, column, table);
         }
     }
 
     @Override
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
-                                           String orderBy) {
+                                           Optional<String> additionalCondition, String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT TOP ");
         sql
                 .append(limit)
@@ -560,6 +585,14 @@ public class SqlServerConnection extends JdbcConnection {
             sql
                     .append(" WHERE ")
                     .append(condition.get());
+            if (additionalCondition.isPresent()) {
+                sql.append(" AND ");
+                sql.append(additionalCondition.get());
+            }
+        }
+        else if (additionalCondition.isPresent()) {
+            sql.append(" WHERE ");
+            sql.append(additionalCondition.get());
         }
         sql
                 .append(" ORDER BY ")
@@ -582,5 +615,12 @@ public class SqlServerConnection extends JdbcConnection {
 
     public SqlServerDefaultValueConverter getDefaultValueConverter() {
         return defaultValueConverter;
+    }
+
+    public boolean isAgentRunning(String databaseName) throws SQLException {
+        final String query = replaceDatabaseNamePlaceholder(config().getString(AGENT_STATUS_QUERY), databaseName);
+        final boolean isRunning = queryAndMap(query,
+                singleResultMapper(rs -> rs.getBoolean(1), "SQL Server Agent running status query must return exactly one value"));
+        return isRunning;
     }
 }

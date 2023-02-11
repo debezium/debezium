@@ -43,11 +43,11 @@ https://www.postgresql.org/docs/14/logicaldecoding-output-plugin.html[PostgreSQL
 * https://github.com/debezium/postgres-decoderbufs/blob/main/README.md[decoderbufs] or
 * https://github.com/postgres/postgres/blob/master/src/backend/replication/pgoutput/pgoutput.c[pgoutput]
 
-to encode the changes in either https://github.com/google/protobuf[Protobuf] format or https://www.postgresql.org/docs/14/protocol-logicalrep-message-formats.htmllLogical replication] format.
+to encode the changes in either https://github.com/google/protobuf[Protobuf] format or https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html[Logical replication] format.
 
 [TIP]
 ====
-For simplicity, {prodname} also provides a container image based on a vanilla https://github.com/debezium/docker-images/tree/main/postgres/14[PostgreSQL server image]
+For simplicity, {prodname} also provides a container image based on a vanilla https://github.com/debezium/container-images/tree/main/postgres/14[PostgreSQL server image]
 on top of which it compiles and installs the plug-ins.
 ====
 
@@ -76,7 +76,7 @@ At the current installation example, the https://github.com/debezium/postgres-de
 The decoderbufs output plug-in produces a Protobuf message per database change.
 Each message contains new/old tuples for an updated table row..
 The plug-in *compilation and installation* is performed by executing the related commands extracted from the
-https://github.com/debezium/docker-images/blob/main/postgres/14/Dockerfile[{prodname} Dockerfile].
+https://github.com/debezium/container-images/blob/main/postgres/14/Dockerfile[{prodname} Dockerfile].
 
 Before executing the commands, make sure that the user has the privileges to write the `decoderbufs` library at the PostgreSQL `_lib_`
 directory (at the test environment, the directory is: `/usr/lib64/pgsql/`).
@@ -153,7 +153,7 @@ Once the *decoderbufs* plug-in has been installed, the database server should be
 Add the following lines at the end of the `postgresql.conf` PostgreSQL configuration file in order to include the plug-in
 at the shared libraries and to adjust some https://www.postgresql.org/docs/14/runtime-config-wal.html[WAL]
 and https://www.postgresql.org/docs/14/runtime-config-replication.html[streaming replication] settings.
-The configuration is extracted from https://github.com/debezium/docker-images/blob/main/postgres/14/postgresql.conf.sample[postgresql.conf.sample].
+The configuration is extracted from https://github.com/debezium/container-images/blob/main/postgres/14/postgresql.conf.sample[postgresql.conf.sample].
 You may need to modify it, if for example you have additionally installed `shared_preload_libraries`.
 
 .*_postgresql.conf_* _, configuration file parameters settings_

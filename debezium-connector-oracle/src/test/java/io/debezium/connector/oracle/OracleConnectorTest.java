@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +19,8 @@ import org.apache.kafka.connect.connector.Connector;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
+
 public class OracleConnectorTest {
     OracleConnector connector;
 
@@ -30,7 +32,7 @@ public class OracleConnectorTest {
     @Test
     public void testValidateUnableToConnectNoThrow() {
         Map<String, String> config = new HashMap<>();
-        config.put(OracleConnectorConfig.SERVER_NAME.name(), "dbserver1");
+        config.put(CommonConnectorConfig.TOPIC_PREFIX.name(), "dbserver1");
         config.put(OracleConnectorConfig.HOSTNAME.name(), "narnia");
         config.put(OracleConnectorConfig.PORT.name(), "4321");
         config.put(OracleConnectorConfig.DATABASE_NAME.name(), "oracle");
@@ -66,7 +68,7 @@ public class OracleConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.equals(OracleConnectorConfig.DATABASE_HISTORY)) {
+            if (expected.equals(OracleConnectorConfig.SCHEMA_HISTORY) || expected.equals(CommonConnectorConfig.TOPIC_NAMING_STRATEGY)) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,10 +32,10 @@ import io.debezium.util.Testing;
  */
 public class MySqlFloatIT extends AbstractConnectorTest {
     private static final String TABLE_NAME = "DBZ3865";
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-float.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-float.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("floatit", "float_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -45,7 +44,7 @@ public class MySqlFloatIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -54,7 +53,7 @@ public class MySqlFloatIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -85,9 +84,10 @@ public class MySqlFloatIT extends AbstractConnectorTest {
                         + "  `f4_23` FLOAT(23) DEFAULT NULL,\n"
                         + "  `f4_24` FLOAT(24) DEFAULT NULL,\n"
                         + "  `f4_25` FLOAT(25) DEFAULT NULL,\n"
+                        + "  `weight` FLOAT UNSIGNED DEFAULT '0',\n"
                         + "  PRIMARY KEY (`ID`)\n"
                         + ") ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;";
-                String insertDml = "INSERT INTO DBZ3865_2(f1, f2, f3, f4_23, f4_24, f4_25) VALUE (5.6, 5.61, 30.123456, 64.1, 64.1, 64.1);";
+                String insertDml = "INSERT INTO DBZ3865_2(f1, f2, f3, f4_23, f4_24, f4_25, weight) VALUE (5.6, 5.61, 30.123456, 64.1, 64.1, 64.1, 64.1234);";
                 conn.execute(createDdl, insertDml);
             }
         }
@@ -116,17 +116,19 @@ public class MySqlFloatIT extends AbstractConnectorTest {
     }
 
     private void assertFloatChangeRecord(SourceRecord sourceRecord) {
-        Assertions.assertThat(sourceRecord).isNotNull();
+        assertThat(sourceRecord).isNotNull();
         final Struct change = ((Struct) sourceRecord.value()).getStruct("after");
         final float f2 = (float) 5.61;
         final float f3 = (float) 30.12346;
 
-        Assertions.assertThat(change.getFloat32("f1")).isEqualTo((float) 5.6);
-        Assertions.assertThat(change.getFloat64("f2")).isEqualTo(Double.valueOf(((Number) f2).doubleValue()));
-        Assertions.assertThat(change.getFloat64("f3")).isEqualTo(Double.valueOf(((Number) f3).doubleValue()));
-        Assertions.assertThat(change.getFloat32("f4_23")).isEqualTo((float) 64.1);
-        Assertions.assertThat(change.getFloat32("f4_24")).isEqualTo((float) 64.1);
+        assertThat(change.getFloat32("f1")).isEqualTo((float) 5.6);
+        assertThat(change.getFloat64("f2")).isEqualTo(Double.valueOf(((Number) f2).doubleValue()));
+        assertThat(change.getFloat64("f3")).isEqualTo(Double.valueOf(((Number) f3).doubleValue()));
+        assertThat(change.getFloat32("f4_23")).isEqualTo((float) 64.1);
+        assertThat(change.getFloat32("f4_24")).isEqualTo((float) 64.1);
         // Mysql will convert float(25) to double type
-        Assertions.assertThat(change.getFloat64("f4_25")).isEqualTo(64.1);
+        assertThat(change.getFloat64("f4_25")).isEqualTo(64.1);
+        // Mysql will treat "float unsigned" as float type
+        assertThat(change.getFloat32("weight")).isEqualTo((float) 64.1234);
     }
 }

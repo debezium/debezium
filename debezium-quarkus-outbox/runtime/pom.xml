@@ -6,8 +6,8 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-quarkus-outbox-parent</artifactId>
-        <version>2.0.0-SNAPSHOT</version>
-	<relativePath>../pom.xml</relativePath>
+        <version>2.2.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>debezium-quarkus-outbox</artifactId>
@@ -21,28 +21,13 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-opentracing</artifactId>
             <optional>true</optional>
         </dependency>
-        <!-- Needed specifically for AdditionalJaxbMappingProducerImpl usage -->
-        <dependency>
-            <groupId>org.jboss</groupId>
-            <artifactId>jandex</artifactId>
-            <version>2.4.0.Final</version>
-        </dependency>
-        <!-- Needed primarily for @Incubating annotation -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-internal</artifactId>
-            <scope>test</scope>
+            <artifactId>debezium-quarkus-outbox-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

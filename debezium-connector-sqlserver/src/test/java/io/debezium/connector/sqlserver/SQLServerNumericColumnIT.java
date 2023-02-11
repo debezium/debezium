@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
@@ -13,7 +15,6 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,7 +58,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tablenumd");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -88,14 +89,14 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO tablenuma VALUES (111.1111, 1111111, 1111111.1, 1111111 );");
         final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablenuma");
-        Assertions.assertThat(tableA).hasSize(1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablenuma");
+        assertThat(tableA).hasSize(1);
         final Struct valueA = (Struct) tableA.get(0).value();
         assertSchema(valueA, Schema.OPTIONAL_STRING_SCHEMA);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo("111.1111");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo("1111111");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo("1111111.1");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo("1111111");
+        assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo("111.1111");
+        assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo("1111111");
+        assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo("1111111.1");
+        assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo("1111111");
         stopConnector();
     }
 
@@ -120,14 +121,14 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO tablenumb VALUES (222.2222, 22222, 22222.2, 2222222 );");
         final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.dbo.tablenumb");
-        Assertions.assertThat(results).hasSize(1);
+        final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.tablenumb");
+        assertThat(results).hasSize(1);
         final Struct valueA = (Struct) results.get(0).value();
         assertSchema(valueA, Schema.OPTIONAL_FLOAT64_SCHEMA);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(222.2222d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(22222d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(22222.2d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(2222222d);
+        assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(222.2222d);
+        assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(22222d);
+        assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(22222.2d);
+        assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(2222222d);
         stopConnector();
     }
 
@@ -151,28 +152,28 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO tablenumc VALUES (333.3333, 3333, 3333.3, 33333333 );");
         final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.dbo.tablenumc");
-        Assertions.assertThat(results).hasSize(1);
+        final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.tablenumc");
+        assertThat(results).hasSize(1);
         final Struct valueA = (Struct) results.get(0).value();
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema())
+        assertThat(valueA.schema().field("after").schema().field("cola").schema())
                 .isEqualTo(Decimal.builder(4).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema())
+        assertThat(valueA.schema().field("after").schema().field("colb").schema())
                 .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema())
+        assertThat(valueA.schema().field("after").schema().field("colc").schema())
                 .isEqualTo(Decimal.builder(1).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema())
+        assertThat(valueA.schema().field("after").schema().field("cold").schema())
                 .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(BigDecimal.valueOf(333.3333));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(BigDecimal.valueOf(3333));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(BigDecimal.valueOf(3333.3));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(BigDecimal.valueOf(33333333));
+        assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(BigDecimal.valueOf(333.3333));
+        assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(BigDecimal.valueOf(3333));
+        assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(BigDecimal.valueOf(3333.3));
+        assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(BigDecimal.valueOf(33333333));
         stopConnector();
     }
 
     private void assertSchema(Struct valueA, Schema expected) {
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema()).isEqualTo(expected);
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema()).isEqualTo(expected);
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema()).isEqualTo(expected);
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema()).isEqualTo(expected);
+        assertThat(valueA.schema().field("after").schema().field("cola").schema()).isEqualTo(expected);
+        assertThat(valueA.schema().field("after").schema().field("colb").schema()).isEqualTo(expected);
+        assertThat(valueA.schema().field("after").schema().field("colc").schema()).isEqualTo(expected);
+        assertThat(valueA.schema().field("after").schema().field("cold").schema()).isEqualTo(expected);
     }
 }

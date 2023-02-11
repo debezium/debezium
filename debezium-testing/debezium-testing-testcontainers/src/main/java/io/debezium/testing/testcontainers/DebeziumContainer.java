@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static java.time.temporal.ChronoUnit.SECONDS;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -19,7 +17,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -41,9 +39,12 @@ import okhttp3.ResponseBody;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
-    private static final String DEBEZIUM_VERSION = ContainerImageVersions.getStableVersion("debezium/connect");
+    private static final String DEBEZIUM_CONTAINER = "debezium/connect";
+    private static final String DEBEZIUM_STABLE_TAG = ContainerImageVersions.getStableVersion("debezium/connect");
+    private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;
+    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 30);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     protected static final ObjectMapper MAPPER = new ObjectMapper();
@@ -60,14 +61,19 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-        return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_STABLE_TAG));
+    }
+
+    public static DebeziumContainer nightly() {
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG));
     }
 
     private void defaultConfig() {
         setWaitStrategy(
-                new LogMessageWaitStrategy()
-                        .withRegEx(".*Session key updated.*")
-                        .withStartupTimeout(Duration.of(60, SECONDS)));
+                new HttpWaitStrategy()
+                        .forPath("/connectors")
+                        .forPort(KAFKA_CONNECT_PORT)
+                        .withStartupTimeout(DEBEZIUM_CONTAINER_STARTUP_TIMEOUT));
         withEnv("GROUP_ID", "1");
         withEnv("CONFIG_STORAGE_TOPIC", "debezium_connect_config");
         withEnv("OFFSET_STORAGE_TOPIC", "debezium_connect_offsets");
@@ -167,7 +173,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static void handleFailedResponse(Response response) {
         String responseBodyContent = "{empty response body}";
-        try (final ResponseBody responseBody = response.body()) {
+        try (ResponseBody responseBody = response.body()) {
             if (null != responseBody) {
                 responseBodyContent = responseBody.string();
             }
@@ -182,7 +188,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         final RequestBody body = RequestBody.create(payload, JSON);
         final Request request = new Request.Builder().url(fullUrl).post(body).build();
 
-        try (final Response response = CLIENT.newCall(request).execute()) {
+        try (Response response = CLIENT.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 handleFailedResponse(response);
             }
@@ -196,7 +202,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         final RequestBody body = RequestBody.create(payload, JSON);
         final Request request = new Request.Builder().url(fullUrl).put(body).build();
 
-        try (final Response response = CLIENT.newCall(request).execute()) {
+        try (Response response = CLIENT.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 handleFailedResponse(response);
             }
@@ -225,7 +231,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public boolean connectorIsNotRegistered(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorUri(connectorName)).build();
-        try (final Response response = executeGETRequest(request)) {
+        try (Response response = executeGETRequest(request)) {
             return response.code() == 404;
         }
     }
@@ -245,7 +251,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public List<String> getRegisteredConnectors() {
         final Request request = new Request.Builder().url(getConnectorsUri()).build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 return MAPPER.readValue(responseBody.string(), new TypeReference<List<String>>() {
                 });
@@ -259,7 +265,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public boolean isConnectorConfigured(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorUri(connectorName)).build();
-        try (final Response response = executeGETRequest(request)) {
+        try (Response response = executeGETRequest(request)) {
             return response.isSuccessful();
         }
     }
@@ -284,7 +290,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public Connector.State getConnectorState(String connectorName) {
         final Request request = new Request.Builder().url(getConnectorStatusUri(connectorName)).build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 return Connector.State.valueOf(parsedObject.get("connector").get("state").asText());
@@ -298,7 +304,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public Connector.State getConnectorTaskState(String connectorName, int taskNumber) {
         final Request request = new Request.Builder().url(getConnectorStatusUri(connectorName)).get().build();
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 final JsonNode tasksNode = parsedObject.get("tasks").get(taskNumber);
@@ -319,7 +325,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     public String getConnectorConfigProperty(String connectorName, String configPropertyName) {
         final Request request = new Request.Builder().url(getConnectorConfigUri(connectorName)).get().build();
 
-        try (final ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
+        try (ResponseBody responseBody = executeGETRequestSuccessfully(request).body()) {
             if (null != responseBody) {
                 final ObjectNode parsedObject = (ObjectNode) MAPPER.readTree(responseBody.string());
                 return parsedObject.get(configPropertyName).asText();
@@ -375,7 +381,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public static ConnectorConfiguration getPostgresConnectorConfiguration(PostgreSQLContainer<?> postgresContainer, int id, String... options) {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver" + id)
+                .with("topic.prefix", "dbserver" + id)
                 .with("slot.name", "debezium_" + id);
 
         if (options != null && options.length > 0) {

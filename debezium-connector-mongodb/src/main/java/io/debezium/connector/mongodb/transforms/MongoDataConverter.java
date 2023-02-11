@@ -27,6 +27,7 @@ import org.bson.BsonValue;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * MongoDataConverter handles translating MongoDB strings to Kafka Connect schemas and row data to Kafka
@@ -53,7 +54,7 @@ public class MongoDataConverter {
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
-        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(false), false);
+        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false);
     }
 
     public Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
@@ -424,12 +425,13 @@ public class MongoDataConverter {
                 final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
                 final Map<String, BsonType> union = new HashMap<>();
                 if (value.isArray()) {
-                    for (BsonValue element : value.asArray()) {
-                        subSchema(documentSchemaBuilder, union, element.asDocument());
+                    value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), true));
+                    if (documentSchemaBuilder.fields().size() == 0) {
+                        value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), false));
                     }
                 }
                 else {
-                    subSchema(documentSchemaBuilder, union, value.asDocument());
+                    subSchema(documentSchemaBuilder, union, value.asDocument(), false);
                 }
                 return documentSchemaBuilder.build();
             case ARRAY:
@@ -440,9 +442,13 @@ public class MongoDataConverter {
         }
     }
 
-    private void subSchema(SchemaBuilder documentSchemaBuilder, Map<String, BsonType> union, BsonDocument arrayDocs) {
+    private void subSchema(SchemaBuilder documentSchemaBuilder, Map<String, BsonType> union, BsonDocument arrayDocs, boolean emptyChecker) {
         for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
             final String key = fieldNamer.fieldNameFor(arrayDoc.getKey());
+            if (emptyChecker && ((arrayDoc.getValue() instanceof BsonDocument && ((BsonDocument) arrayDoc.getValue()).size() == 0)
+                    || (arrayDoc.getValue() instanceof BsonArray && ((BsonArray) arrayDoc.getValue()).size() == 0))) {
+                continue;
+            }
             final BsonType prevType = union.putIfAbsent(key, arrayDoc.getValue().getBsonType());
             if (prevType == null) {
                 addFieldSchema(arrayDoc, documentSchemaBuilder);

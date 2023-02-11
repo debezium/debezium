@@ -47,6 +47,12 @@ for archive in ${ARCHIVE_URLS}; do
     echo "[Processing] ${archive}"
     curl -OJs "${archive}" && unzip \*.zip && rm *.zip
     connectors_version=$(echo "$archive" | sed -rn 's|.*AMQ-CDC-(.*)/.*$|\1|p')
+
+    if [ -z "$connectors_version" ]; then
+          echo "[Processing] unable to parse connectors version, trying different approach"
+          connectors_version=$(echo "$archive" | rev | cut -d '/' -f 1 | rev | cut -d '-' -f 2)
+    fi
+    echo "[Processing] connectors version is ${connectors_version}"
 done
 
 connector_dirs=$(ls)

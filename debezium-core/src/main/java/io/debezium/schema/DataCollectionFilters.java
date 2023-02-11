@@ -5,6 +5,8 @@
  */
 package io.debezium.schema;
 
+import io.debezium.spi.schema.DataCollectionId;
+
 /**
  * Provides factory methods for obtaining {@link DataCollectionFilter} instances as per the current connector configuration.
  *
@@ -12,10 +14,10 @@ package io.debezium.schema;
  */
 public interface DataCollectionFilters {
 
-    public DataCollectionFilter<?> dataCollectionFilter();
+    DataCollectionFilter<?> dataCollectionFilter();
 
     @FunctionalInterface
-    public interface DataCollectionFilter<T extends DataCollectionId> {
+    interface DataCollectionFilter<T extends DataCollectionId> {
         boolean isIncluded(T id);
     }
 }

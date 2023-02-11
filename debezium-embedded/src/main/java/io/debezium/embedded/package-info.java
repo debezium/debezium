@@ -52,10 +52,10 @@ package io.debezium.embedded;
  * the correct table structure for any point in time as it reads the transaction logs. This is critical information, since the
  * data being read from the transaction log reflects the database structure at the time those records were written in the log,
  * and the database's table structure may have changed since that point in time. These connectors use a
- * {@link io.debezium.relational.history.DatabaseHistory} store to persist the database schema changes and the offsets at which
+ * {@link io.debezium.relational.history.SchemaHistory} store to persist the database schema changes and the offsets at which
  * the changes are recorded. This way, no matter at which offset the database connector starts reading the transaction log, the
  * connector will have the correct database schema for that point in time. And, just like with the
  * {@link org.apache.kafka.connect.storage.OffsetBackingStore}, the application must provide the EmbeddedConnector with a
- * {@link io.debezium.relational.history.DatabaseHistory} implementation such as the
- * {@link io.debezium.relational.history.FileDatabaseHistory} that stores the schema changes on the local file system.
+ * {@link io.debezium.relational.history.SchemaHistory} implementation such as the
+ * {@link io.debezium.storage.file.history.FileSchemaHistory} that stores the schema changes on the local file system.
  */

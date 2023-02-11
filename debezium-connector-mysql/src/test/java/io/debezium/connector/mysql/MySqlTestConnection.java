@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -37,7 +40,8 @@ public class MySqlTestConnection extends JdbcConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestDatabase(String databaseName) {
-        return new MySqlTestConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return new MySqlTestConnection(JdbcConfiguration.copy(
+                Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX).merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)))
                 .withDatabase(databaseName)
                 .with("characterEncoding", "utf8")
                 .build());
@@ -50,7 +54,8 @@ public class MySqlTestConnection extends JdbcConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
-        JdbcConfiguration.Builder builder = JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        JdbcConfiguration.Builder builder = JdbcConfiguration.copy(
+                Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX).merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)))
                 .withDatabase(databaseName)
                 .with("characterEncoding", "utf8");
         urlProperties.forEach(builder::with);
@@ -66,7 +71,8 @@ public class MySqlTestConnection extends JdbcConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestDatabase(String databaseName, String username, String password) {
-        return new MySqlTestConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return new MySqlTestConnection(JdbcConfiguration.copy(
+                Configuration.fromSystemProperties(DATABASE_CONFIG_PREFIX).merge(Configuration.fromSystemProperties(DRIVER_CONFIG_PREFIX)))
                 .withDatabase(databaseName)
                 .withUser(username)
                 .withPassword(password)
@@ -117,7 +123,7 @@ public class MySqlTestConnection extends JdbcConnection {
      * @param config the configuration; may not be null
      */
     public MySqlTestConnection(JdbcConfiguration config) {
-        super(addDefaultSettings(config), FACTORY, null, null, "`", "`");
+        super(addDefaultSettings(config), FACTORY, "`", "`");
     }
 
     public MySqlVersion getMySqlVersion() {

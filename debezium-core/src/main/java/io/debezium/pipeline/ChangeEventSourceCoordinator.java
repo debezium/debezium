@@ -36,8 +36,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
-import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Threads;
 
@@ -187,9 +187,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(partition, offsetContext));
     }
 
-    public void commitOffset(Map<String, ?> offset) {
+    public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
-            streamingSource.commitOffset(offset);
+            streamingSource.commitOffset(partition, offset);
         }
     }
 

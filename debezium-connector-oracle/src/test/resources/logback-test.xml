@@ -19,6 +19,13 @@
     <logger name="io.debezium" level="info" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+
+    <logger
+        name="io.debezium.connector.oracle.logminer.LogMinerAdapter"
+        level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
     <logger
         name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
         level="warn" additivity="false">

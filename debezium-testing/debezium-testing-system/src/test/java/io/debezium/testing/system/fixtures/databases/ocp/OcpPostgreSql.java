@@ -18,7 +18,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/postgresql/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/postgresql/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/postgresql/service.yaml";
 
     public OcpPostgreSql(ExtensionContext.Store store) {
@@ -32,7 +31,7 @@ public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_POSTGRESQL)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .build();
         return deployer.deploy();
     }

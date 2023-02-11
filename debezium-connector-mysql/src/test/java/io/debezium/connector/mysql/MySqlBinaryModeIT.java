@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
@@ -30,10 +30,10 @@ import io.debezium.util.Testing;
  */
 public class MySqlBinaryModeIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binary-mode.txt")
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binary-mode.txt")
             .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("binarymodeit", "binary_mode_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -42,7 +42,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -51,7 +51,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -143,6 +143,46 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .with(MySqlConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int createDatabaseCount = 1;
+        int createTableCount = 1;
+        int insertCount = 1;
+        SourceRecords sourceRecords = consumeRecordsByTopic(createDatabaseCount + createTableCount + insertCount);
+        stopConnector();
+        assertThat(sourceRecords).isNotNull();
+
+        List<SourceRecord> topicSourceRecords = sourceRecords.recordsForTopic(DATABASE.topicForTable("dbz_1814_binary_mode_test"));
+        assertThat(topicSourceRecords).hasSize(1);
+
+        SourceRecord topicSourceRecord = topicSourceRecords.get(0);
+        Struct kafkaDataStructure = (Struct) ((Struct) topicSourceRecord.value()).get("after");
+        String expectedValue = "AQID";
+        assertEquals(expectedValue, kafkaDataStructure.get("blob_col"));
+        assertEquals(expectedValue, kafkaDataStructure.get("tinyblob_col"));
+        assertEquals(expectedValue, kafkaDataStructure.get("mediumblob_col"));
+        assertEquals(expectedValue, kafkaDataStructure.get("longblob_col"));
+        assertEquals(expectedValue, kafkaDataStructure.get("binary_col"));
+        assertEquals(expectedValue, kafkaDataStructure.get("varbinary_col"));
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        sourceRecords.forEach(this::validate);
+    }
+
+    @Test
+    @FixFor("DBZ-5544")
+    public void shouldReceiveBase64UrlSafeBinary() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE)
                 .build();
 
         // Start the connector ...

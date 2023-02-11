@@ -18,10 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
 
@@ -30,26 +28,20 @@ import io.debezium.text.ParsingException;
  *
  * @author Roman Kuchár <kucharrom@gmail.com>.
  */
-public class AlterTableParserListener extends MySqlParserBaseListener {
+public class AlterTableParserListener extends TableCommonParserListener {
 
     private static final int STARTING_INDEX = 1;
 
     private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
 
-    private final MySqlAntlrDdlParser parser;
-    private final List<ParseTreeListener> listeners;
-
-    private TableEditor tableEditor;
     private ColumnEditor defaultValueColumnEditor;
-    private ColumnDefinitionParserListener columnDefinitionListener;
     private DefaultValueParserListener defaultValueListener;
 
     private List<ColumnEditor> columnEditors;
     private int parsingColumnIndex = STARTING_INDEX;
 
     public AlterTableParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
-        this.parser = parser;
-        this.listeners = listeners;
+        super(parser, listeners);
     }
 
     @Override
@@ -184,7 +176,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
             String newColumnName = parser.parseName(ctx.newColumn);
-            if (newColumnName != null && !column.name().equalsIgnoreCase(newColumnName)) {
+            if (newColumnName != null && !column.name().equals(newColumnName)) {
                 tableEditor.renameColumn(column.name(), newColumnName);
             }
 
@@ -307,9 +299,9 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterAlterByAddUniqueKey(MySqlParser.AlterByAddUniqueKeyContext ctx) {
         parser.runIfNotNull(() -> {
-            if (!tableEditor.hasPrimaryKey()) {
+            if (!tableEditor.hasPrimaryKey() && parser.isTableUniqueIndexIncluded(ctx.indexColumnNames(), tableEditor)) {
                 // this may eventually get overwritten by a real PK
-                parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
+                parser.parseUniqueIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
         }, tableEditor);
         super.enterAlterByAddUniqueKey(ctx);
@@ -346,7 +338,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             Column column = columnDefinitionListener.getColumn();
             tableEditor.addColumn(column);
             String newColumnName = parser.parseName(ctx.newColumn);
-            if (newColumnName != null && !column.name().equalsIgnoreCase(newColumnName)) {
+            if (newColumnName != null && !column.name().equals(newColumnName)) {
                 tableEditor.renameColumn(column.name(), newColumnName);
             }
             listeners.remove(columnDefinitionListener);

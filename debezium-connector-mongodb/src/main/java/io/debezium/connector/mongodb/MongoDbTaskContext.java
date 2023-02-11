@@ -7,10 +7,11 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * @author Randall Hauch
@@ -19,7 +20,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     private final Filters filters;
     private final SourceInfo source;
-    private final TopicSelector<CollectionId> topicSelector;
+    private final TopicNamingStrategy topicNamingStrategy;
     private final String serverName;
     private final ConnectionContext connectionContext;
     private final MongoDbConnectorConfig connectorConfig;
@@ -28,19 +29,18 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super(Module.contextName(), config.getString(MongoDbConnectorConfig.LOGICAL_NAME), Collections::emptySet);
+        super(Module.contextName(), config.getString(CommonConnectorConfig.TOPIC_PREFIX), config.getString(MongoDbConnectorConfig.TASK_ID), Collections::emptySet);
 
-        final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
         this.connectorConfig = new MongoDbConnectorConfig(config);
         this.source = new SourceInfo(connectorConfig);
-        this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, connectorConfig.getHeartbeatTopicsPrefix());
-        this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
+        this.topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY);
+        this.serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.connectionContext = new ConnectionContext(config);
     }
 
-    public TopicSelector<CollectionId> topicSelector() {
-        return topicSelector;
+    public TopicNamingStrategy<CollectionId> topicNamingStrategy() {
+        return topicNamingStrategy;
     }
 
     public Filters filters() {

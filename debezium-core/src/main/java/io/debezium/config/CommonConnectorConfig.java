@@ -11,8 +11,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -25,6 +25,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +39,12 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
-import io.debezium.relational.history.KafkaDatabaseHistory;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -53,6 +54,8 @@ import io.debezium.util.Strings;
  */
 public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
+    public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
+    public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
@@ -184,6 +187,11 @@ public abstract class CommonConnectorConfig {
         BASE64("base64", SchemaBuilder::string),
 
         /**
+         * Represent binary values as base64-url-safe-encoded string
+         */
+        BASE64_URL_SAFE("base64-url-safe", SchemaBuilder::string),
+
+        /**
          * Represents binary values as hex-encoded (base16) string
          */
         HEX("hex", SchemaBuilder::string);
@@ -253,7 +261,12 @@ public abstract class CommonConnectorConfig {
         /**
          * Adjust names for compatibility with Avro
          */
-        AVRO("avro");
+        AVRO("avro"),
+
+        /**
+         * Adjust names for compatibility with Avro, replace invalid character to corresponding unicode
+         */
+        AVRO_UNICODE("avro_unicode");
 
         private final String value;
 
@@ -267,10 +280,14 @@ public abstract class CommonConnectorConfig {
         }
 
         public SchemaNameAdjuster createAdjuster() {
-            if (this == SchemaNameAdjustmentMode.AVRO) {
-                return SchemaNameAdjuster.create();
+            switch (this) {
+                case AVRO:
+                    return SchemaNameAdjuster.AVRO;
+                case AVRO_UNICODE:
+                    return SchemaNameAdjuster.AVRO_UNICODE;
+                default:
+                    return SchemaNameAdjuster.NO_OP;
             }
-            return SchemaNameAdjuster.NO_OP;
         }
 
         /**
@@ -293,6 +310,68 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined FieldNameAdjustmentMode options
+     */
+    public enum FieldNameAdjustmentMode implements EnumeratedValue {
+
+        /**
+         * Do not adjust names
+         */
+        NONE("none"),
+
+        /**
+         * Adjust names for compatibility with Avro
+         */
+        AVRO("avro"),
+
+        /**
+         * Adjust names for compatibility with Avro, replace invalid character to corresponding unicode
+         */
+        AVRO_UNICODE("avro_unicode");
+
+        private final String value;
+
+        FieldNameAdjustmentMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public SchemaNameAdjuster createAdjuster() {
+            switch (this) {
+                case AVRO:
+                    return SchemaNameAdjuster.AVRO_FIELD_NAMER;
+                case AVRO_UNICODE:
+                    return SchemaNameAdjuster.AVRO_UNICODE_FIELD_NAMER;
+                default:
+                    return SchemaNameAdjuster.NO_OP;
+            }
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static FieldNameAdjustmentMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (FieldNameAdjustmentMode option : FieldNameAdjustmentMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
@@ -301,9 +380,23 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = "database.";
+    public static final String DRIVER_CONFIG_PREFIX = "driver.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
+
+    public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
+            .withDisplayName("Topic prefix")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(CommonConnectorConfig::validateTopicName)
+            .required()
+            .withDescription("Topic prefix that identifies and provides a namespace for the particular database " +
+                    "server/cluster is capturing changes. The topic prefix should be unique across all other connectors, " +
+                    "since it is used as a prefix for all Kafka topic names that receive events emitted by this connector. " +
+                    "Only alphanumeric characters, hyphens, dots and underscores must be accepted.");
 
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
@@ -421,15 +514,6 @@ public abstract class CommonConnectorConfig {
             .withDescription(
                     "This setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
 
-    public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
-            .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 18))
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Whether field names will be sanitized to Avro naming conventions")
-            .withDefault(Boolean.FALSE);
-
     public static final Field PROVIDE_TRANSACTION_METADATA = Field.create("provide.transaction.metadata")
             .withDisplayName("Store transaction metadata information in a dedicated topic.")
             .withType(Type.BOOLEAN)
@@ -460,15 +544,16 @@ public abstract class CommonConnectorConfig {
                     + "The converters are defined using '<converter.prefix>.type' config option and configured using options '<converter.prefix>.<option>'");
 
     public static final Field SKIPPED_OPERATIONS = Field.create("skipped.operations")
-            .withDisplayName("skipped Operations")
+            .withDisplayName("Skipped Operations")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 11))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
+            .withDefault("t")
             .withDescription(
                     "The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes, 't' for truncates, and 'none' to indicate nothing skipped. "
-                            + "By default, no operations will be skipped.");
+                            + "By default, only truncate operations will be skipped.");
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
             .withDisplayName("Binary Handling")
@@ -479,17 +564,30 @@ public abstract class CommonConnectorConfig {
             .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including: "
                     + "'bytes' represents binary data as byte array (default); "
                     + "'base64' represents binary data as base64-encoded string; "
+                    + "'base64-url-safe' represents binary data as base64-url-safe-encoded string; "
                     + "'hex' represents binary data as hex-encoded (base16) string");
 
     public static final Field SCHEMA_NAME_ADJUSTMENT_MODE = Field.create("schema.name.adjustment.mode")
             .withDisplayName("Schema Name Adjustment")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
-            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.AVRO)
+            .withEnum(SchemaNameAdjustmentMode.class, SchemaNameAdjustmentMode.NONE)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Specify how schema names should be adjusted for compatibility with the message converter used by the connector, including: "
-                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore (default); "
-                    + "'none' does not apply any adjustment");
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore; "
+                    + "'avro_unicode' replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java;"
+                    + "'none' does not apply any adjustment (default)");
+
+    public static final Field FIELD_NAME_ADJUSTMENT_MODE = Field.create("field.name.adjustment.mode")
+            .withDisplayName("Field Name Adjustment")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 7))
+            .withEnum(FieldNameAdjustmentMode.class, FieldNameAdjustmentMode.NONE)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how field names should be adjusted for compatibility with the message converter used by the connector, including: "
+                    + "'avro' replaces the characters that cannot be used in the Avro type name with underscore; "
+                    + "'avro_unicode' replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java;"
+                    + "'none' does not apply any adjustment (default)");
 
     public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
             .withDisplayName("Query fetch size")
@@ -519,15 +617,15 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
 
-    public static final Field TRANSACTION_TOPIC = Field.create("transaction.topic")
-            .withDisplayName("Transaction topic name")
+    public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
+            .withDisplayName("Topic naming strategy class")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
-            .withType(Type.STRING)
+            .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDefault("${database.server.name}.transaction")
-            .withDescription(
-                    "The name of the transaction metadata topic. The placeholder ${database.server.name} can be used for referring to the connector's logical name; defaults to ${database.server.name}.transaction.");
+            .withDescription("The name of the TopicNamingStrategy class that should be used to determine the topic name " +
+                    "for data change, schema change, transaction, heartbeat event etc.")
+            .withDefault(SchemaTopicNamingStrategy.class.getName());
 
     public static final Field CUSTOM_RETRIABLE_EXCEPTION = Field.createInternal("custom.retriable.exception")
             .withDisplayName("Regular expression to match the exception message.")
@@ -557,12 +655,11 @@ public abstract class CommonConnectorConfig {
                     QUERY_FETCH_SIZE)
             .events(
                     CUSTOM_CONVERTERS,
-                    SANITIZE_FIELD_NAMES,
                     TOMBSTONES_ON_DELETE,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                     SIGNAL_DATA_COLLECTION,
-                    TRANSACTION_TOPIC)
+                    TOPIC_NAMING_STRATEGY)
             .create();
 
     private final Configuration config;
@@ -571,7 +668,7 @@ public abstract class CommonConnectorConfig {
     private final int maxBatchSize;
     private final long maxQueueSizeInBytes;
     private final Duration pollInterval;
-    private final String logicalName;
+    protected final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration heartbeatInterval;
     private final Duration snapshotDelay;
@@ -582,25 +679,24 @@ public abstract class CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
-    private final boolean sanitizeFieldNames;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
+    private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
-    private final String transactionTopic;
     private final String taskId;
 
-    protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
+    protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
-        this.logicalName = logicalName;
+        this.logicalName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
@@ -611,15 +707,14 @@ public abstract class CommonConnectorConfig {
         this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.incrementalSnapshotAllowSchemaChanges = config.getBoolean(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES);
         this.schemaNameAdjustmentMode = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE));
+        this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
-        this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.skippedOperations = determineSkippedOperations(config);
-        this.transactionTopic = config.getString(TRANSACTION_TOPIC).replace("${database.server.name}", logicalName);
         this.taskId = config.getString(TASK_ID);
     }
 
@@ -723,13 +818,6 @@ public abstract class CommonConnectorConfig {
     }
 
     /**
-     * Returns the name to be used for the connector's TX metadata topic.
-     */
-    public String getTransactionTopic() {
-        return transactionTopic;
-    }
-
-    /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
     public boolean supportsOperationFiltering() {
@@ -742,6 +830,24 @@ public abstract class CommonConnectorConfig {
 
     public boolean isIncrementalSnapshotSchemaChangesEnabled() {
         return supportsSchemaChangesDuringIncrementalSnapshot() && incrementalSnapshotAllowSchemaChanges;
+    }
+
+    @SuppressWarnings("unchecked")
+    public TopicNamingStrategy getTopicNamingStrategy(Field topicNamingStrategyField) {
+        return getTopicNamingStrategy(topicNamingStrategyField, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public TopicNamingStrategy getTopicNamingStrategy(Field topicNamingStrategyField, boolean multiPartitionMode) {
+        Properties props = config.asProperties();
+        props.put(MULTI_PARTITION_MODE, multiPartitionMode);
+        String strategyName = config.getString(topicNamingStrategyField);
+        TopicNamingStrategy topicNamingStrategy = config.getInstance(topicNamingStrategyField, TopicNamingStrategy.class, props);
+        if (topicNamingStrategy == null) {
+            throw new ConnectException("Unable to instantiate the topic naming strategy class " + strategyName);
+        }
+        LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
+        return topicNamingStrategy;
     }
 
     @SuppressWarnings("unchecked")
@@ -761,10 +867,6 @@ public abstract class CommonConnectorConfig {
     @SuppressWarnings("unchecked")
     public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker() {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
-    }
-
-    public boolean getSanitizeFieldNames() {
-        return sanitizeFieldNames;
     }
 
     public EnumSet<Envelope.Operation> getSkippedOperations() {
@@ -881,18 +983,6 @@ public abstract class CommonConnectorConfig {
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
     }
 
-    public static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
-        String serverName = config.getString(field);
-        String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
-
-        if (Objects.equals(serverName, historyTopicName)) {
-            problems.accept(field, serverName, "Must not have the same value as " + KafkaDatabaseHistory.TOPIC.name());
-            return 1;
-        }
-
-        return 0;
-    }
-
     /**
      * Returns the connector-specific {@link SourceInfoStructMaker} based on the given configuration.
      */
@@ -902,8 +992,15 @@ public abstract class CommonConnectorConfig {
         return binaryHandlingMode;
     }
 
-    public SchemaNameAdjustmentMode schemaNameAdjustmentMode() {
-        return schemaNameAdjustmentMode;
+    public SchemaNameAdjuster schemaNameAdjuster() {
+        return schemaNameAdjustmentMode.createAdjuster();
+    }
+
+    public SchemaNameAdjuster fieldNameAdjuster() {
+        if (fieldNameAdjustmentMode == FieldNameAdjustmentMode.NONE && isUsingAvroConverter(config)) {
+            return FieldNameAdjustmentMode.AVRO.createAdjuster();
+        }
+        return fieldNameAdjustmentMode.createAdjuster();
     }
 
     public String getSignalingDataCollectionId() {
@@ -940,11 +1037,23 @@ public abstract class CommonConnectorConfig {
         return taskId;
     }
 
-    public Heartbeat createHeartbeat(TopicSelector<? extends DataCollectionId> topicSelector, SchemaNameAdjuster schemaNameAdjuster,
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
-        return new HeartbeatImpl(getHeartbeatInterval(), topicSelector.getHeartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+        return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+    }
+
+    public static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
+        String name = config.getString(field);
+
+        if (name != null) {
+            if (!TOPIC_NAME_PATTERN.asPredicate().test(name)) {
+                problems.accept(field, name, name + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
+                return 1;
+            }
+        }
+        return 0;
     }
 }

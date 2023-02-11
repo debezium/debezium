@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -22,13 +23,11 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The main task executing streaming from SQL Server.
@@ -60,28 +59,29 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         // By default do not load whole result sets into memory
         config = config.edit()
-                .withDefault("database.responseBuffering", "adaptive")
-                .withDefault("database.fetchSize", 10_000)
+                .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "responseBuffering", "adaptive")
+                .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "fetchSize", 10_000)
                 .build();
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(
+                CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
-        dataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), connectorConfig.getSourceTimestampMode(), valueConverters,
-                () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled(), connectorConfig.getOptionRecompile());
-        metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), connectorConfig.getSourceTimestampMode(), valueConverters,
-                () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled());
+        dataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
+                connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(),
+                connectorConfig.getOptionRecompile());
+        metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
+                connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicSelector, schemaNameAdjuster);
+        this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
+                schemaNameAdjuster);
         this.schema.initializeStorage();
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
-                new SqlServerPartition.Provider(connectorConfig, config),
+                new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
         schema.recover(offsets);
@@ -103,7 +103,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
-                topicSelector,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -117,7 +117,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                createChangeEventSourceMetricsFactory(connectorConfig.isMultiPartitionModeEnabled(), offsets),
+                new SqlServerMetricsFactory(offsets.getPartitions()),
                 dispatcher,
                 schema,
                 clock);
@@ -166,15 +166,5 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
-    }
-
-    private ChangeEventSourceMetricsFactory<SqlServerPartition> createChangeEventSourceMetricsFactory(boolean multiPartitionMode,
-                                                                                                      Offsets<SqlServerPartition, SqlServerOffsetContext> offsets) {
-        if (multiPartitionMode) {
-            return new SqlServerMetricsFactory(offsets.getPartitions());
-        }
-        else {
-            return new DefaultChangeEventSourceMetricsFactory<>();
-        }
     }
 }

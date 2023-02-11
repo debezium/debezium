@@ -38,7 +38,7 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
     /**
      * Special values for floating-point and numeric types
      */
-    private static enum SpecialValue {
+    private enum SpecialValue {
         NAN,
         POSITIVE_INFINITY,
         NEGATIVE_INFINITY;
@@ -100,7 +100,6 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
     /**
      * Converts a value from its logical format (BigDecimal/special) to its string representation
      *
-     * @param struct the strut to put data in
      * @return the encoded value
      */
     @Override
@@ -144,7 +143,7 @@ public class SpecialValueDecimal implements Serializable, ValueWrapper<BigDecima
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a decimal number depending on {@link JdbcValueConverters.DecimalMode}. You
+     * Returns a {@link SchemaBuilder} for a decimal number depending on {@link DecimalMode}. You
      * can use the resulting schema builder to set additional schema settings such as required/optional, default value,
      * and documentation.
      *

@@ -42,7 +42,13 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         }
         if (ctx.constant() != null) {
             if (ctx.constant().stringLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
+                if (ctx.constant().stringLiteral().COLLATE() == null) {
+                    columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
+                }
+                else {
+                    columnEditor.defaultValueExpression(
+                            sign + unquote(ctx.constant().stringLiteral().STRING_LITERAL(0).getText()));
+                }
             }
             else if (ctx.constant().decimalLiteral() != null) {
                 columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
@@ -88,7 +94,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private String unquote(String stringLiteral) {
-        if (stringLiteral != null && stringLiteral.startsWith("'") && stringLiteral.endsWith("'")) {
+        if (stringLiteral != null && ((stringLiteral.startsWith("'") && stringLiteral.endsWith("'"))
+                || (stringLiteral.startsWith("\"") && stringLiteral.endsWith("\"")))) {
             return stringLiteral.substring(1, stringLiteral.length() - 1);
         }
         return stringLiteral;

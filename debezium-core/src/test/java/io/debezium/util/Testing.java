@@ -5,8 +5,8 @@
  */
 package io.debezium.util;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.Fail.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +19,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-import org.fest.assertions.Fail;
 import org.junit.Before;
 
 import io.debezium.util.Stopwatch.Statistics;
@@ -39,7 +38,7 @@ public interface Testing {
         Timer.reset();
     }
 
-    public static final class Print {
+    final class Print {
         private static boolean enabled = false;
 
         public static void enable() {
@@ -55,13 +54,13 @@ public interface Testing {
         }
     }
 
-    public static void print(Object message) {
+    static void print(Object message) {
         if (message != null && Print.enabled) {
             System.out.println(message);
         }
     }
 
-    public static void print(int length, String leader, Object message) {
+    static void print(int length, String leader, Object message) {
         if (message != null && Print.enabled) {
             int len = leader.length();
             System.out.print(leader);
@@ -74,7 +73,7 @@ public interface Testing {
         }
     }
 
-    public static final class Debug {
+    final class Debug {
         private static boolean enabled = false;
 
         public static void enable() {
@@ -90,25 +89,25 @@ public interface Testing {
         }
     }
 
-    public static void debug(Object message) {
+    static void debug(Object message) {
         if (message != null && Debug.enabled) {
             System.out.println(message);
         }
     }
 
-    public static void printError(Object message) {
+    static void printError(Object message) {
         if (message != null) {
             System.err.println(message);
         }
     }
 
-    public static void printError(Throwable throwable) {
+    static void printError(Throwable throwable) {
         if (throwable != null) {
             throwable.printStackTrace();
         }
     }
 
-    public static void printError(String message, Throwable throwable) {
+    static void printError(String message, Throwable throwable) {
         printError(message);
         printError(throwable);
     }
@@ -116,14 +115,14 @@ public interface Testing {
     /**
      * Network-related utility methods.
      */
-    public static interface Network {
+    interface Network {
         /**
          * Find a port that is available. This method starts a {@link ServerSocket} and obtains the port on which the socket is
          * listening, and then shuts down the socket so the port becomes available.
          *
          * @return the number of the now-available port
          */
-        public static int getAvailablePort() {
+        static int getAvailablePort() {
             return IoUtil.getAvailablePort();
         }
 
@@ -132,12 +131,12 @@ public interface Testing {
     /**
      * File system utility methods.
      */
-    public static interface Files {
+    interface Files {
 
-        public static final String DBZ_TEST_DATA_DIR_ENV_VAR_NAME = "DBZ_TEST_DATA_DIR";
-        public static final String DBZ_TEST_DATA_DIR_SYSTEM_PROPERTY_KEY = "dbz.test.data.dir";
+        String DBZ_TEST_DATA_DIR_ENV_VAR_NAME = "DBZ_TEST_DATA_DIR";
+        String DBZ_TEST_DATA_DIR_SYSTEM_PROPERTY_KEY = "dbz.test.data.dir";
 
-        static final String DATA_DIR = determineTestDataDir();
+        String DATA_DIR = determineTestDataDir();
 
         static String determineTestDataDir() {
             String value = System.getProperty(DBZ_TEST_DATA_DIR_SYSTEM_PROPERTY_KEY);
@@ -160,7 +159,7 @@ public interface Testing {
          * @param testClass the test class, used for accessing the class loader
          * @return the string representation
          */
-        public static InputStream readResourceAsStream(String pathOnClasspath, Class<?> testClass) {
+        static InputStream readResourceAsStream(String pathOnClasspath, Class<?> testClass) {
             InputStream stream = testClass.getClassLoader().getResourceAsStream(pathOnClasspath);
             assertThat(stream).isNotNull();
             return stream;
@@ -172,7 +171,7 @@ public interface Testing {
          * @param pathOnClasspath the path of the resource on the classpath
          * @return the string representation
          */
-        public static InputStream readResourceAsStream(String pathOnClasspath) {
+        static InputStream readResourceAsStream(String pathOnClasspath) {
             return readResourceAsStream(pathOnClasspath, Testing.class);
         }
 
@@ -182,12 +181,12 @@ public interface Testing {
          * @param pathOnClasspath the path of the resource on the classpath
          * @return the string representation
          */
-        public static String readResourceAsString(String pathOnClasspath) {
+        static String readResourceAsString(String pathOnClasspath) {
             try (InputStream stream = readResourceAsStream(pathOnClasspath)) {
                 return IoUtil.read(stream);
             }
             catch (IOException e) {
-                Fail.fail("Unable to read '" + pathOnClasspath + "'", e);
+                fail("Unable to read '" + pathOnClasspath + "'", e);
                 return null;
             }
         }
@@ -198,7 +197,7 @@ public interface Testing {
          * @param relativePath the path of the directory within the test data directory; may not be null
          * @return the reference to the existing readable and writable directory
          */
-        public static File createTestingDirectory(String relativePath) {
+        static File createTestingDirectory(String relativePath) {
             Path dirPath = createTestingPath(relativePath);
             return IoUtil.createDirectory(dirPath);
         }
@@ -216,7 +215,7 @@ public interface Testing {
          *
          * @return the reference to the existing readable and writable file
          */
-        public static File createTestingFile() {
+        static File createTestingFile() {
             return createTestingFile(UUID.randomUUID().toString());
         }
 
@@ -226,7 +225,7 @@ public interface Testing {
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
-        public static File createTestingFile(String relativePath) {
+        static File createTestingFile(String relativePath) {
             Path path = createTestingPath(relativePath);
             return IoUtil.createFile(path);
         }
@@ -237,7 +236,7 @@ public interface Testing {
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
-        public static File createTestingFile(Path relativePath) {
+        static File createTestingFile(Path relativePath) {
             Path path = relativePath.toAbsolutePath();
             if (!inTestDataDir(path)) {
                 throw new IllegalStateException("Expecting '" + relativePath + "' to be within the testing directory");
@@ -251,7 +250,7 @@ public interface Testing {
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
-        public static Path createTestingPath(String relativePath) {
+        static Path createTestingPath(String relativePath) {
             return Paths.get(dataDir(), relativePath).toAbsolutePath();
         }
 
@@ -263,7 +262,7 @@ public interface Testing {
          * @return the reference to the existing readable and writable directory
          * @throws IOException if there is a problem deleting the files at this path
          */
-        public static File createTestingDirectory(String relativePath, boolean removeExistingContent) throws IOException {
+        static File createTestingDirectory(String relativePath, boolean removeExistingContent) throws IOException {
             Path dirPath = createTestingPath(relativePath);
             return IoUtil.createDirectory(dirPath, removeExistingContent);
         }
@@ -274,7 +273,7 @@ public interface Testing {
          *
          * @param path the path to the file or folder in the target directory
          */
-        public static void delete(String path) {
+        static void delete(String path) {
             if (path != null) {
                 delete(Paths.get(path));
             }
@@ -286,7 +285,7 @@ public interface Testing {
          *
          * @param fileOrFolder the file or folder in the target directory
          */
-        public static void delete(File fileOrFolder) {
+        static void delete(File fileOrFolder) {
             if (fileOrFolder != null) {
                 delete(fileOrFolder.toPath());
             }
@@ -298,7 +297,7 @@ public interface Testing {
          *
          * @param path the path to the file or folder in the target directory
          */
-        public static void delete(Path path) {
+        static void delete(Path path) {
             if (path != null) {
                 path = path.toAbsolutePath();
                 if (inTestDataDir(path)) {
@@ -321,7 +320,7 @@ public interface Testing {
          * @param file the file or directory; may not be null
          * @return true if inside the test data directory, or false otherwise
          */
-        public static boolean inTestDataDir(File file) {
+        static boolean inTestDataDir(File file) {
             return inTestDataDir(file.toPath());
         }
 
@@ -331,29 +330,29 @@ public interface Testing {
          * @param path the path to the file or directory; may not be null
          * @return true if inside the test data directory, or false otherwise
          */
-        public static boolean inTestDataDir(Path path) {
+        static boolean inTestDataDir(Path path) {
             Path target = FileSystems.getDefault().getPath(dataDir()).toAbsolutePath();
             return path.toAbsolutePath().startsWith(target);
         }
     }
 
-    default public Statistics once(InterruptableFunction runnable) throws InterruptedException {
+    default Statistics once(InterruptableFunction runnable) throws InterruptedException {
         return Timer.time(null, 1, runnable, null);
     }
 
-    default public <T> Statistics once(Callable<T> runnable, Consumer<T> cleanup) throws InterruptedException {
+    default <T> Statistics once(Callable<T> runnable, Consumer<T> cleanup) throws InterruptedException {
         return Timer.time(null, 1, runnable, cleanup);
     }
 
-    default public Statistics time(String desc, int repeat, InterruptableFunction runnable) throws InterruptedException {
+    default Statistics time(String desc, int repeat, InterruptableFunction runnable) throws InterruptedException {
         return Timer.time(desc, repeat, runnable, null);
     }
 
-    default public <T> Statistics time(String desc, int repeat, Callable<T> runnable, Consumer<T> cleanup) throws InterruptedException {
+    default <T> Statistics time(String desc, int repeat, Callable<T> runnable, Consumer<T> cleanup) throws InterruptedException {
         return Timer.time(desc, repeat, runnable, cleanup);
     }
 
-    public static final class Timer {
+    final class Timer {
         private static Stopwatch sw = Stopwatch.accumulating();
         private static StopwatchSet sws = Stopwatch.multiple();
 
@@ -394,8 +393,8 @@ public interface Testing {
     }
 
     @FunctionalInterface
-    public static interface InterruptableFunction extends Callable<Void> {
+    interface InterruptableFunction extends Callable<Void> {
         @Override
-        public Void call() throws InterruptedException;
+        Void call() throws InterruptedException;
     }
 }

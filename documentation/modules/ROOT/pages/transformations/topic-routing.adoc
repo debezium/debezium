@@ -81,7 +81,11 @@ In the example, the regular expression, `pass:[(.*)customers_shard(.*)]` matches
 
 `topic.replacement`:: Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. In this example, records for the three sharded tables listed above would be routed to the `myserver.mydb.customers_all_shards` topic.
 
-`schema.name.adjustment.mode`:: Specifies how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector. The value can be `avro` (default) or `none`.
+`schema.name.adjustment.mode`:: Specifies how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector. The value can be `none` (default) or `avro`.
+
+.Customizing the configuration
+To customize the configuration you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement] that specifies the tables that you want the transformation to process, or not to process.
+A predicate might be useful if you configure the SMT to route tables that match a regular expression, and you do not want the SMT to reroute one particular table that matches the expression.
 
 // Type: procedure
 // ModuleID: ensuring-unique-keys-across-debezium-records-routed-to-the-same-topic
@@ -147,7 +151,7 @@ Because the structure of these other messages differs from the structure of the 
 
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:by-logical-table-router-topic-regex[topic.regex] configuration option for the SMT.
 
 ifdef::community[]
@@ -195,8 +199,8 @@ Specify `false` if you do not want the transformation to add a key field.  For e
 |Specifies a regular expression for determining the value of the inserted key field in terms of the groups captured by the expression specified for `key.field.regex`. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default.
 
 |[[by-logical-table-router-schema-name-adjustment-mode]]xref:by-logical-table-router-schema-name-adjustment-mode[`schema.name.adjustment.mode`]
-|`avro`
-|Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including: `avro` replaces the characters that cannot be used in the Avro type name with underscore (default), `none` does not apply any adjustment.
+|none
+|Specify how the message key schema names derived from the resulting topic name should be adjusted for compatibility with the message converter used by the connector, including: `none` does not apply any adjustment (default), `avro` replaces the characters that cannot be used in the Avro type name with underscore.
 
 |[[by-logical-table-router-logical-table-cache-size]]xref:by-logical-table-router-logical-table-cache-size[`logical.table.cache.size`]
 |`16`

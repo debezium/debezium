@@ -14,9 +14,9 @@ import io.debezium.relational.Tables;
 
 public class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorConfig {
 
-    public TestRelationalDatabaseConfig(Configuration config, String logicalName, Tables.TableFilter systemTablesFilter,
+    public TestRelationalDatabaseConfig(Configuration config, Tables.TableFilter systemTablesFilter,
                                         Selectors.TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, ColumnFilterMode.SCHEMA);
+        super(config, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, ColumnFilterMode.SCHEMA, false);
     }
 
     @Override

@@ -22,7 +22,7 @@ import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
@@ -33,7 +33,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O> {
+public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O>, AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
@@ -86,12 +86,16 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
         finally {
             LOGGER.info("Snapshot - Final stage");
-            complete(ctx);
+            close();
 
             if (completedSuccessfully) {
+                LOGGER.info("Snapshot completed");
+                completed(ctx);
                 snapshotProgressListener.snapshotCompleted(partition);
             }
             else {
+                LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
+                aborted(ctx);
                 snapshotProgressListener.snapshotAborted(partition);
             }
         }
@@ -162,9 +166,27 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
      * The snapshot may have run successfully or have been aborted at this point.
      *
+     */
+    @Override
+    public void close() {
+    }
+
+    /**
+     * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * The snapshot have run successfully at this point.
+     *
      * @param snapshotContext snapshot context
      */
-    protected void complete(SnapshotContext<P, O> snapshotContext) {
+    protected void completed(SnapshotContext<P, O> snapshotContext) {
+    }
+
+    /**
+     * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * The snapshot is aborted at this point.
+     *
+     * @param snapshotContext snapshot context
+     */
+    protected void aborted(SnapshotContext<P, O> snapshotContext) {
     }
 
     /**

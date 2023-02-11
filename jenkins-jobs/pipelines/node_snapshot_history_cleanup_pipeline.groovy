@@ -31,7 +31,7 @@ pipeline {
                     cp ${OS_AUTH} ./clouds.yaml
                     cp ${WORKSPACE}/debezium/jenkins-jobs/scripts/cleanup_images_ansible.yml ./cleanup_images_ansible.yml
                     ansible-galaxy collection install openstack.cloud
-                    ansible-playbook cleanup_images_ansible.yml --extra-vars "cloud_name="${CLOUD_NAME}" snapshot_name="${SNAPSHOT_NAME}""   
+                    ansible-playbook cleanup_images_ansible.yml --extra-vars "cloud_name="${CLOUD_NAME}" snapshot_name="${SNAPSHOT_NAME}""
                    '''
                 }
             }
@@ -40,8 +40,8 @@ pipeline {
     }
     post {
         always {
-            mail to: 'debezium-qe@redhat.com', subject: "Jenkins node image snapshot history cleanup #${BUILD_NUMBER} finished", body: """
-                ${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
+            mail to: 'debezium-qe@redhat.com', subject: "Jenkins node image snapshot history cleanup #${env.BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: """
+                ${currentBuild.projectName} run ${env.BUILD_URL} finished with result: ${currentBuild.currentResult}
                 """
         }
     }

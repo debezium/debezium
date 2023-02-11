@@ -68,6 +68,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig connectorConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
+    private final PostgresConnection jdbcConnection;
     private final TypeRegistry typeRegistry;
     private final Properties streamParams;
 
@@ -86,8 +87,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
-     * @param doSnapshot                whether the connector is doing snapshot
-     * @param jdbcConnection            general POstgreSQL JDBC connection
+     * @param jdbcConnection            general PostgreSQL JDBC connection
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
@@ -101,13 +101,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
-                                          boolean doSnapshot,
                                           Duration statusUpdateInterval,
                                           PostgresConnection jdbcConnection,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
                                           PostgresSchema schema) {
-        super(addDefaultSettings(config.getJdbcConfig()), PostgresConnection.FACTORY, null, null, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig()), PostgresConnection.FACTORY, "\"", "\"");
 
         this.connectorConfig = config;
         this.slotName = slotName;
@@ -118,6 +117,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema), jdbcConnection);
+        this.jdbcConnection = jdbcConnection;
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -215,7 +215,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private Set<TableId> determineCapturedTables() throws Exception {
-        Set<TableId> allTableIds = this.connect().readTableNames(pgConnection().getCatalog(), null, null, new String[]{ "TABLE" });
+        Set<TableId> allTableIds = jdbcConnection.getAllTableIds(connectorConfig.databaseName());
 
         Set<TableId> capturedTables = new HashSet<>();
 
@@ -325,6 +325,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
+        validateSlotIsInExpectedState(walPosition);
+
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
         int tryCount = 0;
@@ -344,6 +346,59 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries);
                     final Metronome metronome = Metronome.sleeper(delay, Clock.SYSTEM);
                     metronome.pause();
+                }
+            }
+        }
+    }
+
+    protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
+        Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
+        if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
+            return;
+        }
+        try (Statement stmt = pgConnection().createStatement()) {
+            String seekCommand = String.format(
+                    "SELECT pg_replication_slot_advance('%s', '%s')",
+                    slotName,
+                    lsn.asString());
+            LOGGER.info("Seeking to {} on the replication slot with command {}", lsn, seekCommand);
+            stmt.execute(seekCommand);
+        }
+        catch (PSQLException e) {
+            if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")) {
+                LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
+            }
+            else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")) {
+                LOGGER.warn("Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version", e);
+            }
+            else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        throw new DebeziumException(
+                                String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
+                                        e.getMessage()));
+                    case WARN:
+                        LOGGER.warn("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
+                                e.getMessage(), e);
+                        break;
+                    case SKIP:
+                    case IGNORE:
+                        LOGGER.debug("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
+                                e.getMessage(), e);
+                        break;
+                }
+            }
+            else {
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        throw new DebeziumException(e);
+                    case WARN:
+                        LOGGER.warn("Unexpected error while trying to seek LSN", e);
+                        break;
+                    case SKIP:
+                    case IGNORE:
+                        LOGGER.debug("Unexpected error while trying to seek LSN", e);
+                        break;
                 }
             }
         }
@@ -512,7 +567,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void flushLsn(Lsn lsn) throws SQLException {
-                doFlushLsn(lsn);
+                if (connectorConfig.isFlushLsnOnSource()) {
+                    doFlushLsn(lsn);
+                }
             }
 
             private void doFlushLsn(Lsn lsn) throws SQLException {
@@ -662,7 +719,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
-        private boolean doSnapshot;
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
@@ -739,12 +795,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public Builder doSnapshot(boolean doSnapshot) {
-            this.doSnapshot = doSnapshot;
-            return this;
-        }
-
-        @Override
         public Builder jdbcMetadataConnection(PostgresConnection jdbcConnection) {
             this.jdbcConnection = jdbcConnection;
             return this;
@@ -754,7 +804,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
-                    publicationAutocreateMode, plugin, dropSlotOnClose, doSnapshot, statusUpdateIntervalVal,
+                    publicationAutocreateMode, plugin, dropSlotOnClose, statusUpdateIntervalVal,
                     jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
 

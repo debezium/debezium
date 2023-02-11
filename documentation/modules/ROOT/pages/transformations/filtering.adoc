@@ -85,7 +85,7 @@ The following procedure applies if you build your Kafka Connect container image 
 If you use {StreamsName} to create the Kafka Connect image, follow the instructions in the deployment topic for your connector.
 
 .Procedure
-. From a browser, open the link:{DebeziumDownload}, and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
+. From a browser, open the link:{LinkDebeziumDownloads}[{NameDebeziumDownloads}], and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 . Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
 . Restart the Kafka Connect process to pick up the new JAR files.
@@ -130,6 +130,11 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 
 The preceding example specifies the use of the `Groovy` expression language.
 The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
+
+.Customizing the configuration
+The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
+Other types of messages that a connector might emit (heartbeat messages, tombstone messages, or metadata messages about schema changes and transactions) do not contain this field.
+To avoid processing failures, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
 // Type: concept
 // ModuleID: variables-for-use-in-filter-expressions
@@ -178,7 +183,7 @@ In addition to the change event messages that a {prodname} connector emits when 
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:filter-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: reference

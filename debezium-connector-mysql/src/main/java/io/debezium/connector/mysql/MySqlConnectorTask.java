@@ -30,10 +30,9 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.AbstractDatabaseHistory;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * The main task executing streaming from MySQL.
@@ -61,12 +60,9 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     @Override
     public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(
-                config.edit()
-                        .with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true)
-                        .build());
-        final TopicSelector<TableId> topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
+        final TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
         // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
@@ -89,7 +85,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
 
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster, tableIdCaseInsensitive);
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
 
         LOGGER.info("Closing connection before starting schema recovery");
 
@@ -103,7 +99,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         MySqlPartition partition = previousOffsets.getTheOnlyPartition();
         MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadDatabaseHistory(connectorConfig, partition, previousOffset, schema);
+        validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
 
@@ -138,7 +134,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         final Configuration heartbeatConfig = config;
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
-                topicSelector,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -146,7 +142,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 null,
                 metadataProvider,
                 connectorConfig.createHeartbeat(
-                        topicSelector,
+                        topicNamingStrategy,
                         schemaNameAdjuster,
                         () -> new MySqlConnection(new MySqlConnectionConfiguration(heartbeatConfig), connectorConfig.useCursorFetch()
                                 ? new MySqlBinaryProtocolFieldReader(connectorConfig)
@@ -235,21 +231,16 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
     private void validateBinlogConfiguration(MySqlConnectorConfig config) {
         if (config.getSnapshotMode().shouldStream()) {
             // Check whether the row-level binlog is enabled ...
-            final boolean binlogFormatRow = connection.isBinlogFormatRow();
-            final boolean binlogRowImageFull = connection.isBinlogRowImageFull();
-            final boolean rowBinlogEnabled = binlogFormatRow && binlogRowImageFull;
+            if (!connection.isBinlogFormatRow()) {
+                throw new DebeziumException("The MySQL server is not configured to use a ROW binlog_format, which is "
+                        + "required for this connector to work properly. Change the MySQL configuration to use a "
+                        + "binlog_format=ROW and restart the connector.");
+            }
 
-            if (!rowBinlogEnabled) {
-                if (!binlogFormatRow) {
-                    throw new DebeziumException("The MySQL server is not configured to use a ROW binlog_format, which is "
-                            + "required for this connector to work properly. Change the MySQL configuration to use a "
-                            + "binlog_format=ROW and restart the connector.");
-                }
-                else {
-                    throw new DebeziumException("The MySQL server is not configured to use a FULL binlog_row_image, which is "
-                            + "required for this connector to work properly. Change the MySQL configuration to use a "
-                            + "binlog_row_image=FULL and restart the connector.");
-                }
+            if (!connection.isBinlogRowImageFull()) {
+                throw new DebeziumException("The MySQL server is not configured to use a FULL binlog_row_image, which is "
+                        + "required for this connector to work properly. Change the MySQL configuration to use a "
+                        + "binlog_row_image=FULL and restart the connector.");
             }
         }
     }
@@ -318,19 +309,19 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         return found;
     }
 
-    private boolean validateAndLoadDatabaseHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
+    private boolean validateAndLoadSchemaHistory(MySqlConnectorConfig config, MySqlPartition partition, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
         if (offset == null) {
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // We are in schema only recovery mode, use the existing binlog position
                 // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
                 throw new DebeziumException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
-            LOGGER.info("Connector started for the first time, database history recovery will not be executed");
+            LOGGER.info("Connector started for the first time, database schema history recovery will not be executed");
             schema.initializeStorage();
             return false;
         }
         if (!schema.historyExists()) {
-            LOGGER.warn("Database history was not found but was expected");
+            LOGGER.warn("Database schema history was not found but was expected");
             if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
                 // But check to see if the server still has those binlog coordinates ...
                 if (!isBinlogAvailable(config, offset)) {

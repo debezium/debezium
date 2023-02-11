@@ -188,7 +188,7 @@ As a data source, MySQL will be used in the following.
 Besides running a pod with MySQL, an appropriate service which will point to the pod with DB itself is needed.
 It can be created e.g. as follows:
 
-[source,bash]
+[source,subs="attributes",bash]
 ----
 $ cat << EOF | oc create -f -
 apiVersion: v1
@@ -352,10 +352,10 @@ spec:
     database.user: ${secrets:debezium-example/debezium-secret:username}
     database.password: ${secrets:debezium-example/debezium-secret:password}
     database.server.id: 184054
-    database.server.name: mysql
+    topic.prefix: mysql
     database.include.list: inventory
-    database.history.kafka.bootstrap.servers: debezium-cluster-kafka-bootstrap:9092
-    database.history.kafka.topic: schema-changes.inventory
+    schema.history.internal.kafka.bootstrap.servers: debezium-cluster-kafka-bootstrap:9092
+    schema.history.internal.kafka.topic: schema-changes.inventory
 EOF
 ----
 

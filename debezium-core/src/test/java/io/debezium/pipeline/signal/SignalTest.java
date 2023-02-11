@@ -5,7 +5,7 @@
  */
 package io.debezium.pipeline.signal;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -127,7 +127,8 @@ public class SignalTest {
     }
 
     protected CommonConnectorConfig config() {
-        return new CommonConnectorConfig(Configuration.create().with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal").build(), "core", 0) {
+        return new CommonConnectorConfig(Configuration.create().with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "core").build(), 0) {
             @Override
             protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
                 return null;

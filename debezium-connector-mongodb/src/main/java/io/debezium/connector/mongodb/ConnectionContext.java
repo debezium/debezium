@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,16 +22,20 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoCredential;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ClusterType;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * @author Randall Hauch
@@ -48,8 +53,7 @@ public class ConnectionContext implements AutoCloseable {
 
     protected final Configuration config;
     protected final MongoClients pool;
-    protected final ReplicaSets replicaSets;
-    protected final DelayStrategy primaryBackoffStrategy;
+    protected final DelayStrategy backoffStrategy;
     protected final boolean useHostsAsSeeds;
 
     /**
@@ -66,11 +70,28 @@ public class ConnectionContext implements AutoCloseable {
         final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
 
         final int connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
+        final int heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
         final int socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
         final int serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
 
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
+
+        clientBuilder.settings()
+                .applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                        .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                .applyToClusterSettings(
+                        builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                .applyToServerSettings(
+                        builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
+
+        // Use credentials if provided as part of connection String
+        var cs = connectionString();
+        cs
+                .map(ConnectionString::getCredential)
+                .ifPresent(clientBuilder::withCredential);
+
+        // Use credential if provided as properties
         if (username != null || password != null) {
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
         }
@@ -87,17 +108,15 @@ public class ConnectionContext implements AutoCloseable {
 
         pool = clientBuilder.build();
 
-        this.replicaSets = ReplicaSets.parse(hosts());
-
         final int initialDelayInMs = config.getInteger(MongoDbConnectorConfig.CONNECT_BACKOFF_INITIAL_DELAY_MS);
         final long maxDelayInMs = config.getLong(MongoDbConnectorConfig.CONNECT_BACKOFF_MAX_DELAY_MS);
-        this.primaryBackoffStrategy = DelayStrategy.exponential(Duration.ofMillis(initialDelayInMs), Duration.ofMillis(maxDelayInMs));
+        this.backoffStrategy = DelayStrategy.exponential(Duration.ofMillis(initialDelayInMs), Duration.ofMillis(maxDelayInMs));
     }
 
     public void shutdown() {
         try {
             // Closing all connections ...
-            logger().info("Closing all connections to {}", replicaSets);
+            logger().info("Closing all connections to {}", maskedConnectionSeed());
             pool.clear();
         }
         catch (Throwable e) {
@@ -118,21 +137,27 @@ public class ConnectionContext implements AutoCloseable {
         return pool;
     }
 
-    public ReplicaSets replicaSets() {
-        return replicaSets;
-    }
-
     public boolean performSnapshotEvenIfNotNeeded() {
         return false;
     }
 
-    public MongoClient clientForReplicaSet(ReplicaSet replicaSet) {
+    public MongoClient clientFor(ReplicaSet replicaSet) {
         return clientFor(replicaSet.addresses());
     }
 
     public MongoClient clientFor(String seedAddresses) {
         List<ServerAddress> addresses = MongoUtil.parseAddresses(seedAddresses);
         return clientFor(addresses);
+    }
+
+    public MongoClient clientForSeedConnection() {
+        return connectionString()
+                .map(this::clientFor)
+                .orElseGet(() -> clientFor(hosts()));
+    }
+
+    public MongoClient clientFor(ConnectionString connectionString) {
+        return pool.clientForMembers(connectionString);
     }
 
     public MongoClient clientFor(List<ServerAddress> addresses) {
@@ -146,16 +171,46 @@ public class ConnectionContext implements AutoCloseable {
         return config.getString(MongoDbConnectorConfig.HOSTS);
     }
 
+    /**
+     * Initial connection seed which is either a host specification or connection string
+     *
+     * @return hosts or connection string
+     */
+    public String connectionSeed() {
+        return connectionString()
+                .map(ConnectionString::toString)
+                .orElse(config.getString(MongoDbConnectorConfig.HOSTS));
+    }
+
+    /**
+     * Same as {@link #connectionSeed()} but masks sensitive information
+     *
+     * @return masked connection seed
+     */
+    public String maskedConnectionSeed() {
+        var connectionSeed = connectionSeed();
+
+        return connectionString()
+                .map(ConnectionString::getCredential)
+                .map(creds -> Strings.mask(
+                        connectionSeed,
+                        creds.getUserName(),
+                        creds.getSource(),
+                        creds.getPassword() != null ? String.valueOf(creds.getPassword()) : null))
+                .orElse(connectionSeed);
+    }
+
+    public Optional<ConnectionString> connectionString() {
+        String raw = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+        return Optional.ofNullable(raw).map(ConnectionString::new);
+    }
+
     public Duration pollInterval() {
         return Duration.ofMillis(config.getLong(MongoDbConnectorConfig.MONGODB_POLL_INTERVAL_MS));
     }
 
-    public int maxConnectionAttemptsForPrimary() {
-        return config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
-    }
-
     /**
-     * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
+     * Obtain a client that will repeatedly try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.
      *
      * @param replicaSet the replica set information; may not be null
@@ -169,20 +224,36 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     /**
-     * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
-     * this context's back-off strategy) if required until the primary becomes available.
+     * Obtain a client that will repeatedly try to obtain a client to a node of preferred type of the replica set, waiting (and using
+     * this context's back-off strategy) if required until the node becomes available.
      *
      * @param replicaSet the replica set information; may not be null
+     * @param filters the filter configuration
+     * @param errorHandler the function to be called whenever the node is unable to
+     *            {@link MongoPreferredNode#execute(String, Consumer) execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet) {
-        return primaryClientFor(replicaSet, (attempts, remaining, error) -> {
+    public ConnectionContext.MongoPreferredNode preferredFor(ReplicaSet replicaSet, ReadPreference preference, Filters filters,
+                                                             BiConsumer<String, Throwable> errorHandler) {
+        return new ConnectionContext.MongoPreferredNode(this, replicaSet, preference, filters, errorHandler);
+    }
+
+    /**
+     * Obtain a client that will repeatedly try to obtain a client to a node of preferred type of the replica set, waiting (and using
+     * this context's back-off strategy) if required until the node becomes available.
+     *
+     * @param replicaSet the replica set information; may not be null
+     * @return the client, or {@code null} if no node of preferred type could be found for the replica set
+     */
+    protected Supplier<MongoClient> preferredClientFor(ReplicaSet replicaSet, ReadPreference preference) {
+        return preferredClientFor(replicaSet, preference, (attempts, remaining, error) -> {
             if (error == null) {
-                logger().info("Unable to connect to primary node of '{}' after attempt #{} ({} remaining)", replicaSet, attempts, remaining);
+                logger().info("Unable to connect to {} node of '{}' after attempt #{} ({} remaining)", preference.getName(),
+                        replicaSet, attempts, remaining);
             }
             else {
-                logger().error("Error while attempting to connect to primary node of '{}' after attempt #{} ({} remaining): {}", replicaSet,
-                        attempts, remaining, error.getMessage(), error);
+                logger().error("Error while attempting to connect to {} node of '{}' after attempt #{} ({} remaining): {}", preference.getName(),
+                        replicaSet, attempts, remaining, error.getMessage(), error);
             }
         });
     }
@@ -195,18 +266,18 @@ public class ConnectionContext implements AutoCloseable {
      * @param handler the function that will be called when the primary could not be obtained; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected Supplier<MongoClient> primaryClientFor(ReplicaSet replicaSet, PrimaryConnectFailed handler) {
-        Supplier<MongoClient> factory = () -> clientForPrimary(replicaSet);
-        int maxAttempts = maxConnectionAttemptsForPrimary();
+    protected Supplier<MongoClient> preferredClientFor(ReplicaSet replicaSet, ReadPreference preference, PreferredConnectFailed handler) {
+        Supplier<MongoClient> factory = () -> clientForPreferred(replicaSet, preference);
+        int maxAttempts = config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         return () -> {
             int attempts = 0;
-            MongoClient primary = null;
-            while (primary == null) {
+            MongoClient client = null;
+            while (client == null) {
                 ++attempts;
                 try {
                     // Try to get the primary
-                    primary = factory.get();
-                    if (primary != null) {
+                    client = factory.get();
+                    if (client != null) {
                         break;
                     }
                 }
@@ -214,35 +285,50 @@ public class ConnectionContext implements AutoCloseable {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
                 if (attempts > maxAttempts) {
-                    throw new ConnectException("Unable to connect to primary node of '" + replicaSet + "' after " +
-                            attempts + " failed attempts");
+                    throw new ConnectException("Unable to connect to " + preference.getName() + " node of '" + replicaSet +
+                            "' after " + attempts + " failed attempts");
                 }
                 handler.failed(attempts, maxAttempts - attempts, null);
-                primaryBackoffStrategy.sleepWhen(true);
-                continue;
+                backoffStrategy.sleepWhen(true);
             }
-            return primary;
+            return client;
         };
     }
 
     @FunctionalInterface
-    public static interface PrimaryConnectFailed {
+    public interface PreferredConnectFailed {
         void failed(int attemptNumber, int attemptsRemaining, Throwable error);
     }
 
     /**
      * A supplier of a client that connects only to the primary of a replica set. Operations on the primary will continue
      */
-    public static class MongoPrimary {
+    public static class MongoPrimary extends MongoPreferredNode {
+        protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
+            super(context, replicaSet, ReadPreference.primary(), filters, errorHandler);
+        }
+    }
+
+    /**
+     * A supplier of a client that connects only to node of preferred type from a replica set. Operations on this node will continue
+     */
+    public static class MongoPreferredNode {
         private final ReplicaSet replicaSet;
-        private final Supplier<MongoClient> primaryConnectionSupplier;
+        private final Supplier<MongoClient> connectionSupplier;
         private final Filters filters;
         private final BiConsumer<String, Throwable> errorHandler;
         private final AtomicBoolean running = new AtomicBoolean(true);
+        private final ReadPreference preference;
 
-        protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
+        protected MongoPreferredNode(
+                                     ConnectionContext context,
+                                     ReplicaSet replicaSet,
+                                     ReadPreference preference,
+                                     Filters filters,
+                                     BiConsumer<String, Throwable> errorHandler) {
             this.replicaSet = replicaSet;
-            this.primaryConnectionSupplier = context.primaryClientFor(replicaSet);
+            this.preference = preference;
+            this.connectionSupplier = context.preferredClientFor(replicaSet, preference);
             this.filters = filters;
             this.errorHandler = errorHandler;
         }
@@ -257,35 +343,44 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Get the address of the primary node, if there is one.
+         * Get read preference of
          *
-         * @return the address of the replica set's primary node, or {@code null} if there is currently no primary
+         * @return the read preference
+         */
+        public ReadPreference getPreference() {
+            return preference;
+        }
+
+        /**
+         * Get the address of the node with preferred type, if there is one.
+         *
+         * @return the address of the replica set's preferred node, or {@code null} if there is currently no node of preferred type
          */
         public ServerAddress address() {
-            return execute("get replica set primary", primary -> {
-                return MongoUtil.getPrimaryAddress(primary);
+            return execute("get replica set " + preference.getName(), client -> {
+                return MongoUtil.getPreferredAddress(client, preference);
             });
         }
 
         /**
-         * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
-         * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
+         * Execute the supplied operation using the preferred node, blocking until it is available. Whenever the operation stops
+         * (e.g., if the node is no longer of preferred type), then restart the operation using a current node of that type.
          *
          * @param desc the description of the operation, for logging purposes
-         * @param operation the operation to be performed on the primary.
+         * @param operation the operation to be performed on a node of preferred type.
          */
         public void execute(String desc, Consumer<MongoClient> operation) {
             final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
             while (true) {
-                MongoClient primary = primaryConnectionSupplier.get();
+                MongoClient client = connectionSupplier.get();
                 try {
-                    operation.accept(primary);
+                    operation.accept(client);
                     return;
                 }
                 catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     if (!isRunning()) {
-                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                        throw new ConnectException("Operation failed and MongoDB " + preference.getName() + " termination requested", t);
                     }
                     try {
                         errorMetronome.pause();
@@ -298,24 +393,24 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
-         * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
+         * Execute the supplied operation using the preferred node, blocking until it is available. Whenever the operation stops
+         * (e.g., if the node is no longer of preferred type), then restart the operation using a current node of that type.
          *
          * @param desc the description of the operation, for logging purposes
-         * @param operation the operation to be performed on the primary
+         * @param operation the operation to be performed on a node of preferred type
          * @return return value of the executed operation
          */
         public <T> T execute(String desc, Function<MongoClient, T> operation) {
             final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
             while (true) {
-                MongoClient primary = primaryConnectionSupplier.get();
+                MongoClient client = connectionSupplier.get();
                 try {
-                    return operation.apply(primary);
+                    return operation.apply(client);
                 }
                 catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     if (!isRunning()) {
-                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                        throw new ConnectException("Operation failed and MongoDB " + preference.getName() + " termination requested", t);
                     }
                     try {
                         errorMetronome.pause();
@@ -328,19 +423,19 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Execute the supplied operation using the primary, blocking until a primary is available. Whenever the operation stops
-         * (e.g., if the primary is no longer primary), then restart the operation using the current primary.
+         * Execute the supplied operation using the preferred node, blocking until it is available. Whenever the operation stops
+         * (e.g., if the node is no longer of preferred type), then restart the operation using a current node of that type.
          *
          * @param desc the description of the operation, for logging purposes
-         * @param operation the operation to be performed on the primary.
+         * @param operation the operation to be performed on a node of preferred type.
          * @throws InterruptedException if the operation was interrupted
          */
         public void executeBlocking(String desc, BlockingConsumer<MongoClient> operation) throws InterruptedException {
             final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
             while (true) {
-                MongoClient primary = primaryConnectionSupplier.get();
+                MongoClient client = connectionSupplier.get();
                 try {
-                    operation.accept(primary);
+                    operation.accept(client);
                     return;
                 }
                 catch (InterruptedException e) {
@@ -349,7 +444,7 @@ public class ConnectionContext implements AutoCloseable {
                 catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     if (!isRunning()) {
-                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                        throw new ConnectException("Operation failed and MongoDB " + preference.getName() + " termination requested", t);
                     }
                     errorMetronome.pause();
                 }
@@ -357,18 +452,18 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Use the primary to get the names of all the databases in the replica set, applying the current database
-         * filter configuration. This method will block until a primary can be obtained to get the names of all
+         * Use a node of preferred type to get the names of all the databases in the replica set, applying the current database
+         * filter configuration. This method will block until a node of preferred type can be obtained to get the names of all
          * databases in the replica set.
          *
          * @return the database names; never null but possibly empty
          */
         public Set<String> databaseNames() {
-            return execute("get database names", primary -> {
+            return execute("get database names", client -> {
                 Set<String> databaseNames = new HashSet<>();
 
                 MongoUtil.forEachDatabaseName(
-                        primary,
+                        client,
                         dbName -> {
                             if (filters.databaseFilter().test(dbName)) {
                                 databaseNames.add(dbName);
@@ -380,7 +475,7 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         /**
-         * Use the primary to get the identifiers of all the collections in the replica set, applying the current
+         * Use a node of preferred type to get the identifiers of all the collections in the replica set, applying the current
          * collection filter configuration. This method will block until a primary can be obtained to get the
          * identifiers of all collections in the replica set.
          *
@@ -390,12 +485,12 @@ public class ConnectionContext implements AutoCloseable {
             String replicaSetName = replicaSet.replicaSetName();
 
             // For each database, get the list of collections ...
-            return execute("get collections in databases", primary -> {
+            return execute("get collections in databases", client -> {
                 List<CollectionId> collections = new ArrayList<>();
                 Set<String> databaseNames = databaseNames();
 
                 for (String dbName : databaseNames) {
-                    MongoUtil.forEachCollectionNameInDatabase(primary, dbName, collectionName -> {
+                    MongoUtil.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
                         CollectionId collectionId = new CollectionId(replicaSetName, dbName, collectionName);
 
                         if (filters.collectionFilter().test(collectionId)) {
@@ -426,10 +521,10 @@ public class ConnectionContext implements AutoCloseable {
      * @param replicaSet the replica set information; may not be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    protected MongoClient clientForPrimary(ReplicaSet replicaSet) {
-        MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
-        final ClusterDescription clusterDescription = replicaSetClient.getClusterDescription();
-        if (clusterDescription == null) {
+    protected MongoClient clientForPreferred(ReplicaSet replicaSet, ReadPreference preference) {
+        MongoClient replicaSetClient = clientFor(replicaSet);
+        final ClusterDescription clusterDescription = MongoUtil.clusterDescription(replicaSetClient);
+        if (clusterDescription.getType() == ClusterType.UNKNOWN) {
             if (!this.useHostsAsSeeds) {
                 // No replica set status is available, but it may still be a replica set ...
                 return replicaSetClient;
@@ -439,9 +534,9 @@ public class ConnectionContext implements AutoCloseable {
                     "' is not a valid replica set and cannot be used");
         }
         // It is a replica set ...
-        ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(replicaSetClient);
-        if (primaryAddress != null) {
-            return pool.clientFor(primaryAddress);
+        ServerAddress preferredAddress = MongoUtil.getPreferredAddress(replicaSetClient, preference);
+        if (preferredAddress != null) {
+            return pool.clientFor(preferredAddress);
         }
         return null;
     }

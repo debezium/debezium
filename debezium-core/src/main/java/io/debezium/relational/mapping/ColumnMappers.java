@@ -67,7 +67,7 @@ public class ColumnMappers {
                     }
                 });
 
-        config.forEachMatchingFieldNameWithString("column\\.mask\\.hash.v2.\\." + hashAlgorithmAndSaltExtractPattern.pattern(),
+        config.forEachMatchingFieldNameWithString("column\\.mask\\.hash\\.v2\\." + hashAlgorithmAndSaltExtractPattern.pattern(),
                 (fullyQualifiedColumnNames, hashAlgorithmAndSalt) -> {
                     Matcher matcher = hashAlgorithmAndSaltExtractPattern.matcher(hashAlgorithmAndSalt);
                     if (matcher.matches()) {

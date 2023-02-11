@@ -6,12 +6,8 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Pattern;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -48,10 +44,9 @@ public class LogMinerQueryBuilder {
      * </pre>
      *
      * @param connectorConfig connector configuration, should not be {@code null}
-     * @param schema database schema, should not be {@code null}
      * @return the SQL string to be used to fetch changes from Oracle LogMiner
      */
-    public static String build(OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
+    public static String build(OracleConnectorConfig connectorConfig) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
         query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD# ");
@@ -68,11 +63,8 @@ public class LogMinerQueryBuilder {
             // This predicate is used later to explicitly restrict certain OPERATION_CODE and DDL events by the
             // PDB database name while allowing all START, COMMIT, MISSING_SCN, and ROLLBACK operations
             // regardless of where they originate, i.e. the PDB or CDB$ROOT.
-            pdbPredicate = "SRC_CON_NAME = '" + pdbName + "'";
-        }
-        else {
-            // No PDB configuration provided, no PDB predicate is necessary.
-            pdbPredicate = null;
+            pdbPredicate = "SRC_CON_NAME = '" + pdbName + "' ";
+            query.append("AND ").append(pdbPredicate);
         }
 
         // Excluded schemas, if defined
@@ -83,174 +75,14 @@ public class LogMinerQueryBuilder {
             query.append("AND ").append(excludedSchemas).append(' ');
         }
 
-        query.append("AND (");
-
-        // Always include START, COMMIT, MISSING_SCN, and ROLLBACK operations
-        query.append("(OPERATION_CODE IN (6,7,34,36)");
-
-        if (!schema.storeOnlyCapturedTables()) {
-            // In this mode, the connector will always be fed DDL operations for all tables even if they
-            // are not part of the inclusion/exclusion lists. We will pass the PDB predicate here to then
-            // restrict DDL operations to only the PDB database if not null.
-            query.append(" OR ").append(buildDdlPredicate(pdbPredicate)).append(" ");
-            // Insert, Update, Delete, SelectLob, LobWrite, LobTrim, and LobErase
-            if (connectorConfig.isLobEnabled()) {
-                query.append(") OR (OPERATION_CODE IN (1,2,3,9,10,11,29) ");
-            }
-            else {
-                query.append(") OR (OPERATION_CODE IN (1,2,3) ");
-            }
-            if (pdbPredicate != null) {
-                // Restrict Insert, Update, Delete, and optionally SelectLob, LobWrite, LobTrim, and LobErase by PDB
-                query.append("AND ").append(pdbPredicate).append(' ');
-            }
+        // Add the operation types we're interested in.
+        query.append("AND OPERATION_CODE IN (1,2,3,5,6,7");
+        if (connectorConfig.isLobEnabled()) {
+            query.append(",9,10,11,29");
         }
-        else {
-            query.append(") OR (");
-            if (pdbPredicate != null) {
-                // We specify the PDB predicate here because it applies to the OPERATION_CODE predicates but
-                // also the DDL predicate that is to follow later due to predicate groups, effectively
-                // restricting all DML operations and DDL changes to the PDB only.
-                query.append(pdbPredicate).append(" AND ");
-            }
-            // Insert, Update, Delete, SelectLob, LobWrite, LobTrim, and LobErase
-            if (connectorConfig.isLobEnabled()) {
-                query.append("(OPERATION_CODE IN (1,2,3,9,10,11,29) ");
-            }
-            else {
-                query.append("(OPERATION_CODE IN (1,2,3) ");
-            }
-            // In this mode, the connector will filter DDL operations based on the table inclusion/exclusion lists
-            // We pass "null" to the DDL predicate because we will have added the predicate earlier as a part of
-            // the outer predicate group to also be applied to OPERATION_CODE
-            query.append("OR ").append(buildDdlPredicate(null)).append(") ");
-        }
-
-        // Always ignore the flush table
-        query.append("AND TABLE_NAME != '").append(LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE).append("' ");
-
-        String schemaPredicate = buildSchemaPredicate(connectorConfig);
-        if (!Strings.isNullOrEmpty(schemaPredicate)) {
-            query.append("AND ").append(schemaPredicate).append(" ");
-        }
-
-        String tablePredicate = buildTablePredicate(connectorConfig);
-        if (!Strings.isNullOrEmpty(tablePredicate)) {
-            query.append("AND ").append(tablePredicate).append(" ");
-        }
-
-        query.append("))");
+        query.append(",34,36,255) ");
 
         return query.toString();
-    }
-
-    /**
-     * Builds a common SQL fragment used to obtain DDL operations via LogMiner.
-     *
-     * @param pdbPredicate pluggable database predicate, maybe {@code null}
-     * @return predicate that can be used to obtain DDL operations via LogMiner
-     */
-    private static String buildDdlPredicate(String pdbPredicate) {
-        final StringBuilder predicate = new StringBuilder(256);
-        predicate.append("(OPERATION_CODE = 5 ");
-        predicate.append("AND USERNAME NOT IN ('SYS','SYSTEM') ");
-        predicate.append("AND INFO NOT LIKE 'INTERNAL DDL%' ");
-        if (pdbPredicate != null) {
-            // DDL changes should be restricted to only the PDB database if supplied
-            predicate.append("AND ").append(pdbPredicate).append(' ');
-        }
-        predicate.append("AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%'))");
-        return predicate.toString();
-    }
-
-    /**
-     * Builds a SQL predicate of what schemas to include/exclude based on the connector configuration.
-     *
-     * @param connectorConfig connector configuration, should not be {@code null}
-     * @return SQL predicate to filter results based on schema include/exclude configurations
-     */
-    private static String buildSchemaPredicate(OracleConnectorConfig connectorConfig) {
-        StringBuilder predicate = new StringBuilder();
-        if (Strings.isNullOrEmpty(connectorConfig.schemaIncludeList())) {
-            if (!Strings.isNullOrEmpty(connectorConfig.schemaExcludeList())) {
-                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaExcludeList(), 0);
-                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", true)).append(")");
-            }
-        }
-        else {
-            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaIncludeList(), 0);
-            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", false)).append(")");
-        }
-        return predicate.toString();
-    }
-
-    /**
-     * Builds a SQL predicate of what tables to include/exclude based on the connector configuration.
-     *
-     * @param connectorConfig connector configuration, should not be {@code null}
-     * @return SQL predicate to filter results based on table include/exclude configuration
-     */
-    private static String buildTablePredicate(OracleConnectorConfig connectorConfig) {
-        StringBuilder predicate = new StringBuilder();
-        if (Strings.isNullOrEmpty(connectorConfig.tableIncludeList())) {
-            if (!Strings.isNullOrEmpty(connectorConfig.tableExcludeList())) {
-                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableExcludeList(), 0);
-                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", true)).append(")");
-            }
-        }
-        else {
-            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableIncludeList(), 0);
-            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", false)).append(")");
-        }
-        return predicate.toString();
-    }
-
-    /**
-     * Takes a list of reg-ex patterns and builds an Oracle-specific predicate using {@code REGEXP_LIKE}
-     * in order to take the connector configuration include/exclude lists and assemble them as SQL
-     * predicates.
-     *
-     * @param patterns list of each individual include/exclude reg-ex patterns from connector configuration
-     * @param columnName the column in which the reg-ex patterns are to be applied against
-     * @param inclusion should be {@code true} when passing inclusion patterns, {@code false} otherwise
-     * @return
-     */
-    private static String listOfPatternsToSql(List<Pattern> patterns, String columnName, boolean inclusion) {
-        StringBuilder predicate = new StringBuilder();
-        for (Iterator<Pattern> i = patterns.iterator(); i.hasNext();) {
-            Pattern pattern = i.next();
-            if (inclusion) {
-                predicate.append("NOT ");
-            }
-            // NOTE: The REGEXP_LIKE operator was added in Oracle 10g (10.1.0.0.0)
-            final String text = resolveRegExpLikePattern(pattern);
-            predicate.append("REGEXP_LIKE(").append(columnName).append(",'").append(text).append("','i')");
-            if (i.hasNext()) {
-                // Exclude lists imply combining them via AND, Include lists imply combining them via OR?
-                predicate.append(inclusion ? " AND " : " OR ");
-            }
-        }
-        return predicate.toString();
-    }
-
-    /**
-     * The {@code REGEXP_LIKE} Oracle operator acts identical to the {@code LIKE} operator. Internally,
-     * it prepends and appends a "%" qualifier.  The include/exclude lists are meant to be explicit in
-     * that they have an implied "^" and "$" qualifier for start/end so that the LIKE operation does
-     * not mistakently filter "DEBEZIUM2" when using the reg-ex of "DEBEZIUM".
-     *
-     * @param pattern the pattern to be analyzed, should not be {@code null}
-     * @return the adjusted predicate, if necessary and doesn't already explicitly specify "^" or "$"
-     */
-    private static String resolveRegExpLikePattern(Pattern pattern) {
-        String text = pattern.pattern();
-        if (!text.startsWith("^")) {
-            text = "^" + text;
-        }
-        if (!text.endsWith("$")) {
-            text += "$";
-        }
-        return text;
     }
 
     /**

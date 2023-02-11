@@ -82,6 +82,8 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String LSID = "lsid";
     public static final String TXN_NUMBER = "txnNumber";
 
+    public static final String WALL_TIME = "wallTime";
+
     // Change Stream fields
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
@@ -99,6 +101,8 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     private CollectionId collectionId;
     private Position position = new Position(INITIAL_TIMESTAMP, null, null);
+
+    private long wallTime;
 
     @Immutable
     protected static final class Position {
@@ -152,7 +156,7 @@ public final class SourceInfo extends BaseSourceInfo {
         public final String lsid;
         public final Long txnNumber;
 
-        public SessionTransactionId(String lsid, Long txnNumber) {
+        SessionTransactionId(String lsid, Long txnNumber) {
             super();
             this.txnNumber = txnNumber;
             this.lsid = lsid;
@@ -268,8 +272,8 @@ public final class SourceInfo extends BaseSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public void collectionEvent(String replicaSetName, CollectionId collectionId) {
-        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName));
+    public void collectionEvent(String replicaSetName, CollectionId collectionId, long wallTime) {
+        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName), wallTime);
     }
 
     /**
@@ -292,21 +296,25 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, 0L);
     }
 
     public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent) {
         Position position = INITIAL_POSITION;
         String namespace = "";
+        long wallTime = 0L;
         if (changeStreamEvent != null) {
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
             position = Position.changeStreamPosition(ts, changeStreamEvent.getResumeToken().getString("_data").getValue(),
                     MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
+            if (changeStreamEvent.getWallTime() != null) {
+                wallTime = changeStreamEvent.getWallTime().getValue();
+            }
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
     }
 
     /**
@@ -319,10 +327,11 @@ public final class SourceInfo extends BaseSourceInfo {
         return oplogEvent != null ? oplogEvent.getTimestamp("ts") : null;
     }
 
-    private void onEvent(String replicaSetName, CollectionId collectionId, Position position) {
+    private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime) {
         this.replicaSetName = replicaSetName;
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
+        this.wallTime = wallTime;
     }
 
     /**
@@ -487,6 +496,10 @@ public final class SourceInfo extends BaseSourceInfo {
 
     String replicaSetName() {
         return replicaSetName;
+    }
+
+    long wallTime() {
+        return wallTime;
     }
 
     @Override

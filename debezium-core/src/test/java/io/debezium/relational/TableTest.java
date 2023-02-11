@@ -5,7 +5,7 @@
  */
 package io.debezium.relational;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
 
@@ -20,6 +20,7 @@ public class TableTest {
     private Column c2;
     private Column c3;
     private Column c4;
+    private Attribute a1;
 
     @Before
     public void beforeEach() {
@@ -44,11 +45,13 @@ public class TableTest {
                                 .optional(true)
                                 .create())
                 .setPrimaryKeyNames("C1", "C2")
+                .addAttribute(Attribute.editor().name("A1").value("12345").create())
                 .create();
         c1 = table.columnWithName("C1");
         c2 = table.columnWithName("C2");
         c3 = table.columnWithName("C3");
         c4 = table.columnWithName("C4");
+        a1 = table.attributeWithName("A1");
     }
 
     @Test
@@ -57,6 +60,7 @@ public class TableTest {
         assertThat(c2).isNotNull();
         assertThat(c3).isNotNull();
         assertThat(c4).isNotNull();
+        assertThat(a1).isNotNull();
     }
 
     @Test
@@ -65,6 +69,11 @@ public class TableTest {
         assertThat(c2.name()).isEqualTo("C2");
         assertThat(c3.name()).isEqualTo("C3");
         assertThat(c4.name()).isEqualTo("C4");
+    }
+
+    @Test
+    public void shouldHaveAttributesWithNames() {
+        assertThat(a1.name()).isEqualTo("A1");
     }
 
     @Test
@@ -87,11 +96,21 @@ public class TableTest {
     }
 
     @Test
+    public void shouldHaveAttributes() {
+        assertThat(table.attributes()).containsExactly(a1);
+    }
+
+    @Test
     public void shouldFindColumnsByNameWithExactCase() {
         assertThat(table.columnWithName("C1")).isSameAs(c1);
         assertThat(table.columnWithName("C2")).isSameAs(c2);
         assertThat(table.columnWithName("C3")).isSameAs(c3);
         assertThat(table.columnWithName("C4")).isSameAs(c4);
+    }
+
+    @Test
+    public void shouldFindAttributesByNameWithExactCase() {
+        assertThat(table.attributeWithName("A1")).isSameAs(a1);
     }
 
     @Test
@@ -103,9 +122,20 @@ public class TableTest {
     }
 
     @Test
+    public void shouldFindAttributesByNameWithWrongCase() {
+        assertThat(table.attributeWithName("a1")).isSameAs(a1);
+    }
+
+    @Test
     public void shouldNotFindNonExistantColumnsByName() {
         assertThat(table.columnWithName("c1 ")).isNull();
         assertThat(table.columnWithName("wrong")).isNull();
+    }
+
+    @Test
+    public void shouldNotFindNonExistentAttributesByName() {
+        assertThat(table.attributeWithName("a1 ")).isNull();
+        assertThat(table.attributeWithName("wrong")).isNull();
     }
 
     @Test

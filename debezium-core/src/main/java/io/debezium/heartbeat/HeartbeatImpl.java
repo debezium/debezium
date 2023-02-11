@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -18,8 +17,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -42,7 +42,7 @@ public class HeartbeatImpl implements Heartbeat {
      */
     static final String DEFAULT_HEARTBEAT_TOPICS_PREFIX = "__debezium-heartbeat";
 
-    private static final String SERVER_NAME_KEY = "serverName";
+    public static final String SERVER_NAME_KEY = "serverName";
 
     private final String topicName;
     private final Duration heartbeatInterval;
@@ -58,15 +58,9 @@ public class HeartbeatImpl implements Heartbeat {
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
 
-        keySchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
-                .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-                .build();
+        keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
 
-        valueSchema = SchemaBuilder.struct()
-                .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
-                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                .build();
+        valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
 
         heartbeatTimeout = resetHeartbeat();
     }

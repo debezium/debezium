@@ -9,6 +9,7 @@ package io.debezium.connector.mysql.antlr;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -110,6 +111,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
@@ -288,7 +290,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
-     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will updates
+     * Parse column names for primary index from {@link MySqlParser.IndexColumnNamesContext}. This method will update
      * column to be not optional and set primary key column names to table.
      *
      * @param indexColumnNamesContext primary key index column names context.
@@ -302,8 +304,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     if (indexColumnNameContext.uid() != null) {
                         columnName = parseName(indexColumnNameContext.uid());
                     }
-                    else {
+                    else if (indexColumnNameContext.STRING_LITERAL() != null) {
                         columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                    }
+                    else {
+                        columnName = indexColumnNameContext.expression().getText();
                     }
                     Column column = tableEditor.columnWithName(columnName);
                     if (column != null && column.isOptional()) {
@@ -318,6 +323,52 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 .collect(Collectors.toList());
 
         tableEditor.setPrimaryKeyNames(pkColumnNames);
+    }
+
+    /**
+     * Parse column names for unique index from {@link MySqlParser.IndexColumnNamesContext}. This method will set
+     * unique key column names to table if there are no optional.
+     *
+     * @param indexColumnNamesContext unique key index column names context.
+     * @param tableEditor editor for table where primary key index is parsed.
+     */
+    public void parseUniqueIndexColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        List<Column> indexColumns = getIndexColumns(indexColumnNamesContext, tableEditor);
+        if (indexColumns.stream().filter(col -> Objects.isNull(col) || col.isOptional()).count() > 0) {
+            logger.warn("Skip to set unique index columns {} to primary key which including optional columns", indexColumns);
+        }
+        else {
+            tableEditor.setPrimaryKeyNames(indexColumns.stream().map(Column::name).collect(Collectors.toList()));
+        }
+    }
+
+    /**
+     * Determine if a table's unique index should be included when parsing relative unique index statement.
+     *
+     * @param indexColumnNamesContext unique index column names context.
+     * @param tableEditor editor for table where unique index is parsed.
+     * @return true if the index is to be included; false otherwise.
+     */
+    public boolean isTableUniqueIndexIncluded(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return getIndexColumns(indexColumnNamesContext, tableEditor).stream().filter(Objects::isNull).count() == 0;
+    }
+
+    private List<Column> getIndexColumns(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return indexColumnNamesContext.indexColumnName().stream()
+                .map(indexColumnNameContext -> {
+                    String columnName;
+                    if (indexColumnNameContext.uid() != null) {
+                        columnName = parseName(indexColumnNameContext.uid());
+                    }
+                    else if (indexColumnNameContext.STRING_LITERAL() != null) {
+                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                    }
+                    else {
+                        columnName = indexColumnNameContext.expression().getText();
+                    }
+                    return tableEditor.columnWithName(columnName);
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -375,7 +426,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
-        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replaceAll("''", "'");
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
     }
 
     public MySqlValueConverters getConverters() {

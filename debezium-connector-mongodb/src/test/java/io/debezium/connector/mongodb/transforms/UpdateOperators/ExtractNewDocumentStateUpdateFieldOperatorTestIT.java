@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import static org.fest.assertions.Assertions.assertThat;
-
-import java.util.function.Consumer;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -16,7 +14,6 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.Test;
 
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.UpdateOptions;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
@@ -164,10 +161,11 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
         Bson setOnInsert = Document.parse("{'$setOnInsert': {'onlySetIfInsertDataInt': 789}}");
         UpdateOptions updateOptions = new UpdateOptions();
         updateOptions.upsert(true);
-        Consumer<MongoClient> upsert = client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
-                .updateOne(Document.parse("{'_id' : 2}"), setOnInsert, updateOptions);
 
-        primary().execute("update", upsert);
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(Document.parse("{'_id' : 2}"), setOnInsert, updateOptions);
+        }
 
         SourceRecord upsertRecord = consumeRecordsByTopic(1).recordsForTopic(this.topicName()).get(0);
 
@@ -182,9 +180,11 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
 
         // Execute a new Upsert with the same ID to ensure the field "onlySetIfInsertDataInt" doesn't change its value
         Bson setOnInsertAndSet = Document.parse("{'$setOnInsert': {'onlySetIfInsertDataInt': 123}, '$set': {'newField': 456}}");
-        Consumer<MongoClient> upsertAndUpdate = client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
-                .updateOne(Document.parse("{'_id' : 2}"), setOnInsertAndSet, updateOptions);
-        primary().execute("update", upsertAndUpdate);
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(Document.parse("{'_id' : 2}"), setOnInsertAndSet, updateOptions);
+        }
 
         SourceRecord updateRecord = getUpdateRecord();
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);

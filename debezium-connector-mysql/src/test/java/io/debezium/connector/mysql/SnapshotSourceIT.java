@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 
 import java.nio.file.Path;
@@ -49,8 +49,8 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.MemoryDatabaseHistory;
+import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -60,9 +60,9 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class SnapshotSourceIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-snapshot.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
     private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
 
@@ -73,7 +73,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
     @Before
     public void beforeEach() {
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
         BINARY_FIELD_DATABASE.createAndInitialize();
@@ -85,7 +85,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -139,7 +139,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(MySqlConnectorConfig.USER, "cloud")
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
                     .with(MySqlConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
             builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
@@ -199,18 +199,18 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         if (storeOnlyCapturedTables) {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(1);
+                    .isEqualTo(1);
         }
         else {
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(DATABASE.getDatabaseName()).size())
-                            .isEqualTo(schemaEventsCount);
+                    .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                            .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(useGlobalLock ? 1 : 5);
         }
 
         if (!useGlobalLock) {
@@ -381,10 +381,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(orders.numberOfReads()).isEqualTo(5);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 
@@ -522,7 +522,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     private String productsTableName() throws SQLException {
-        try (final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
     }
@@ -617,7 +617,12 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        start(MySqlConnector.class, config, (success, message, error) -> {
+            exception.set(error);
+        });
+
+        // a poll is required in order to get the connector to initiate the snapshot
+        waitForConnectorShutdown("mysql", DATABASE.getServerName());
 
         throw (RuntimeException) exception.get();
     }
@@ -627,7 +632,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         Configuration.Builder builder = simpleConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("customers"))
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, MemoryDatabaseHistory.class.getName());
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
         config = builder.build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -644,10 +649,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         try (
-                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                final JdbcConnection connection = db.connect();
-                final Connection jdbc = connection.connection();
-                final Statement statement = jdbc.createStatement()) {
+                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect();
+                Connection jdbc = connection.connection();
+                Statement statement = jdbc.createStatement()) {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
         recordCount = 1;

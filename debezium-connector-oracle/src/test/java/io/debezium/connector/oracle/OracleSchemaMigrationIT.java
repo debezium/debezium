@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -52,7 +52,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
 
         TestHelper.dropAllTables();
     }
@@ -1404,7 +1404,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .build();
 
@@ -1488,7 +1488,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5285A")
-                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, false)
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, false)
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .build();
 
@@ -1608,7 +1608,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
 
     private static void assertSourceTableInfo(SourceRecord record, String schema, String table) {
         final Struct source = ((Struct) record.value()).getStruct("source");
-        assertThat(source.get("db")).isEqualTo(TestHelper.DATABASE);
+        assertThat(source.get("db")).isEqualTo(TestHelper.getDatabaseName());
         assertThat(source.get("schema")).isEqualTo(schema);
         assertThat(source.get("table")).isEqualTo(table);
     }

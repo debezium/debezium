@@ -16,22 +16,22 @@ public interface ResultReceiver {
      * Send the object to the receiver.
      * @param o - object to be delivered
      */
-    public void deliver(Object o);
+    void deliver(Object o);
 
     /**
      * @return true if a value has been sent to the receiver
      */
-    public boolean hasReceived();
+    boolean hasReceived();
 
     /**
      * @return the object sent to the receiver
      */
-    public Object get();
+    Object get();
 
     /**
      * @return default, not thread-safe implementation of the receiver
      */
-    public static ResultReceiver create() {
+    static ResultReceiver create() {
         return new ResultReceiver() {
             private boolean received = false;
             private Object object = null;

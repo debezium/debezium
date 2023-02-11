@@ -98,6 +98,7 @@ unit_statement
 
     | comment_on_column
     | comment_on_table
+    | comment_on_materialized
 
     | anonymous_block
 
@@ -1392,7 +1393,7 @@ out_of_line_constraint
           ( UNIQUE '(' column_name (',' column_name)* ')'
           | PRIMARY KEY '(' column_name (',' column_name)* ')'
           | foreign_key_clause
-          | CHECK '(' expression ')'
+          | CHECK '(' condition ')'
           )
        )
       constraint_state?
@@ -1846,19 +1847,22 @@ object_table_substitution
 
 relational_table
     : ('(' relational_property (',' relational_property)* ')')?
-      (ON COMMIT (DELETE | PRESERVE) ROWS)?
-      physical_properties? column_properties? table_partitioning_clauses?
-      (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
-      parallel_clause?
-      (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-      (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
-    ;
+          (DEFAULT COLLATION collation_name)?
+          (ON COMMIT (DELETE | PRESERVE) ROWS)?
+          physical_properties?
+          column_properties?
+          table_partitioning_clauses?
+          (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
+          parallel_clause?
+          (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
+          (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
+        ;
 
 relational_property
-    : (column_definition
-        | virtual_column_definition
-        | out_of_line_constraint
+    : ( out_of_line_constraint
         | out_of_line_ref_constraint
+        | column_definition
+        | virtual_column_definition
         | supplemental_logging_props
         )
     ;
@@ -1939,7 +1943,7 @@ system_partitioning
     ;
 
 range_partition_desc
-    : PARTITION partition_name? range_values_clause table_partition_description
+    : PARTITION partition_name? range_values_clause? table_partition_description?
         ( ( '(' ( range_subpartition_desc (',' range_subpartition_desc)*
                 | list_subpartition_desc (',' list_subpartition_desc)*
                 | individual_hash_subparts (',' individual_hash_subparts)*
@@ -1951,7 +1955,7 @@ range_partition_desc
     ;
 
 list_partition_desc
-    : PARTITION partition_name? list_values_clause table_partition_description
+    : PARTITION partition_name? list_values_clause? table_partition_description?
         ( ( '(' ( range_subpartition_desc (',' range_subpartition_desc)*
                 | list_subpartition_desc (',' list_subpartition_desc)*
                 | individual_hash_subparts (',' individual_hash_subparts)*
@@ -2020,7 +2024,7 @@ range_values_clause
     ;
 
 list_values_clause
-    : VALUES '(' (literal (',' literal)* | DEFAULT) ')'
+    : VALUES '(' (literal (',' literal)* | TIMESTAMP literal (',' TIMESTAMP literal)* | DEFAULT) ')'
     ;
 
 table_partition_description
@@ -2125,6 +2129,7 @@ physical_attributes_clause
       | INITRANS inittrans=UNSIGNED_INTEGER
       | MAXTRANS maxtrans=UNSIGNED_INTEGER
       | storage_clause
+      | compute_clauses
       )+
     ;
 
@@ -2161,7 +2166,7 @@ segment_attributes_clause
     ;
 
 external_table_clause
-    : '('? (TYPE access_driver_type)? external_table_data_props* ')'? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
+    : '('? (TYPE access_driver_type)? external_table_data_props* ')'? parallel_clause? (REJECT LIMIT (UNSIGNED_INTEGER | UNLIMITED))?
     ;
 
 access_driver_type
@@ -2170,7 +2175,7 @@ access_driver_type
 
 external_table_data_props
     : DEFAULT DIRECTORY quoted_string
-    | ACCESS PARAMETERS '(' (et_oracle_loader | et_oracle_datapump | et_oracle_hdfs_hive | USING CLOB subquery) ')'
+    | ACCESS PARAMETERS '(' (et_oracle_loader | et_oracle_datapump* | et_oracle_hdfs_hive | USING CLOB subquery) ')'
     | LOCATION '(' et_directory_spec? et_location_specifier (',' et_directory_spec? et_location_specifier )* ')'
     ;
 
@@ -2184,6 +2189,15 @@ et_oracle_datapump
       | COMPRESSION ( ENABLED (BASIC |LOW | MEDIUM | HIGH)? | DISABLED)?
       | HADOOP_TRAILERS (ENABLED | DISABLED) VERSION (COMPATIBLE | LATEST | quoted_string )
       | comments_oracle_datapump
+      // Undocumented, internal DATAPUMP operations used by Oracle
+      | DEBUG '=' '(' UNSIGNED_INTEGER ',' UNSIGNED_INTEGER ')'
+      | DATAPUMP INTERNAL TABLE tableview_name
+      | JOB '(' schema_name ',' tableview_name ',' UNSIGNED_INTEGER ')'
+      | WORKERID UNSIGNED_INTEGER
+      | PARALLEL UNSIGNED_INTEGER
+      | VERSION quoted_string
+      | ENCRYPTPASSWORDISNULL
+      | DBLINK quoted_string
     ;
 
 et_oracle_hdfs_hive
@@ -2518,6 +2532,10 @@ create_synonym
 
 comment_on_table
     : COMMENT ON TABLE tableview_name IS quoted_string
+    ;
+
+comment_on_materialized
+    : COMMENT ON MATERIALIZED VIEW tableview_name IS quoted_string
     ;
 
 alter_cluster
@@ -2905,9 +2923,10 @@ modify_table_partition
     ;
 
 split_table_partition
-    : SPLIT PARTITION partition_name INTO '('
-            (range_partition_desc (',' range_partition_desc)* |
-                list_partition_desc (',' list_partition_desc)* ) ')'
+    : SPLIT partition_extended_names (
+            AT '(' literal (',' literal)* ')' INTO '(' range_partition_desc (',' range_partition_desc)*  ')'
+            | INTO '(' (range_partition_desc (',' range_partition_desc)* | list_partition_desc (',' list_partition_desc)* ) ')'
+            )
     ;
 
 truncate_table_partition
@@ -3200,8 +3219,9 @@ lob_retention_clause
 encryption_spec
     : (USING  CHAR_STRING)? (IDENTIFIED BY REGULAR_ID)? CHAR_STRING? (NO? SALT)?
     ;
+
 tablespace
-    : regular_id
+    : id_expression
     ;
 
 varray_item
@@ -3211,7 +3231,7 @@ varray_item
 column_properties
     : object_type_col_properties
     | nested_table_col_properties
-    | (varray_col_properties | lob_storage_clause) //TODO '(' ( ','? lob_partition_storage)+ ')'
+    | (varray_col_properties | lob_storage_clause table_compression? logging_clause?) //TODO '(' ( ','? lob_partition_storage)+ ')'
     | xmltype_column_properties
     | column_properties column_properties+
     ;
@@ -3230,10 +3250,11 @@ end_time_column
     ;
 
 column_definition
-    : column_name (datatype | type_name)
+    : column_name (datatype | type_name)?
+         (COLLATE collation_name)?
          SORT?
          (VISIBLE | INVISIBLE)?
-         (DEFAULT column_default_value | identity_clause)?
+         (DEFAULT (ON NULL_)? column_default_value | identity_clause)?
          (ENCRYPT (USING  CHAR_STRING)? (IDENTIFIED BY regular_id)? CHAR_STRING? (NO? SALT)? )?  (inline_constraint* | inline_ref_constraint)
     ;
 
@@ -4197,13 +4218,19 @@ error_logging_reject_part
     ;
 
 dml_table_expression_clause
-    : table_collection_expression
+    : object_cast_relational_table_expression
+    | table_collection_expression
     | '(' select_statement subquery_restriction_clause? ')'
     | tableview_name sample_clause?
     ;
 
 table_collection_expression
     : (TABLE | THE) ('(' subquery ')' | '(' expression ')' outer_join_sign?)
+    ;
+
+// Deprecated Oracle 10/11 RELATIONAL alias for casting object-types to relational tables
+object_cast_relational_table_expression
+    : RELATIONAL '(' tableview_name NOT XMLTYPE ')'
     ;
 
 subquery_restriction_clause
@@ -4222,6 +4249,12 @@ seed_part
 
 condition
     : expression
+    | json_condition
+    ;
+
+json_condition
+    : column_name IS NOT? JSON (FORMAT JSON)? (STRICT|LAX)? ((WITH|WITHOUT) UNIQUE KEYS)?
+    | JSON_EQUAL '(' expressions ')'
     ;
 
 expressions
@@ -5181,6 +5214,7 @@ regular_id
     | RENAME
     | RESTRICT_REFERENCES
     | RESULT
+    | SDO_GEOMETRY
     | SELF
     | SERIALLY_REUSABLE
     | SET

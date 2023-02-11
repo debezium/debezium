@@ -9,10 +9,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -161,7 +164,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
+                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)) || connectorConfig.isSignalDataCollection(tid))
                 .sorted();
     }
 
@@ -329,6 +332,25 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     /**
+     * For the given table gets source.ts_ms value from the database for snapshot data!
+     * For Postgresql its globally static for all tables since postgresql snapshot process setting auto commit off.
+     * For Mysql its static per table and might be ~second behind of the select statements start ts.
+     */
+    protected Instant getSnapshotSourceTimestamp(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
+        try {
+            Optional<Timestamp> snapshotTs = jdbcConnection.getCurrentTimestamp();
+            if (snapshotTs.isEmpty()) {
+                throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database");
+            }
+
+            return snapshotTs.get().toInstant();
+        }
+        catch (SQLException e) {
+            throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database", e);
+        }
+    }
+
+    /**
      * Dispatches the data change events for the records of a single table.
      */
     private void createDataEventsForTable(ChangeEventSourceContext sourceContext,
@@ -348,6 +370,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
         final OptionalLong rowCount = rowCountForTable(table.id());
+        Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(snapshotContext, table.id());
 
         try (Statement statement = readTableStatement(rowCount);
                 ResultSet rs = CancellableResultSet.from(statement.executeQuery(selectStatement.get()))) {
@@ -364,7 +387,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
 
                     rows++;
-                    final Object[] row = jdbcConnection.rowToArray(table, schema(), rs, columnArray);
+                    final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
 
                     if (logTimer.expired()) {
                         long stop = clock.currentTimeInMillis();
@@ -385,7 +408,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     setSnapshotMarker(snapshotContext);
 
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
-                            getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
+                            getChangeRecordEmitter(snapshotContext, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
@@ -442,8 +465,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(SnapshotContext<P, O> snapshotContext, TableId tableId,
-                                                            Object[] row) {
-        snapshotContext.offset.event(tableId, getClock().currentTime());
+                                                            Object[] row, Instant timestamp) {
+        snapshotContext.offset.event(tableId, timestamp);
         return new SnapshotChangeRecordEmitter<>(snapshotContext.partition, snapshotContext.offset, row, getClock());
     }
 
@@ -455,13 +478,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @return a valid query string or empty if table will not be snapshotted
      */
     private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
-        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
-
-        // try without catalog id, as this might or might not be populated based on the given connector
-        if (overriddenSelect == null) {
-            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
-        }
-
+        String overriddenSelect = getSnapshotSelectOverridesByTable(tableId);
         if (overriddenSelect != null) {
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
@@ -469,6 +486,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         List<String> columns = getPreparedColumnNames(snapshotContext.partition, schema.tableFor(tableId));
 
         return getSnapshotSelect(snapshotContext, tableId, columns);
+    }
+
+    protected String getSnapshotSelectOverridesByTable(TableId tableId) {
+        Map<TableId, String> snapshotSelectOverrides = connectorConfig.getSnapshotSelectOverridesByTable();
+        String overriddenSelect = snapshotSelectOverrides.get(tableId);
+
+        // try without catalog id, as this might or might not be populated based on the given connector
+        if (overriddenSelect == null) {
+            overriddenSelect = snapshotSelectOverrides.get(new TableId(null, tableId.schema(), tableId.table()));
+        }
+
+        return overriddenSelect;
     }
 
     /**
@@ -528,10 +557,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     protected RelationalDatabaseSchema schema() {
         return schema;
-    }
-
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema());
     }
 
     /**

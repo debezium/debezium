@@ -17,7 +17,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
@@ -84,7 +84,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader()),
+                new OracleConnection(jdbcConnection.config()),
                 dispatcher,
                 schema,
                 clock,

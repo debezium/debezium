@@ -6,6 +6,7 @@
 package io.debezium.pipeline.signal;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -16,13 +17,13 @@ import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * The action to trigger an ad-hoc snapshot.
  * The action parameters are {@code type} of snapshot and list of {@code data-collections} on which the
  * snapshot will be executed.
- * 
+ *
  * @author Jiri Pechanec
  *
  */
@@ -45,11 +46,13 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
             return false;
         }
         SnapshotType type = getSnapshotType(signalPayload.data);
-        LOGGER.info("Requested '{}' snapshot of data collections '{}'", type, dataCollections);
+        Optional<String> additionalCondition = getAdditionalCondition(signalPayload.data);
+        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}'", type, dataCollections,
+                additionalCondition.orElse("No condition passed"));
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload.partition, dataCollections, signalPayload.offsetContext);
+                        signalPayload.partition, dataCollections, additionalCondition, signalPayload.offsetContext);
                 break;
         }
         return true;
@@ -68,4 +71,8 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 .collect(Collectors.toList());
     }
 
+    public static Optional<String> getAdditionalCondition(Document data) {
+        String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
+        return (additionalCondition == null || additionalCondition.trim().isEmpty()) ? Optional.empty() : Optional.of(additionalCondition);
+    }
 }

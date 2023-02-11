@@ -13,13 +13,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.data.Envelope;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * A {@link DatabaseSchema} of a relational database such as Postgres. Provides information about the physical structure
@@ -30,41 +29,29 @@ import io.debezium.schema.TopicSelector;
 public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId> {
     private final static Logger LOG = LoggerFactory.getLogger(RelationalDatabaseSchema.class);
 
-    private final TopicSelector<TableId> topicSelector;
+    private final TopicNamingStrategy<TableId> topicNamingStrategy;
     private final TableSchemaBuilder schemaBuilder;
     private final TableFilter tableFilter;
     private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
     private final KeyMapper customKeysMapper;
 
-    private final String schemaPrefix;
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
 
-    protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
+    protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
                                        boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
 
-        this.topicSelector = topicSelector;
+        this.topicNamingStrategy = topicNamingStrategy;
         this.schemaBuilder = schemaBuilder;
         this.tableFilter = tableFilter;
         this.columnFilter = columnFilter;
         this.columnMappers = ColumnMappers.create(config);
         this.customKeysMapper = customKeysMapper;
 
-        this.schemaPrefix = getSchemaPrefix(config.getLogicalName());
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
         this.tables = new Tables(tableIdCaseInsensitive);
-    }
-
-    private static String getSchemaPrefix(String serverName) {
-        if (serverName == null) {
-            return "";
-        }
-        else {
-            serverName = serverName.trim();
-            return serverName.endsWith(".") || serverName.isEmpty() ? serverName : serverName + ".";
-        }
     }
 
     @Override
@@ -132,17 +119,13 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
      */
     protected void buildAndRegisterSchema(Table table) {
         if (tableFilter.isIncluded(table.id())) {
-            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, columnFilter, columnMappers, customKeysMapper);
+            TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
         }
     }
 
     protected void removeSchema(TableId id) {
         schemasByTableId.remove(id);
-    }
-
-    private String getEnvelopeSchemaName(Table table) {
-        return Envelope.schemaName(topicSelector.topicNameFor(table.id()));
     }
 
     /**
@@ -153,7 +136,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         private final boolean tableIdCaseInsensitive;
         private final ConcurrentMap<TableId, TableSchema> values;
 
-        public SchemasByTableId(boolean tableIdCaseInsensitive) {
+        SchemasByTableId(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new ConcurrentHashMap<>();
         }

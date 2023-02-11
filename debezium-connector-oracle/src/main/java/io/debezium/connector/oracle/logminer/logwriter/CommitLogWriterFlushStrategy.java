@@ -57,7 +57,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @throws SQLException if there was a database problem
      */
     public CommitLogWriterFlushStrategy(JdbcConfiguration jdbcConfig) throws SQLException {
-        this.connection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
+        this.connection = new OracleConnection(jdbcConfig);
         this.connection.setAutoCommit(false);
         this.closeConnectionOnClose = true;
         createFlushTableIfNotExists();

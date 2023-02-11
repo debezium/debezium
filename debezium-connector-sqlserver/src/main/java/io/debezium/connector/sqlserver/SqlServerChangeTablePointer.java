@@ -6,8 +6,10 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,15 +47,13 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     private ResultSetMapper<Object[]> resultSetMapper;
     private final ResultSet resultSet;
-    private final SourceTimestampMode sourceTimestampMode;
     private final int columnDataOffset;
 
-    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet, SourceTimestampMode sourceTimestampMode) {
+    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
         super(changeTable, resultSet, COL_DATA);
         // Store references to these because we can't get them from our superclass
         this.resultSet = resultSet;
         this.columnDataOffset = COL_DATA;
-        this.sourceTimestampMode = sourceTimestampMode;
     }
 
     protected ResultSet getResultSet() {
@@ -110,8 +110,12 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
         ColumnUtils.MappedColumns columnMap = ColumnUtils.toMap(table);
-        final List<String> resultColumns = sourceTimestampMode.getResultColumnNames(
-                resultSet.getMetaData(), columnDataOffset);
+        final ResultSetMetaData rsmd = resultSet.getMetaData();
+        final int columnCount = rsmd.getColumnCount() - columnDataOffset;
+        final List<String> resultColumns = new ArrayList<>(columnCount);
+        for (int i = 0; i < columnCount; ++i) {
+            resultColumns.add(rsmd.getColumnName(columnDataOffset + i));
+        }
         final int resultColumnCount = resultColumns.size();
 
         final IndicesMapping indicesMapping = new IndicesMapping(columnMap.getSourceTableColumns(), resultColumns);

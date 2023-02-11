@@ -18,6 +18,9 @@ alter table table3column default character set = cp1251;
 alter table `test` change `id` `id` varchar(10) character set utf8mb4 collate utf8mb4_bin not null;
 alter table `test` change `id` `id` varchar(10) character set utf8mb4 binary not null;
 alter table `test` change `id` `id` varchar(10) character set utf8mb4 binary null default null;
+alter table t1 stats_auto_recalc=default stats_sample_pages=50;
+alter table t1 stats_auto_recalc=default, stats_sample_pages=50.0;
+alter table t1 stats_auto_recalc=default, stats_sample_pages=default;
 alter table table1 add primary key (id);
 alter table table1 add primary key table_pk (id);
 alter table table1 add primary key `table_pk` (id);
@@ -35,13 +38,17 @@ alter table add_test modify column if exists col5 varchar(255);
 alter table add_test drop column if exists col99;
 alter table add_test drop column if exists col5;
 alter table add_test add column optional bool default 0 null;
+alter table add_test add column empty varchar(255);
 alter table add_test drop foreign key fk;
 alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
+alter table add_test wait 100 add column col1 int not null;
+alter table default.task add column xxxx varchar(200) comment 'cdc test';
 #end
 #begin
 -- Alter database
 alter database test default character set = utf8;
+alter database test_1 default encryption = 'Y' read only = 1;
 alter schema somedb_name upgrade data directory name;
 #end
 #begin
@@ -110,8 +117,12 @@ alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE4
 alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
     require none password expire default account unlock password_lock_time unbounded;
 alter user 'user'@'%' identified by 'newpassword' retain current password;
+ALTER USER 'mattias.hultman' DEFAULT ROLE `prod-spain-mysql-read-only`@`%`;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
 #end
 ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
 ALTER TABLE t1 ADD PARTITION IF NOT EXISTS (PARTITION p3 VALUES LESS THAN (2002));
+-- Alter sequence
+ALTER SEQUENCE IF EXISTS s2 start=100;
+ALTER SEQUENCE s1 CACHE=1000 NOCYCLE RESTART WITH 1;

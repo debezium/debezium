@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +36,7 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "name-adjustment");
 
         initializeConnectorTestFramework();
-        Files.delete(TestHelper.DB_HISTORY_PATH);
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -76,8 +75,8 @@ public class SqlServerSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
         TestHelper.waitForSnapshotToBeCompleted();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.dbo.name-adjustment");
-        Assertions.assertThat(results).hasSize(1);
+        final List<SourceRecord> results = records.recordsForTopic("server1.testDB1.dbo.name-adjustment");
+        assertThat(results).hasSize(1);
 
         return (Struct) results.get(0).value();
     }

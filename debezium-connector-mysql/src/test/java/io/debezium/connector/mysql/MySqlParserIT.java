@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
@@ -75,7 +75,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
     public Configuration.Builder defaultConfig() {
         return Configuration.create()
-                .with(MySqlConnectorConfig.SERVER_NAME, "myServer1")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer1")
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.hostname", "localhost"))
                 .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, mySQLContainer.getMappedPort(3306))
                 .with(MySqlConnectorConfig.USER, "debezium")
@@ -84,7 +84,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, "io.debezium.relational.history.MemoryDatabaseHistory")
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, "io.debezium.relational.history.MemorySchemaHistory")
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DB_NAME)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
     }

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -22,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -131,9 +131,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
                     + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                     + "snapshot is taken.");
-
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
@@ -464,19 +461,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "Recently committed transactions near the flashback query SCN won't be included in the snapshot nor streaming." + System.lineSeparator() +
                     "skip - Skips gathering any in-progress transactions.");
 
+    public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
+            .withDisplayName("Runs the connector in read-only mode")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(Boolean.FALSE)
+            .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
+            .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    SERVER_NAME)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
                     HOSTNAME,
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_NAME,
                     DATABASE_NAME,
                     PDB_NAME,
                     XSTREAM_SERVER_NAME,
@@ -519,7 +523,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
-                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE)
+                    LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
+                    LOG_MINING_READ_ONLY)
             .create();
 
     /**
@@ -576,10 +581,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningMaxDelay;
     private final Duration logMiningMaximumSession;
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
+    private final Boolean logMiningReadOnly;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config),
-                x -> x.schema() + "." + x.table(), true, ColumnFilterMode.SCHEMA, false);
+        super(
+                OracleConnector.class, config,
+                new SystemTablesPredicate(config),
+                x -> x.schema() + "." + x.table(),
+                true,
+                ColumnFilterMode.SCHEMA,
+                false);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
@@ -623,6 +634,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaxDelay = Duration.ofMillis(config.getLong(LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS));
         this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
         this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
+        this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
     }
 
     private static String toUpperCase(String property) {
@@ -729,6 +741,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
+         * Performs a snapshot of data and schema upon each connector start.
+         */
+        ALWAYS("always", true, true, true),
+
+        /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
         INITIAL("initial", true, true, false),
@@ -745,7 +762,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
-         * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
@@ -756,7 +773,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         private final boolean shouldStream;
         private final boolean shouldSnapshotOnSchemaError;
 
-        private SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
+        SnapshotMode(String value, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError) {
             this.value = value;
             this.includeData = includeData;
             this.shouldStream = shouldStream;
@@ -784,7 +801,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         /**
-         * Whether the schema can be recovered if database history is corrupted.
+         * Whether the schema can be recovered if database schema history is corrupted.
          */
         public boolean shouldSnapshotOnSchemaError() {
             return shouldSnapshotOnSchemaError;
@@ -844,7 +861,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private final String value;
 
-        private SnapshotLockingMode(String value) {
+        SnapshotLockingMode(String value) {
             this.value = value;
         }
 
@@ -922,7 +939,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private final String value;
 
-        private TransactionSnapshotBoundaryMode(String value) {
+        TransactionSnapshotBoundaryMode(String value) {
             this.value = value;
         }
 
@@ -981,7 +998,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
                         "io.debezium.connector.oracle.xstream.XStreamAdapter",
-                        StreamingAdapter.class::getClassLoader,
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
@@ -1000,7 +1016,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
                         "io.debezium.connector.oracle.logminer.LogMinerAdapter",
-                        StreamingAdapter.class::getClassLoader,
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
@@ -1211,6 +1226,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     private static class SystemTablesPredicate implements TableFilter {
 
+        /**
+         * Pattern that matches temporary analysis tables created by the Compression Advisor subsystem.
+         * These tables will be ignored by the connector.
+         */
+        private final Pattern COMPRESSION_ADVISOR = Pattern.compile("^CMP[3|4]\\$[0-9]+$");
+
         private final Configuration config;
 
         SystemTablesPredicate(Configuration config) {
@@ -1219,7 +1240,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !isExcludedSchema(t) && !isFlushTable(t);
+            return !isExcludedSchema(t) && !isFlushTable(t) && !isCompressionAdvisorTable(t);
         }
 
         private boolean isExcludedSchema(TableId id) {
@@ -1228,6 +1249,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         private boolean isFlushTable(TableId id) {
             return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER));
+        }
+
+        private boolean isCompressionAdvisorTable(TableId id) {
+            return COMPRESSION_ADVISOR.matcher(id.table()).matches();
         }
     }
 
@@ -1460,6 +1485,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningTransactionSnapshotBoundaryMode;
     }
 
+    /**
+     * @return true if log mining should operate in read-only mode.
+     */
+    public boolean isLogMiningReadOnly() {
+        return logMiningReadOnly;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -1548,5 +1580,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             errors = Field.isRequired(config, field, problems);
         }
         return errors;
+    }
+
+    public static int validateLogMiningReadOnly(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
+            LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Oracle background LogMiner process; however, " +
+                    "the connector itself will not perform any write operations against the database.", LOG_MINING_READ_ONLY.name());
+            final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+            if (!racNodes.isEmpty()) {
+                LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+            }
+        }
+        return 0;
     }
 }

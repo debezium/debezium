@@ -8,7 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -51,13 +51,13 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -467,6 +467,45 @@ public class PostgresSchemaIT {
             assertColumnDefault("uuid_func", "00000000-0000-0000-0000-000000000000", columns, defaultValueConverter);
             assertColumnDefault("uuid_opt", null, columns, defaultValueConverter);
             assertColumnDefault("xml", "<foo>bar</foo>", columns, defaultValueConverter);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5398")
+    public void shouldLoadSchemaForUniqueIndexIncludingFunction() throws Exception {
+        String statements = "CREATE SCHEMA IF NOT EXISTS public;"
+                + "DROP TABLE IF EXISTS counter;"
+                + "CREATE TABLE counter(\n"
+                + "  campaign_id   text not null,\n"
+                + "  group_id      text,\n"
+                + "  sent_cnt      integer   default 0,\n"
+                + "  time_sent_cnt integer   default 0,\n"
+                + "  last_sent_dt  timestamp default LOCALTIMESTAMP,\n"
+                + "  emd_ins_dt    timestamp default LOCALTIMESTAMP not null,\n"
+                + "  emd_upd_dt    timestamp\n"
+                + ");\n"
+                + "create unique index uk_including_function on counter(campaign_id, COALESCE(group_id, ''::text));";
+
+        TestHelper.execute(statements);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        schema = TestHelper.getSchema(config);
+        TableId tableId = TableId.parse("public.counter", false);
+
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            schema.refresh(connection, false);
+            Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
+        }
+
+        statements = "drop index uk_including_function;"
+                + "create unique index uk_including_expression on counter((campaign_id),(sent_cnt/ 2));";
+        TestHelper.execute(statements);
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            schema.refresh(connection, false);
+            Table table = schema.tableFor(tableId);
+            assertThat(table).isNotNull();
+            assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
         }
     }
 

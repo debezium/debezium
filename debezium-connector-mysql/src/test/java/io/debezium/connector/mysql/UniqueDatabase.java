@@ -22,9 +22,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.storage.file.history.FileSchemaHistory;
 
 /**
  * Create and populate a unique instance of a MySQL database for each run of JUnit test. A user of class
@@ -90,7 +91,7 @@ public class UniqueDatabase {
      * Creates an instance with given Debezium logical name and database name and id suffix same
      * as another database. This is handy for tests that need multpli databases and can use regex
      * based whitelisting.
-    
+
      * @param serverName - logical Debezium server name
      * @param databaseName - the name of the database (prix)
      * @param sibling - a database whose unique suffix will be used
@@ -125,6 +126,10 @@ public class UniqueDatabase {
     }
 
     public String getServerName() {
+        return serverName;
+    }
+
+    public String getTopicPrefix() {
         return serverName;
     }
 
@@ -174,7 +179,7 @@ public class UniqueDatabase {
 
     /**
      * @param dbHistoryPath - directory where to store database schema history
-     * @see io.debezium.relational.history.FileDatabaseHistory
+     * @see io.debezium.storage.file.history.FileSchemaHistory
      */
     public UniqueDatabase withDbHistoryPath(final Path dbHistoryPath) {
         this.dbHistoryPath = dbHistoryPath;
@@ -208,7 +213,7 @@ public class UniqueDatabase {
         }
 
         if (dbHistoryPath != null) {
-            builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);
+            builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }
 
         return builder;
@@ -229,10 +234,10 @@ public class UniqueDatabase {
     public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
         return defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, getServerName());
     }
 
     /**

@@ -1,5 +1,5 @@
 pipelineJob('ocp-downstream-artifact-server-prepare-job') {
-    displayName('Artifact Server Preparation')
+    displayName('Artifact Server Preparation - Downstream')
     description('Prepares plugins file for artifact server')
 
     properties {

@@ -42,10 +42,10 @@ you will register the following connector:
     "database.user": "debezium",
     "database.password": "dbz",
     "database.server.id": "184054",  // <5>
-    "database.server.name": "dbserver1",  // <5>
+    "topic.prefix": "dbserver1",  // <5>
     "database.include.list": "inventory",  // <6>
-    "database.history.kafka.bootstrap.servers": "kafka:9092",  // <7>
-    "database.history.kafka.topic": "schema-changes.inventory"  // <7>
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",  // <7>
+    "schema.history.internal.kafka.topic": "schema-changes.inventory"  // <7>
   }
 }
 ----
@@ -61,7 +61,7 @@ If any of the services stop or crash, those tasks will be redistributed to runni
 which is the name of the Docker container running the MySQL server (`mysql`).
 Docker manipulates the network stack within the containers so that each linked container can be resolved with `/etc/hosts` using the container name for the host name.
 If MySQL were running on a normal network, you would specify the IP address or resolvable host name for this value.
-<5> A unique server ID and name. The server name is the logical identifier for the MySQL server or cluster of servers.
+<5> A unique topic prefix.
 This name will be used as the prefix for all Kafka topics.
 <6> Only changes in the `inventory` database will be detected.
 <7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
@@ -89,7 +89,7 @@ replace `localhost` with the IP address of of your Docker host.
 
 [source,shell,options="nowrap"]
 ----
-$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "mysql", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "database.server.name": "dbserver1", "database.include.list": "inventory", "database.history.kafka.bootstrap.servers": "kafka:9092", "database.history.kafka.topic": "dbhistory.inventory" } }'
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "mysql", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "inventory", "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", "schema.history.internal.kafka.topic": "schemahistory.inventory" } }'
 ----
 
 ifdef::windows[]
@@ -100,7 +100,7 @@ For example:
 
 [source,shell,options="nowrap"]
 ----
-$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ \"name\": \"inventory-connector\", \"config\": { \"connector.class\": \"io.debezium.connector.mysql.MySqlConnector\", \"tasks.max\": \"1\", \"database.hostname\": \"mysql\", \"database.port\": \"3306\", \"database.user\": \"debezium\", \"database.password\": \"dbz\", \"database.server.id\": \"184054\", \"database.server.name\": \"dbserver1\", \"database.include.list\": \"inventory\", \"database.history.kafka.bootstrap.servers\": \"kafka:9092\", \"database.history.kafka.topic\": \"dbhistory.inventory\" } }'
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ \"name\": \"inventory-connector\", \"config\": { \"connector.class\": \"io.debezium.connector.mysql.MySqlConnector\", \"tasks.max\": \"1\", \"database.hostname\": \"mysql\", \"database.port\": \"3306\", \"database.user\": \"debezium\", \"database.password\": \"dbz\", \"database.server.id\": \"184054\", \"topic.prefix\": \"dbserver1\", \"database.include.list\": \"inventory\", \"schema.history.internal.kafka.bootstrap.servers\": \"kafka:9092\", \"schema.history.internal.kafka.topic\": \"schemahistory.inventory\" } }'
 ----
 
 Otherwise, you might see an error like the following:
@@ -119,7 +119,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "0.0.0.0", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "database.server.name": "dbserver1", "database.include.list": "inventory", "database.history.kafka.bootstrap.servers": "0.0.0.0:9092", "database.history.kafka.topic": "dbhistory.inventory" } }'
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "0.0.0.0", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "topic.prefix": "dbserver1", "database.include.list": "inventory", "schema.history.internal.kafka.bootstrap.servers": "0.0.0.0:9092", "schema.history.internal.kafka.topic": "schemahistory.inventory" } }'
 ----
 ====
 endif::community[]

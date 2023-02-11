@@ -40,13 +40,14 @@ import io.debezium.relational.ddl.DdlParserListener.TableEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexDroppedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableIndexEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableTruncatedEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**
@@ -76,16 +77,16 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * The DDL statements passed to the schema are parsed and a logical model of the database schema is created.
      *
      */
-    public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicSelector<TableId> topicSelector,
+    public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
                                SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+        super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverter,
                         new MySqlDefaultValueConverter(valueConverter),
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames(),
+                        connectorConfig.getFieldNamer(),
                         false),
                 tableIdCaseInsensitive, connectorConfig.getKeyMapper());
 
@@ -179,7 +180,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // - all DDLs if configured
         // - or global SET variables
         // - or DDLs for monitored objects
-        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
+        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
@@ -212,8 +213,8 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             this.ddlParser.parse(ddlStatements, tables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {
-            if (databaseHistory.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
+            if (schemaHistory.skipUnparseableDdlStatements()) {
+                LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
             }
             else {
                 throw e;
@@ -221,7 +222,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
 
         // No need to send schema events or store DDL if no table has changed
-        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
+        if (!schemaHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
 
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
@@ -259,6 +260,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                                 emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
                                         SchemaChangeEventType.DROP, snapshot);
                             }
+                            else if (event instanceof TableTruncatedEvent) {
+                                emitChangeEvent(partition, offset, schemaChangeEvents, sanitizedDbName, event, tableId,
+                                        SchemaChangeEventType.TRUNCATE, snapshot);
+                            }
                             else if (event instanceof SetVariableEvent) {
                                 // SET statement with multiple variable emits event for each variable. We want to emit only
                                 // one change event
@@ -283,7 +288,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             }
         }
         else {
-            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
+            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
         }
         return schemaChangeEvents;
     }
@@ -291,15 +296,30 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private void emitChangeEvent(MySqlPartition partition, MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
                                  final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEventType type,
                                  boolean snapshot) {
-        schemaChangeEvents.add(SchemaChangeEvent.of(
-                type,
-                partition,
-                offset,
-                sanitizedDbName,
-                null,
-                event.statement(),
-                tableId != null ? tableFor(tableId) : null,
-                snapshot));
+        SchemaChangeEvent schemaChangeEvent;
+        if (type.equals(SchemaChangeEventType.ALTER) && event instanceof TableAlteredEvent
+                && ((TableAlteredEvent) event).previousTableId() != null) {
+            schemaChangeEvent = SchemaChangeEvent.ofRename(
+                    partition,
+                    offset,
+                    sanitizedDbName,
+                    null,
+                    event.statement(),
+                    tableId != null ? tables().forTable(tableId) : null,
+                    ((TableAlteredEvent) event).previousTableId());
+        }
+        else {
+            schemaChangeEvent = SchemaChangeEvent.of(
+                    type,
+                    partition,
+                    offset,
+                    sanitizedDbName,
+                    null,
+                    event.statement(),
+                    tableId != null ? tables().forTable(tableId) : null,
+                    snapshot);
+        }
+        schemaChangeEvents.add(schemaChangeEvent);
     }
 
     private boolean acceptableDatabase(final String databaseName) {
@@ -325,15 +345,15 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     /**
-     * Return true if the database history entity exists
+     * Return true if the database schema history entity exists
      */
     public boolean historyExists() {
-        return databaseHistory.exists();
+        return schemaHistory.exists();
     }
 
     @Override
     public boolean storeOnlyCapturedTables() {
-        return databaseHistory.storeOnlyCapturedTables();
+        return schemaHistory.storeOnlyCapturedTables();
     }
 
     /**

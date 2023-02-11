@@ -8,6 +8,7 @@ package io.debezium.testing.system.tools.databases.oracle;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_PDBNAME;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_ORACLE_USERNAME;
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -47,6 +48,9 @@ public class OcpOracleController extends OcpSqlDatabaseController {
     }
 
     public void initialize() throws InterruptedException {
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
         Pod pod = ocp.pods().inNamespace(project).withLabel("deployment", name).list().getItems().get(0);
         LOGGER.info("Uploading inventory.sql to " + DB_INIT_SCRIPT_PATH_CONTAINER);
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())

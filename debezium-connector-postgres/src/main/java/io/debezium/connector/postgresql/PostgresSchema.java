@@ -28,7 +28,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
-import io.debezium.schema.TopicSelector;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
@@ -44,8 +44,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected final static String PUBLIC_SCHEMA_NAME = "public";
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
-    private final TypeRegistry typeRegistry;
-
     private final Map<TableId, List<String>> tableIdToToastableColumns;
     private final Map<Integer, TableId> relationIdToTableId;
     private final boolean readToastableColumns;
@@ -55,13 +53,12 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, PostgresDefaultValueConverter defaultValueConverter,
-                             TopicSelector<TableId> topicSelector, PostgresValueConverter valueConverter) {
-        super(config, topicSelector, config.getTableFilters().dataCollectionFilter(),
+    protected PostgresSchema(PostgresConnectorConfig config, PostgresDefaultValueConverter defaultValueConverter,
+                             TopicNamingStrategy<TableId> topicNamingStrategy, PostgresValueConverter valueConverter) {
+        super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(),
                 config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter),
                 false, config.getKeyMapper());
 
-        this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
@@ -69,9 +66,9 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter,
                                                             PostgresDefaultValueConverter defaultValueConverter) {
-        return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjustmentMode().createAdjuster(),
+        return new TableSchemaBuilder(valueConverter, defaultValueConverter, config.schemaNameAdjuster(),
                 config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
-                config.getSanitizeFieldNames(), false);
+                config.getFieldNamer(), false);
     }
 
     /**
@@ -206,10 +203,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
             return null;
         }
         return tableId.schema() == null ? new TableId(tableId.catalog(), PUBLIC_SCHEMA_NAME, tableId.table()) : tableId;
-    }
-
-    public TypeRegistry getTypeRegistry() {
-        return typeRegistry;
     }
 
     public List<String> getToastableColumnsForTableId(TableId tableId) {

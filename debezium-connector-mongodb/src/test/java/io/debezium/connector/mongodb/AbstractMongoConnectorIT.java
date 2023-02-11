@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -15,8 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
@@ -27,9 +25,13 @@ import javax.management.ObjectName;
 import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -37,9 +39,11 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.testing.testcontainers.MongoDbReplicaSet;
+import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -54,14 +58,16 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     // the one and only task we start in the test suite
     private static final int TASK_ID = 0;
 
+    protected static MongoDbReplicaSet mongo;
+
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected LogInterceptor logInterceptor;
 
     @Before
     public void beforeEach() {
-        Testing.Debug.disable();
-        Testing.Print.disable();
+        Debug.disable();
+        Print.disable();
         stopConnector();
         initializeConnectorTestFramework();
     }
@@ -78,6 +84,21 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @BeforeClass
+    public static void beforeAll() {
+        DockerUtils.enableFakeDnsIfRequired();
+        mongo = MongoDbDatabaseProvider.mongoDbReplicaSet();
+        mongo.start();
+    }
+
+    @AfterClass
+    public static void afterAll() {
+        DockerUtils.disableFakeDns();
+        if (mongo != null) {
+            mongo.stop();
+        }
+    }
+
     /**
      * Load test documents from the classpath.
      *
@@ -86,7 +107,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
      */
     protected List<Document> loadTestDocuments(String pathOnClasspath) {
         final List<Document> documents = new ArrayList<>();
-        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
+        try (InputStream stream = Files.readResourceAsStream(pathOnClasspath)) {
             assertThat(stream).isNotNull();
             IoUtil.readLines(stream, line -> {
                 Document document = Document.parse(line);
@@ -115,10 +136,10 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             return;
         }
 
-        primary().execute("store documents", mongo -> {
+        try (var client = TestHelper.connect(mongo)) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
 
-            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoDatabase db = client.getDatabase(dbName);
 
             MongoCollection<Document> collection = db.getCollection(collectionName);
             collection.drop();
@@ -129,7 +150,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
                 assertThat(document.size()).isGreaterThan(0);
                 collection.insertOne(document, options);
             }
-        });
+        }
     }
 
     /**
@@ -145,10 +166,10 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             return;
         }
 
-        primary().execute("store documents", mongo -> {
+        try (var client = TestHelper.connect(mongo)) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
 
-            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoDatabase db = client.getDatabase(dbName);
 
             MongoCollection<Document> collection = db.getCollection(collectionName);
 
@@ -158,7 +179,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
                 assertThat(document.size()).isGreaterThan(0);
                 collection.insertOne(document, options);
             }
-        });
+        }
     }
 
     /**
@@ -169,19 +190,19 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
      * @param documents the documents to be inserted, can be empty
      */
     protected void insertDocumentsInTx(String dbName, String collectionName, Document... documents) {
-        assertThat(TestHelper.transactionsSupported(primary(), dbName)).isTrue();
+        assertThat(TestHelper.transactionsSupported()).isTrue();
 
-        primary().execute("store documents in tx", mongo -> {
+        try (var client = TestHelper.connect(mongo)) {
             Testing.debug("Storing documents in '" + dbName + "." + collectionName + "'");
             // If the collection does not exist, be sure to create it
-            final MongoDatabase db = mongo.getDatabase(dbName);
+            final MongoDatabase db = client.getDatabase(dbName);
             if (!collectionExists(db, collectionName)) {
                 db.createCollection(collectionName);
             }
 
             final MongoCollection<Document> collection = db.getCollection(collectionName);
 
-            final ClientSession session = mongo.startSession();
+            final ClientSession session = client.startSession();
             try {
                 session.startTransaction();
 
@@ -197,7 +218,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             finally {
                 session.close();
             }
-        });
+        }
     }
 
     /**
@@ -209,13 +230,13 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
      * @param document the document fields to be updated
      */
     protected void updateDocument(String dbName, String collectionName, Document filter, Document document) {
-        primary().execute("update", mongo -> {
+        try (var client = TestHelper.connect(mongo)) {
             Testing.debug("Updating document with filter '" + filter + "' in '" + dbName + "." + collectionName + "'");
 
-            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> collection = db.getCollection(collectionName);
             collection.updateOne(filter, document);
-        });
+        }
     }
 
     /**
@@ -227,15 +248,15 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
      * @param document the document fields to be updated
      */
     protected void updateDocumentsInTx(String dbName, String collectionName, Document filter, Document document) {
-        assertThat(TestHelper.transactionsSupported(primary(), dbName)).isTrue();
+        assertThat(TestHelper.transactionsSupported()).isTrue();
 
-        primary().execute("update documents in tx", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Updating document with filter '" + filter + "' in '" + dbName + "." + collectionName + "'");
 
-            final MongoDatabase db = mongo.getDatabase(dbName);
+            final MongoDatabase db = client.getDatabase(dbName);
             final MongoCollection<Document> collection = db.getCollection(collectionName);
 
-            final ClientSession session = mongo.startSession();
+            final ClientSession session = client.startSession();
             try {
                 session.startTransaction();
 
@@ -246,7 +267,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             finally {
                 session.close();
             }
-        });
+        }
     }
 
     /**
@@ -257,26 +278,15 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
      * @param filter the document filter
      */
     protected void deleteDocuments(String dbName, String collectionName, Document filter) {
-        primary().execute("delete", mongo -> {
-            MongoDatabase db = mongo.getDatabase(dbName);
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase(dbName);
             MongoCollection<Document> coll = db.getCollection(collectionName);
             coll.deleteOne(filter);
-        });
+        }
     }
 
-    protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
-    }
-
-    protected BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
+    protected MongoClient connect() {
+        return MongoClients.create(mongo.getConnectionString());
     }
 
     private static boolean collectionExists(MongoDatabase database, String collectionName) {
@@ -291,13 +301,13 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
-        primary().execute("storing documents", mongo -> {
+        try (var client = connect()) {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
-            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoDatabase db1 = client.getDatabase(dbName);
             MongoCollection<Document> coll = db1.getCollection(collectionName);
             coll.drop();
             storeDocuments(coll, pathOnClasspath);
-        });
+        }
     }
 
     protected void storeDocuments(MongoCollection<Document> collection, String pathOnClasspath) {

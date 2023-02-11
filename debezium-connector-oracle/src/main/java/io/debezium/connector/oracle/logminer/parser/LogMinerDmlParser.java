@@ -6,12 +6,8 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.relational.Column;
 import io.debezium.relational.Table;
-
-import oracle.jdbc.OracleTypes;
 
 /**
  * A simple DML parser implementation specifically for Oracle LogMiner.
@@ -142,7 +138,7 @@ public class LogMinerDmlParser implements DmlParser {
             // accordingly, leaving any field's after value alone if it isn't null or a sentinel.
             for (int i = 0; i < oldValues.length; ++i) {
                 // set unavailable value in the old values if applicable
-                oldValues[i] = getColumnUnavailableValue(oldValues[i], table.columns().get(i));
+                oldValues[i] = ParserUtils.getColumnUnavailableValue(oldValues[i], table.columns().get(i));
                 if (newValues[i] == NULL_SENTINEL) {
                     // field is explicitly set to NULL, clear the sentinel and continue
                     newValues[i] = null;
@@ -180,10 +176,7 @@ public class LogMinerDmlParser implements DmlParser {
             parseWhereClause(sql, index, oldValues, table);
 
             // Check and update unavailable column values
-            for (int i = 0; i < oldValues.length; ++i) {
-                // set unavailable value in the old values if applicable
-                oldValues[i] = getColumnUnavailableValue(oldValues[i], table.columns().get(i));
-            }
+            ParserUtils.setColumnUnavailableValues(oldValues, table);
 
             return LogMinerDmlEntryImpl.forDelete(oldValues);
         }
@@ -407,10 +400,10 @@ public class LogMinerDmlParser implements DmlParser {
                 index += 1;
                 start = index + 1;
             }
-            else if (nested == 0 & c == ' ' && lookAhead == '|') {
+            else if (nested == 0 && c == ' ' && lookAhead == '|') {
                 // Possible concatenation, nothing to do yet
             }
-            else if (nested == 0 & c == '|' && lookAhead == '|') {
+            else if (nested == 0 && c == '|' && lookAhead == '|' && !inSingleQuote) {
                 // Concatenation
                 for (int i = index + 2; i < sql.length(); ++i) {
                     if (sql.charAt(i) != ' ') {
@@ -617,10 +610,10 @@ public class LogMinerDmlParser implements DmlParser {
                 else if (c == ')' && nested > 0) {
                     nested--;
                 }
-                else if (nested == 0 & c == ' ' && lookAhead == '|') {
+                else if (nested == 0 && c == ' ' && lookAhead == '|') {
                     // Possible concatenation, nothing to do yet
                 }
-                else if (nested == 0 & c == '|' && lookAhead == '|') {
+                else if (nested == 0 && c == '|' && lookAhead == '|') {
                     // Concatenation
                     for (int i = index + 2; i < sql.length(); ++i) {
                         if (sql.charAt(i) != ' ') {
@@ -665,20 +658,5 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
-    }
-
-    private Object getColumnUnavailableValue(Object value, Column column) {
-        if (value != null) {
-            return value;
-        }
-
-        switch (column.jdbcType()) {
-            case OracleTypes.CLOB:
-            case OracleTypes.NCLOB:
-            case OracleTypes.BLOB:
-                return OracleValueConverters.UNAVAILABLE_VALUE;
-            default:
-                return null;
-        }
     }
 }

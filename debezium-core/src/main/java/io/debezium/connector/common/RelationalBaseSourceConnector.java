@@ -14,6 +14,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
@@ -33,7 +34,7 @@ public abstract class RelationalBaseSourceConnector extends SourceConnector {
         // Validate all of the individual fields, which is easy since don't make any of the fields invisible ...
         Map<String, ConfigValue> results = validateAllFields(config);
 
-        ConfigValue logicalName = results.get(RelationalDatabaseConnectorConfig.SERVER_NAME.name());
+        ConfigValue logicalName = results.get(CommonConnectorConfig.TOPIC_PREFIX.name());
         // Get the config values for each of the connection-related fields ...
         ConfigValue hostnameValue = results.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         ConfigValue portValue = results.get(RelationalDatabaseConnectorConfig.PORT.name());

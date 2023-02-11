@@ -8,7 +8,7 @@ package io.debezium.data;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
+import org.assertj.core.api.Assertions;
 
 /**
  * Allows to assert {@link SourceRecord}s in the fluent AssertJ style.

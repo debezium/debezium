@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.postgresql.connection;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 
 /**
  * This class is responsible for finding out a LSN from which Debezium should
@@ -28,16 +31,19 @@ public class WalPositionLocator {
 
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
+    private final Operation lastProcessedMessageType;
     private Lsn txStartLsn = null;
     private Lsn lsnAfterLastEventStoredLsn = null;
     private Lsn firstLsnReceived = null;
     private boolean passMessages = true;
     private Lsn startStreamingLsn = null;
     private boolean storeLsnAfterLastEventStoredLsn = false;
+    private Set<Lsn> lsnSeen = new HashSet<>(1_000);
 
-    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn) {
+    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
         this.lastEventStoredLsn = lastEventStoredLsn;
+        this.lastProcessedMessageType = lastProcessedMessageType;
 
         LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}'",
                 lastCommitStoredLsn, lastEventStoredLsn);
@@ -46,6 +52,7 @@ public class WalPositionLocator {
     public WalPositionLocator() {
         this.lastCommitStoredLsn = null;
         this.lastEventStoredLsn = null;
+        this.lastProcessedMessageType = null;
 
         LOGGER.info("WAL position will not be searched");
     }
@@ -57,6 +64,8 @@ public class WalPositionLocator {
     public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message) {
         LOGGER.trace("Processing LSN '{}', operation '{}'", currentLsn, message.getOperation());
 
+        lsnSeen.add(currentLsn);
+
         if (firstLsnReceived == null) {
             firstLsnReceived = currentLsn;
             LOGGER.info("First LSN '{}' received", firstLsnReceived);
@@ -66,6 +75,12 @@ public class WalPositionLocator {
             // We can resume streaming from it
             if (currentLsn.equals(lastEventStoredLsn)) {
                 // BEGIN and first message after change have the same LSN
+                if (txStartLsn != null && (lastProcessedMessageType == null || lastProcessedMessageType == Operation.BEGIN)) {
+                    // start from the BEGIN tx; prevent skipping of unprocessed event after BEGIN
+                    LOGGER.info("Will restart from LSN '{}' corresponding to the event following the BEGIN event", txStartLsn);
+                    startStreamingLsn = txStartLsn;
+                    return Optional.of(startStreamingLsn);
+                }
                 return Optional.empty();
             }
             lsnAfterLastEventStoredLsn = currentLsn;
@@ -135,12 +150,14 @@ public class WalPositionLocator {
         if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
             passMessages = true;
+            lsnSeen = new HashSet<>(); // Empty the Map as it might be large and is no longer needed
             return false;
         }
-        if (startStreamingLsn.compareTo(lsn) < 0) {
+        if (lsn.isValid() && !lsnSeen.contains(lsn)) {
             throw new DebeziumException(String.format(
-                    "Message with LSN '%s' larger than expected LSN '%s'. This is unexpected and can lead to an infinite loop or a data loss.",
-                    lsn, startStreamingLsn));
+                    "Message with LSN '%s' not present among LSNs seen in the location phase '%s'. This is unexpected and can lead to an infinite loop or a data loss.",
+                    lsn,
+                    lsnSeen));
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
@@ -164,12 +181,16 @@ public class WalPositionLocator {
         return lastEventStoredLsn;
     }
 
+    public Lsn getLastCommitStoredLsn() {
+        return lastCommitStoredLsn;
+    }
+
     @Override
     public String toString() {
         return "WalPositionLocator [lastCommitStoredLsn=" + lastCommitStoredLsn + ", lastEventStoredLsn="
-                + lastEventStoredLsn + ", txStartLsn=" + txStartLsn + ", lsnAfterLastEventStoredLsn="
-                + lsnAfterLastEventStoredLsn + ", firstLsnReceived=" + firstLsnReceived + ", passMessages="
-                + passMessages + ", startStreamingLsn=" + startStreamingLsn + ", storeLsnAfterLastEventStoredLsn="
-                + storeLsnAfterLastEventStoredLsn + "]";
+                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType + ", txStartLsn="
+                + txStartLsn + ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn + ", firstLsnReceived="
+                + firstLsnReceived + ", passMessages=" + passMessages + ", startStreamingLsn=" + startStreamingLsn
+                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + "]";
     }
 }

@@ -12,8 +12,8 @@ CREATE TABLE `DBZ2085` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10851 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `DBZ5236` (
-  id int not null primary key auto_increment,
-  ti1 tinyint unsigned NOT NULL DEFAULT '0',
+  id int(11) not null primary key auto_increment,
+  ti1 tinyint(3) unsigned NOT NULL DEFAULT '0',
   ti2 tinyint(1) unsigned NOT NULL DEFAULT '0',
   ti3 tinyint(1) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;

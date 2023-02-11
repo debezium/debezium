@@ -115,12 +115,12 @@ Also, a connector cannot just use the current schema because the connector might
 To ensure correct processing of changes that occur after a schema change, MySQL includes in the binlog not only the row-level changes to the data, but also the DDL statements that are applied to the database.
 As the connector reads the binlog and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
 The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
-In a separate database history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
+In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
 
 When the connector restarts after having crashed or been stopped gracefully, the connector starts reading the binlog from a specific position, that is, from a specific point in time.
-The connector rebuilds the table structures that existed at this point in time by reading the database history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
+The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
-This database history topic is for connector use only.
+This database schema history topic is for connector use only.
 The connector can optionally xref:mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
@@ -136,7 +136,7 @@ See xref:{link-mysql-connector}#mysql-topic-names[default names for topics] that
 === Schema change topic
 
 You can configure a {prodname} MySQL connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
-The connector writes schema change events to a Kafka topic named `_<serverName>_`, where `_serverName_` is the logical server name that is specified in the xref:mysql-property-database-server-name[`database.server.name`] connector configuration property.
+The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the namespace specified in the xref:mysql-property-topic-prefix[`topic.prefix`] connector configuration property.
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 
 The payload of a schema change event message includes the following elements:
@@ -151,20 +151,20 @@ Because the structured representation presents data in JSON or Avro format, cons
 
 [IMPORTANT]
 ====
-For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database history topic.
-The internal database history topic is for connector use only and it is not intended for direct use by consuming applications.
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only and it is not intended for direct use by consuming applications.
 Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
 ====
 
 [IMPORTANT]
 ====
-Never partition the database history topic.
-For the database history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
 
 To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
 
-* If you create the database history topic manually, specify a partition count of `1`.
-* If you use the Apache Kafka broker to create the database history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
 ====
 
 [WARNING]
@@ -281,6 +281,11 @@ The message contains a logical representation of the table schema.
                 "autoIncremented": false,
                 "generated": false
             }
+          ],
+          "attributes": [ <11>
+            {
+              "customAttribute": "attributeValue"
+            }
           ]
         }
       }
@@ -351,6 +356,10 @@ In the case of a table rename, this identifier is a concatenation of `_<old>_,_<
 |10
 |`columns`
 |Metadata for each column in the changed table.
+
+|11
+|`attributes`
+|Custom attribute metadata for each table change.
 
 |===
 
@@ -458,6 +467,17 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 ==== Incremental snapshots
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+// Type: procedure
+[id="mysql-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+
+// Type: procedure
+[id="mysql-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
 
 ifdef::community[]
 [id="mysql-read-only-incremental-snapshots"]
@@ -483,7 +503,7 @@ you must set one of the following options:
 When the MySQL connection is read-only, the xref:{link-signalling}[signaling table] mechanism can also run a snapshot by sending a message to the Kafka topic that is specified in
 the xref:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
 
-The key of the Kafka message must match the value of the `database.server.name` connector configuration option.
+The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
 
 The value is a JSON object with `type` and `data` fields.
 
@@ -504,6 +524,10 @@ See the next section for more details.
 | An array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
 The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
+|`additional-condition`
+|_N/A_
+| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
+subset of the contents of the {data-collection}(s).
 |===
 
 An example of the execute-snapshot Kafka message:
@@ -512,6 +536,75 @@ An example of the execute-snapshot Kafka message:
 Key = `test_connector`
 
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
+
+==== Ad hoc read-only incremental snapshots with additional-condition
+
+* `additional-condition` is used to select a subset of a {data-collection}'s content.
+
+* To give an analogy how `additional-condition` is used:
+
+** For a snapshot, the SQL query executed behind the scenes is something like:
++
+SELECT * FROM _<tableName>_ ....
+
+** For a snapshot with a `additional-condition`, the `additional-condition` is appended to the SQL query, something like:
++
+SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
+
+* Suppose there is a `products` {data-collection} with columns `id` (primary key), `color` and `brand`.
++
+To snapshot just the content of the `products` {data-collection} where `color=blue`
++
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue"}}`
+----
+
+* `additional-condition` can be used to pass condition based on multiple columns.
+Using the same `products` {data-collection}, to snapshot content of the `products` {data-collection} where `color=blue` and `brand=foo`
++
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=foo"}}`
+----
+
+==== Stopping an Ad hoc read-only incremental snapshot
+
+When the MySQL connection is read-only, the xref:{link-signalling}[signaling table] mechanism can also stop a snapshot by sending a message to the Kafka topic that is specified in
+the xref:{link-mysql-connector}#mysql-property-signal-kafka-topic[signal.kafka.topic] property.
+
+The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
+
+The value is a JSON object with `type` and `data` fields.
+
+The signal type is `stop-snapshot` and the `data` field must have the following fields:
+
+.Execute snapshot data fields
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| An optional array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
+The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|===
+
+An example of the stop-snapshot Kafka message:
+
+----
+Key = `test_connector`
+
+Value = `{"type":"stop-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 ----
 
 // Type: continue
@@ -540,9 +633,9 @@ By default, the MySQL connector writes change events for all of the `INSERT`, `U
 
 The connector uses the following convention to name change event topics:
 
-_serverName.databaseName.tableName_
+_topicPrefix.databaseName.tableName_
 
-Suppose that `fulfillment` is the server name, `inventory` is the database name, and the database contains tables named `orders`, `customers`, and `products`.
+Suppose that `fulfillment` is the topic prefix, `inventory` is the database name, and the database contains tables named `orders`, `customers`, and `products`.
 The {prodname} MySQL connector emits events to three Kafka topics, one for each table in the database:
 
 ----
@@ -553,13 +646,13 @@ fulfillment.inventory.products
 
 The following list provides definitions for the components of the default name:
 
-_serverName_:: The logical name of the server as specified by the xref:mysql-property-database-server-name[`database.server.name`] connector configuration property.
+_topicPrefix_:: The topic prefix as specified by the xref:mysql-property-topic-prefix[`topic.prefix`] connector configuration property.
 
 _schemaName_:: The name of the schema in which the operation occurred.
 
 _tableName_:: The name of the table in which the operation occurred.
 
-The connector applies similar naming conventions to label its internal database history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
+The connector applies similar naming conventions to label its internal database schema history topics, xref:mysql-schema-change-topic[schema change topics], and xref:mysql-transaction-metadata[transaction metadata topics].
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
@@ -582,10 +675,10 @@ Transaction boundary events contain the following fields:
 
 `status`:: `BEGIN` or `END`.
 `id`:: String representation of the unique transaction identifier.
-`ts_ms`:: The time of `BEGIN` or `END` transaction.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
 `event_count` (for `END` events):: Total number of events emitted by the transaction.
-`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements.
-that indicates the number of events that the connector emits for changes that originate from a data collection.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
 
 .Example
 
@@ -594,6 +687,7 @@ that indicates the number of events that the connector emits for changes that or
 {
   "status": "BEGIN",
   "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
+  "ts_ms": 1486500577125,
   "event_count": null,
   "data_collections": null
 }
@@ -601,6 +695,7 @@ that indicates the number of events that the connector emits for changes that or
 {
   "status": "END",
   "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
+  "ts_ms": 1486500577691,
   "event_count": 2,
   "data_collections": [
     {
@@ -615,17 +710,17 @@ that indicates the number of events that the connector emits for changes that or
 }
 ----
 
-Unless overridden via the xref:mysql-property-transaction-topic[`transaction.topic`] option,
-the connector emits transaction events to the xref:mysql-property-database-server-name[`_<database.server.name>_`]`.transaction` topic.
+Unless overridden via the xref:mysql-property-topic-transaction[`topic.transaction`] option,
+the connector emits transaction events to the xref:mysql-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
 
 .Change data event enrichment
 
 When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-* `id` - string representation of unique transaction identifier
-* `total_order` - absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
 
 Following is an example of a message:
 
@@ -824,6 +919,7 @@ The value portion of a change event for a change to this table is described for:
 * <<mysql-primary-key-updates,Primary key updates>>
 * <<mysql-delete-events,_delete_ events>>
 * <<mysql-tombstone-events,Tombstone events>>
+* <<mysql-truncate-events,_truncate_ events>>
 
 // Type: continue
 [id="mysql-create-events"]
@@ -1286,6 +1382,81 @@ MySQL connector events are designed to work with link:{link-kafka-docs}/#compact
 === Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s MySQL connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
 
+// Type: continue
+[id="mysql-truncate-events"]
+=== _truncate_ events
+A  _truncate_ change event signals that a table has been truncated.
+The message key is `null` in this case, the message value looks like this:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "schema": { ... },
+    "payload": {
+        "source": { // <1>
+            "version": "{debezium-version}",
+            "name": "mysql-server-1",
+            "connector": "mysql",
+            "name": "mysql-server-1",
+            "ts_ms": 1465581029100,
+            "snapshot": false,
+            "db": "inventory",
+            "table": "customers",
+            "server_id": 223344,
+            "gtid": null,
+            "file": "mysql-bin.000003",
+            "pos": 484,
+            "row": 0,
+            "thread": 7,
+            "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
+        },
+        "op": "t", // <2>
+        "ts_ms": 1465581029523 // <3>
+    }
+}
+----
+
+.Descriptions of _truncate_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
+
+* {prodname} version
+* Connector type and name
+* Binlog name where the event was recorded
+* Binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table
+* ID of the MySQL thread that truncated the event (non-snapshot only)
+* MySQL server ID (if available)
+* Timestamp for when the change was made in the database
+
+|2
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+
+|3
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
++
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|===
+
+In case a single `TRUNCATE` statement applies to multiple tables,
+one _truncate_ change event record for each truncated table will be emitted.
+
+Note that since _truncate_ events represent a change made to an entire table and don't have a message key,
+unless you're working with topics with a single partition,
+there are no ordering guarantees for the change events pertaining to a table (_create_, _update_, etc.) and _truncate_ events for that table.
+For instance a consumer may receive an _update_ event only after a _truncate_ event for that table,
+when those events are read from different partitions.
+
 // Type: reference
 // ModuleID: how-debezium-mysql-connectors-map-data-types
 // Title: How {prodname} MySQL connectors map data types
@@ -1387,17 +1558,17 @@ a|_n/a_
 |`BINARY(M)]`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`VARBINARY(M)]`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`TINYTEXT`
 |`STRING`
@@ -1406,7 +1577,7 @@ a|_n/a_
 |`BLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`TEXT`
@@ -1417,7 +1588,7 @@ Only values with a size of up to 2GB are supported. It is recommended to externa
 |`MEDIUMBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |`MEDIUMTEXT`
 |`STRING`
@@ -1426,7 +1597,7 @@ a|_n/a_
 |`LONGBLOB`
 |`BYTES` or `STRING`
 a|_n/a_ +
-Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{link-mysql-connector}#mysql-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
 |`LONGTEXT`
@@ -1612,6 +1783,15 @@ converters=boolean
 boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
 boolean.selector=db1.table1.*, db1.table2.column1
 ----
+* NOTE: MySQL8 not showing the length of `tinyint unsigned` type when snapshot executes `SHOW CREATE TABLE`, which means this converter doesn't work. The new option `length.checker` can solve this issue, the default value is `true`. Disable the `length.checker` and specify the columns that need to be converted to `selector` property instead of converting all columns based on type, as shown in the following example:
++
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter
+boolean.length.checker=false
+boolean.selector=db1.table1.*, db1.table2.column1
+----
 
 [id="mysql-spatial-types"]
 === Spatial types
@@ -1767,7 +1947,7 @@ FROM performance_schema.global_variables WHERE variable_name='log_bin';
 +
 [source,properties]
 ----
-server-id         = 223344
+server-id         = 223344 # Querying variable is called server_id, e.g. SELECT variable_value FROM information_schema.global_variables WHERE variable_name='server_id';
 log_bin           = mysql-bin
 binlog_format     = ROW
 binlog_row_image  = FULL
@@ -1953,6 +2133,47 @@ mysql> binlog_rows_query_log_events=ON
 ** `ON` = enabled
 ** `OFF` = disabled
 
+// Type: procedure
+// ModuleID: validate-binlog-row-value-options-for-debezium-mysql-connectors
+// Title: validate binlog row value options for {prodname} MySQL connectors
+[[validate-binlog-row-value-options]]
+=== Validating binlog row value options
+
+Check `binlog_row_value_options` variable, and make sure that value is **not** set to `PARTIAL_JSON`, since in such case connector might fail to consume *UPDATE* events.
+
+.Prerequisites
+
+* A MySQL server.
+* Basic knowledge of SQL commands.
+* Access to the MySQL configuration file.
+
+.Procedure
+
+. Check current variable value
++
+[source,SQL]
+----
+mysql> show global variables where variable_name = 'binlog_row_value_options';
+----
+
+. Result
++
+[source,SQL]
+----
++--------------------------+-------+
+| Variable_name            | Value |
++--------------------------+-------+
+| binlog_row_value_options |       |
++--------------------------+-------+
+----
+
+. In case value is `PARTIAL_JSON`, unset this variable by:
++
+[source,SQL]
+----
+mysql> set @@global.binlog_row_value_options="" ;
+----
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-mysql-connectors
 // Title: Deployment of {prodname} MySQL connectors
@@ -1979,7 +2200,7 @@ endif::[]
 . xref:{link-mysql-connector}#mysql-example-configuration[Configure the connector] and xref:{link-mysql-connector}#mysql-adding-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, MySQL, and Kafka Connect with the MySQL connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, MySQL, and Kafka Connect with the MySQL connector already installed and ready to run.
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
@@ -2039,18 +2260,36 @@ For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOp
 .. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
 For example, from a terminal window, enter the following command:
 +
+=====================================================================
+
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-mysql.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
-RUN curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/
 USER 1001
 EOF
 ----
-<1> You can specify any file name that you want.
-<2> Specifies the path to your Kafka Connect plug-ins directory. If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-mysql.yaml` in the current directory.
 
@@ -2085,6 +2324,7 @@ docker push _<myregistry.io>_/debezium-container-for-mysql:latest
 .. Create a new {prodname} MySQL `KafkaConnect` custom resource (CR).
 For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
+=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -2097,9 +2337,20 @@ spec:
   #...
   image: debezium-container-for-mysql  // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
-<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
@@ -2137,10 +2388,10 @@ and captures changes to the `inventory` database.
       database.user: debezium
       database.password: dbz
       database.server.id: 184054  // <5>
-      database.server.name: dbserver1 // <6>
+      topic.prefix: dbserver1 // <6>
       database.include.list: inventory  // <7>
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
-      database.history.kafka.topic: schema-changes.inventory  // <9>
+      schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
+      schema.history.internal.kafka.topic: schema-changes.inventory  // <9>
 ----
 +
 .Descriptions of connector configuration settings
@@ -2170,18 +2421,18 @@ those tasks will be redistributed to running services.
 |Unique ID of the connector.
 
 |6
-|Logical name of the MySQL server or cluster.
+|Topic prefix for the MySQL server or cluster.
 This name is used as the prefix for all Kafka topics that receive change event records.
 
 |7
 |Changes in only the `inventory` database are captured.
 
 |8
-|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 Upon restart, the connector recovers the schemas of the database that existed at the point in time in the binlog when the connector should begin reading.
 
 |9
-|The name of the database history topic. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
 |===
 
 . Create your connector instance with Kafka Connect.
@@ -2217,10 +2468,10 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.user": "debezium-user", // <5>
         "database.password": "debezium-user-pw", // <6>
         "database.server.id": "184054", <7>
-        "database.server.name": "fullfillment", // <8>
+        "topic.prefix": "fullfillment", // <8>
         "database.include.list": "inventory", // <9>
-        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-        "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
+        "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "schema.history.internal.kafka.topic": "schemahistory.fullfillment", // <11>
         "include.schema.changes": "true" // <12>
     }
 }
@@ -2232,10 +2483,10 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> MySQL user with the appropriate privileges.
 <6> MySQL user's password.
 <7> Unique ID of the connector.
-<8> Logical name of the MySQL server or cluster.
+<8> Topic prefix for the MySQL server or cluster.
 <9> List of databases hosted by the specified server.
-<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
-<11> Name of the database history topic. This topic is for internal use only and should not be used by consumers.
+<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database schema history topic.
+<11> Name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
 <12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
 
 endif::community[]
@@ -2281,7 +2532,7 @@ include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deplo
 endif::product[]
 
 // Type: reference
-// Title: Description of {prodname} MySQL connector configuration properties
+// Title: Descriptions of {prodname} MySQL connector configuration properties
 // ModuleID: descriptions-of-debezium-mysql-connector-configuration-properties
 [[mysql-connector-properties]]
 === Connector properties
@@ -2292,8 +2543,8 @@ Information about the properties is organized as follows:
 
 * xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
 * xref:mysql-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
-** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties]
 * xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
 
 [id="mysql-required-connector-configuration-properties"]
@@ -2332,63 +2583,112 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |Password to use when connecting to the MySQL database server.
 
-|[[mysql-property-database-server-name]]<<mysql-property-database-server-name, `+database.server.name+`>>
+|[[mysql-property-topic-prefix]]<<mysql-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Logical name that identifies and provides a namespace for the particular MySQL database server/cluster in which {prodname} is capturing changes. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive events emitted by this connector.
+|Topic prefix that provides a namespace for the particular MySQL database server/cluster in which {prodname} is capturing changes. The topic prefix should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive events emitted by this connector.
 Only alphanumeric characters, hyphens, dots and underscores must be used in the database server logical name. +
-+
+ +
 [WARNING]
 ====
 Do not change the value of this property.
 If you change the name value, after a restart, instead of continuing to emit events to the original topics, the connector emits subsequent events to topics whose names are based on the new value.
-The connector is also unable to recover its database history topic.
+The connector is also unable to recover its database schema history topic.
 ====
 
 |[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `+database.server.id+`>>
-|_random_
+|No default
 |A numeric ID of this database client, which must be unique across all currently-running database processes in the MySQL cluster. This connector joins the MySQL database cluster as another server (with this unique ID) so it can read the binlog.
 
 |[[mysql-property-database-include-list]]<<mysql-property-database-include-list, `+database.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the names of the databases for which to capture changes. The connector does not capture changes in any database whose name is not in `database.include.list`. By default, the connector captures changes in all databases.
-Do not also set the `database.exclude.list` connector confiuration property.
+|An optional, comma-separated list of regular expressions that match the names of the databases for which to capture changes.
+The connector does not capture changes in any database whose name is not in `database.include.list`.
+By default, the connector captures changes in all databases. +
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not also set the `database.exclude.list` property.
 
 |[[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `+database.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the names of databases for which you do not want to capture changes. The connector captures changes in any database whose name is not in the `database.exclude.list`.
-Do not also set the `database.include.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match the names of databases for which you do not want to capture changes.
+The connector captures changes in any database whose name is not in the `database.exclude.list`. +
+
+To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+If you include this property in the configuration, do not also set the `database.include.list` property.
 
 |[[mysql-property-table-include-list]]<<mysql-property-table-include-list, `+table.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture. The connector does not capture changes in any table not included in `table.include.list`. Each identifier is of the form _databaseName_._tableName_. By default, the connector captures changes in every non-system table in each database whose changes are being captured.
-Do not also specify the `table.exclude.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture.
+The connector does not capture changes in any table that is not included in `table.include.list`.
+Each identifier is of the form _databaseName_._tableName_.
+By default, the connector captures changes in every non-system table in each database whose changes are being captured. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.exclude.list` property.
 
 |[[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list, `+table.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture. The connector captures changes in any table not included in `table.exclude.list`. Each identifier is of the form _databaseName_._tableName_.
-Do not also specify the `table.include.list` connector configuration property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture.
+The connector captures changes in any table that is not included in `table.exclude.list`.
+Each identifier is of the form _databaseName_._tableName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
+If you include this property in the configuration, do not also set the `table.include.list` property.
 
 |[[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `+column.exclude.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
+
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
+If you include this property in the configuration, do not also set the `column.include.list` property.
 
 |[[mysql-property-column-include-list]]<<mysql-property-column-include-list, `+column.include.list+`>>
 |_empty string_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
 
-|[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
-|_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event record values if the field values are longer than the specified number of characters. You can configure multiple properties with different lengths in a single configuration. The length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
+If you include this property in the configuration, do not set the `column.exclude.list` property.
 
-|[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
+|[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
+Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
+
+The fully-qualified name of a column observes the following format: _databaseName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
+
+|[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|_n/a_
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
+Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
+Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
+Set _length_ to `0` (zero) to replace data in the specified columns with an empty string.
+
+The fully-qualified name of a column observes the following format: _databaseName_._tableName_._columnName_.
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
+
+You can specify multiple properties with different lengths in a single configuration.
 
 |[[mysql-property-column-mask-hash]]<<mysql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
 [[mysql-property-column-mask-hash-v2]]<<mysql-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 a|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form `_<databaseName>_._<tableName>_._<columnName>_`.
+Fully-qualified names for columns are of the form `_<databaseName>_._<tableName>_._<columnName>_`. +
+To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms. +
 
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
@@ -2410,37 +2710,37 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[mysql-property-column-propagate-source-type]]<<mysql-property-column-propagate-source-type, `+column.propagate.source.type+`>>
 |_n/a_
-a|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters:
+a|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
+When this property is set, the connector adds the following fields to the schema of event records:
 
-`pass:[_]pass:[_]{prodname}.source.column.type`
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
 
-`pass:[_]pass:[_]{prodname}.source.column.length`
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-`pass:[_]pass:[_]{prodname}.source.column.scale`
-
-are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified names for columns are of one of these forms:
-
-_databaseName_._tableName_._columnName_
-
-_databaseName_._schemaName_._tableName_._columnName_
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
 |[[mysql-property-datatype-propagate-source-type]]<<mysql-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
 |_n/a_
-a|An optional, comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters:
+a|An optional, comma-separated list of regular expressions that specify the fully-qualified names of data types that are defined for columns in a database.
+When this property is set, for columns with matching data types, the connector emits event records that include the following extra fields in their schema:
 
-`pass:[_]pass:[_]debezium.source.column.type`
+* `pass:[_]pass:[_]debezium.source.column.type` +
+* `pass:[_]pass:[_]debezium.source.column.length` +
+* `pass:[_]pass:[_]debezium.source.column.scale` +
 
-`pass:[_]pass:[_]debezium.source.column.length`
+These parameters propagate a column's original type name and length (for variable-width types), respectively. +
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-`pass:[_]pass:[_]debezium.source.column.scale`
+The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
+To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
 
-are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified data type names are of one of these forms:
-
-_databaseName_._tableName_._typeName_
-
-_databaseName_._schemaName_._tableName_._typeName_
-
-See xref:{link-mysql-connector}#mysql-data-types[how MySQL connectors map data types] for the list of MySQL-specific data type names.
+For the list of MySQL-specific data type names, see the xref:mysql-data-types[MySQL data type mappings].
 
 |[[mysql-property-time-precision-mode]]<<mysql-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
@@ -2474,7 +2774,7 @@ endif::community[]
 
 |[[mysql-property-include-schema-changes]]<<mysql-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history.
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database schema history.
 
 |[[mysql-property-include-schema-comments]]<<mysql-property-include-schema-comments, `+include.schema.comments+`>>
 |`false`
@@ -2530,7 +2830,7 @@ If xref:mysql-property-max-queue-size[`max.queue.size`] is also set, writing to 
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
 |[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
+|`500`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[mysql-property-connect-timeout-ms]]<<mysql-property-connect-timeout-ms, `+connect.timeout.ms+`>>
@@ -2539,12 +2839,21 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mysql-property-gtid-source-includes]]<<mysql-property-gtid-source-includes, `+gtid.source.includes+`>>
 |No default
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that match one of these include patterns are used.
-Do not also specify a setting for `gtid.source.excludes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used that the connector uses to find the binlog position on the MySQL server.
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that match one of the specified `include` patterns.
+
+To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire UUID string; it does not match substrings that might be present in the UUID. +
+If you include this property in the configuration, do not also set the `gtid.source.excludes` property.
 
 |[[mysql-property-gtid-source-excludes]]<<mysql-property-gtid-source-excludes, `+gtid.source.excludes+`>>
 |No default
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that do not match any of these exclude patterns are used. Do not also specify a value for `gtid.source.includes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set that the connector uses to find the binlog position on the MySQL server.
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that do not match any of the specified `exclude` patterns.
+
+To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire UUID string; it does not match substrings that might be present in the UUID. +
+If you include this property in the configuration, do not also set the `gtid.source.includes` property.
 
 |[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
@@ -2566,7 +2875,7 @@ In place of the default, or to specify a key for tables that lack a primary key,
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
 Each list entry takes the following format: +
  +
-`_<fully-qualified_tableName>_:_<keyColumn>_,_<keyColumn>_` +
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
  +
 To base a table key on multiple column names, insert commas between the column names.
 
@@ -2594,15 +2903,27 @@ However, it's best to use the minimum number that are required to specify a uniq
  +
 `base64` represents binary data as a base64-encoded String. +
  +
+`base64-url-safe` represents binary data as a base64-url-safe-encoded String. +
+ +
 `hex` represents binary data as a hex-encoded (base16) String.
 
 |[[mysql-property-schema-name-adjustment-mode]]<<mysql-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
-|avro
+|none
 |Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
 
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
+|[[mysql-property-field-name-adjustment-mode]]<<mysql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
+|none
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+
+* `none` does not apply any adjustment. +
+* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
+* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+
+See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 [id="mysql-advanced-connector-configuration-properties"]
@@ -2687,7 +3008,7 @@ endif::community[]
  +
 `schema_only` - the connector runs a snapshot of the schemas and not the data. This setting is useful when you do not need the topics to contain a consistent snapshot of the data but need them to have only the changes since the connector was started. +
  +
-`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database history topic. You might set it periodically to "clean up" a database history topic that has been growing unexpectedly. Database history topics require infinite retention.
+`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database schema history topic. You might set it periodically to "clean up" a database schema history topic that has been growing unexpectedly. Database schema history topics require infinite retention.
 
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |`minimal`
@@ -2705,8 +3026,11 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 | All tables specified in `table.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>.<tableName>_`) of the tables to include in a snapshot.
 The specified items must be named in the connector's xref:mysql-property-table-include-list[`table.include.list`] property.
-This property takes effect only if the connector's `snapshot.mode` property is set to a value other than `never`. +
-This property does not affect the behavior of incremental snapshots.
+This property takes effect only if the connector's xref:mysql-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -2749,14 +3073,6 @@ To skip all table size checks and always stream all results during a snapshot, s
  +
 Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages.
 
-|[[mysql-property-heartbeat-topics-prefix]]<<mysql-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
-|`__debezium-heartbeat`
-|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
- +
-_heartbeat.topics.prefix_._server.name_ +
- +
-For example, if the database server name is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
-
 |[[mysql-property-heartbeat-action-query]]<<mysql-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
@@ -2798,14 +3114,11 @@ ifdef::community[]
 By setting this option to `v1`, the structure used in earlier versions can be produced. However, this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
-|[[mysql-property-sanitize-field-names]]<<mysql-property-sanitize-field-names, `+sanitize.field.names+`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
-`false` if not.
-|Indicates whether field names are sanitized to adhere to xref:{link-avro-serialization}#avro-naming[Avro naming requirements].
-
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
-|No default
-|Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|`t`
+|A comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
+By default, truncate operations are skipped.
 
 |[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
@@ -2826,21 +3139,52 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+ifdef::community[]
 |[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
 |`false`
 |Switch to alternative incremental snapshot watermarks implementation to avoid writes to signal data collection
+endif::community[]
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
-|[[mysql-property-transaction-topic]]<<mysql-property-transaction-topic, `transaction.topic`>>
-|`${database.server.name}.transaction`
-|Controls the name of the topic to which the connector sends transaction metadata messages. The placeholder `${database.server.name}` can be used for referring to the connector's logical name; defaults to `${database.server.name}.transaction`, for example `dbserver1.transaction`.
+|[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `event.processing.failure.handling.mode`>>
+|`fail`
+|Specify how failures during processing of events (i.e. when encountering a corrupted event) should be handled. By default, `fail` mode raises an exception indicating the problematic event and its position, causing the connector to be stopped. `warn` mode does not raise the exception, instead the problematic event and its position will be logged and the event will be skipped. `ignore` mode ignores the problematic event completely with no logging.
+
+|[[mysql-property-topic-naming-strategy]]<<mysql-property-topic-naming-strategy, `topic.naming.strategy`>>
+|`io.debezium.schema.DefaultTopicNamingStrategy`
+|The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `DefaultTopicNamingStrategy`.
+
+|[[mysql-property-topic-delimiter]]<<mysql-property-topic-delimiter, `topic.delimiter`>>
+|`.`
+|Specify the delimiter for topic name, defaults to `.`.
+
+|[[mysql-property-topic-cache-size]]<<mysql-property-topic-cache-size, `topic.cache.size`>>
+|`10000`
+|The size used for holding the topic names in bounded concurrent hash map. This cache will help to determine the topic name corresponding to a given data collection.
+
+|[[mysql-property-topic-heartbeat-prefix]]<<mysql-property-topic-heartbeat-prefix, `+topic.heartbeat.prefix+`>>
+|`__debezium-heartbeat`
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_topic.heartbeat.prefix_._topic.prefix_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
+
+|[[mysql-property-topic-transaction]]<<mysql-property-topic-transaction, `topic.transaction`>>
+|`transaction`
+|Controls the name of the topic to which the connector sends transaction metadata messages. The topic name has this pattern: +
+ +
+_topic.prefix_._topic.transaction_ +
+ +
+For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
-==== {prodname} connector database history configuration properties
+==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
@@ -2858,11 +3202,11 @@ The following table describes the `signal` properties.
 |===
 |Property |Default |Description
 |[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
-|
+|No default
 |The name of the Kafka topic that the connector monitors for ad hoc signals.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
-|
+|No default
 |A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
@@ -2878,7 +3222,7 @@ The {prodname} connector provides for pass-through configuration of the signals 
 Pass-through signals properties begin with the prefix `signals.consumer.*`.
 For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
 
-As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
+As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database schema history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties

@@ -154,7 +154,7 @@ public final class Strings {
      * Represents a predicate (boolean-valued function) of one character argument.
      */
     @FunctionalInterface
-    public static interface CharacterPredicate {
+    public interface CharacterPredicate {
         /**
          * Evaluates this predicate on the given character argument.
          *
@@ -394,7 +394,7 @@ public final class Strings {
         return justifyLeft(original, length, padChar, false);
     }
 
-    public static enum Justify {
+    public enum Justify {
         LEFT,
         RIGHT,
         CENTER;
@@ -1094,6 +1094,20 @@ public final class Strings {
         }
 
         return null;
+    }
+
+    /**
+     * Masks sensitive data in given string
+     *
+     * @param original original string containing possibly sensitive data
+     * @param mask replacement string
+     * @param sensitives sensitive data to be masked
+     * @return original string with sensitive data masked
+     */
+    public static String mask(String original, String mask, String... sensitives) {
+        return Arrays.stream(sensitives)
+                .filter(Objects::nonNull)
+                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
     }
 
     private Strings() {

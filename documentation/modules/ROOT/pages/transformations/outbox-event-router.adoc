@@ -187,6 +187,10 @@ transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 ----
 
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions or schema changes).
+To apply the transformation only to events that originate in the outbox table, define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to those events only.
+
 // Type: concept
 // Title: Options for applying the Outbox event router transformation selectively
 // ModuleID: options-for-applying-the-outbox-event-router-transformation-selectively
@@ -197,7 +201,7 @@ In addition to the change event messages that a {prodname} connector emits when 
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+* xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:outbox-event-router-property-route-topic-regex[`route.topic.regex`] configuration option for the SMT.
 
 // Type: concept
@@ -218,21 +222,21 @@ apply the following configuration to the connector:
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-value.converter=io.debezium.converters.ByteBufferConverter
+value.converter=io.debezium.converters.BinaryDataConverter
 ----
 
 By default, the `payload` column value (the Avro data) is the only message value.
-Configuration of `ByteBufferConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
+Configuration of `BinaryDataConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
-These events cannot be serialized by the `ByteBufferConverter` so additional configuration must be provided so the converter knows how to serialize these events.
+These events cannot be serialized by the `BinaryDataConverter` so additional configuration must be provided so the converter knows how to serialize these events.
 As an example, the following configuration illustrates using the Apache Kafka `JsonConverter` with no schemas:
 
 [source]
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-value.converter=io.debezium.converters.ByteBufferConverter
+value.converter=io.debezium.converters.BinaryDataConverter
 value.converter.delegate.converter.type=org.apache.kafka.connect.json.JsonConverter
 value.converter.delegate.converter.type.schemas.enable=false
 ----
@@ -240,6 +244,10 @@ value.converter.delegate.converter.type.schemas.enable=false
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
 If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
 
+[NOTE]
+====
+The converter `io.debezium.converters.ByteBufferConverter` has been deprecated since Debezium version 1.9, and has been removed in 2.0. Furthermore, when using Kafka Connect the connector's configuration must be updated before upgrading to Debezium 2.x
+====
 
 // Type: concept
 // Title: Emitting additional fields in {prodname} outbox messages
@@ -384,6 +392,14 @@ This ID will be stored in the emitted event's headers under the `id` key.
 a|Specifies whether the JSON expansion of a String payload should be done. If no content found or in case of parsing error, the content is kept "as is". +
  +
 Fore more details, please see the xref:expanding-escaped-json-string-as-json[expanding escaped json] section.
+
+|[[outbox-event-router-property-table-json-payload-null-behavior]]<<outbox-event-router-property-table-json-payload-null-behavior, `table.json.payload.null.behavior`>>
+|`ignore`
+|Table
+a|When enable JSON expansion property `table.expand.json.payload`, determines the behavior of json payload that including an `null` value on the outbox table. Possible settings are:
+
+* `ignore` - Ignore the null value.
+* `optional_bytes` - Keep the null value, and treat null as optional bytes of connect.
 
 |[[outbox-event-router-property-table-fields-additional-placement]]<<outbox-event-router-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |

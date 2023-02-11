@@ -98,6 +98,41 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public enum JsonPayloadNullFieldBehavior implements EnumeratedValue {
+        IGNORE("ignore"),
+        OPTIONAL_BYTES("optional_bytes");
+
+        private final String value;
+
+        JsonPayloadNullFieldBehavior(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static JsonPayloadNullFieldBehavior parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (JsonPayloadNullFieldBehavior option : JsonPayloadNullFieldBehavior.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     public static class AdditionalField {
         private final AdditionalFieldPlacement placement;
         private final String field;
@@ -235,6 +270,14 @@ public class EventRouterConfigDefinition {
                     " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
                     " and emits the record unchanged");
 
+    public static final Field TABLE_JSON_PAYLOAD_NULL_BEHAVIOR = Field.create("table.json.payload.null.behavior")
+            .withDisplayName("Behavior when json payload including null value")
+            .withEnum(JsonPayloadNullFieldBehavior.class, JsonPayloadNullFieldBehavior.IGNORE)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Behavior when json payload including null value, the default will ignore null, optional_bytes" +
+                    " will keep the null value, and treat null as optional bytes of connect.");
+
     static final Field[] CONFIG_FIELDS = {
             FIELD_EVENT_ID,
             FIELD_EVENT_KEY,
@@ -248,7 +291,8 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
             OPERATION_INVALID_BEHAVIOR,
-            EXPAND_JSON_PAYLOAD
+            EXPAND_JSON_PAYLOAD,
+            TABLE_JSON_PAYLOAD_NULL_BEHAVIOR
     };
 
     /**
@@ -265,7 +309,7 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD);
+                FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
         Field.group(
                 config,
                 "Router",

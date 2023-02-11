@@ -9,13 +9,13 @@ import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -56,6 +56,11 @@ public class OracleConnection extends JdbcConnection {
     private static final Pattern ADT_INDEX_NAMES_PATTERN = Pattern.compile("^\".*\"\\.\".*\".*");
 
     /**
+     * Pattern to identify a hidden column based on redefining a table with the {@code ROWID} option.
+     */
+    private static final Pattern MROW_PATTERN = Pattern.compile("^M_ROW\\$\\$");
+
+    /**
      * A field for the raw jdbc url. This field has no default value.
      */
     private static final Field URL = Field.create("url", "Raw JDBC url");
@@ -67,12 +72,12 @@ public class OracleConnection extends JdbcConnection {
 
     private static final String QUOTED_CHARACTER = "\"";
 
-    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier) {
-        this(config, classLoaderSupplier, true);
+    public OracleConnection(JdbcConfiguration config) {
+        this(config, true);
     }
 
-    public OracleConnection(JdbcConfiguration config, Supplier<ClassLoader> classLoaderSupplier, boolean showVersion) {
-        super(config, resolveConnectionFactory(config), classLoaderSupplier, QUOTED_CHARACTER, QUOTED_CHARACTER);
+    public OracleConnection(JdbcConfiguration config, boolean showVersion) {
+        super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.databaseVersion = resolveOracleDatabaseVersion();
         if (showVersion) {
             LOGGER.info("Database Version: {}", databaseVersion.getBanner());
@@ -201,7 +206,11 @@ public class OracleConnection extends JdbcConnection {
                 "and table_name NOT LIKE 'MDRS_%' " +
                 "and table_name NOT LIKE 'MDXT_%' " +
                 // filter index-organized-tables
-                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) ";
+                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) " +
+                // filter nested tables
+                "and nested = 'NO'" +
+                // filter parent tables of nested tables
+                "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)";
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {
@@ -226,9 +235,17 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT CURRENT_TIMESTAMP FROM DUAL",
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
+    }
+
+    @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         if (columnName != null) {
-            return !SYS_NC_PATTERN.matcher(columnName).matches() && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches();
+            return !SYS_NC_PATTERN.matcher(columnName).matches()
+                    && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches()
+                    && !MROW_PATTERN.matcher(columnName).matches();
         }
         return false;
     }
@@ -255,9 +272,20 @@ public class OracleConnection extends JdbcConnection {
      * @param tableId table identifier, should never be {@code null}
      * @return generated DDL
      * @throws SQLException if an exception occurred obtaining the DDL metadata
+     * @throws NonRelationalTableException the table is not a relational table
      */
-    public String getTableMetadataDdl(TableId tableId) throws SQLException {
+    public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
         try {
+            // This table contains all available objects that are considered relational & object based.
+            // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
+            // that the table is in-fact a relational table and if the result set is empty, the object
+            // is another type, likely an object-based table, in which case we cannot generate DDL.
+            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema()
+                    + "' AND TABLE_NAME='" + tableId.table() + "' AND TABLE_TYPE IS NULL";
+            if (queryAndMap(tableType, rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
+                throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
+            }
+
             // The storage and segment attributes aren't necessary
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
@@ -343,6 +371,7 @@ public class OracleConnection extends JdbcConnection {
                                            int limit,
                                            String projection,
                                            Optional<String> condition,
+                                           Optional<String> additionalCondition,
                                            String orderBy) {
         final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
@@ -354,6 +383,14 @@ public class OracleConnection extends JdbcConnection {
             sql
                     .append(" WHERE ")
                     .append(condition.get());
+            if (additionalCondition.isPresent()) {
+                sql.append(" AND ");
+                sql.append(additionalCondition.get());
+            }
+        }
+        else if (additionalCondition.isPresent()) {
+            sql.append(" WHERE ");
+            sql.append(additionalCondition.get());
         }
         if (getOracleVersion().getMajor() < 12) {
             sql
@@ -460,5 +497,14 @@ public class OracleConnection extends JdbcConnection {
             tableName = tableName.replace("/", "//");
         }
         return super.getColumnsDetails(databaseCatalog, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+    }
+
+    /**
+     * An exception that indicates the operation failed because the table is not a relational table.
+     */
+    public static class NonRelationalTableException extends DebeziumException {
+        public NonRelationalTableException(String message) {
+            super(message);
+        }
     }
 }

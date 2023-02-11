@@ -21,7 +21,7 @@ import com.mongodb.BasicDBObject;
 class JsonSerialization {
 
     @FunctionalInterface
-    public static interface Transformer extends Function<BsonDocument, String> {
+    public interface Transformer extends Function<BsonDocument, String> {
     }
 
     private static final String ID_FIELD_NAME = "_id";
@@ -48,7 +48,7 @@ class JsonSerialization {
 
     private final Transformer transformer;
 
-    public JsonSerialization() {
+    JsonSerialization() {
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
     }
 

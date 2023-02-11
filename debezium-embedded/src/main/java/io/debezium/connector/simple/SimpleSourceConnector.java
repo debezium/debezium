@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -101,16 +100,17 @@ public class SimpleSourceConnector extends SourceConnector {
 
     @Override
     public ConfigDef config() {
-        return null;
+        return new ConfigDef();
     }
 
     public static class SimpleConnectorTask extends SourceTask {
 
+        private static boolean isThrownErrorOnRecord;
+
         private int recordsPerBatch;
         private int errorOnRecord;
-        private Queue<SourceRecord> records;
+        private List<SourceRecord> records;
         private final AtomicBoolean running = new AtomicBoolean();
-        private List<SourceRecord> retryRecords = null;
 
         @Override
         public String version() {
@@ -183,24 +183,20 @@ public class SimpleSourceConnector extends SourceConnector {
                 new CountDownLatch(1).await();
             }
             if (running.get()) {
-                if (retryRecords != null) {
-                    final List<SourceRecord> r = retryRecords;
-                    retryRecords = null;
-                    return r;
-                }
                 // Still running, so process whatever is in the queue ...
                 List<SourceRecord> results = new ArrayList<>();
                 int record = 0;
-                while (record < recordsPerBatch && !records.isEmpty()) {
-                    record++;
-                    final SourceRecord fetchedRecord = records.poll();
+                while (record < recordsPerBatch && record < records.size()) {
+                    final SourceRecord fetchedRecord = records.get(record);
                     final Integer id = ((Struct) (fetchedRecord.key())).getInt32("id");
-                    results.add(fetchedRecord);
-                    if (id == errorOnRecord) {
-                        retryRecords = results;
+                    if (id == errorOnRecord && !isThrownErrorOnRecord) {
+                        isThrownErrorOnRecord = true;
                         throw new RetriableException("Error on record " + errorOnRecord);
                     }
+                    results.add(fetchedRecord);
+                    record++;
                 }
+                records.removeAll(results);
                 return results;
             }
             // No longer running ...

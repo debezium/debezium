@@ -83,12 +83,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final ZoneOffset defaultOffset;
+    protected final ZoneOffset defaultOffset;
 
     /**
      * Fallback value for TIMESTAMP WITH TZ is epoch
      */
-    private final String fallbackTimestampWithTimeZone;
+    protected final String fallbackTimestampWithTimeZone;
 
     /**
      * Fallback value for TIME WITH TZ is 00:00
@@ -97,7 +97,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
     protected final DecimalMode decimalMode;
-    private final TemporalAdjuster adjuster;
+    protected final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
     protected final BinaryHandlingMode binaryMode;
 
@@ -139,7 +139,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
-                adjuster);
+                adjuster,
+                null);
         this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
@@ -389,7 +390,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
-                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster, column.length()));
             }
             catch (IllegalArgumentException e) {
             }
@@ -706,6 +707,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         switch (mode) {
             case BASE64:
                 return convertBinaryToBase64(column, fieldDefn, data);
+            case BASE64_URL_SAFE:
+                return convertBinaryToBase64UrlSafe(column, fieldDefn, data);
             case HEX:
                 return convertBinaryToHex(column, fieldDefn, data);
             case BYTES:
@@ -764,6 +767,36 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             else if (data instanceof byte[]) {
                 r.deliver(new String(base64Encoder.encode(normalizeBinaryData(column, (byte[]) data)), StandardCharsets.UTF_8));
+            }
+            else {
+                // An unexpected value
+                r.deliver(unexpectedBinary(data, fieldDefn));
+            }
+        });
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BLOB}, {@link Types#BINARY},
+     * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertBinaryToBase64UrlSafe(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            Encoder base64UrlSafeEncoder = Base64.getUrlEncoder();
+
+            if (data instanceof String) {
+                r.deliver(new String(base64UrlSafeEncoder.encode(((String) data).getBytes(StandardCharsets.UTF_8))));
+            }
+            else if (data instanceof char[]) {
+                r.deliver(new String(base64UrlSafeEncoder.encode(toByteArray((char[]) data)), StandardCharsets.UTF_8));
+            }
+            else if (data instanceof byte[]) {
+                r.deliver(new String(base64UrlSafeEncoder.encode(normalizeBinaryData(column, (byte[]) data)), StandardCharsets.UTF_8));
             }
             else {
                 // An unexpected value
@@ -1244,17 +1277,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        Class<?> dataClass = data.getClass();
+        String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
-            Class<?> dataClass = data.getClass();
+
             if (logger.isWarnEnabled()) {
                 logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                // sensitive
+                        clazzName); // don't include value in case its sensitive
             }
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                ": class=" + data.getClass()); // don't include value in case its sensitive
+                ": class=" + clazzName); // don't include value in case its sensitive
     }
 
     protected int getTimePrecision(Column column) {

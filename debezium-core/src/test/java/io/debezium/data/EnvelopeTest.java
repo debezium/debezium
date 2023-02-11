@@ -5,7 +5,7 @@
  */
 package io.debezium.data;
 
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -29,7 +29,7 @@ public class EnvelopeTest {
         assertThat(env.schema()).isNotNull();
         assertThat(env.schema().name()).isEqualTo("someName");
         assertThat(env.schema().doc()).isNull();
-        assertThat(env.schema().version()).isNull();
+        assertThat(env.schema().version()).isEqualTo(1);
         assertOptionalField(env, Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA);
         assertOptionalField(env, Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA);
         assertOptionalField(env, Envelope.FieldName.SOURCE, Schema.OPTIONAL_INT64_SCHEMA);

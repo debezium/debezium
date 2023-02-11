@@ -28,7 +28,10 @@ The following SMTs are provided by {prodname}:
 |The MongoDB-specific counter-part to the xref:transformations/outbox-event-router.adoc[Outbox Event Router] SMT.
 
 |xref:transformations/filtering.adoc[Message Filtering]
-|Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you. 
+|Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you.
+
+|xref:transformations/partition-routing.adoc[Partition Routing]
+|Re-routes records to specific partition based on configured table column.
 
 |===
 
@@ -36,5 +39,5 @@ By means of xref:transformations/applying-transformations-selectively.adoc[SMT P
 
 [NOTE]
 ====
-Most of the above SMTs are available by default with the {prodname} container image, but you need to opt-in for the scripting-based ones (Message Filtering or Content-based Routing). See the link:https://github.com/debezium/docker-images/tree/main/connect/1.7#enable_debezium_scripting[README] file of the container image for more details.
+Most of the above SMTs are available by default with the {prodname} container image, but you need to opt-in for the scripting-based ones (Message Filtering or Content-based Routing). See the link:https://github.com/debezium/container-images/tree/main/connect/1.7#enable_debezium_scripting[README] file of the container image for more details.
 ====

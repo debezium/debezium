@@ -180,6 +180,10 @@ transforms=outbox,...
 transforms.outbox.type=io.debezium.connector.mongodb.transforms.outbox.MongoEventRouter
 ----
 
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
+To apply the transformation only to events that originate in the outbox collection, define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to those events only.
+
 // Type: concept
 // Title: Options for applying the MongoDB outbox event router transformation selectively
 // ModuleID: options-for-applying-the-mongodb-outbox-event-router-transformation-selectively
@@ -217,7 +221,7 @@ value.converter=io.debezium.converters.ByteArrayConverter
 By default, the `payload` field value (the Avro data) is the only message value.
 Configuration of `ByteArrayConverter` as the value converter propagates the `payload` field value as-is into the Kafka message value.
 
-Note that this differs from the `ByteBufferConverter` suggested for other SMTs.
+Note that this differs from the `BinaryDataConverter` suggested for other SMTs.
 This is due to the different approach MongoDB takes to storing byte arrays internally.
 
 The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
@@ -255,7 +259,7 @@ To emit the `eventType` field value in the outbox message header, configure the 
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=eventType:header:type
+transforms.outbox.collection.fields.additional.placement=eventType:header:type
 ----
 
 The result will be a header on the Kafka message with `type` as its key, and the value of the `eventType` field as its value.
@@ -266,7 +270,7 @@ To emit the `eventType` field value in the outbox message envelope, configure th
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=eventType:envelope:type
+transforms.outbox.collection.fields.additional.placement=eventType:envelope:type
 ----
 
 To control which partition the outbox message is produced on, configure the SMT like this:
@@ -275,7 +279,7 @@ To control which partition the outbox message is produced on, configure the SMT 
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=partitionField:partition
+transforms.outbox.collection.fields.additional.placement=partitionField:partition
 ----
 
 Note that for the `partition` placement, adding an alias will have no effect.

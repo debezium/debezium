@@ -44,7 +44,7 @@ public class CreateTableParserListener extends BaseParserListener {
     @Override
     public void enterCreate_table(PlSqlParser.Create_tableContext ctx) {
         if (ctx.relational_table() == null) {
-            throw new IllegalArgumentException("Only relational tables are supported");
+            throw new ParsingException(null, "Only relational tables are supported");
         }
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
         if (parser.getTableFilter().isIncluded(tableId)) {

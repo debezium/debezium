@@ -1,5 +1,5 @@
 pipelineJob('rhel-downstream-prepare-job') {
-    displayName('AMQ Streams on RHEL Preparation')
+    displayName('AMQ Streams on RHEL Preparation - Downstream')
     description('Prepares image for AMQ Streams on RHEL')
 
     properties {

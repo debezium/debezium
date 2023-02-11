@@ -6,7 +6,7 @@
 package io.debezium.connector.mysql.zzz;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
@@ -17,7 +17,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.awaitility.Awaitility;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,11 +41,11 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class ZZZGtidSetIT extends AbstractConnectorTest {
 
-    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
-            .withDbHistoryPath(DB_HISTORY_PATH);
+            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
 
@@ -56,7 +55,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         RO_DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -65,7 +64,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             stopConnector();
         }
         finally {
-            Testing.Files.delete(DB_HISTORY_PATH);
+            Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
     }
 
@@ -75,7 +74,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
                     "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
                     rs -> {
                         if (rs.next()) {
-                            return !"OFF".equalsIgnoreCase(rs.getString(2));
+                            return "ON".equalsIgnoreCase(rs.getString(2));
                         }
                         throw new IllegalStateException("Cannot obtain GTID status");
                     });
@@ -85,7 +84,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1184")
     public void shouldProcessPurgedGtidSet() throws SQLException, InterruptedException {
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         if (!isGtidModeEnabled()) {
             logger.warn("GTID is not enabled, skipping shouldProcessPurgedGtidSet");
@@ -94,9 +93,9 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         purgeDatabaseLogs();
         final UniqueDatabase database = new UniqueDatabase("myServer1", "connector_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         final UniqueDatabase ro_database = new UniqueDatabase("myServer2", "connector_test_ro", database)
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         ro_database.createAndInitialize();
 
         // Use the DB configuration to define the connector's configuration ...
@@ -127,7 +126,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             final Pattern p = Pattern.compile(".*:(.*)-.*");
             final Matcher m = p.matcher(gtids);
             m.matches();
-            Assertions.assertThat(m.group(1)).isNotEqualTo("1");
+            assertThat(m.group(1)).isNotEqualTo("1");
         });
 
         stopConnector();
@@ -174,7 +173,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1244")
     public void shouldProcessPurgedLogsWhenDownAndSnapshotNeeded() throws SQLException, InterruptedException {
-        Testing.Files.delete(DB_HISTORY_PATH);
+        Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         if (!isGtidModeEnabled()) {
             logger.warn("GTID is not enabled, skipping shouldProcessPurgedLogsWhenDownAndSnapshotNeeded");
@@ -183,7 +182,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         purgeDatabaseLogs();
         final UniqueDatabase database = new UniqueDatabase("myServer1", "connector_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         database.createAndInitialize();
 
         // Use the DB configuration to define the connector's configuration ...

@@ -12,12 +12,6 @@ toc::[]
 
 [NOTE]
 ====
-This single message transformation (SMT) is under active development right now, so the emitted message structure or other details may still change as development progresses.
-Please see below for a descriptions of known limitations of this transformation.
-====
-
-[NOTE]
-====
 This SMT is supported only for the MongoDB connector.
 See xref:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
 ====
@@ -75,6 +69,10 @@ transforms.unwrap.drop.tombstones=false
 transforms.unwrap.delete.handling.mode=drop
 transforms.unwrap.add.headers=op
 ----
+
+.Customizing the configuration
+The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
+To apply the transformation to a subset of events, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
 === Array encoding
 
@@ -221,11 +219,12 @@ transforms.unwrap.add.headers=op
 
 The possible values are the ones from the `op` field of xref:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
 
-=== Adding source metadata fields
+=== Adding metadata fields
 
-The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
+The SMT can optionally add metadata fields from the original change event's to the final flattened record (prefixed with "__").
 This ability to add metadata to the event record makes it possible to include content such as the name of the collection associated with the change event, or such connector-specific fields as the replica set name.
-For more information about the MongoDB source structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
+Currently, only fields from change event sub-structures `source`, `transaction` and `updateDescription` can be added.
+For more information about the MongoDB change event structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
 For example, you might specify the following configuration to add a replica set name (`rs`) and the collection name for a change event to the final flattened event record:
 
@@ -252,7 +251,7 @@ For `DELETE` events, the option to add metadata fields is supported only if the 
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 
-For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformation-selectively[Configure an SMT predicate for the transformation].
+For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
 [[mongodb-extract-new-record-state-configuration-options]]
 == Configuration options
@@ -302,10 +301,6 @@ In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should 
 The fields will be prefixed with `pass:[__]` or `pass:[__]<struct>pass:[__]`, depending on the specification of the struct.
 Please use a comma separated list without spaces.
 
-|[[mongodb-extract-new-record-state-sanitize-field-names]]<<mongodb-extract-new-record-state-sanitize-field-names, `sanitize.field.names`>>
-|`false`
-|Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 == Known limitations
