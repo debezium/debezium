@@ -13,6 +13,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -647,6 +649,10 @@ public class PostgresConnection extends JdbcConnection {
                     // In order to guarantee that we resolve TIMETZ columns with proper microsecond precision,
                     // read the column as a string instead and then re-parse inside the converter.
                     return rs.getString(columnIndex);
+                case PgOid.TIMESTAMP:
+                    return rs.getObject(columnIndex, LocalDateTime.class);
+                case PgOid.TIMESTAMPTZ:
+                    return rs.getObject(columnIndex, OffsetDateTime.class);
                 default:
                     Object x = rs.getObject(columnIndex);
                     if (x != null) {

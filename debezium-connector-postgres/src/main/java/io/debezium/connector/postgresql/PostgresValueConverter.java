@@ -852,18 +852,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (data instanceof java.util.Date) {
-            // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
-            // back to GMT
-            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
-        }
-
-        if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-            return "infinity";
-        }
-        else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-            return "-infinity";
-        }
+        // if (data instanceof java.util.Date) {
+        // // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
+        // // back to GMT
+        // data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
+        // }
+        //
+        // if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+        // return "infinity";
+        // }
+        // else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+        // return "-infinity";
+        // }
 
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
@@ -1048,26 +1048,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
-            return null;
-        }
-        if (!(data instanceof Timestamp)) {
-            return data;
-        }
-        final Timestamp timestamp = (Timestamp) data;
+        // if (data == null) {
+        // return null;
+        // }
+        // if (!(data instanceof Timestamp)) {
+        // return data;
+        // }
+        // final Timestamp timestamp = (Timestamp) data;
+        //
+        // if (POSITIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
+        // return POSITIVE_INFINITY_LOCAL_DATE_TIME;
+        // }
+        // else if (NEGATIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
+        // return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+        // }
+        //
+        // final Instant instant = timestamp.toInstant();
+        // final LocalDateTime utcTime = LocalDateTime
+        // .ofInstant(instant, ZoneOffset.systemDefault());
 
-        if (POSITIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return POSITIVE_INFINITY_LOCAL_DATE_TIME;
-        }
-        else if (NEGATIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
-            return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
-        }
-
-        final Instant instant = timestamp.toInstant();
-        final LocalDateTime utcTime = LocalDateTime
-                .ofInstant(instant, ZoneOffset.systemDefault());
-
-        return utcTime;
+        return data;
     }
 
     @Override
