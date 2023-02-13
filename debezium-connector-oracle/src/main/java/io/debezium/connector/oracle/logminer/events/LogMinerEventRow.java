@@ -65,7 +65,7 @@ public class LogMinerEventRow {
     private String redoSql;
     private int status;
     private String info;
-    private int ssn;
+    private long ssn;
     private int thread;
 
     public Scn getScn() {
@@ -128,7 +128,7 @@ public class LogMinerEventRow {
         return info;
     }
 
-    public int getSsn() {
+    public long getSsn() {
         return ssn;
     }
 
@@ -179,7 +179,7 @@ public class LogMinerEventRow {
         this.redoSql = getSqlRedo(resultSet);
         this.status = resultSet.getInt(STATUS);
         this.info = resultSet.getString(INFO);
-        this.ssn = resultSet.getInt(SSN);
+        this.ssn = resultSet.getLong(SSN);
         this.thread = resultSet.getInt(THREAD);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
