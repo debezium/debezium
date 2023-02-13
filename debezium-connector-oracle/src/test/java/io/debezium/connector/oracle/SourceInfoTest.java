@@ -64,7 +64,7 @@ public class SourceInfoTest {
                 .field("commit_scn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("lcr_position", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("rs_id", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("ssn", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("ssn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("redo_thread", Schema.OPTIONAL_INT32_SCHEMA)
                 .field("user_name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();

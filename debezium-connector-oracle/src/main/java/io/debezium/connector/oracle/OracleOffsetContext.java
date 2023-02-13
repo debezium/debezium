@@ -273,7 +273,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setRsId(rsId);
     }
 
-    public void setSsn(int ssn) {
+    public void setSsn(long ssn) {
         sourceInfo.setSsn(ssn);
     }
 
