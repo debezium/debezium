@@ -379,10 +379,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         final Scn commitScn = row.getScn();
         if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
-            final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
-            LOGGER.debug("Transaction {} has already been processed. "
-                    + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
-                    transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+            if (transaction.getNumberOfEvents() > 0) {
+                final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
+                LOGGER.debug("Transaction {} has already been processed. "
+                        + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
+                        transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+            }
             removeTransactionAndEventsFromCache(transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
             return;
