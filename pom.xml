@@ -125,7 +125,7 @@
         <version.mysql.binlog>0.27.2</version.mysql.binlog>
         <version.mongo.driver>4.3.3</version.mongo.driver>
         <version.sqlserver.driver>9.4.1.jre8</version.sqlserver.driver>
-        <version.oracle.driver>21.6.0.0</version.oracle.driver>
+        <version.oracle.driver>21.1.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
 

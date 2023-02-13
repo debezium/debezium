@@ -852,18 +852,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-         if (data instanceof java.util.Date) {
-         // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
-         // back to GMT
-         data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
-         }
+        if (data instanceof java.util.Date) {
+            // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
+            // back to GMT
+            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
+        }
 
-         if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-         return "infinity";
-         }
-         else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
-         return "-infinity";
-         }
+        if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+            return "infinity";
+        } else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+            return "-infinity";
+        }
 
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
