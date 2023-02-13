@@ -839,7 +839,7 @@ The following example shows the value portion of a change event that the connect
             "ts_ms": 1559033904863,
             "snapshot": true,
             "db": "postgres",
-            "sequence": "[\"24023119\",\"24023128\"]"
+            "sequence": "[\"24023119\",\"24023128\"]",
             "schema": "public",
             "table": "customers",
             "txId": 555,
