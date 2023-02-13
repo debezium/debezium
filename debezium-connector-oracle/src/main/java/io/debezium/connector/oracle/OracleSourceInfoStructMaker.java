@@ -55,7 +55,17 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
             ret.put(CommitScn.ROLLBACK_SEGMENT_ID_KEY, sourceInfo.getRsId());
         }
 
-        ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, sourceInfo.getSsn());
+        // In order to backport DBZ-6091 to Debezium 2.1, we needed to retain the schema
+        // for SSN as an optional INT32 value, but successfully read the value as a long
+        // to avoid the NumericOverflow exception. When writing the source info block,
+        // we will check the value of SSN and if it exceeds Integer.MAX_VALUE, we will
+        // instead use -1 as a indicator of this overflow condition.
+        if (sourceInfo.getSsn() > Integer.MAX_VALUE) {
+            ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, -1);
+        }
+        else {
+            ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, (int) sourceInfo.getSsn());
+        }
 
         final CommitScn commitScn = sourceInfo.getCommitScn();
         if (commitScn != null) {
