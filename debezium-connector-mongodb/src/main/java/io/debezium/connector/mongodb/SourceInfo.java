@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.types.BSONTimestamp;
 
@@ -88,6 +89,8 @@ public final class SourceInfo extends BaseSourceInfo {
 
     public static final String WALL_TIME = "wallTime";
 
+    public static final String STRIPE_AUDIT = "stripeAudit";
+
     // Change Stream fields
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
@@ -107,6 +110,8 @@ public final class SourceInfo extends BaseSourceInfo {
     private Position position;
 
     private long wallTime;
+
+    private String stripeAudit;
 
     @Immutable
     protected static final class Position {
@@ -314,7 +319,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @see #schema()
      */
     public void collectionEvent(String replicaSetName, CollectionId collectionId, long wallTime) {
-        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName), wallTime);
+        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName), wallTime, stripeAudit);
     }
 
     /**
@@ -332,6 +337,7 @@ public final class SourceInfo extends BaseSourceInfo {
         Position position = INITIAL_POSITION;
         String namespace = "";
         long wallTime = 0L;
+        String stripeAudit = null;
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(masterEvent);
             Long opId = masterEvent.containsKey("h") ? masterEvent.getInt64("h").getValue() : null;
@@ -341,16 +347,20 @@ public final class SourceInfo extends BaseSourceInfo {
             if (oplogEvent.containsKey("wall")) {
                 wallTime = oplogEvent.getDateTime("wall").getValue();
             }
+            if (oplogEvent.containsKey(STRIPE_AUDIT)) {
+                stripeAudit = oplogEvent.getString(STRIPE_AUDIT).getValue();
+            }
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
     }
 
     public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent, long orderInTx) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         long wallTime = 0L;
+        String stripeAudit = null;
         if (changeStreamEvent != null) {
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
             position = Position.changeStreamPosition(ts, changeStreamEvent.getResumeToken().getString("_data").getValue(),
@@ -359,10 +369,11 @@ public final class SourceInfo extends BaseSourceInfo {
             if (changeStreamEvent.getWallTime() != null) {
                 wallTime = changeStreamEvent.getWallTime().getValue();
             }
+            stripeAudit = extractStripeAudit(changeStreamEvent);
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime, stripeAudit);
     }
 
     /**
@@ -408,11 +419,24 @@ public final class SourceInfo extends BaseSourceInfo {
         return null;
     }
 
-    private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime) {
+    protected static String extractStripeAudit(ChangeStreamDocument<BsonDocument> document) {
+        BsonDocument extra = document.getExtraElements();
+        if (extra != null) {
+            BsonString stripAudit = extra.getString(SourceInfo.STRIPE_AUDIT);
+
+            if (stripAudit != null) {
+                return stripAudit.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime, String stripeAudit) {
         this.replicaSetName = replicaSetName;
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
         this.wallTime = wallTime;
+        this.stripeAudit = stripeAudit;
     }
 
     /**
@@ -584,6 +608,10 @@ public final class SourceInfo extends BaseSourceInfo {
 
     long wallTime() {
         return wallTime;
+    }
+
+    String stripeAudit() {
+        return stripeAudit;
     }
 
     protected OptionalLong transactionPosition() {

@@ -28,6 +28,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.WALL_TIME, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.STRIPE_AUDIT, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -54,6 +55,10 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
         if (sourceInfo.wallTime() != 0L) {
             struct.put(SourceInfo.WALL_TIME, sourceInfo.wallTime());
+        }
+
+        if (sourceInfo.stripeAudit() != null) {
+            struct.put(SourceInfo.STRIPE_AUDIT, sourceInfo.stripeAudit());
         }
 
         return struct;

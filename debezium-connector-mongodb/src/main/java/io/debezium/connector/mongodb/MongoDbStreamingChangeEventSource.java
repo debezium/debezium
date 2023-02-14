@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -70,7 +71,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static final String OPERATION_CONTROL = "c";
     private static final String TX_OPS = "applyOps";
 
-    private static final String STRIPE_AUDIT_FIELD = "stripeAudit";
     private final Pattern pattern;
 
     private final MongoDbConnectorConfig connectorConfig;
@@ -80,6 +80,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
+    private final Serialization serialization;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              ReplicaSets replicaSets,
@@ -92,11 +93,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
-        if (!connectorConfig.getStripeAuditFilterPattern().isEmpty()) {
-            this.pattern = Pattern.compile(connectorConfig.getStripeAuditFilterPattern());
-        } else {
-            this.pattern = null;
-        }
+        this.pattern = !connectorConfig.getStripeAuditFilterPattern().isEmpty() ? Pattern.compile(connectorConfig.getStripeAuditFilterPattern()) : null;
+        this.serialization = new JsonSerialization();
+
     }
 
     @Override
@@ -361,6 +360,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     }
                     else {
                         oplogContext.getOffset().changeStreamEvent(event, txOrder);
+                        if (shouldFilterStripeAudit(oplogContext, event, (e) -> serialization.getDocumentIdChangeStream(e.getDocumentKey()))) {
+                            continue;
+                        }
+
                         oplogContext.getOffset().getOffset();
                         CollectionId collectionId = new CollectionId(
                                 replicaSet.replicaSetName(),
@@ -488,16 +491,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return true;
         }
 
-        if (pattern != null && event.containsKey(STRIPE_AUDIT_FIELD)) {
-            String stripeAudit = event.getString(STRIPE_AUDIT_FIELD).getValue();
-            if (stripeAudit != null && pattern.matcher(stripeAudit).matches()) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Skipping event due to stripeAudit filtering: {}", event.toJson());
-                }
-                return true;
-            }
-        }
-
         final List<BsonValue> txChanges = transactionChanges(event);
         if (!txChanges.isEmpty()) {
             if (Objects.nonNull(oplogContext.getIncompleteEventTimestamp())) {
@@ -564,6 +557,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
 
             oplogContext.getOffset().oplogEvent(event, masterEvent, txOrder);
+            if (shouldFilterStripeAudit(oplogContext, event, serialization::getDocumentIdOplog)) {
+                return true;
+            }
             oplogContext.getOffset().getOffset();
 
             CollectionId collectionId = new CollectionId(oplogContext.getReplicaSetName(), dbName, collectionName);
@@ -588,6 +584,16 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         return true;
+    }
+
+    private <T> boolean shouldFilterStripeAudit(ReplicaSetOplogContext oplogContext, T event, Function<T, Object> keyExtractor) {
+        String stripeAudit = oplogContext.getOffset().getSourceInfo().getString(SourceInfo.STRIPE_AUDIT);
+        boolean shouldFilter = stripeAudit != null && pattern != null && pattern.matcher(stripeAudit).matches();
+        if (shouldFilter && LOGGER.isDebugEnabled()) {
+            Object key = keyExtractor.apply(event);
+            LOGGER.debug("Skipping event due to stripeAudit filtering: documentKey={} stripeAudit={}", key.toString(), stripeAudit);
+        }
+        return shouldFilter;
     }
 
     private List<BsonValue> transactionChanges(BsonDocument event) {
