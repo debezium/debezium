@@ -284,7 +284,7 @@ public class ConnectionContext implements AutoCloseable {
                 catch (Throwable t) {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
-                if (attempts > maxAttempts) {
+                if (attempts >= maxAttempts) {
                     throw new ConnectException("Unable to connect to " + preference.getName() + " node of '" + replicaSet +
                             "' after " + attempts + " failed attempts");
                 }
