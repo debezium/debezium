@@ -15,6 +15,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -29,8 +31,7 @@ import io.debezium.util.LoggingContext;
 @RunWith(Parameterized.class)
 public class ChangeEventQueueTest {
 
-    private static final DataChangeEvent EVENT = new DataChangeEvent(new SourceRecord(Collections.emptyMap(),
-            Collections.emptyMap(), "dummy", Schema.STRING_SCHEMA, "Change Data Capture Even via Debezium"));
+    private static final DataChangeEvent EVENT = getDataChangeEvent();
 
     private final int noOfWriters;
     private final int noOfReaders;
@@ -137,6 +138,12 @@ public class ChangeEventQueueTest {
                 }
             }
         });
+    }
+
+    private static DataChangeEvent getDataChangeEvent() {
+        Schema valueSchema = SchemaBuilder.struct().field("cdc", Schema.STRING_SCHEMA).build();
+        return new DataChangeEvent(new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "dummy",
+                valueSchema, new Struct(valueSchema).put("cdc", "Change Data Capture Even via Debezium")));
     }
 
 }
