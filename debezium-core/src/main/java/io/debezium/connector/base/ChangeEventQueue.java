@@ -294,8 +294,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
         if (maxQueueSizeInBytes > 0) {
             for (int i = 0; i < recordsToDrain; i++) {
-                long objectSize = sizeInBytesQueue.poll();
-                currentQueueSizeInBytes -= objectSize;
+                Long objectSize = sizeInBytesQueue.poll();
+                currentQueueSizeInBytes -= (objectSize == null ? 0L : objectSize);
             }
         }
         records.addAll(Arrays.asList(drainedRecords));
