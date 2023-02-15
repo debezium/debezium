@@ -273,7 +273,7 @@ public class ConnectionContext implements AutoCloseable {
             int attempts = 0;
             MongoClient client = null;
             while (client == null) {
-                ++attempts;
+                attempts++;
                 try {
                     // Try to get the primary
                     client = factory.get();
