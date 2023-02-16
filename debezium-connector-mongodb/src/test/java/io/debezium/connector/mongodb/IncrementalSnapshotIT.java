@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -389,6 +390,12 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     public void snapshotOnlyObjectId() throws Exception {
         ObjectId firstKey = new ObjectId();
         snapshotOnly(firstKey, k -> new ObjectId());
+    }
+
+    @Test
+    public void snapshotOnlyString() throws Exception {
+        Supplier<String> keySupplier = () -> java.util.UUID.randomUUID().toString();
+        snapshotOnly(keySupplier.get(), k -> keySupplier.get());
     }
 
     @Test

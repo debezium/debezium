@@ -521,6 +521,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             case OBJECT_ID:
                 key = documentId.asObjectId().getValue();
                 break;
+            case STRING:
+                key = documentId.asString().getValue();
+                break;
             default:
                 throw new IllegalStateException("Unsupported type of document id");
         }
