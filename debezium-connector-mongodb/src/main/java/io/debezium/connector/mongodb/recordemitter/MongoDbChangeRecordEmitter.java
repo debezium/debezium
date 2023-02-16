@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.recordemitter;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,6 +16,8 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.connector.mongodb.MongoDbCollectionSchema;
+import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
@@ -58,8 +60,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
 
     @Override
     protected void emitReadRecord(Receiver<MongoDbPartition> receiver, MongoDbCollectionSchema schema) throws InterruptedException {
-        // TODO Handled in MongoDbChangeSnapshotOplogRecordEmitter
-        // It might be worthy haveing three classes - one for Snapshot, one for oplog and one for change streams
+        throw new UnsupportedOperationException();
     }
 
     @Override

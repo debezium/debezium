@@ -356,7 +356,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 .stream()
                 .map(d -> d.toBsonDocument())
                 .collect(toMap(
-                        d -> serialization.getDocumentIdOplog(d),
+                        d -> serialization.getDocumentIdSnapshot(d),
                         d -> d.getInt32(valueFieldName()).getValue()));
 
         assertThat(dbChanges).containsAllEntriesOf(expected);
