@@ -376,7 +376,7 @@ public class MongoUtil {
 
         if (!primaryDescription.isPresent()) {
            for (ServerDescription description : serverDescriptions) {
-               if (!description.getPrimary().isEmpty()) {
+               if (description != null && description.getPrimary() != null && !description.getPrimary().isEmpty()) {
                    String[] address = description.getPrimary().split(":");
                    if (address.length != 2) {
                        throw new DebeziumException("Unable to parse primary address, got '" + serverDescriptions + "'");
