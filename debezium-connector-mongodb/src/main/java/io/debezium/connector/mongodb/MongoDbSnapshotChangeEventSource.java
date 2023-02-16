@@ -32,6 +32,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.pipeline.ErrorHandler;
@@ -179,7 +180,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         // Collect which replica-sets require being snapshotted
         final List<ReplicaSet> replicaSetSnapshots = new ArrayList<>();
-        final MongoDbOffsetContext offsetContext = (MongoDbOffsetContext) previousOffset;
+        final MongoDbOffsetContext offsetContext = previousOffset;
         try {
             replicaSets.onEachReplicaSet(replicaSet -> {
                 MongoPreferredNode mongo = null;
@@ -247,26 +248,37 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             }
             performSnapshot = false;
             if (offsetContext.isSnapshotOngoing()) {
+                if (!connectorConfig.getSnapshotMode().shouldSnapshot()) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
                 // The latest snapshot was not completed, so restart it
                 LOGGER.info("The previous snapshot was incomplete for '{}', so restarting the snapshot", offsetContext.getReplicaSetName());
                 performSnapshot = true;
             }
             else {
-                // todo: Right now we implement when needed snapshot by default. In the future we should provide the
-                // same options as other connectors and this is where when_needed functionality would go.
-                // There is no ongoing snapshot, so look to see if our last recorded offset still exists in the oplog.
                 BsonTimestamp lastRecordedTs = offsetContext.lastOffsetTimestamp();
                 BsonTimestamp firstAvailableTs = mongo.execute("get oplog position", client -> {
                     return SourceInfo.extractEventTimestamp(MongoUtil.getOplogEntry(client, 1, LOGGER));
                 });
 
                 if (firstAvailableTs == null) {
+                    if (!connectorConfig.getSnapshotMode().shouldSnapshotOnDataError()) {
+                        throw new DebeziumException("The oplog contains no entries of replica set '" + offsetContext.getReplicaSetName()
+                                + "'. Reconfigure the connector to use a snapshot when needed.");
+                    }
                     LOGGER.info("The oplog contains no entries, so performing snapshot of replica set '{}'", offsetContext.getReplicaSetName());
                     performSnapshot = true;
                 }
                 else if (lastRecordedTs.compareTo(firstAvailableTs) < 0) {
                     // The last recorded timestamp is *before* the first existing oplog event, which means there is
                     // almost certainly some history lost since the oplog was last processed.
+                    if (!connectorConfig.getSnapshotMode().shouldSnapshotOnDataError()) {
+                        throw new DebeziumException("Snapshot is required since the oplog for replica set '" + offsetContext.getReplicaSetName() + "' starts at "
+                                + firstAvailableTs + ", which is later than the timestamp of the last offset " + lastRecordedTs
+                                + ". Reconfigure the connector to use a snapshot when needed.");
+                    }
                     LOGGER.info("Snapshot is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
                             offsetContext.getReplicaSetName(), firstAvailableTs, lastRecordedTs);
                     performSnapshot = true;

@@ -62,19 +62,40 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         /**
          * Always perform an initial snapshot when starting.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, false),
 
         /**
          * Never perform a snapshot and only receive new data changes.
          */
-        NEVER("never", false);
+        NEVER("never", false, false),
+
+        /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed", true, false);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldSnapshotOnDataError;
 
-        SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value, boolean includeData, boolean shouldSnapshotOnDataError) {
             this.value = value;
             this.includeData = includeData;
+            this.shouldSnapshotOnDataError = shouldSnapshotOnDataError;
+        }
+
+        /**
+         * Whether the snapshot should be executed.
+         */
+        public boolean shouldSnapshot() {
+            return includeData;
+        }
+
+        /**
+         * Whether the snapshot should be re-executed when there is a gap in data stream.
+         */
+        public boolean shouldSnapshotOnDataError() {
+            return shouldSnapshotOnDataError;
         }
 
         @Override
@@ -490,7 +511,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
-                    + "'never' to specify the connector should never perform an initial sync ");
+                    + "'never' to specify the connector should never perform an initial sync; "
+                    + "'when_needed' to specify that the connector run a snapshot upon startup whenever it deems it necessary.");
 
     public static final Field SNAPSHOT_FILTER_QUERY_BY_COLLECTION = Field.create("snapshot.collection.filter.overrides")
             .withDisplayName("Snapshot mode")
