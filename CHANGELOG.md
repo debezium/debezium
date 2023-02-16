@@ -2,6 +2,79 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.Alpha2
+February 16th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400776)
+
+### New features since 2.2.0.Alpha1
+
+* Better control on debezium GTID usage [DBZ-2296](https://issues.redhat.com/browse/DBZ-2296)
+* Adding new option for "ExtractNewRecordState" SMT to exclude unchanged fields [DBZ-5283](https://issues.redhat.com/browse/DBZ-5283)
+* Reactive implementation of Outbox module [DBZ-5758](https://issues.redhat.com/browse/DBZ-5758)
+* Debezium MongoDB connector wizard Filter definition page needs work [DBZ-5899](https://issues.redhat.com/browse/DBZ-5899)
+* Debezium Storage add support for Apache RocketMQ [DBZ-5997](https://issues.redhat.com/browse/DBZ-5997)
+* debezium-server Pulsar support non-default tenant and namespace [DBZ-6033](https://issues.redhat.com/browse/DBZ-6033)
+* Add wallTime in mongodb source info  [DBZ-6038](https://issues.redhat.com/browse/DBZ-6038)
+* Vitess: Support Mapping unsigned bigint mysql column type to long [DBZ-6043](https://issues.redhat.com/browse/DBZ-6043)
+* Increase query.fetch.size default to something sensible above zero [DBZ-6079](https://issues.redhat.com/browse/DBZ-6079)
+* Expose sequence field in CloudEvents message id [DBZ-6089](https://issues.redhat.com/browse/DBZ-6089)
+* Reduce verbosity of skipped transactions if transaction has no events relevant to captured tables [DBZ-6094](https://issues.redhat.com/browse/DBZ-6094)
+* Upgrade Kafka client to 3.4.0 [DBZ-6102](https://issues.redhat.com/browse/DBZ-6102)
+
+
+### Breaking changes since 2.2.0.Alpha1
+
+* Support unicode table names in topic names [DBZ-5743](https://issues.redhat.com/browse/DBZ-5743)
+* Move debezium-server into a separate repository [DBZ-6049](https://issues.redhat.com/browse/DBZ-6049)
+* Reading SSN field can lead to Numeric Overflow if a transaction contains more than Integer.MAX_VALUE SQL sequences [DBZ-6091](https://issues.redhat.com/browse/DBZ-6091)
+
+
+### Fixes since 2.2.0.Alpha1
+
+* Not all connectors are available in debezium server [DBZ-4038](https://issues.redhat.com/browse/DBZ-4038)
+* Property event.processing.failure.handling.mode is not present in MySQL documentation [DBZ-4829](https://issues.redhat.com/browse/DBZ-4829)
+* Data type conversion failed for mysql bigint [DBZ-5798](https://issues.redhat.com/browse/DBZ-5798)
+* ActivateTracingSpan wrong timestamps reported [DBZ-5827](https://issues.redhat.com/browse/DBZ-5827)
+* Unable to specify column or table include list if name contains a backslash \ [DBZ-5917](https://issues.redhat.com/browse/DBZ-5917)
+* debezium-connector-cassandra 2.1.0.Alpha2 plugin can no longer run "out of the box" [DBZ-5925](https://issues.redhat.com/browse/DBZ-5925)
+* MongoDB Incremental Snapshot not Working [DBZ-5973](https://issues.redhat.com/browse/DBZ-5973)
+* Nullable columns marked with "optional: false" in DDL events [DBZ-6003](https://issues.redhat.com/browse/DBZ-6003)
+* Vitess: Handle the shard list difference between current db shards and persisted shards [DBZ-6011](https://issues.redhat.com/browse/DBZ-6011)
+* DDL statement with TokuDB engine specific "CLUSTERING KEY" couldn't be parsed [DBZ-6016](https://issues.redhat.com/browse/DBZ-6016)
+* DDL parse fail for role revoke with "user-like" role name [DBZ-6019](https://issues.redhat.com/browse/DBZ-6019)
+* DDL parse fail for ALTER USER x DEFAULT ROLE y; [DBZ-6020](https://issues.redhat.com/browse/DBZ-6020)
+* Offsets are not flushed on connect offsets topic when encountering an error on Postgres connector [DBZ-6026](https://issues.redhat.com/browse/DBZ-6026)
+* Unexpected format for TIME column: 8:00 [DBZ-6029](https://issues.redhat.com/browse/DBZ-6029)
+* Oracle does not support compression/logging clauses after an LOB storage clause [DBZ-6031](https://issues.redhat.com/browse/DBZ-6031)
+* Debezium is logging the full message along with the error [DBZ-6037](https://issues.redhat.com/browse/DBZ-6037)
+* Improve resilience during internal schema history recovery from Kafka [DBZ-6039](https://issues.redhat.com/browse/DBZ-6039)
+* Incremental snapshot sends the events from signalling DB to Kafka [DBZ-6051](https://issues.redhat.com/browse/DBZ-6051)
+* Mask password in log statement [DBZ-6064](https://issues.redhat.com/browse/DBZ-6064)
+* Loading Custom offset storage fails with Class not found error [DBZ-6075](https://issues.redhat.com/browse/DBZ-6075)
+* SQL Server tasks fail if the number of databases is smaller than maxTasks [DBZ-6084](https://issues.redhat.com/browse/DBZ-6084)
+* When using LOB support, an UPDATE against multiple rows can lead to inconsistent event data [DBZ-6107](https://issues.redhat.com/browse/DBZ-6107)
+
+
+### Other changes since 2.2.0.Alpha1
+
+* System test-suite ability to prepare OCP environment [DBZ-3832](https://issues.redhat.com/browse/DBZ-3832)
+* TransactionMetadataIT is unstable for Db2 [DBZ-5149](https://issues.redhat.com/browse/DBZ-5149)
+* Update Java Outreach job to use Java 20 [DBZ-5825](https://issues.redhat.com/browse/DBZ-5825)
+* Upgrade to Quarkus 2.16.0.Final [DBZ-6005](https://issues.redhat.com/browse/DBZ-6005)
+* Prepare MongoDB ExtractNewDocumentState SMT doc for downstream GA [DBZ-6006](https://issues.redhat.com/browse/DBZ-6006)
+* SQL Server IncrementalSnapshotWithRecompileIT fails randomly [DBZ-6035](https://issues.redhat.com/browse/DBZ-6035)
+* Remove the redundant "schema.history.internal" from MySqlConnectorConfig [DBZ-6040](https://issues.redhat.com/browse/DBZ-6040)
+* Broken links on FAQ [DBZ-6042](https://issues.redhat.com/browse/DBZ-6042)
+* Upgrade Kafka to 3.3.2 [DBZ-6054](https://issues.redhat.com/browse/DBZ-6054)
+* Upgrade netty version in Pravega to 4.1.86.Final [DBZ-6057](https://issues.redhat.com/browse/DBZ-6057)
+* Return back the driver class option for MySQL connector [DBZ-6059](https://issues.redhat.com/browse/DBZ-6059)
+* Invalid links breaking downstream documentation build [DBZ-6069](https://issues.redhat.com/browse/DBZ-6069)
+* Request SA for UMB [DBZ-6077](https://issues.redhat.com/browse/DBZ-6077)
+* Create certificates for Jenkins for UMB [DBZ-6078](https://issues.redhat.com/browse/DBZ-6078)
+* Request access to cpass UMB topic [DBZ-6080](https://issues.redhat.com/browse/DBZ-6080)
+* Broken debezium-server source file link on docs page [DBZ-6111](https://issues.redhat.com/browse/DBZ-6111)
+
+
+
 ## 2.2.0.Alpha1
 January 19th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400295)
 
