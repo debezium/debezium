@@ -31,7 +31,6 @@ import org.bson.RawBsonDocument;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
-import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
@@ -1469,10 +1468,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
-
-        final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, MongoDbFieldName.PATCH);
-        transformation.configure(props);
 
         // Perform transformation
         final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));

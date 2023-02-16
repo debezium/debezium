@@ -34,6 +34,7 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
+import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -491,7 +492,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
-        return new MongoDbChangeSnapshotOplogRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document, true);
+        return new MongoDbSnapshotRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document);
     }
 
     protected Clock getClock() {

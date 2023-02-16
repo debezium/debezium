@@ -30,7 +30,6 @@ import io.debezium.util.Testing;
 public class FieldBlacklistIT extends AbstractMongoConnectorIT {
 
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = MongoDbFieldName.PATCH;
 
     public static class ExpectedUpdate {
 
@@ -1411,9 +1410,6 @@ public class FieldBlacklistIT extends AbstractMongoConnectorIT {
         Struct value = getValue(record);
 
         String json = value.getString(AFTER);
-        if (json == null) {
-            json = value.getString(PATCH);
-        }
 
         assertThat(json).isNull();
     }

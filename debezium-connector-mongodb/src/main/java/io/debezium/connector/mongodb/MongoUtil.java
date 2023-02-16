@@ -15,7 +15,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.bson.Document;
 import org.slf4j.Logger;
 
@@ -244,24 +243,6 @@ public class MongoUtil {
             }
             throw e;
         }
-    }
-
-    /**
-     * Helper function to extract the session transaction-id from an oplog event.
-     *
-     * @param oplogEvent the oplog event
-     * @return the session transaction id from the oplog event
-     */
-    public static String getOplogSessionTransactionId(BsonDocument oplogEvent) {
-        if (!oplogEvent.containsKey("txnNumber")) {
-            return null;
-        }
-        final BsonDocument lsidDoc = oplogEvent.getDocument("lsid");
-        final BsonValue id = lsidDoc.get("id");
-        // MongoDB 4.2 returns Binary instead of UUID
-        final String lsid = id.isBinary() ? id.asBinary().asUuid().toString() : id.asString().getValue();
-        final Long txnNumber = oplogEvent.get("txnNumber").isInt32() ? oplogEvent.getInt32("txnNumber").getValue() : oplogEvent.getInt64("txnNumber").getValue();
-        return lsid + ":" + txnNumber;
     }
 
     /**

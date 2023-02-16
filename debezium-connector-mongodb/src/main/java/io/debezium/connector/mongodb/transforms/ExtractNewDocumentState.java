@@ -429,13 +429,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", FieldName.AFTER);
-        final Map<String, String> patchExtractorConfig = new HashMap<>();
-        patchExtractorConfig.put("field", MongoDbFieldName.PATCH);
         final Map<String, String> keyExtractorConfig = new HashMap<>();
         keyExtractorConfig.put("field", "id");
 
         afterExtractor.configure(afterExtractorConfig);
-        patchExtractor.configure(patchExtractorConfig);
         keyExtractor.configure(keyExtractorConfig);
 
         final Map<String, String> delegateConfig = new HashMap<>();
@@ -499,8 +496,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
          */
         private static String determineStruct(String simpleFieldName) {
             if (simpleFieldName.equals(Envelope.FieldName.OPERATION) ||
-                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP) ||
-                    simpleFieldName.equals(MongoDbFieldName.PATCH)) {
+                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
                 return null;
             }
             else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||

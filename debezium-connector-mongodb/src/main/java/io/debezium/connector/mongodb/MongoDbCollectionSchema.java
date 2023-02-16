@@ -37,11 +37,11 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
-    private final Function<BsonDocument, Object> keyGeneratorOplog;
+    private final Function<BsonDocument, Object> keyGeneratorSnapshot;
     private final Function<BsonDocument, Object> keyGeneratorChangeStream;
     private final Function<BsonDocument, String> valueGenerator;
 
-    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<BsonDocument, Object> keyGenerator,
+    public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema, Function<BsonDocument, Object> keyGeneratorSnapshot,
                                    Function<BsonDocument, Object> keyGeneratorChangeStream, Envelope envelopeSchema, Schema valueSchema,
                                    Function<BsonDocument, String> valueGenerator) {
         this.id = id;
@@ -49,7 +49,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
-        this.keyGeneratorOplog = keyGenerator != null ? keyGenerator : (Document) -> null;
+        this.keyGeneratorSnapshot = keyGeneratorSnapshot != null ? keyGeneratorSnapshot : (Document) -> null;
         this.keyGeneratorChangeStream = keyGeneratorChangeStream != null ? keyGeneratorChangeStream : (BsonDocument) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (Document) -> null;
     }
@@ -73,31 +73,20 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
         return envelopeSchema;
     }
 
-    public Struct keyFromDocumentOplog(BsonDocument document) {
-        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorOplog.apply(document));
+    public Struct keyFromDocumentSnapshot(BsonDocument document) {
+        return document == null ? null : new Struct(keySchema).put("id", keyGeneratorSnapshot.apply(document));
     }
 
     public Struct keyFromDocument(BsonDocument document) {
         return document == null ? null : new Struct(keySchema).put("id", keyGeneratorChangeStream.apply(document));
     }
 
-    public Struct valueFromDocumentOplog(BsonDocument document, BsonDocument filter, Envelope.Operation operation) {
+    public Struct valueFromDocumentSnapshot(BsonDocument document, Envelope.Operation operation) {
         Struct value = new Struct(valueSchema);
         switch (operation) {
             case READ:
-            case CREATE:
                 final String jsonStr = valueGenerator.apply(fieldFilter.apply(document));
                 value.put(FieldName.AFTER, jsonStr);
-                break;
-            case UPDATE:
-                final String patchStr = valueGenerator.apply(fieldFilter.apply(document));
-                value.put(MongoDbFieldName.PATCH, patchStr);
-                final String updateFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
-                value.put(MongoDbFieldName.FILTER, updateFilterStr);
-                break;
-            case DELETE:
-                final String deleteFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
-                value.put(MongoDbFieldName.FILTER, deleteFilterStr);
                 break;
         }
         return value;

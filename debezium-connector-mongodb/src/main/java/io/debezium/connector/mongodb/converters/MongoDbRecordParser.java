@@ -35,8 +35,7 @@ public class MongoDbRecordParser extends RecordParser {
             WALL_TIME);
 
     public MongoDbRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.PATCH, MongoDbFieldName.FILTER,
-                MongoDbFieldName.UPDATE_DESCRIPTION);
+        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.UPDATE_DESCRIPTION);
     }
 
     @Override
