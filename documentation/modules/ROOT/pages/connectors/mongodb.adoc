@@ -234,6 +234,13 @@ For more information about support scope, see link:https://access.redhat.com/sup
 endif::product[]
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+Incremental snapshots requires the primary key to be stably ordered. However, `String` may not guarantees stable ordering as encodings and special characters
+can lead to unexpected behaviour (https://www.mongodb.com/docs/manual/reference/bson-types/#ref-sort-string-internationalization-id3/[Mongo sort `String`]).
+Please consider using other types for the primary key when performing incremental snapshots.
+====
+
 [NOTE]
 ====
 Incremental snapshots are currently supported for single replica set deployments only.
