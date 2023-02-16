@@ -18,7 +18,6 @@ import fixture5.annotations.FixtureContext;
 public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
 
     public static final String DB_DEPLOYMENT_PATH = "/database-resources/mongodb/deployment.yaml";
-    public static final String DB_SERVICE_PATH_LB = "/database-resources/mongodb/service-lb.yaml";
     public static final String DB_SERVICE_PATH = "/database-resources/mongodb/service.yaml";
 
     public OcpMongo(ExtensionContext.Store store) {
@@ -31,8 +30,7 @@ public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
                 .withOcpClient(ocp)
                 .withProject(ConfigProperties.OCP_PROJECT_MONGO)
                 .withDeployment(DB_DEPLOYMENT_PATH)
-                .withLocalServices(DB_SERVICE_PATH)
-                .withPublicServices(DB_SERVICE_PATH_LB)
+                .withServices(DB_SERVICE_PATH)
                 .build();
         return deployer.deploy();
     }

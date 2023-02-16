@@ -6,7 +6,7 @@
 package io.debezium.testing.system.tests.sqlserver;
 
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
-import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME;
+import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAMES;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,13 +45,22 @@ public abstract class SqlServerTests extends ConnectorTest {
             throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_SQLSERVER_DBZ_USERNAME, DATABASE_SQLSERVER_DBZ_PASSWORD);
         String sql = "INSERT INTO customers (first_name, last_name, email) VALUES ('" + firstName + "', '" + lastName + "', '" + email + "')";
-        client.execute(DATABASE_SQLSERVER_DBZ_DBNAME, sql);
+        client.execute(DATABASE_SQLSERVER_DBZ_DBNAMES, sql);
+    }
+
+    private String topic(String key) {
+        String prefix = connectorConfig.getDbServerName();
+        return prefix + "." + key;
+    }
+
+    private String updateRerouteTopic() {
+        return connectorConfig.getDbServerName() + ".u.customers";
     }
 
     public void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_SQLSERVER_DBZ_USERNAME, DATABASE_SQLSERVER_DBZ_PASSWORD);
         String sql = "UPDATE customers SET first_name = '" + newName + "' WHERE first_name = '" + oldName + "'";
-        client.execute(DATABASE_SQLSERVER_DBZ_DBNAME, sql);
+        client.execute(DATABASE_SQLSERVER_DBZ_DBNAMES, sql);
     }
 
     @Test
@@ -70,12 +79,11 @@ public abstract class SqlServerTests extends ConnectorTest {
     @Test
     @Order(20)
     public void shouldCreateKafkaTopics() {
-        String prefix = connectorConfig.getDbServerName();
         assertions.assertTopicsExist(
-                prefix + ".dbo.customers",
-                prefix + ".dbo.orders",
-                prefix + ".dbo.products",
-                prefix + ".dbo.products_on_hand");
+                topic("dbo.customers"),
+                topic("dbo.orders"),
+                topic("dbo.products"),
+                topic("dbo.products_on_hand"));
     }
 
     @Test
@@ -83,7 +91,7 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldSnapshotChanges() {
         connectController.getMetricsReader().waitForSqlServerSnapshot(connectorConfig.getDbServerName());
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertRecordsCount(topic, 4));
     }
 
@@ -92,7 +100,7 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldStreamChanges(SqlDatabaseController dbController) throws SQLException {
         insertCustomer(dbController, "Tom", "Tester", "tom@test.com");
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "tom@test.com"));
     }
@@ -102,9 +110,8 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldRerouteUpdates(SqlDatabaseController dbController) throws SQLException {
         renameCustomer(dbController, "Tom", "Thomas");
 
-        String prefix = connectorConfig.getDbServerName();
-        String updatesTopic = prefix + ".u.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(prefix + ".dbo.customers", 5));
+        String updatesTopic = updateRerouteTopic();
+        awaitAssert(() -> assertions.assertRecordsCount(topic("dbo.customers"), 5));
         awaitAssert(() -> assertions.assertRecordsCount(updatesTopic, 1));
         awaitAssert(() -> assertions.assertRecordsContain(updatesTopic, "Thomas"));
     }
@@ -115,7 +122,7 @@ public abstract class SqlServerTests extends ConnectorTest {
         connectController.undeployConnector(connectorConfig.getConnectorName());
         insertCustomer(dbController, "Jerry", "Tester", "jerry@test.com");
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
     }
 
@@ -124,7 +131,7 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldResumeStreamingAfterRedeployment() throws Exception {
         connectController.deployConnector(connectorConfig);
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertRecordsCount(topic, 6));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "jerry@test.com"));
     }
@@ -135,7 +142,7 @@ public abstract class SqlServerTests extends ConnectorTest {
         connectController.destroy();
         insertCustomer(dbController, "Nibbles", "Tester", "nibbles@test.com");
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertRecordsCount(topic, 6));
     }
 
@@ -144,7 +151,7 @@ public abstract class SqlServerTests extends ConnectorTest {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         connectController.restore();
 
-        String topic = connectorConfig.getDbServerName() + ".dbo.customers";
+        String topic = topic("dbo.customers");
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
     }

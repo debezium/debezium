@@ -24,6 +24,9 @@ public final class ConfigProperties {
 
     public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
+    public static final boolean PRODUCT_BUILD = booleanProperty("test.product.build");
+    public static final boolean PREPARE_NAMESPACES_AND_STRIMZI = booleanProperty("test.prepare.strimzi");
+
     // DockerConfiguration configuration
     public static final String DOCKER_IMAGE_KAFKA_RHEL = System.getProperty("test.docker.image.kc");
     public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", "quay.io/debezium/example-mysql:latest");
@@ -50,15 +53,16 @@ public final class ConfigProperties {
     public static final Optional<String> OCP_PULL_SECRET_PATH = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     // Strimzi configuration
-    public static final String STRIMZI_OPERATOR_NAME = System.getProperty("test.strimzi.operator.name", "strimzi-cluster-operator");
+    public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
+
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
-    public static final String STRIMZI_CRD_VERSION = System.getProperty("test.strimzi.crd.version", "v1beta2");
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
     public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
     public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
     // Apicurio Registry configuration
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
+    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
 
     // MySql Configuration
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
@@ -82,7 +86,7 @@ public final class ConfigProperties {
     public static final String DATABASE_SQLSERVER_SA_PASSWORD = System.getProperty("test.database.sqlserver.password", "Debezium1$");
     public static final String DATABASE_SQLSERVER_DBZ_USERNAME = System.getProperty("test.database.sqlserver.dbz.username", DATABASE_SQLSERVER_USERNAME);
     public static final String DATABASE_SQLSERVER_DBZ_PASSWORD = System.getProperty("test.database.sqlserver.dbz.password", DATABASE_SQLSERVER_SA_PASSWORD);
-    public static final String DATABASE_SQLSERVER_DBZ_DBNAME = System.getProperty("test.database.sqlserver.dbname", "testDB");
+    public static final String DATABASE_SQLSERVER_DBZ_DBNAMES = System.getProperty("test.database.sqlserver.dbnames", "testDB");
     public static final Optional<String> DATABASE_SQLSERVER_HOST = stringOptionalProperty("test.database.sqlserver.host");
     public static final int DATABASE_SQLSERVER_PORT = Integer.parseInt(System.getProperty("test.database.sqlserver.port", "1433"));
 

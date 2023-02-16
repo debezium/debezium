@@ -34,7 +34,7 @@ public class ConnectorConfigBuilder {
     }
 
     public String getDbServerName() {
-        return connectorName.replaceAll("-", "_");
+        return connectorName.replace('-', '_');
     }
 
     public ConnectorConfigBuilder put(String key, Object value) {
@@ -60,6 +60,8 @@ public class ConnectorConfigBuilder {
         config.put("value.converter.apicurio.registry.url", apicurioUrl);
         config.put("value.converter.apicurio.registry.auto-register", true);
         config.put("value.converter.apicurio.registry.find-latest", true);
+
+        config.put("schema.name.adjustment.mode", "avro");
 
         return this;
     }

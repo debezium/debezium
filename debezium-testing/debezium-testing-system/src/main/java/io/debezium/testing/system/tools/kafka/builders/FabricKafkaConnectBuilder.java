@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.system.tools.kafka.builders;
 
+import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaBuilder.DEFAULT_KAFKA_NAME;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +37,9 @@ import io.strimzi.api.kafka.model.template.KafkaConnectTemplateBuilder;
 public class FabricKafkaConnectBuilder extends
         FabricBuilderWrapper<FabricKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
     public static String DEFAULT_KC_NAME = "debezium-kafka-connect-cluster";
-    public static String DEFAULT_BOOSTRAP_SERVER = FabricKafkaBuilder.DEFAULT_KAFKA_NAME + "-kafka-bootstrap:9093";
+    public static String KAFKA_CERT_SECRET = DEFAULT_KAFKA_NAME + "-cluster-ca-cert";
+    public static String KAFKA_CERT_FILENAME = "ca.crt";
+    public static String DEFAULT_BOOSTRAP_SERVER = DEFAULT_KAFKA_NAME + "-kafka-bootstrap:9093";
 
     protected FabricKafkaConnectBuilder(KafkaConnectBuilder builder) {
         super(builder);
@@ -209,8 +213,8 @@ public class FabricKafkaConnectBuilder extends
         return new ClientTlsBuilder()
                 .withTrustedCertificates(
                         new CertSecretSourceBuilder()
-                                .withCertificate("ca.crt")
-                                .withSecretName("debezium-kafka-cluster-cluster-ca-cert")
+                                .withCertificate(KAFKA_CERT_FILENAME)
+                                .withSecretName(KAFKA_CERT_SECRET)
                                 .build())
                 .build();
     }

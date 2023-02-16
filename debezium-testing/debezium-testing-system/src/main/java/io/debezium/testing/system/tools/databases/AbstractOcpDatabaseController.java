@@ -7,20 +7,21 @@ package io.debezium.testing.system.tools.databases;
 
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.List;
-import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
-import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.PortForward;
+import io.fabric8.kubernetes.client.dsl.ServiceResource;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -28,8 +29,13 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * @author Jakub Cechacek
  */
 public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, ?>>
-        implements DatabaseController<C> {
+        implements DatabaseController<C>, PortForwardableDatabaseController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseController.class);
+
+    private static final String FORWARDED_HOST = "localhost";
+    private static final int MAX_PORT_SEARCH_ATTEMPTS = 20;
+    private static final int MIN_PORT = 32768;
+    private static final int MAX_PORT = 60999;
 
     protected final OpenShiftClient ocp;
     protected final String project;
@@ -37,6 +43,9 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     protected Deployment deployment;
     protected String name;
     protected List<Service> services;
+    protected PortForward portForward;
+
+    private int localPort;
 
     public AbstractOcpDatabaseController(
                                          Deployment deployment, List<Service> services, OpenShiftClient ocp) {
@@ -48,14 +57,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    private Service getLoadBalancedService() {
-        return ocp
-                .services()
-                .inNamespace(project)
-                .withName(deployment.getMetadata().getName() + "-lb")
-                .get();
-    }
-
     private Service getService() {
         return ocp
                 .services()
@@ -64,16 +65,16 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .get();
     }
 
-    private void awaitIngress() {
-        LOGGER.info("Waiting for LoadBalancerIngress to be available");
-        await()
-                .atMost(scaled(2), MINUTES)
-                .pollInterval(3, SECONDS)
-                .until(() -> getLoadBalancedService().getStatus().getLoadBalancer().getIngress().size() > 0);
-    }
-
     @Override
     public void reload() throws InterruptedException {
+        if (!isRunningFromOcp()) {
+            try {
+                closeDatabasePortForwards();
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
         await()
@@ -92,36 +93,90 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public int getDatabasePort() {
+        return getOriginalDatabasePort();
+    }
+
+    @Override
+    public String getPublicDatabaseHostname() {
+        if (isRunningFromOcp()) {
+            return getDatabaseHostname();
+        }
+        return FORWARDED_HOST;
+    }
+
+    @Override
+    public int getPublicDatabasePort() {
+        if (isRunningFromOcp()) {
+            return getDatabasePort();
+        }
+        return localPort;
+    }
+
+    @Override
+    public void initialize() throws InterruptedException {
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
+    }
+
+    @Override
+    public void forwardDatabasePorts() {
+        if (portForward != null) {
+            LOGGER.warn("Calling port forward when forward already on " + getOriginalDatabasePort() + "->" + localPort);
+            return;
+        }
+        String serviceName = getService().getMetadata().getName();
+        ServiceResource<Service> serviceResource = ocp.services().inNamespace(project).withName(serviceName);
+        int dbPort = getOriginalDatabasePort();
+        try {
+            localPort = getAvailablePort();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        LOGGER.info("Forwarding ports " + dbPort + "->" + localPort + " on service: " + serviceName);
+
+        PortForward forward = serviceResource
+                .portForward(dbPort, localPort);
+
+        for (Throwable e : forward.getClientThrowables()) {
+            LOGGER.error("Client error when forwarding DB port " + deployment, e);
+        }
+
+        for (Throwable e : forward.getServerThrowables()) {
+            LOGGER.error("Server error when forwarding DB port" + dbPort, e);
+        }
+        portForward = forward;
+    }
+
+    @Override
+    public void closeDatabasePortForwards() throws IOException {
+        LOGGER.info("Closing port forwards");
+        portForward.close();
+        portForward = null;
+    }
+
+    private int getOriginalDatabasePort() {
         return getService().getSpec().getPorts().stream()
                 .filter(p -> p.getName().equals("db"))
                 .findAny()
                 .get().getPort();
     }
 
-    @Override
-    public String getPublicDatabaseHostname() {
-        if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database hostname");
-            return getDatabaseHostname();
+    private int getAvailablePort() throws IOException {
+        try (var socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
         }
-        awaitIngress();
-
-        LoadBalancerIngress ingres = getLoadBalancedService().getStatus().getLoadBalancer().getIngress().get(0);
-        String address = (ingres.getHostname() != null) ? ingres.getHostname() : ingres.getIp();
-
-        return Objects.requireNonNull(address, "Unable to retrieve hostname or ip for service ingres");
     }
 
-    @Override
-    public int getPublicDatabasePort() {
-        if (isRunningFromOcp()) {
-            LOGGER.info("Running from OCP, using internal database port");
-            return getDatabasePort();
+    private boolean isLocalPortFree(int port) {
+        try {
+            new ServerSocket(port).close();
+            return true;
         }
-        awaitIngress();
-        return getLoadBalancedService().getSpec().getPorts().stream()
-                .filter(p -> p.getName().equals("db"))
-                .findAny()
-                .get().getPort();
+        catch (IOException e) {
+            return false;
+        }
     }
 }

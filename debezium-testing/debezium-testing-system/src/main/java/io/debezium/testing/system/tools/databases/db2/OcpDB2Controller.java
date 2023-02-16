@@ -7,6 +7,7 @@ package io.debezium.testing.system.tools.databases.db2;
 
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ_USERNAME;
+import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import java.sql.Connection;
 import java.util.List;
@@ -36,6 +37,9 @@ public class OcpDB2Controller extends OcpSqlDatabaseController {
 
     @Override
     public void initialize() {
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
         LOGGER.info("Waiting until DB2 instance is ready");
         SqlDatabaseClient client = getDatabaseClient(DATABASE_DB2_DBZ_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
         try (Connection connection = client.connectWithRetries()) {
