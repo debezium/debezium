@@ -45,6 +45,11 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     private void setUnchangedToastValue(String typeWithModifiers) {
+        // Removing the size for type like _varchar(2000, 0)
+        int parenthesis = typeWithModifiers.indexOf("(");
+        if (parenthesis > 0) {
+            typeWithModifiers = typeWithModifiers.substring(0, parenthesis);
+        }
         switch (typeWithModifiers) {
             case "text[]":
             case "_text":
@@ -58,6 +63,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
                 break;
             case "integer[]":
             case "_int4":
+            case "_date":
                 unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
                 break;
             case "bigint[]":
