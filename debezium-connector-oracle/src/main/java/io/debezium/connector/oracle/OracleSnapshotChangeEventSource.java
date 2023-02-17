@@ -282,8 +282,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
     }
 
-    private static String quote(TableId tableId) {
-        return TableId.parse(tableId.schema() + "." + tableId.table(), true).toDoubleQuotedString();
+    private String quote(TableId tableId) {
+        return new TableId(null, tableId.schema(), tableId.table()).toDoubleQuotedString();
     }
 
     /**
