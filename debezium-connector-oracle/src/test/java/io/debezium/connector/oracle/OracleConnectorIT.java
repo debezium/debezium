@@ -4880,6 +4880,68 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6120")
+    public void testCapturingChangesForTableWithSapcesInName() throws Exception {
+        TestHelper.dropTable(connection, "\"Q1! 表\"");
+        try {
+            connection.execute("CREATE TABLE \"Q1! 表\" (a int)");
+            connection.execute("INSERT INTO \"Q1! 表\" (a) values (1)");
+            TestHelper.streamTable(connection, "\"Q1! 表\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.Q1! 表")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1___")).hasSize(1);
+
+            connection.execute("INSERT INTO \"Q1! 表\" (a) values (2)");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1___")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"Q1! 表\"");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6120")
+    public void testCapturingChangesForTableWithSpecialCharactersInName() throws Exception {
+        TestHelper.dropTable(connection, "\"Q1!表\"");
+        try {
+            connection.execute("CREATE TABLE \"Q1!表\" (a int)");
+            connection.execute("INSERT INTO \"Q1!表\" (a) values (1)");
+            TestHelper.streamTable(connection, "\"Q1!表\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.Q1!表")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1__")).hasSize(1);
+
+            connection.execute("INSERT INTO \"Q1!表\" (a) values (2)");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1__")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"Q1!表\"");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
