@@ -984,7 +984,7 @@ The `event_serial_no` field differentiates events that have the same commit and 
 
 * _update_ events have the value set to `2` because the update generates two events in the CDC change table of SQL Server (link:https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[see the source documentation for details]). The first event contains the old values and the second contains contains new values. The connector uses values in the first event to create the second event. The connector drops the first event.
 
-* When a primary key is updated SQL Server emits two evemts. A _delete_ event for the removal of the record with the old primary key value and a _create_ event for the addition of the record with the new primary key.
+* When a primary key is updated SQL Server emits two events. A _delete_ event for the removal of the record with the old primary key value and a _create_ event for the addition of the record with the new primary key.
 Both operations share the same commit and change LSN and their event numbers are `1` and `2`, respectively.
 
 |4
