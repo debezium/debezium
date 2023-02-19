@@ -14,14 +14,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -591,18 +588,19 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private final DebeziumEngine.ChangeConsumer<SourceRecord> handler;
     private final DebeziumEngine.CompletionCallback completionCallback;
     private final DebeziumEngine.ConnectorCallback connectorCallback;
-    private final AtomicReference<Thread> runningThread = new AtomicReference<>();
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
     private final Converter valueConverter;
     private final WorkerConfig workerConfig;
     private final CompletionResult completionResult;
-    private long recordsSinceLastCommit = 0;
-    private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
 
     private SourceTask task;
     private final Transformations transformations;
+
+    private final EmbeddedEngineState embeddedEngineState = new EmbeddedEngineState();
+
+    private final Map<Integer, TaskExecutionContext> taskExecutionContext = new ConcurrentHashMap<>();
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, DebeziumEngine.ChangeConsumer<SourceRecord> handler,
                            DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback,
@@ -646,7 +644,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @return {@code true} if running, or {@code false} otherwise
      */
     public boolean isRunning() {
-        return this.runningThread.get() != null;
+        return this.embeddedEngineState.isRunning();
     }
 
     private void fail(String msg) {
@@ -687,7 +685,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     @Override
     public void run() {
-        if (runningThread.compareAndSet(null, Thread.currentThread())) {
+        if (this.embeddedEngineState.isStopped()) {
+            this.embeddedEngineState.start();
 
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
@@ -840,23 +839,23 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         return;
                     }
 
-                    recordsSinceLastCommit = 0;
                     Throwable handlerError = null, retryError = null;
+                    OffsetCommitter offsetCommitter = new DefaultOffsetCommitter(
+                            this.clock, this.task, commitTimeout, offsetWriter, offsetCommitPolicy, embeddedEngineState);
                     try {
-                        timeOfLastCommitMillis = clock.currentTimeInMillis();
-                        RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
-                        while (runningThread.get() != null) {
+                        RecordCommitter committer = buildRecordCommitter(offsetCommitter);
+                        while (embeddedEngineState.isRunning()) {
                             List<SourceRecord> changeRecords = null;
                             try {
-                                LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
+                                LOGGER.debug("Embedded engine is polling task for records on thread {}", Thread.currentThread());
                                 changeRecords = task.poll(); // blocks until there are values ...
                                 LOGGER.debug("Embedded engine returned from polling task for records");
                             }
                             catch (InterruptedException e) {
                                 // Interrupted while polling ...
-                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
-                                if (this.runningThread.get() == Thread.currentThread()) {
-                                    // this thread is still set as the running thread -> we were not interrupted
+                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", Thread.currentThread());
+                                if (this.embeddedEngineState.isRunning()) {
+                                    // the engine is still marked as running -> we were not interrupted
                                     // due the stop() call -> probably someone else called the interrupt on us ->
                                     // -> we should raise the interrupt flag
                                     Thread.currentThread().interrupt();
@@ -945,7 +944,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             task.stop();
                             connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
-                            commitOffsets(offsetWriter, commitTimeout, task);
+                            offsetCommitter.commitOffsets();
                         }
                         catch (InterruptedException e) {
                             LOGGER.debug("Interrupted while committing offsets");
@@ -980,7 +979,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
             finally {
                 latch.countDown();
-                runningThread.set(null);
+                this.embeddedEngineState.stop();
                 // after we've "shut down" the engine, fire the completion callback based on the results we collected
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
             }
@@ -995,24 +994,19 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * Creates a new RecordCommitter that is responsible for informing the engine
      * about the updates to the given batch
-     * @param offsetWriter the offsetWriter current in use
-     * @param task the sourcetask
-     * @param commitTimeout the time in ms until a commit times out
      * @return the new recordCommitter to be used for a given batch
      */
-    protected RecordCommitter buildRecordCommitter(OffsetStorageWriter offsetWriter, SourceTask task, Duration commitTimeout) {
+    protected RecordCommitter buildRecordCommitter(OffsetCommitter offsetCommitter) {
         return new RecordCommitter() {
 
             @Override
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
-                task.commitRecord(record);
-                recordsSinceLastCommit += 1;
-                offsetWriter.offset((Map<String, Object>) record.sourcePartition(), (Map<String, Object>) record.sourceOffset());
+                offsetCommitter.commit(record);
             }
 
             @Override
             public synchronized void markBatchFinished() throws InterruptedException {
-                maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
+                offsetCommitter.maybeFlush();
             }
 
             @Override
@@ -1060,81 +1054,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     }
 
     /**
-     * Determine if we should flush offsets to storage, and if so then attempt to flush offsets.
-     *
-     * @param offsetWriter the offset storage writer; may not be null
-     * @param policy the offset commit policy; may not be null
-     * @param commitTimeout the timeout to wait for commit results
-     * @param task the task which produced the records for which the offsets have been committed
-     */
-    protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, Duration commitTimeout,
-                              SourceTask task)
-            throws InterruptedException {
-        // Determine if we need to commit to offset storage ...
-        long timeSinceLastCommitMillis = clock.currentTimeInMillis() - timeOfLastCommitMillis;
-        if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
-            commitOffsets(offsetWriter, commitTimeout, task);
-        }
-    }
-
-    /**
-     * Flush offsets to storage.
-     *
-     * @param offsetWriter the offset storage writer; may not be null
-     * @param commitTimeout the timeout to wait for commit results
-     * @param task the task which produced the records for which the offsets have been committed
-     */
-    protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) throws InterruptedException {
-        long started = clock.currentTimeInMillis();
-        long timeout = started + commitTimeout.toMillis();
-        if (!offsetWriter.beginFlush()) {
-            return;
-        }
-        Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
-        if (flush == null) {
-            return; // no offsets to commit ...
-        }
-
-        // Wait until the offsets are flushed ...
-        try {
-            flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
-            // if we've gotten this far, the offsets have been committed so notify the task
-            task.commit();
-            recordsSinceLastCommit = 0;
-            timeOfLastCommitMillis = clock.currentTimeInMillis();
-        }
-        catch (InterruptedException e) {
-            LOGGER.warn("Flush of {} offsets interrupted, cancelling", this);
-            offsetWriter.cancelFlush();
-
-            if (this.runningThread.get() == Thread.currentThread()) {
-                // this thread is still set as the running thread -> we were not interrupted
-                // due the stop() call -> probably someone else called the interrupt on us ->
-                // -> we should raise the interrupt flag
-                Thread.currentThread().interrupt();
-                throw e;
-            }
-        }
-        catch (ExecutionException e) {
-            LOGGER.error("Flush of {} offsets threw an unexpected exception: ", this, e);
-            offsetWriter.cancelFlush();
-        }
-        catch (TimeoutException e) {
-            LOGGER.error("Timed out waiting to flush {} offsets to storage", this);
-            offsetWriter.cancelFlush();
-        }
-    }
-
-    protected void completedFlush(Throwable error, Void result) {
-        if (error != null) {
-            LOGGER.error("Failed to flush {} offsets to storage: ", this, error);
-        }
-        else {
-            LOGGER.trace("Finished flushing {} offsets to storage", this);
-        }
-    }
-
-    /**
      * Stop the execution of this embedded connector. This method does not block until the connector is stopped; use
      * {@link #await(long, TimeUnit)} for this purpose.
      *
@@ -1144,9 +1063,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     public boolean stop() {
         LOGGER.info("Stopping the embedded engine");
-        // Signal that the run() method should stop ...
-        Thread thread = this.runningThread.getAndSet(null);
-        if (thread != null) {
+        if (this.embeddedEngineState.isRunning()) {
+            Thread thread = this.embeddedEngineState.stop();
             try {
                 // Making sure the event source coordinator has enough time to shut down before forcefully stopping it
                 Duration timeout = Duration.ofMillis(config.getLong(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS));
