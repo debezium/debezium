@@ -1628,8 +1628,8 @@ Disabled by default.
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
 |A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped (not emitted by this connector).
+The operations include: `c` for inserts/create, `u` for updates/replace, `d` for deletes, `t` for truncates, and `none` to not skip any aforementioned operations.
+By default, for consistency with other Debezium connectors, truncate operations are skipped (not emitted by this connector). However, since MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, this is effectively the same as specifying `none`.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |No default

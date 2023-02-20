@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 
+import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
@@ -99,6 +100,10 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
     public void readEvent(CollectionId collectionId, Instant timestamp) {
         sourceInfo.collectionEvent(replicaSetName, collectionId, 0L);
         sourceInfo.lastOffset(replicaSetName);
+    }
+
+    public void noEvent(MongoChangeStreamCursor<?> cursor) {
+        sourceInfo.noEvent(replicaSetName, cursor);
     }
 
     public void changeStreamEvent(ChangeStreamDocument<BsonDocument> changeStreamEvent) {
