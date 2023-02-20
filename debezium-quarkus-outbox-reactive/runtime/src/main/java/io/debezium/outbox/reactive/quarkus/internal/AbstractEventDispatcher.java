@@ -9,7 +9,7 @@ import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_
 
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.hibernate.tuple.DynamicMapInstantiator;

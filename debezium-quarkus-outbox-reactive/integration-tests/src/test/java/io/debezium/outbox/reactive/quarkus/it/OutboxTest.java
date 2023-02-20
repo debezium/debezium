@@ -13,7 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Test;

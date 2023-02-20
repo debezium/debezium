@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
