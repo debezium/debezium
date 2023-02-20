@@ -7,7 +7,7 @@ package io.debezium.outbox.quarkus.internal;
 
 import java.io.IOException;
 
-import javax.persistence.AttributeConverter;
+import jakarta.persistence.AttributeConverter;
 
 import org.hibernate.HibernateException;
 

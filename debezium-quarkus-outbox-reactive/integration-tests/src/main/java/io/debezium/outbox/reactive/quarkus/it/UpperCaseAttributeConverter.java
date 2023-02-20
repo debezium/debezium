@@ -7,7 +7,7 @@ package io.debezium.outbox.reactive.quarkus.it;
 
 import java.util.Locale;
 
-import javax.persistence.AttributeConverter;
+import jakarta.persistence.AttributeConverter;
 
 /**
  * An {@link AttributeConverter} that converters the input string to upper-case at persistence time

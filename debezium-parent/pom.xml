@@ -115,7 +115,7 @@
                     <artifactId>impsort-maven-plugin</artifactId>
                     <version>${version.impsort}</version>
                     <configuration>
-                        <groups>java.,javax.,org.,com.,io.</groups>
+                        <groups>java.,jakarta.,javax.,org.,com.,io.</groups>
                         <staticGroups>*</staticGroups>
                         <staticAfter>false</staticAfter>
                         <skip>${format.skip}</skip>

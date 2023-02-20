@@ -8,8 +8,8 @@ package io.debezium.outbox.reactive.quarkus.it;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import io.debezium.outbox.reactive.quarkus.internal.DebeziumOutboxHandler;
 import io.smallrye.mutiny.Uni;

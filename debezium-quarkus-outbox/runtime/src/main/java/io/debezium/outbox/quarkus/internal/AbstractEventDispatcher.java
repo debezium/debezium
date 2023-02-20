@@ -9,8 +9,8 @@ import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_
 
 import java.util.Map;
 
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.hibernate.Session;
 
