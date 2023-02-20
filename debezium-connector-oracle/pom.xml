@@ -49,11 +49,11 @@
         </dependency>
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-core</artifactId>
+            <artifactId>infinispan-core-jakarta</artifactId>
         </dependency>
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-client-hotrod</artifactId>
+            <artifactId>infinispan-client-hotrod-jakarta</artifactId>
         </dependency>
         <dependency>
             <groupId>org.infinispan.protostream</groupId>
