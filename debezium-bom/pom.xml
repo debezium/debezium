@@ -416,12 +416,12 @@
             <!-- Oracle dependencies -->
             <dependency>
                 <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-core</artifactId>
+                <artifactId>infinispan-core-jakarta</artifactId>
                 <version>${version.infinispan}</version>
             </dependency>
             <dependency>
                 <groupId>org.infinispan</groupId>
-                <artifactId>infinispan-client-hotrod</artifactId>
+                <artifactId>infinispan-client-hotrod-jakarta</artifactId>
                 <version>${version.infinispan}</version>
             </dependency>
             <dependency>
