@@ -18,10 +18,46 @@ on:
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
       - '.github/workflows/oracle-workflow-test.yml'
+  pull_request_target:
+    branches:
+      - main
+      - 1.*
+      - 2.*
+    paths:
+      - 'support/checkstyle/**'
+      - 'debezium-api/**'
+      - 'debezium-ddl-parser/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-core/**'
+      - 'debezium-embedded/**'
+      - 'debezium-connector-oracle/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+      - '.github/workflows/oracle-workflow-test.yml'
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      SKIP_CHECK: ${{ steps.check.outputs.SKIP_CHECK }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v3
+
+      - name: Check if author has Quay.io credentials
+        env:
+          QUAY_IO_USERNAME: ${{ secrets.QUAY_IO_USERNAME }}
+          QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
+        run: |
+          if [[ $QUAY_IO_USERNAME != '' && $QUAY_IO_PASSWORD != '' ]]; then
+            echo "SKIP_CHECK=false" >> $GITHUB_OUTPUT
+          fi
+
   build:
     runs-on: ubuntu-latest
+    needs: [check]
+    if: ${{ needs.check.outputs.SKIP_CHECK == 'false' || github.event_name == 'push' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
