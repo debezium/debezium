@@ -64,7 +64,9 @@ public class LogMinerQueryBuilder {
             // PDB database name while allowing all START, COMMIT, MISSING_SCN, and ROLLBACK operations
             // regardless of where they originate, i.e. the PDB or CDB$ROOT.
             pdbPredicate = "SRC_CON_NAME = '" + pdbName + "' ";
-            query.append("AND ").append(pdbPredicate);
+        }
+        else {
+            pdbPredicate = null;
         }
 
         // Excluded schemas, if defined
@@ -76,11 +78,23 @@ public class LogMinerQueryBuilder {
         }
 
         // Add the operation types we're interested in.
-        query.append("AND OPERATION_CODE IN (1,2,3,5,6,7");
-        if (connectorConfig.isLobEnabled()) {
-            query.append(",9,10,11,29");
+        if (!Strings.isNullOrEmpty(pdbPredicate)) {
+            query.append("AND (OPERATION_CODE IN (6,7,36) ");
+            query.append("OR (").append(pdbPredicate);
+            query.append("AND OPERATION_CODE IN (1,2,3,5");
+            if (connectorConfig.isLobEnabled()) {
+                query.append(",9,10,11,29");
+            }
+            query.append(",34,255)");
+            query.append("))");
         }
-        query.append(",34,36,255) ");
+        else {
+            query.append("AND OPERATION_CODE IN (1,2,3,5,6,7");
+            if (connectorConfig.isLobEnabled()) {
+                query.append(",9,10,11,29");
+            }
+            query.append(",34,36,255)");
+        }
 
         return query.toString();
     }
