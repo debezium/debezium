@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -871,13 +870,6 @@ public abstract class CommonConnectorConfig {
 
     public EnumSet<Envelope.Operation> getSkippedOperations() {
         return skippedOperations;
-    }
-
-    @Deprecated
-    public Set<String> legacyGetDataCollectionsToBeSnapshotted() {
-        return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
-                .map(tables -> Strings.setOf(tables, Function.identity()))
-                .orElseGet(Collections::emptySet);
     }
 
     public Set<Pattern> getDataCollectionsToBeSnapshotted() {
