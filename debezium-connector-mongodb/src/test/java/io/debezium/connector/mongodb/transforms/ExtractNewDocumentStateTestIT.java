@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -31,11 +32,18 @@ import org.bson.RawBsonDocument;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
+import com.mongodb.client.model.CreateCollectionOptions;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
 
@@ -574,6 +582,124 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldGenerateRecordForPartialUpdateEvent() throws InterruptedException {
+        Configuration config = getBaseConfigBuilder()
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE)
+                .build();
+        restartConnectorWithConfig(config);
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim")
+                .append("phone", 123L)
+                .append("active", false);
+
+        // insert
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(DB_NAME);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(this.getCollectionName(), options);
+
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$set", new Document("name", "Sally"))
+                // the value of "$unset" doesn't matter, and they'll all be unset.
+                // https://www.mongodb.com/docs/manual/reference/operator/update/unset/#mongodb-update-up.-unset
+                .append("$unset", new Document().append("phone", true).append("active", false));
+
+        // update
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        }
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct value = (Struct) transformed.value();
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.schema().field("phone")).isNull();
+        assertThat(value.schema().field("active")).isNull();
+        assertThat(value.schema().fields()).hasSize(2);
+    }
+
+    @Test
+    public void shouldGenerateRecordForSetOnlyPartialUpdateEvent() throws InterruptedException {
+        Configuration config = getBaseConfigBuilder()
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS)
+                .build();
+        restartConnectorWithConfig(config);
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim")
+                .append("phone", 123L)
+                .append("active", false);
+
+        // insert
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$set", new Document("name", "Sally"));
+
+        // update
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        }
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct value = (Struct) transformed.value();
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        // no pre-image, so these 2 fields shouldn't be visible
+        assertThat(value.schema().field("phone")).isNull();
+        assertThat(value.schema().field("active")).isNull();
         assertThat(value.schema().fields()).hasSize(2);
     }
 
@@ -1437,7 +1563,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     @Test
     @FixFor("DBZ-2455")
-    public void testAddPatchFieldAfterUpdate() throws Exception {
+    public void testAddUpdatedFieldAfterUpdate() throws Exception {
         waitForStreamingRunning();
 
         ObjectId objId = new ObjectId();
@@ -1469,6 +1595,10 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
         assertNoRecordsToConsume();
 
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "updateDescription.updatedFields");
+        transformation.configure(props);
+
         // Perform transformation
         final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
 
@@ -1488,11 +1618,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
 
-        // 4 data fields + 1 __patch
+        // 4 data fields + 1 __updateDescription_updatedFields
         assertThat(value.schema().fields()).hasSize(4 + 1);
 
-        assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
-        assertThat(value.get("__patch")).isNull();
+        assertThat(value.schema().field("__updateDescription_updatedFields").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
+        assertThat(value.get("__updateDescription_updatedFields")).isEqualTo("{\"a\": 22}");
 
         assertThat(value.get("b")).isEqualTo(2);
         assertThat(value.schema().field("b").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
