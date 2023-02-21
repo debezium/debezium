@@ -44,11 +44,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
     @Before
     public void beforeEach() {
         // Use the DB configuration to define the connector's configuration ...
-        Configuration config = TestHelper.getConfiguration(mongo).edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
-                .build();
+        Configuration config = getBaseConfigBuilder().build();
 
         beforeEach(config);
     }
@@ -80,12 +76,23 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         afterEach();
 
         // reconfigure and restart
-        Configuration config = TestHelper.getConfiguration(mongo).edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
-                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
+        Configuration config = getBaseConfigBuilder()
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
+
+        beforeEach(config);
+    }
+
+    protected Configuration.Builder getBaseConfigBuilder() {
+        return TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
+                .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
+    }
+
+    protected void restartConnectorWithConfig(Configuration config) {
+        // stop connector
+        afterEach();
 
         beforeEach(config);
     }
