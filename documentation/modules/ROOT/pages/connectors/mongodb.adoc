@@ -1574,7 +1574,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
+|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
 
 |[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
 |`1000`
