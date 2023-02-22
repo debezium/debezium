@@ -574,7 +574,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof TIMESTAMPTZ) {
                 final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
-                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ts.getTimeZone().toZoneId());
+                data = ts.toZonedDateTime();
             }
             else if (data instanceof TIMESTAMPLTZ) {
                 final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
