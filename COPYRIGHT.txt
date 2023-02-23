@@ -119,7 +119,6 @@ Dennis Persson
 Derek Moore
 Dhrubajyoti G
 Dominique Chanet
-Dou Pengwei
 Duncan Sands
 Dushyant M
 Echo Xu
@@ -184,7 +183,6 @@ Hang Ruan
 Hans-Peter Grahsl
 Harvey Yue
 Helong Zhang
-Henrik Schnell
 Henry Cai
 Henryk Konsek
 Himanshu Mishra
@@ -313,7 +311,6 @@ Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
 Muhammad Sufyian
-My Lang Pangzi
 Nancy Xu
 Nansen
 Narz David
@@ -402,7 +399,6 @@ Sean Rooney
 Sebastian Bruckner
 Seo Jae-kwon
 Sergei Morozov
-Sergey Eizner
 Shane Paul
 Shantanu Sharma
 Sherafudheen PM
@@ -411,7 +407,6 @@ Shichao An
 Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
-Shuran Zhang
 SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
@@ -501,7 +496,6 @@ Snigdhajyoti Ghosh
 Andrei Isac
 Mark Allanson
 Rahul Khanna
-Ronak Jain
 Pengwei Dou
 Zhongqiang Gong
 Inki Hwang
@@ -512,3 +506,5 @@ Moustapha Mahfoud
 Đỗ Ngọc Sơn
 RJ Nowling
 蔡灿材
+Ben White
+Miguel Angel Sotomayor
