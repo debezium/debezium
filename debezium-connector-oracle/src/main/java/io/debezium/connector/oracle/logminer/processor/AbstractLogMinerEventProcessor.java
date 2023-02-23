@@ -959,6 +959,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                                                           EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
 
+        LOGGER.warn("Obtaining schema for table {}, which should be already loaded, this may signal potential bug in fetching table schemas.", tableId);
         final String tableDdl;
         try {
             tableDdl = getTableMetadataDdl(tableId);
