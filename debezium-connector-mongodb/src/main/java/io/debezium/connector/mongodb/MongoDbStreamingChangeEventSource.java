@@ -18,7 +18,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
-import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,8 +178,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ServerAddress nodeAddress = MongoUtil.getPreferredAddress(client, mongo.getPreference());
         LOGGER.info("Reading change stream for '{}'/{} from {} starting at {}", replicaSet, mongo.getPreference().getName(), nodeAddress, oplogStart);
 
-        final List<Bson> pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig()).create();
-        final ChangeStreamIterable<BsonDocument> rsChangeStream = client.watch(pipeline, BsonDocument.class);
+        final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig())
+                .create();
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = client.watch(pipeline.getStages(), BsonDocument.class);
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }

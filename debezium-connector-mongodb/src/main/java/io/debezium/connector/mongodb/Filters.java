@@ -125,15 +125,17 @@ public final class Filters {
         private final String fieldRenames;
         private final String fieldExcludeList;
         private final String signalDataCollection;
+        private final ChangeStreamPipeline userPipeline;
 
         public FilterConfig(Configuration config) {
-            this.dbIncludeList = resolve(config, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
-            this.dbExcludeList = resolve(config, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
-            this.collectionIncludeList = resolve(config, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
-            this.collectionExcludeList = resolve(config, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
-            this.fieldRenames = resolve(config, MongoDbConnectorConfig.FIELD_RENAMES);
-            this.fieldExcludeList = resolve(config, MongoDbConnectorConfig.FIELD_EXCLUDE_LIST);
-            this.signalDataCollection = resolve(config, MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION);
+            this.dbIncludeList = resolveString(config, MongoDbConnectorConfig.DATABASE_INCLUDE_LIST);
+            this.dbExcludeList = resolveString(config, MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST);
+            this.collectionIncludeList = resolveString(config, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
+            this.collectionExcludeList = resolveString(config, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
+            this.fieldRenames = resolveString(config, MongoDbConnectorConfig.FIELD_RENAMES);
+            this.fieldExcludeList = resolveString(config, MongoDbConnectorConfig.FIELD_EXCLUDE_LIST);
+            this.signalDataCollection = resolveString(config, MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION);
+            this.userPipeline = resolveChangeStreamPipeline(config, MongoDbConnectorConfig.CURSOR_PIPELINE);
         }
 
         public String getDbIncludeList() {
@@ -168,21 +170,30 @@ public final class Filters {
             return BUILT_IN_DB_NAMES;
         }
 
-        private static String resolve(Configuration config, Field key) {
+        public ChangeStreamPipeline getUserPipeline() {
+            return userPipeline;
+        }
+
+        private static String resolveString(Configuration config, Field key) {
             return normalize(config.getString(key));
         }
 
-        private static String normalize(String value) {
-            if (value == null) {
+        private static ChangeStreamPipeline resolveChangeStreamPipeline(Configuration config, Field field) {
+            var text = config.getString(field);
+            return new ChangeStreamPipeline(text);
+        }
+
+        private static String normalize(String text) {
+            if (text == null) {
                 return null;
             }
 
-            value = value.trim();
-            if (value.isEmpty()) {
+            text = text.trim();
+            if (text.isEmpty()) {
                 return null;
             }
 
-            return value;
+            return text;
         }
 
     }

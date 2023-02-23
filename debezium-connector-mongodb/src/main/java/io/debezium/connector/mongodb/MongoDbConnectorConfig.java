@@ -509,6 +509,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
+    public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
+            .withDisplayName("Pipeline expression apply to the change stream cursor")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(MongoDbConnectorConfig::validateChangeStreamPipeline)
+            .withDescription("Applies processing to change events as part of the the standard MongoDB aggregation stream pipeline. " +
+                    "A pipeline is a MongoDB aggregation pipeline composed of instructions to the database to filter or transform data. " +
+                    "This can be used customize the data that the connector consumes. " +
+                    "Note that this comes after the internal pipelines used to support the connector (e.g. filtering database and collection names).");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -609,6 +620,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
         catch (Exception e) {
             problems.accept(field, value, "Connection string is invalid");
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+
+        try {
+            new ChangeStreamPipeline(value);
+        }
+        catch (Exception e) {
+            problems.accept(field, value, "Change stream pipeline JSON is invalid: " + e.getMessage());
             return 1;
         }
         return 0;

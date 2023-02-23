@@ -41,7 +41,17 @@ class ChangeStreamPipelineFactory {
         this.filterConfig = filterConfig;
     }
 
-    List<Bson> create() {
+    ChangeStreamPipeline create() {
+        // Resolve and combine internal and user pipelines serially
+        var internalPipeline = createInternalPipeline();
+        var userPipeline = createUserPipeline();
+        var effectivePipeline = internalPipeline.then(userPipeline);
+
+        LOGGER.info("Effective change stream pipeline: {}", effectivePipeline);
+        return effectivePipeline;
+    }
+
+    private ChangeStreamPipeline createInternalPipeline() {
         // Resolve the leaf filters
         var filters = Stream
                 .of(
@@ -60,7 +70,7 @@ class ChangeStreamPipelineFactory {
         // - https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#indexes-and-performance
         // Note that `$addFields` must be used over `$set`/ `$unset` to support MongoDB 4.0 which doesn't support these operators:
         // - https://www.mongodb.com/docs/manual/changeStreams/#modify-change-stream-output
-        var pipeline = List.of(
+        return new ChangeStreamPipeline(
                 // Materialize a "namespace" field so that we can do qualified collection name matching per
                 // the configuration requirements
                 // Note that per the docs, if `$ns` doesn't exist, `$concat` will return `null`
@@ -74,9 +84,11 @@ class ChangeStreamPipelineFactory {
                 // > Failed to decode 'ChangeStreamDocument'. Decoding 'namespace' errored with:
                 // > readStartDocument can only be called when CurrentBSONType is DOCUMENT, not when CurrentBSONType is STRING.
                 addFields("namespace", "$$REMOVE"));
+    }
 
-        LOGGER.info("Change stream pipeline: {}", new BasicDBObject("pipeline", pipeline).toBsonDocument().toJson());
-        return pipeline;
+    private ChangeStreamPipeline createUserPipeline() {
+        // Delegate to the configuration
+        return filterConfig.getUserPipeline();
     }
 
     private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig) {

@@ -10,8 +10,10 @@ import static org.mockito.BDDMockito.given;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.bson.BsonTimestamp;
+import org.bson.conversions.Bson;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -43,6 +45,8 @@ public class ChangeStreamPipelineFactoryTest {
                 .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
         given(filterConfig.getCollectionIncludeList())
                 .willReturn("dbit.*");
+        given(filterConfig.getUserPipeline())
+                .willReturn(new ChangeStreamPipeline("[{\"$match\": { \"$and\": [{\"operationType\": \"insert\"}, {\"fullDocument.eventId\": 1404 }] } }]"));
         given(rsOffsetContext.lastResumeToken())
                 .willReturn(null);
         given(rsOffsetContext.lastOffsetTimestamp())
@@ -52,21 +56,16 @@ public class ChangeStreamPipelineFactoryTest {
         var pipeline = sut.create();
 
         // Then:
-        assertThat(pipeline)
-                .hasSize(3);
-        assertThat(pipeline)
-                .element(0)
-                .satisfies((stage) -> assertJsonEquals(stage.toBsonDocument().toJson(), "" +
+        assertPipelineStagesEquals(pipeline.getStages(),
+                "" +
                         "{\n" +
                         "  \"$addFields\" : {\n" +
                         "    \"namespace\" : {\n" +
                         "      \"$concat\" : [ \"$ns.db\", \".\", \"$ns.coll\" ]\n" +
                         "    }\n" +
                         "  }\n" +
-                        "}"));
-        assertThat(pipeline)
-                .element(1)
-                .satisfies((stage) -> assertJsonEquals(stage.toBsonDocument().toJson(), "" +
+                        "}",
+                "" +
                         "{\n" +
                         "  \"$match\" : {\n" +
                         "    \"$and\" : [ {\n" +
@@ -91,15 +90,35 @@ public class ChangeStreamPipelineFactoryTest {
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +
-                        "}"));
-        assertThat(pipeline)
-                .element(2)
-                .satisfies((stage) -> assertJsonEquals(stage.toBsonDocument().toJson(), "" +
+                        "}",
+                "" +
                         "{\n" +
                         "  \"$addFields\" : {\n" +
                         "    \"namespace\" : \"$$REMOVE\"\n" +
                         "  }\n" +
-                        "}"));
+                        "}",
+                "" +
+                        "{\n" +
+                        "  \"$match\" : {\n" +
+                        "    \"$and\" : [ {\n" +
+                        "      \"operationType\" : \"insert\"\n" +
+                        "    }, {\n" +
+                        "      \"fullDocument.eventId\" : 1404\n" +
+                        "    } ]\n" +
+                        "  }\n" +
+                        "}");
+    }
+
+    private static void assertPipelineStagesEquals(List<? extends Bson> stages, String... expectedStageJsons) {
+        assertThat(stages)
+                .hasSameSizeAs(expectedStageJsons);
+
+        for (int i = 0; i < stages.size(); i++) {
+            var expectedStageJson = expectedStageJsons[i];
+            assertThat(stages)
+                    .element(i)
+                    .satisfies((stage) -> assertJsonEquals(stage.toBsonDocument().toJson(), expectedStageJson));
+        }
     }
 
     private static void assertJsonEquals(String actual, String expected) {

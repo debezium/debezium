@@ -1888,6 +1888,36 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         }
     }
 
+    @Test
+    public void shouldSkipNonPipelineRecords() throws Exception {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.CURSOR_PIPELINE, "[{$match:{'fullDocument.name':'Dennis'}}]")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        var coll = "c1";
+        insertDocuments("dbit", coll,
+                new Document().append("_id", 1).append("name", "Albert"),
+                new Document().append("_id", 2).append("name", "Bobby"),
+                new Document().append("_id", 3).append("name", "Clyde"),
+                new Document().append("_id", 4).append("name", "Dennis"));
+
+        var records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("mongo.dbit" + "." + coll))
+                .hasSize(1)
+                .element(0)
+                .satisfies(record -> assertThat(Document.parse(((Struct) record.value()).getString(Envelope.FieldName.AFTER)))
+                        .isEqualTo(Document.parse("{_id:4,name:'Dennis'}")));
+    }
+
     private static void assertSourceRecordKeyFieldIsEqualTo(SourceRecord record, String fieldName, String expected) {
         final Struct struct = (Struct) record.key();
         assertThat(struct.get(fieldName)).isEqualTo(expected);
