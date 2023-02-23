@@ -113,6 +113,10 @@ public class ConnectorConfiguration {
         return this;
     }
 
+    public String toJson() {
+        return getConfiguration().toString();
+    }
+
     ObjectNode getConfiguration() {
         return configNode;
     }

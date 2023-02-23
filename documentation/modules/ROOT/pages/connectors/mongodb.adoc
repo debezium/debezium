@@ -234,6 +234,13 @@ For more information about support scope, see link:https://access.redhat.com/sup
 endif::product[]
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+[WARNING]
+====
+Incremental snapshots requires the primary key to be stably ordered. However, `String` may not guarantees stable ordering as encodings and special characters
+can lead to unexpected behaviour (https://www.mongodb.com/docs/manual/reference/bson-types/#ref-sort-string-internationalization-id3/[Mongo sort `String`]).
+Please consider using other types for the primary key when performing incremental snapshots.
+====
+
 [NOTE]
 ====
 Incremental snapshots are currently supported for single replica set deployments only.
@@ -272,23 +279,33 @@ If the connector's tasks terminate unexpectedly, however, then the tasks may hav
 
 [NOTE]
 ====
-When everything is operating nominally, Kafka consumers will actually see every message *_exactly once_*. However, when things go wrong Kafka can only guarantee consumers will see every message *_at least once_*. Therefore, your consumers need to anticipate seeing messages more than once.
+When all components in a Kafka pipeline operate nominally, Kafka consumers receive every message *_exactly once_*.
+However, when things go wrong, Kafka can only guarantee that consumers receive every message *_at least once_*.
+To avoid unexpected results, consumers must be able to handle duplicate messages.
 ====
 
-As mentioned above, the connector tasks always use the replica set's primary node to stream changes from the oplog, ensuring that the connector sees the most up-to-date operations as possible and can capture the changes with lower latency than if secondaries were to be used instead. When the replica set elects a new primary, the connector immediately stops streaming changes, connects to the new primary, and starts streaming changes from the new primary node at the same position. Likewise, if the connector experiences any problems communicating with the replica set members, it tries to reconnect, by using exponential backoff so as to not overwhelm the replica set, and once connected it continues streaming changes from where it last left off. In this way, the connector is able to dynamically adjust to changes in replica set membership and automatically handle communication failures.
+As mentioned earlier, the connector tasks always use the replica set's primary node to stream changes from the oplog, ensuring that the connector sees the most up-to-date operations as possible and can capture the changes with lower latency than if secondaries were to be used instead.
+When the replica set elects a new primary, the connector immediately stops streaming changes, connects to the new primary, and starts streaming changes from the new primary node at the same position.
+Likewise, if the connector experiences any problems communicating with the replica set members, it tries to reconnect, by using exponential backoff so as to not overwhelm the replica set, and once connected it continues streaming changes from where it last left off.
+In this way, the connector is able to dynamically adjust to changes in replica set membership and automatically handle communication failures.
 
 To summarize, the MongoDB connector continues running in most situations. Communication problems might cause the connector to wait until the problems are resolved.
 
 // Type: concept
+// ModuleID: mongodb-support-for-populating-the-before-state-in-debezium-change-events
+// Title: MongoDB support for populating the `before` field in {prodname} change event
 [[mongodb-pre-image-support]]
 === Pre-image support
-Starting in MongoDB 6.0, you can configure change stream to emit pre-image to populate the `before` field for Mongo change events. To utilize pre-image, you need to first enable `changeStreamPreAndPostImages` for a collection using
-`db.createCollection()`, `create`, or `collMod`. And configure `capture.mode` as one of the `*_with_pre_image` options.
+In MongoDB 6.0 and later, you can configure change streams to emit the pre-image state of a document to populate the `before` field for MongoDB change events.
+To enable the use of pre-images in MongoDB, you must set the `changeStreamPreAndPostImages` for a collection by using `db.createCollection()`, `create`, or `collMod`.
+To enable the {prodname} MongoDB to include pre-images in change events, set the `capture.mode` for the connector to one of the `*_with_pre_image` options.
 
 [NOTE]
-.Size limits on Mong change stream events
+.Size limits on MongoDB change stream events
 ====
-Since the size of Mongo change stream event is limited to 16 megabytes, enabling pre-image will increase the likelihood of hitting this limit and cause failure. To avoid that, please refer to Mongo's https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images/[official documentation] for recommendation and details.
+The size of a MongoDB change stream event is limited to 16 megabytes.
+The use of pre-images thus increases the likelihood of exceeding this threshold, which can lead to failures.
+For information about how to avoid exceeding the change stream limit, see the https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images/[MongoDB documentation].
 ====
 
 // Type: concept
@@ -750,7 +767,12 @@ However, by using the xref:{link-avro-serialization}#avro-serialization[Avro con
 
 |6
 |`after`
-|An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`; in other words, a _create_ event is the only kind of event that contains an _after_ field regardless of `capture.mode` option.
+|An optional field that specifies the state of the document after the event occurred.
+In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields.
+The `after` value is always a string.
+By convention, it contains a JSON representation of the document.
+MongoDB oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`;
+in other words, a _create_ event is the only kind of event that contains an _after_ field regardless of `capture.mode` option.
 
 |7
 |`source`
@@ -786,7 +808,12 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 === _update_ events
 
 ==== Change streams capture mode
-The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does have an `after` value only if the `capture.mode` option is set to `change_streams_update_full`. A `before` value would be provided if the `capture.mode` option is set to one of the `*_with_pre_image` option. There is a new structured field `updateDescription` with a few additional fields in this case:
+The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection.
+Likewise, the event value's payload has the same structure.
+However, the event value payload contains different values in an _update_ event.
+An _update_ event includes an `after` value only if the `capture.mode` option is set to `change_streams_update_full`.
+A `before` value is provided if the `capture.mode` option is set to one of the `*_with_pre_image` option.
+There is a new structured field `updateDescription` with a few additional fields in this case:
 
 * `updatedFields` is a string field that contains the JSON representation of the updated document fields with their values
 
@@ -849,7 +876,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the`*_with_preimage` options.
+An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`after`
@@ -932,7 +959,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the`*_with_preimage` options.
+An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`source`
@@ -1428,7 +1455,34 @@ When the connector starts, it skips the snapshot process and immediately begins 
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method used to capture changes from the MongoDB server. The default is *change_streams_update_full*, and specifies that the connector captures changes via MongoDB Change Streams mechanism, and that _update_ events should contain the full document. The *change_streams* mode will use the same capturing method, but _update_ events won't contain the full document. To capture pre-image, you can use the pre-image version of the previous two capture modes - *change_streams_update_full_with_pre_image* and *change_streams_with_pre_image*.
+|Specifies the method that the connector uses to capture `update` event changes from a MongoDB server.
+Set this property to one of the following values:
+
+`change_streams`:: `update` event messages do not include the full document.
+Messages do not include a field that represents the state of the document `before` the change.
+
+`change_streams_update_full`:: `update` event messages include the full document.
+Messages do not include a `before` field that represents the state of the document before the update.
+The event message returns the full state of the document in the `after` field.
++
+[NOTE]
+====
+In some situations, when `capture.mode` is configured to return full documents, the `updateDescription` and `after` fields of the update event message might report inconsistent values.
+Such discrepancies can result after multiple updates are applied to a document in rapid succession.
+The connector requests the full document from the MongoDB database only after it receives the update described in the event's `updateDescription` field.
+If a later update modifies the source document before the connector can retrieve it from the database, the connector receives the document that is modified by this later update.
+
+When you configure `capture.mode` to return the full document, you might notice a discrepancy between the content in the `updateDescription` and `after` fields of the message.
+Discrepancies can result when multiple changes are applied to a document in rapid succession.
+Because the connector submits the request for the full document only after an update is applied, later updates can modify the source document after the update that is described in the `updateDescription` field.
+The full document that the connector then receives in response to its query reflects the result of the later change.
+====
+
+`change_streams_update_full_with_pre_image`::
+`update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
+
+`change_streams_with_pre_image`::
+`update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
@@ -1530,7 +1584,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
+|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
 
 |[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
 |`1000`
@@ -1574,8 +1628,8 @@ Disabled by default.
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
 |A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped (not emitted by this connector).
+The operations include: `c` for inserts/create, `u` for updates/replace, `d` for deletes, `t` for truncates, and `none` to not skip any aforementioned operations.
+By default, for consistency with other Debezium connectors, truncate operations are skipped (not emitted by this connector). However, since MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, this is effectively the same as specifying `none`.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |No default

@@ -4687,6 +4687,333 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6107")
+    public void shouldNotConsolidateBulkUpdateWhenLobEnabledIfUpdatesAreDifferentLogicalRowsWithoutLobColumns() throws Exception {
+        TestHelper.dropTable(connection, "dbz6107");
+        try {
+            connection.execute("CREATE TABLE dbz6107 (a numeric(9,0), b varchar2(25))");
+            TestHelper.streamTable(connection, "dbz6107");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6107")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            for (int i = 1; i <= 10; i++) {
+                connection.execute("INSERT INTO dbz6107 (a,b) values (" + i + ",'t" + i + "')");
+            }
+            connection.execute("UPDATE dbz6107 SET a=12 WHERE a=1 OR a=2");
+
+            SourceRecords records = consumeRecordsByTopic(12);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6107");
+            assertThat(tableRecords).hasSize(12);
+
+            for (int i = 1; i <= 10; i++) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidInsert(record);
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(i);
+                assertThat(after.get("B")).isEqualTo("t" + i);
+            }
+
+            for (int i = 11; i <= 12; ++i) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidUpdate(record);
+
+                final Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+                assertThat(before.get("A")).isEqualTo((i - 10));
+                assertThat(before.get("B")).isEqualTo("t" + (i - 10));
+
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(12);
+                assertThat(after.get("B")).isEqualTo("t" + (i - 10));
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "dbz6107");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6107")
+    public void shouldNotConsolidateBulkUpdateWhenLobEnabledIfUpdatesAreDifferentLogicalRowsWithLobColumns() throws Exception {
+        TestHelper.dropTable(connection, "dbz6107");
+        try {
+            connection.execute("CREATE TABLE dbz6107 (a numeric(9,0), b varchar2(25), d clob, c clob)");
+            TestHelper.streamTable(connection, "dbz6107");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6107")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Perform 10 individual inserts
+            for (int i = 1; i <= 10; i++) {
+                connection.execute("INSERT INTO dbz6107 (a,b,c,d) values (" + i + ",'t" + i + "', 'data" + i + "','x')");
+            }
+
+            // This bulk update only adjusts two rows where the value changed is a non-LOB column.
+            // Oracle will emit 2 independent UPDATE events, which should be emitted separately.
+            connection.execute("UPDATE dbz6107 SET a=12 WHERE a=1 OR a=2");
+
+            // This bulk update also adjusts two rows, but this changes both a non-LOB and LOB column.
+            // In this case, Oracle will emit 4 UPDATE events, where the first two and last two should
+            // be combined. These 4 events look like as follows:
+            //
+            // Event 1 - Non-LOB column a=3 changed to a=13
+            // Event 2 - LOB column c changed to 'Updated' where a=13 and b=t3 (previously where a=3)
+            // Event 3 - Non-LOB column a=4 changed to a=13
+            // Event 4 - LOB column c changed to 'Updated' where a=13 and b=t4 (previously where a=4)
+            //
+            // The outcome should be a total of 2 unique events, both updates, where the contents
+            // of the events should be the following:
+            //
+            // Event 1 - a=13, b=t3, c='Updated'
+            // Event 2 - a=13, b=t4, c='Updated'
+            connection.execute("UPDATE dbz6107 SET a=13, c = 'Updated' WHERE a=3 OR a=4");
+
+            // This bulk update also adjusts two rows, but this changes both a non-LOB and LOB column.
+            // In this case, Oracle will emit 4 UPDATE events, where the first two and last two should
+            // be combined. These 4 events look like as follows:
+            //
+            // Event 1 - Non-LOB column a=35 changed to a=14
+            // Event 2 - LOB column c changed to NULL where a=14 and b=t5 (previously where a=5)
+            // Event 3 - Non-LOB column a=6 changed to a=14
+            // Event 4 - LOB column c changed to NULL where a=14 and b=t6 (previously where a=6)
+            //
+            // The outcome should be a total of 2 unique events, both updates, where the contents
+            // of the events should be the following:
+            //
+            // Event 1 - a=13, b=t3, c=null
+            // Event 2 - a=13, b=t4, c=null
+            connection.execute("UPDATE dbz6107 SET a=14, c = NULL WHERE a=5 OR a=6");
+
+            final int count = 10 + 2 + 2 + 2;
+            SourceRecords records = consumeRecordsByTopic(count);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6107");
+            assertThat(tableRecords).hasSize(count);
+
+            // Check initial 10 inserts have all 3 columns populated
+            for (int i = 1; i <= 10; i++) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidInsert(record);
+
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(i);
+                assertThat(after.get("B")).isEqualTo("t" + i);
+                assertThat(after.get("C")).isEqualTo("data" + i);
+            }
+
+            // First bulk update should have produced exactly 2 update events.
+            for (int i = 11; i <= 12; ++i) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidUpdate(record);
+
+                final Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+                assertThat(before.get("A")).isEqualTo((i - 10));
+                assertThat(before.get("B")).isEqualTo("t" + (i - 10));
+                // An UPDATE never provides the prior LOB column data, placeholder is used
+                assertThat(before.get("C")).isEqualTo("__debezium_unavailable_value");
+
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(12);
+                assertThat(after.get("B")).isEqualTo("t" + (i - 10));
+                // This bulk UPDATE did not manipulate the LOB column, so placeholder is used
+                assertThat(after.get("C")).isEqualTo("__debezium_unavailable_value");
+            }
+
+            // Second bulk update should have provided exactly 2 update events.
+            for (int i = 13; i <= 14; ++i) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidUpdate(record);
+
+                final Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+                assertThat(before.get("A")).isEqualTo((i - 10));
+                assertThat(before.get("B")).isEqualTo("t" + (i - 10));
+                // An UPDATE never provides the prior LOB column data, placeholder is used
+                assertThat(before.get("C")).isEqualTo("__debezium_unavailable_value");
+
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(13);
+                assertThat(after.get("B")).isEqualTo("t" + (i - 10));
+                // This bulk UPDATE did manipulate the LOB column, so value should exist
+                assertThat(after.get("C")).isEqualTo("Updated");
+            }
+
+            // Second bulk update should have provided exactly 2 update events.
+            for (int i = 15; i <= 16; ++i) {
+                final SourceRecord record = tableRecords.get(i - 1);
+                VerifyRecord.isValidUpdate(record);
+
+                final Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+                assertThat(before.get("A")).isEqualTo((i - 10));
+                assertThat(before.get("B")).isEqualTo("t" + (i - 10));
+                // An UPDATE never provides the prior LOB column data, placeholder is used
+                assertThat(before.get("C")).isEqualTo("__debezium_unavailable_value");
+
+                final Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("A")).isEqualTo(14);
+                assertThat(after.get("B")).isEqualTo("t" + (i - 10));
+                // This bulk UPDATE did manipulate the LOB column, so value should exist as NULL
+                assertThat(after.get("C")).isNull();
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "dbz6107");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6120")
+    public void testCapturingChangesForTableWithSapcesInName() throws Exception {
+        TestHelper.dropTable(connection, "\"Q1! 表\"");
+        try {
+            connection.execute("CREATE TABLE \"Q1! 表\" (a int)");
+            connection.execute("INSERT INTO \"Q1! 表\" (a) values (1)");
+            TestHelper.streamTable(connection, "\"Q1! 表\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.Q1! 表")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1___")).hasSize(1);
+
+            connection.execute("INSERT INTO \"Q1! 表\" (a) values (2)");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1___")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"Q1! 表\"");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6120")
+    public void testCapturingChangesForTableWithSpecialCharactersInName() throws Exception {
+        TestHelper.dropTable(connection, "\"Q1!表\"");
+        try {
+            connection.execute("CREATE TABLE \"Q1!表\" (a int)");
+            connection.execute("INSERT INTO \"Q1!表\" (a) values (1)");
+            TestHelper.streamTable(connection, "\"Q1!表\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.Q1!表")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1__")).hasSize(1);
+
+            connection.execute("INSERT INTO \"Q1!表\" (a) values (2)");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.Q1__")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"Q1!表\"");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6143")
+    public void testTimestampWithTimeZoneFormatConsistentUsingDriverEnabledTimestampTzInGmt() throws Exception {
+        TestHelper.dropTable(connection, "tz_test");
+        try {
+            connection.execute("CREATE TABLE tz_test (a timestamp with time zone)");
+            connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TZ_TEST")
+                    .with("driver.oracle.jdbc.timestampTzInGmt", "true") // driver default
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Snapshot
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.TZ_TEST");
+            assertThat(tableRecords).hasSize(1);
+            assertThat(getAfter(tableRecords.get(0)).get("A")).isEqualTo("2010-12-01T23:12:56.788000-12:44");
+
+            // Streaming
+            connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.TZ_TEST");
+            assertThat(tableRecords).hasSize(1);
+            assertThat(getAfter(tableRecords.get(0)).get("A")).isEqualTo("2010-12-01T23:12:56.788000-12:44");
+        }
+        finally {
+            TestHelper.dropTable(connection, "tz_test");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6143")
+    public void testTimestampWithTimeZoneFormatConsistentUsingDriverDisabledTimestampTzInGmt() throws Exception {
+        TestHelper.dropTable(connection, "tz_test");
+        try {
+            connection.execute("CREATE TABLE tz_test (a timestamp with time zone)");
+            connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TZ_TEST")
+                    .with("driver.oracle.jdbc.timestampTzInGmt", "false")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Snapshot
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.TZ_TEST");
+            assertThat(tableRecords).hasSize(1);
+            assertThat(getAfter(tableRecords.get(0)).get("A")).isEqualTo("2010-12-01T23:12:56.788000-12:44");
+
+            // Streaming
+            connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.TZ_TEST");
+            assertThat(tableRecords).hasSize(1);
+            assertThat(getAfter(tableRecords.get(0)).get("A")).isEqualTo("2010-12-01T23:12:56.788000-12:44");
+        }
+        finally {
+            TestHelper.dropTable(connection, "tz_test");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();

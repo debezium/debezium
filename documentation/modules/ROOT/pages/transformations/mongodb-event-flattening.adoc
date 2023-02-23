@@ -1,4 +1,8 @@
 :page-aliases: configuration/mongodb-event-flattening.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: extracting-source-document-after-state-from-debezium-mongodb-change-events
+// Title: Extracting the source document `after` state from {prodname} MongoDB change events
 [id="mongodb-new-document-state-extraction"]
 = MongoDB New Document State Extraction
 
@@ -9,57 +13,165 @@
 :source-highlighter: highlight.js
 
 toc::[]
+The {prodname} MongoDB connector emits data change messages to represent each operation that occurs in a MongoDB collection.
+The complex structure of these event messages faithfully represent the details of the original database event.
+However, some downstream consumers might not be able to process the messages in their original format.
+For example, to represent nested documents in a data collection, the connector emits an event message in a format that includes nested fields.
+To support sink connectors, or other consumers that cannot process the hierarchical format of the original messages, you can use the {prodname} MongoDB event flattening (ExtractNewDocumentState) single message transformation (SMT).
+The SMT simplifies the structure of the original messages, and can modify messages in other ways to make data easier to process.
+
+The event flattening transformation is a link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
 
 [NOTE]
 ====
-This SMT is supported only for the MongoDB connector.
-See xref:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
+The information in this chapter describes the event flattening single message transformation (SMT) for {prodname} MongoDB connectors only.
+For information about an equivalent SMT for use with relational databases, see the {link-prefix}:{link-event-flattening}#new-record-state-extraction[documentation for the New Record State Extraction SMT].
 ====
 
-The {prodname} MongoDB connector generates the data in a form of a complex message structure.
-The message consists of two parts:
+ifdef::product[]
+The following topics provide details:
 
-* operation and metadata
-* for inserts, the whole data after the insert has been executed; for updates a patch element describing the altered fields
+* xref:description-of-debezium-mongodb-change-event-structure[]
+* xref:behavior-of-debezium-mongodb-event-flattening-transformation[]
+* xref:configuration-of-the-debezium-mongodb-event-flattening-transformation[]
+* xref:options-for-encoding-arrays-in-mongodb-event-messages[]
+* xref:flattening-nested-structures-in-a-mongodb-event-message[]
+* xref:how-the-debezium-mongodb-connector-reports-the-names-of-fields-removed-by-unset-operations[]
+* xref:mongodb-event-flattening-determining-the-type-of-the-original-database-operation[]
+* xref:using-the-mongodb-event-flattening-smt-to-add-debezium-metadata-to-kafka-records[]
+* xref:options-for-applying-the-mongodb-extract-new-document-state-transformation-selectively[]
+* xref:configuration-options-for-the-debezium-mongodb-event-flattening-transformation[]
+* xref:debezium-event-flattening-smt-for-mongodb-known-limitations[]
+endif::product[]
 
-The `after` and `patch` elements are Strings containing JSON representations of the inserted/altered data.
-E.g. the general message structure for a insert event looks like this:
+// Type: concept
+// ModuleID: description-of-debezium-mongodb-change-event-structure
+// Title: Description of {prodname} MongoDB change event structure
+== Change event structure
+
+The {prodname} MongoDB connector generates change events that have a complex structure.
+Each event message includes the following parts:
+
+Source metadata:: Includes, but is not limited to the following fields:
+
+* Type of the operation that changed data in the collection (create/insert, update, or delete).
+* Name of the database and collection in which the change occurred.
+* Timestamp that identifies when the change was made.
+* Optional transaction information.
+
+Document data::
+`before` data:::
+This field is present in environments that run MongoDB 6.0 and later when the `capture.mode` for the {prodname} connector is set to one of the following values:
+* `change_streams_with_pre_image`.
+* `change_streams_update_full_with_pre_image`.
++
+For more information, see {link-prefix}:{link-mongodb-connector}#[mongodb-pre-image-support[MongoDB pre-image support]
+
+`after` data:::
+JSON strings that represent the values that are present in a document after the current operation.
+The presence of an `after` field in an event message depends on the type of event and the connector configuration.
+A `create` event for a MongoDB `insert` operation always contain an `after` field, regardless of the `capture.mode` setting.
+For `update` events, the `after` field is present only when `capture.mode` is set to one of the following values:
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre_image`.
++
+[NOTE]
+====
+The `after` value in a change event message does not necessarily represent the state of a document immediately following the event.
+The value is not calculated dynamically; instead, after the connector captures a change event, it  queries the collection to retrieve the current value of the document.
+
+For example, imagine a situation in which multiple operations, `a`, `b`, and `c` modify a document in quick succession.
+When the connector processes, change `a`, it queries the collection for the full document.
+In the meantime, changes `b` and `c` occur.
+When the connector receives a response to its query for the full document for change `a`, it might receive a version of the document that is based on the subsequent changes for `b` or `c`.
+For more information, see the documentation for the {link-prefix}:{link-mongodb-connector}#mongodb-property-capture-mode[`capture.mode`] property.
+====
+
+The following fragment shows the basic structure of a `create` change event that the connector emits after a MongoDB `insert` operation:
 
 [source,json,indent=0]
 ----
 {
-  "op": "r",
+  "op": "c",
   "after": "{\"field1\":\"newvalue1\",\"field2\":\"newvalue1\"}",
   "source": { ... }
 }
 ----
 
-More details about the message structure are provided in xref:{link-mongodb-connector}[the documentation] of the MongoDB connector.
-
-While this structure is a good fit to represent changes to MongoDB's schemaless collections,
-it is not understood by existing sink connectors such as the Confluent JDBC sink connector.
-
-Therefore {prodname} provides a {link-kafka-docs}/#connect_transforms[a single message transformation] (SMT)
-which converts the `after`/`patch` information from the MongoDB CDC events into a structure suitable for consumption by existing sink connectors.
-To do so, the SMT parses the JSON strings and reconstructs properly typed Kafka Connect
-(comprising the correct message payload and schema) records from that,
-which then can be consumed by connectors such as the JDBC sink connector.
-
-Using JSON as visualization of the emitted record structure, the event from above would like this:
+The complex format of the `after` field in the preceding example provides detailed information about changes that occur in the source database.
+However, some consumers cannot process messages that contain nested values.
+To convert the complex nested fields of the original message into a simpler, more universally compatible structure, use the event flattening SMT for MongoDB.
+The SMT flattens the structure of nested fields in a message, as shown in the following example:
 
 [source,json,indent=0]
 ----
 {
-	"field1" : "newvalue1",
-	"field2" : "newvalue2"
+  "field1" : "newvalue1",
+  "field2" : "newvalue2"
 }
 ----
 
-The SMT should be applied on a sink connector.
+For more information about the default structure of messages produced by the {prodname} MongoDB connector, see the {link-prefix}:{link-mongodb-connector}#debezium-connector-for-mongodb[connector documentation].
 
+// Type: concept
+// ModuleID: behavior-of-debezium-mongodb-event-flattening-transformation
+// Title: Behavior of the {prodname} MongoDB event flattening transformation
+[[event-flattening-behavior]]
+== Behavior
+
+The event flattening SMT for MongoDB extracts the `after` field from `create` or `update` change event messages emitted by the {prodname} MongoDB connector.
+After the SMT processes the original change event message, it generates a simplified version that contains only the contents of the `after` field.
+
+Depending on your use case, you can apply the ExtractNewDocumentState SMT to the {prodname} MongoDB connector, or to a sink connector that consumes messages that the {prodname} connector produces.
+If you apply the SMT to the {prodname} MongoDB connector, the SMT modifies messages that the connector emits before they are sent to Apache Kafka.
+To ensure that Kafka retains the complete {prodname} change event message in its original format, apply the SMT to a sink connector.
+
+When you use the event flattening SMT to process a message emitted from a MongoDB connector, the SMT converts the structure of the records in the original message into properly typed Kafka Connect records that can be consumed by a typical sink connector.
+For example, the SMT converts the JSON strings that represent the `after` information in the original message into schema structures that any consumer can process.
+
+Optionally, you can configure the event flattening SMT for MongoDB to modify messages in other ways during processing.
+For more information, see xref:mongodb-event-flattening-configuration[].
+
+// Type: concept
+// ModuleID: configuration-of-the-debezium-mongodb-event-flattening-transformation
+// Title: Configuration of the {prodname} MongoDB event flattening transformation
+[id="mongodb-event-flattening-configuration"]
 == Configuration
 
-The configuration is a part of sink task connector and is expressed in a set of properties:
+Configure the event flattening (ExtractNewDocumentState) SMT for MongoDB for sink connectors that consume the messages emitted by the {prodname} MongoDB connector.
+
+ifdef::product[]
+The following topics provide details:
+
+* xref:example-basic-configuration-of-the-mongodb-event-flattening-transformation[]
+* xref:options-for-encoding-arrays-in-mongodb-event-messages[]
+* xref:flattening-nested-structures-in-a-mongodb-event-message[]
+* xref:how-the-debezium-mongodb-connector-reports-the-names-of-fields-removed-by-unset-operations[]
+* xref:mongodb-event-flattening-determining-the-type-of-the-original-database-operation[]
+* xref:using-the-mongodb-event-flattening-smt-to-add-debezium-metadata-to-kafka-records[]
+* xref:options-for-applying-the-mongodb-extract-new-document-state-transformation-selectively[]
+* xref:configuration-options-for-the-debezium-mongodb-event-flattening-transformation[]
+endif::product[]
+
+// Type: concept
+// Title: Example: Basic configuration of the {prodname} MongoDB event flattening-transformation
+// ModuleID: example-basic-configuration-of-the-mongodb-event-flattening-transformation
+[id="mongodb-event-flattening-basic-configuration"]
+=== Basic configuration
+
+To obtain the default behavior of the SMT, add the SMT to the configuration of a sink connector without specifying any options, as in the following example:
+
+[source]
+----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+----
+
+As with any Kafka Connect connector configuration, you can set `transforms=` to multiple, comma-separated, SMT aliases.
+Kafka Connect applies the transformations that you specify in the order in which they are listed.
+
+You can set multiple options for a connector that uses the MongoDB event flattening SMT.
+The following example shows a configuration that sets the xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`], xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`], and xref:mongodb-extract-new-record-state-add-headers[`add.headers`] options for a connector:
 
 [source]
 ----
@@ -70,16 +182,23 @@ transforms.unwrap.delete.handling.mode=drop
 transforms.unwrap.add.headers=op
 ----
 
+For more information about the configuration options in the preceding example, see xref:mongodb-extract-new-record-state-configuration-options[]
+
 .Customizing the configuration
 The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
 To apply the transformation to a subset of events, you can define xref:options-for-applying-the-transformation-selectively[an SMT predicate statement that selectively applies the transformation] to specific events only.
 
-=== Array encoding
+// Type: concept
+// ModuleID: options-for-encoding-arrays-in-mongodb-event-messages
+// Title: Options for encoding arrays in MongoDB event messages
+[id="mongodb-event-flattening-array-encoding"]
+== Array encoding
 
-The SMT converts MongoDB arrays into arrays as defined by Apache Connect (or Apache Avro) schema.
-The problem is that such arrays must contains elements of the same type.
-MongoDB allows the user to store elements of heterogeneous types into the same array.
-To bypass this impedance mismatch it is possible to encode the array in two different ways using `array.encoding` configuration option.
+By default, the event flattening SMT converts MongoDB arrays into arrays that are compatible with Apache Kafka Connect, or Apache Avro schemas.
+While MongoDB arrays can contain multiple types of elements, all elements in a Kafka array must be of the same type.
+
+To ensure that the SMT encodes arrays in a way that meets the needs of your environment, you can specify the xref:mongodb-extract-new-record-state-array-encoding[`array.encoding`] configuration option.
+The following example shows the configuration for setting the array encoding:
 
 [source]
 ----
@@ -88,15 +207,21 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.array.encoding=<array|document>
 ----
 
-Value `array` (the default) will encode arrays as the array datatype.
-It is user's responsibility to ensure that all elements for a given array instance are of the same type.
-This option is a restricting one but offers easy processing of arrays by downstream clients.
+Depending on the configuration, the SMT processes each instance of an array in the source message by using one of the following encoding methods:
 
-Value `document` will convert the array into a *struct* of *structs* in the similar way as done by http://bsonspec.org/[BSON serialization].
-The main *struct* contains fields named `_0`, `_1`, `_2` etc. where the name represents the index of the element in the array.
-Every element is then passed as the value for the given field.
+array encoding:: If `array.encoding` is set to `array` (the default), the SMT encodes uses the `array` datatype to encode arrays in the original message.
+To ensure correct processing, all elements in an array instance must be of the same type.
+This option is a restricting one, but it enables downstream clients to easily process arrays.
 
-Let's suppose an example source MongoDB document with array with heterogeneous types
+document encoding:: If `array.encoding` is set to `document`, the SMT converts each array in the source into a *struct* of *structs*, in a manner that is similar to http://bsonspec.org/[BSON serialization].
+The main *struct* contains fields named `_0`, `_1`, `_2`, and so on, where each field name represents the index of an element in the original array.
+The SMT populates each of these index fields with the values that it retrieves for the equivalent element in the source array.
+Index names are prefixed with underscores, because Avro encoding prohibits field names that begin with a numeric character.
+
+The following example shows how the {prodname} MongoDB connector represents a database document that contains an array that includes heterogeneous data types:
+
+.Example: Document encoding of an array that contains multiple data types
+====
 [source,json,indent=0]
 ----
 {
@@ -114,7 +239,8 @@ Let's suppose an example source MongoDB document with array with heterogeneous t
 }
 ----
 
-This document will be encoded as
+If the `array.encoding` is set to `document`, the SMT converts the preceding document into the following format:
+
 [source,json,indent=0]
 ----
 {
@@ -131,16 +257,29 @@ This document will be encoded as
     }
 }
 ----
+====
+The `document` encoding option enables the SMT to process arbitrary arrays that are comprised of heterogeneous elements.
+However, before you use this option, always verify that the sink connector and other downstream consumers are capable of processing arrays that contain multiple data types.
 
-This option allows you to process arbitrary arrays but the consumer need to know how to properly handle them.
 
-_Note: The underscore in index names is present because Avro encoding requires field names not to start with digit._
+// Type: concept
+// ModuleID: flattening-nested-structures-in-a-mongodb-event-message
+// Title: Flattening nested structures in a MongoDB event message
+[id="flattening-nested-structures-in-a-mongodb-event-message"]
+== Nested structure flattening
 
-=== Nested structure flattening
+When a database operation involves an embedded document, the {prodname} MongoDB connector emits a Kafka event record that has a structure that reflects the hierarchical structure of the original document.
+That is, the event message represents nested documents as a set of nested field structure.
+In environments where downstream connectors cannot process messages that contain nested structures, you can configure the event flattening SMT to flatten hierarchical structures in the message.
+A flat message structure is better suited to table-like storage.
 
-When a MongoDB document contains a nested document (structure) it is faithfully encoded as a nested structure field.
-If the sink connector does support only flat structure it is possible to flatten the internal structure into a flat one with a consistent field naming.
-To enable this feature the option `flatten.struct` must be set to `true`.
+To configure the SMT to flatten nested structures, set the xref:mongodb-extract-new-record-state-flatten-struct[`flatten.struct`] configuration option to `true`.
+In the converted message, field names are constructed to be consistent with the document source.
+The SMT renames each flattened field by concatenating the name of the parent document field with the name of the nested document field.
+A delimiter that is defined by the xref:mongodb-extract-new-record-state-flatten-struct-delimiter[`flatten.struct.delimiter`] option separates the components of the name.
+The default value of `struct.delimiter` is an underscore character (`_`).
+
+The following example shows the configuration for specifying whether the SMT flattens nested structures:
 
 [source]
 ----
@@ -150,10 +289,9 @@ transforms.unwrap.flatten.struct=<true|false>
 transforms.unwrap.flatten.struct.delimiter=<string>
 ----
 
-The resulting flat document will consist of fields whose names are created by joining the name of the parent field and the name of the fields in the nested document.
-Those elements are separated with string defined by an option `struct.delimiter` by default set to the _underscore_.
+The following example shows an event message that is emitted by the MongoDB connector.
+The message includes a field for a document `a` that contains fields for two nested documents, `b` and `c`:
 
-Let's suppose an example source MongoDB document with a field with a nested document
 [source,json,indent=0]
 ----
 {
@@ -166,7 +304,8 @@ Let's suppose an example source MongoDB document with a field with a nested docu
 }
 ----
 
-Such document will be encoded as
+The message in the following example shows the output after the SMT for MongoDB flattens the nested structures in the preceding message:
+
 [source,json,indent=0]
 ----
 {
@@ -177,22 +316,53 @@ Such document will be encoded as
 }
 ----
 
-This option allows you to convert a hierarchical document into a flat structure suitable for a table-like storage.
+In the resulting message, the `b` and `c` fields that were nested in the original message are flattened and renamed.
+The renamed fields are formed by concatenating the name of the parent document `a` with the names of the nested documents: `a_b` and `a_c`.
+The components of the new field names are separated by an underscore character, as defined by the setting of the xref:mongodb-extract-new-record-state-flatten-struct-delimiter[`struct.delimiter`] configuration property,
 
-=== MongoDB `$unset` handling
 
-MongoDB allows `$unset` operations that remove a certain field from a document. Because the collections are schemaless, it becomes hard to inform consumers/sinkers about the field that is now missing. The approach that {prodname} uses is to set the field being removed to a null value.
+// Type: concept
+// Title: How the {prodname} MongoDB connector reports the names of fields removed by `$unset` operations
+// ModuleID: how-the-debezium-mongodb-connector-reports-the-names-of-fields-removed-by-unset-operations
+[id="mongodb-$unset-handling"]
+== MongoDB `$unset` handling
 
-Given the operation
+In MongoDB, the `$unset` operator and the `$rename` operator both remove fields from a document.
+Because MongoDB collections are schemaless, after an update removes fields from a document, it's not possible to infer the name of the missing field from the updated document.
+To support sink connectors or other consumers that might require information about removed fields, {prodname} emits update messages that include a `removedFields` element that lists the names of the deleted fields.
+
+The following example shows part of an update message for an operation that results in the removal of the field `a`:
+
 [source,json,indent=0]
 ----
-{
-    "after":null,
-    "patch":"{\"$unset\" : {\"a\" : true}}"
+"payload": {
+  "op": "u",
+  "ts_ms": "...",
+  "before": "{ ... }",
+  "after": "{ ... }",
+  "updateDescription": {
+    "removedFields": ["a"],
+    "updatedFields": null,
+    "truncatedArrays": null
+  }
 }
 ----
 
-The final encoding will look like
+In the preceding example, the `before` and `after` represent the state of the source document before and after the document was updated.
+These fields are present in the event message that a connector emits only if the `capture.mode` for the connector is set as described in the following list:
+
+`before` field:: Provides the state of the document before the change.
+This field is present only when `capture.mode` is set to one of the following values:
+** `change_streams_with_pre_image`
+** `change_streams_update_full_with_pre_image`.
+
+`after` field:: Provides the full state of the document after a change.
+This field is present only when `capture.mode` is set to one of the following values:
+** `change_streams_update_full`
+** `change_streams_update_full_with_pre_image`.
+
+Assuming a connector that is configured to capture full documents, when the `ExtractNewDocumentState` SMT receives an `update` message for an `$unset` event, the SMT re-encodes the message by representing the removed field has a `null` value, as shown in the following example:
+
 [source,json,indent=0]
 ----
 {
@@ -201,14 +371,30 @@ The final encoding will look like
 }
 ----
 
-Note that other MongoDB operations might cause an `$unset` internally, `$rename` is one example.
+For connectors that are not configured to capture full documents, when the SMT receives an update event for an `$unset` operation, it produces the following output message:
 
-=== Determine original operation
+[source,json,indent=0]
+----
+{
+   "a": null
+}
+----
 
-When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see xref:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
+// Type: procedure
+// Title: Determining the type of the original database operation
+[id="mongodb-event-flattening-determining-the-type-of-the-original-database-operation"]
+== Determine original operation
 
-To solve this problem, you can propagate the original operation either as a field added to message value or as a header property,
-e.g. like so to use a header property:
+After the SMT flattens an event message, the resulting message no longer indicates whether the operation that generated the event was of type `create`, `update` or initial snapshot `read`.
+Typically, you can identify `delete` operations by configuring the connectors to expose information about the tombstone or rewrite events that accompany a deletion.
+For more information about configuring the connector to expose information about tombstones and rewrites in event messages, see the xref:mongodb-extract-new-record-state-drop-tombstones[`drop.tombstones`] and xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] properties.
+
+To report the type of a database operation in an event message, the SMT can add an `op` field to one of the following elements:
+
+* The event message body.
+* A message header.
+
+For example, to add a header property that shows the type of the original operation, add the transform, and then add the `add.headers` property to the connector configuration, as in the following example:
 
 [source]
 ----
@@ -217,16 +403,22 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.add.headers=op
 ----
 
-The possible values are the ones from the `op` field of xref:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
+Based on the preceding configuration, the SMT reports the event type by adding an `op` header to the message and assigning it a string value to identify the type of the operation.
+The assigned string value is based on the `op` field value in the original {link-prefix}:{link-mongodb-connector}#mongodb-events[MongoDB change event message].
 
-=== Adding metadata fields
+// Type: concept
+// ModuleID: using-the-mongodb-event-flattening-smt-to-add-debezium-metadata-to-kafka-records
+// Title: Using the MongoDB event flattening SMT to add {prodname} metadata to Kafka records
+== Adding metadata fields
 
-The SMT can optionally add metadata fields from the original change event's to the final flattened record (prefixed with "__").
-This ability to add metadata to the event record makes it possible to include content such as the name of the collection associated with the change event, or such connector-specific fields as the replica set name.
-Currently, only fields from change event sub-structures `source`, `transaction` and `updateDescription` can be added.
-For more information about the MongoDB change event structure, see xref:{link-mongodb-connector}[the documentation] for the MongoDB connector.
+The event flattening SMT for MongoDB can add metadata fields from the original change event message to the simplified message.
+The added metadata fields are prefixed with a double underscore (`"__"`).
+Adding metadata to the event record makes it possible to include content such as the name of the collection in which a change event occurred, or to include connector-specific fields, such as a replica set name.
+Currently, the SMT can add fields from the following change event sub-structures only: `source`, `transaction` and `updateDescription`.
 
-For example, you might specify the following configuration to add a replica set name (`rs`) and the collection name for a change event to the final flattened event record:
+For more information about the MongoDB change event structure, see the {link-prefix}:{link-mongodb-connector}#debezium-connector-for-mongodb[MongoDB connector documentation].
+
+For example, you might specify the following configuration to add the replica set name (`rs`) and the collection name for a change event to the final flattened event record:
 
 ----
 transforms=unwrap,...
@@ -240,7 +432,7 @@ The preceding configuration results in the following content being added to the 
 { "__rs" : "rs0", "__collection" : "my-collection", ... }
 ----
 
-For `DELETE` events, the option to add metadata fields is supported only if the `delete.handling.mode` option is set to `rewrite`.
+If you want the SMT to add metadata fields to `delete` events, set the value of the xref:mongodb-extract-new-record-state-delete-handling-mode[`delete.handling.mode`] option to `rewrite`.
 
 // Type: concept
 // Title: Options for applying the MongoDB extract new document state transformation selectively
@@ -253,58 +445,123 @@ Because the structure of these other messages differs from the structure of the 
 
 For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
+// Type: reference
+// ModuleID: configuration-options-for-the-debezium-mongodb-event-flattening-transformation
+// Title: Configuration options for the {prodname} event flattening transformation for MongoDB
 [[mongodb-extract-new-record-state-configuration-options]]
 == Configuration options
+
+The following table describes the configuration options for the MongoDB event flattening SMT.
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
 
 |[[mongodb-extract-new-record-state-array-encoding]]<<mongodb-extract-new-record-state-array-encoding, `array.encoding`>>
 |`array`
-|The SMT converts MongoDB arrays into arrays as defined by Apache Connect (or Apache Avro) schema.
+|Specifies the format that the SMT uses when it encodes arrays that it reads from the original event message.
+Set one of the following options:
+
+`array`::
+The SMT uses the `array` datatype to encode MongoDB arrays into a format that is compatible with Apache Kafka Connect or Apache Avro schemas.
+If you set this option, verify that the elements in each array instance are of the same type.
+Although MongoDB allows arrays to contain multiple data types, some downstream clients cannot process arrays.
+
+`document`::
+The SMT converts each MongoDB array into a *struct* of *structs*, in a manner that is similar to http://bsonspec.org/[BSON serialization].
+The main *struct* contains fields with the names `_0`, `_1`, `_2`, and so forth.
+To comply with Avro naming standards, the SMT prefixes the numeric name of each index field with an underscore.
+Each of the numeric field names represents the index of an element in the original array.
+The SMT populates each of these index fields with the value that it retrieves from the source document for the designated array element.
+
+For more information about the `array.coding` option, see the xref:mongodb-event-flattening-array-encoding[options for encoding arrays in MongoDB event messages].
 
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
-|The SMT flattens structs by concatenating the fields into plain properties, using a configurable delimiter.
+|The SMT flattens structures (structs) in the original event message by concatenating the names of nested properties in the message, separated by a configurable delimiter, to form a simple field name.
 
 |[[mongodb-extract-new-record-state-flatten-struct-delimiter]]<<mongodb-extract-new-record-state-flatten-struct-delimiter, `flatten.struct.delimiter`>>
 |`_`
-|Delimiter to concat between field names from the input record when generating field names for the output record. Only applies when `flatten.struct` is set to `true`
+|When `flatten.struct` is set to `true`, specifies the delimiter that the transformation inserts between field names that it concatenates from the input record to generate field names in the output record.
 
 |[[mongodb-extract-new-record-state-drop-tombstones]]<<mongodb-extract-new-record-state-drop-tombstones, `drop.tombstones`>>
 |`true`
-|The SMT removes the tombstone generated by {prodname} from the stream.
+|{prodname} generates a tombstone record for each `delete` operation.
+The default behavior is that event flattening SMT removes tombstone records from the stream.
+To retain tombstone records in the stream, specify `drop.tombstones=false`.
 
 |[[mongodb-extract-new-record-state-delete-handling-mode]]<<mongodb-extract-new-record-state-delete-handling-mode, `delete.handling.mode`>>
 |`drop`
-|The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
+|Specifies how the SMT handles the change event records that {prodname} generates for `delete` operations.
+Set one of the following options:
+
+`drop`:: The SMT removes records for `delete` operations from the event stream.
+`none`:: The SMT retains the original change event record from the event stream.
+The record contains only `"value": "null"`.
+`rewrite`:: The SMT retains a modified version of the change event record from the stream.
+To provide another way to indicate that the record was deleted, the modified record includes a `value` field that contains the key/value pairs that were from the original record, and adds `+__deleted: true+` to the `value`. +
+ +
+If you set the `rewrite` option, you might find that the updated, simplified records for `DELETE` operations are sufficient for tracking deleted records.
+In such a case, you might want the SMT to xref:mongodb-extract-new-record-state-drop-tombstones[drop tombstone records].
 
 |[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
 |__ (double-underscore)
 |Set this optional string to prefix a header.
 
 |[[mongodb-extract-new-record-state-add-headers]]<<mongodb-extract-new-record-state-add-headers, `add.headers`>>
-|
-|Specify a list of metadata fields to add to header of the flattened message.
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
-The fields will be prefixed with `pass:[__]` or `pass:[__]<struct>pass:[__]`, depending on the specification of the struct.
-Please use a comma separated list without spaces.
+|No default
+|Specifies a comma-separated list, with no spaces, of metadata fields that you want the SMT to add to the header of simplified messages.
+When the original message contains duplicate field names, you can identify the specific field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
+
+Optionally, you can override the original name of a field and assign it a new name by adding an entry in the following format to the list: +
+
+`__<field_name>__:__<new_field_name>__`. +
+
+For example:
+
+```
+version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
+```
+
+The new name values that you specify are case-sensitive. +
+ +
+When the SMT adds metadata fields to the header of the simplified message, it prefixes each metadata field name with a double underscore.
+For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
+ +
+If you specify a field that is not in the change event original message, the SMT does not add the field to the header.
 
 |[[mongodb-extract-new-record-state-add-fields-prefix]]<<mongodb-extract-new-record-state-add-fields-prefix, `add.fields.prefix`>>
 |__ (double-underscore)
-|Set this optional string to prefix a field.
+|Specifies an optional string to prefix to a field name.
 
 |[[mongodb-extract-new-record-state-add-fields]]<<mongodb-extract-new-record-state-add-fields, `add.fields`>>
-|
-|Specify a list of metadata fields to add to the flattened message.
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
-The fields will be prefixed with `pass:[__]` or `pass:[__]<struct>pass:[__]`, depending on the specification of the struct.
-Please use a comma separated list without spaces.
+|No default
+|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the `value` element of the simplified Kafka message.
+When the original message contains duplicate field names, you can identify the specific field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
+ +
+Optionally, you can override the original name of a field and assign it a new name by adding an entry in the following format to the list: +
+
+`__<field_name>__:__<new_field_name>__`. +
+
+For example:
+
+```
+version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
+```
+
+The new name values that you specify are case-sensitive. +
+
+When the SMT adds metadata fields to the `value` element of the simplified message, it prefixes each metadata field name with a double underscore.
+For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
+ +
+If you specify a field that is not present in the original change event message, the SMT still adds the specified field to the `value` element of the modified message.
 
 |===
 
+[id="debezium-event-flattening-smt-for-mongodb-known-limitations"]
 == Known limitations
 
-* Feeding data changes from a schemaless store such as MongoDB to strictly schema-based datastores such as a relational database can by definition work within certain limits only.
-Specifically, all fields of documents within one collection with the same name must be of the same type. Otherwise, no consistent column definition can be derived in the target database.
-* Arrays will be restored in the emitted Kafka Connect record correctly, but they are not supported by sink connector just expecting a "flat" message structure.
+* Because MongoDB is a schemaless database, to ensure consistent column definitions when you use {prodname} to stream changes to a schema-based data relational database, fields within a collection that have the same name must store the same type of data.
+
+* Configure the SMT to produce messages in the format that is compatible with the sink connector.
+  If a sink connector requires a "flat" message structure, but it receives a message that encodes an array in the source MongoDB document as a struct of structs, the sink connector cannot process the message.

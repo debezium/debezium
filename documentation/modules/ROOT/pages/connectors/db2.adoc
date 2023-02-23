@@ -2292,7 +2292,7 @@ For example, +
 
 |[[db2-property-poll-interval-ms]]<<db2-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
 
 |[[db2-property-max-batch-size]]<<db2-property-max-batch-size, `+max.batch.size+`>>
 |`2048`

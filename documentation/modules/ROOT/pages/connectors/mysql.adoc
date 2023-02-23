@@ -2831,7 +2831,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
 
 |[[mysql-property-connect-timeout-ms]]<<mysql-property-connect-timeout-ms, `+connect.timeout.ms+`>>
 |`30000`

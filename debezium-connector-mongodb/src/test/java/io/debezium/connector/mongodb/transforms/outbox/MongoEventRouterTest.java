@@ -422,9 +422,6 @@ public class MongoEventRouterTest {
         final Schema valueSchema = SchemaBuilder.struct()
                 .name("event.Envelope")
                 .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
-                // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
@@ -480,9 +477,6 @@ public class MongoEventRouterTest {
         final Schema recordSchema = SchemaBuilder.struct()
                 .name("event.Envelope")
                 .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
-                // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())
@@ -954,9 +948,6 @@ public class MongoEventRouterTest {
         final Schema valueSchema = SchemaBuilder.struct()
                 .name("event.Envelope")
                 .field(Envelope.FieldName.AFTER, Json.builder().optional().build())
-                // Oplog fields
-                .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                 // Change Streams field
                 .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                 // .field(Envelope.FieldName.SOURCE, SchemaBuilder.struct().build())

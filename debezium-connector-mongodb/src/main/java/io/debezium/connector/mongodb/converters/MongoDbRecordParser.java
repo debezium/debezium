@@ -26,15 +26,16 @@ public class MongoDbRecordParser extends RecordParser {
     static final String REPLICA_SET_NAME = "rs";
     static final String ORDER = "ord";
     static final String COLLECTION = "collection";
+    static final String WALL_TIME = "wallTime";
 
     static final Set<String> MONGODB_SOURCE_FIELD = Collect.unmodifiableSet(
             REPLICA_SET_NAME,
             ORDER,
-            COLLECTION);
+            COLLECTION,
+            WALL_TIME);
 
     public MongoDbRecordParser(Schema schema, Struct record) {
-        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.PATCH, MongoDbFieldName.FILTER,
-                MongoDbFieldName.UPDATE_DESCRIPTION);
+        super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER, MongoDbFieldName.UPDATE_DESCRIPTION);
     }
 
     @Override

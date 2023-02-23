@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -65,6 +66,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int DEFAULT_SCN_GAP_TIME_INTERVAL = 20_000;
 
     protected final static int DEFAULT_TRANSACTION_EVENTS_THRESHOLD = 0;
+
+    protected final static int DEFAULT_QUERY_FETCH_SIZE = 2_000;
 
     protected final static Duration MAX_SLEEP_TIME = Duration.ofMillis(3_000);
     protected final static Duration DEFAULT_SLEEP_TIME = Duration.ofMillis(1_000);
@@ -470,12 +473,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
             .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
 
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDescription(
+                    "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size, defaults to '2000'.")
+            .withDefault(DEFAULT_QUERY_FETCH_SIZE);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+                    CommonConnectorConfig.QUERY_FETCH_SIZE)
             .type(
                     HOSTNAME,
                     PORT,
@@ -489,6 +498,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_STRATEGY,
                     URL)
             .connector(
+                    QUERY_FETCH_SIZE,
                     SNAPSHOT_ENHANCEMENT_TOKEN,
                     SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
@@ -552,6 +562,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
+    private final int queryFetchSize;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -606,6 +617,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         if (this.streamingAdapter == null) {
             throw new DebeziumException("Unable to instantiate the connector adapter implementation");
         }
+
+        this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
 
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
@@ -667,6 +680,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return snapshotLockingMode;
+    }
+
+    @Override
+    public int getQueryFetchSize() {
+        return queryFetchSize;
     }
 
     @Override

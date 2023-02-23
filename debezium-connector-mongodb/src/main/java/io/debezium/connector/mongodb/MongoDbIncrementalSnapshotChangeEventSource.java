@@ -27,6 +27,7 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
+import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
@@ -157,7 +158,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      */
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
                                                                            OffsetContext offsetContext, Object[] row) {
-        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0], true);
+        return new MongoDbSnapshotRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0]);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -450,7 +451,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 if (firstRow == null) {
                     firstRow = row;
                 }
-                final Struct keyStruct = currentCollection.keyFromDocumentOplog(doc);
+                final Struct keyStruct = currentCollection.keyFromDocumentSnapshot(doc);
                 window.put(keyStruct, row);
                 if (logTimer.expired()) {
                     long stop = clock.currentTimeInMillis();
@@ -520,6 +521,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 break;
             case OBJECT_ID:
                 key = documentId.asObjectId().getValue();
+                break;
+            case STRING:
+                key = documentId.asString().getValue();
                 break;
             default:
                 throw new IllegalStateException("Unsupported type of document id");

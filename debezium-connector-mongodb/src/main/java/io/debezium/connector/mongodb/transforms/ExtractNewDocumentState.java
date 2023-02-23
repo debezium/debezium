@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,7 +31,6 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
-import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,8 +145,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
+    private final ExtractField<R> beforeExtractor = new ExtractField.Value<>();
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
-    private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
+    private final ExtractField<R> updateDescriptionExtractor = new ExtractField.Value<>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
 
     private MongoDataConverter converter;
@@ -189,27 +191,28 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             return record;
         }
 
+        final R beforeRecord = beforeExtractor.apply(record);
         final R afterRecord = afterExtractor.apply(record);
-        final R patchRecord = patchExtractor.apply(record);
+        final R updateDescriptionRecord = updateDescriptionExtractor.apply(record);
 
         if (!additionalHeaders.isEmpty()) {
             Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
             headersToAdd.forEach(h -> record.headers().add(h));
         }
 
-        // insert
+        // insert || replace || update with capture.mode="change_streams_update_full" or "change_streams_update_full_with_pre_image"
         if (afterRecord.value() != null) {
-            valueDocument = getInsertDocument(afterRecord, keyDocument);
+            valueDocument = getAfterFullDocument(afterRecord, keyDocument);
         }
 
         // update
-        if (afterRecord.value() == null && patchRecord.value() != null) {
-            valueDocument = getUpdateDocument(patchRecord, keyDocument);
+        if (afterRecord.value() == null && updateDescriptionRecord.value() != null) {
+            valueDocument = getPartialUpdateDocument(beforeRecord, updateDescriptionRecord, keyDocument);
         }
 
         boolean isDeletion = false;
         // delete
-        if (afterRecord.value() == null && patchRecord.value() == null) {
+        if (afterRecord.value() == null && updateDescriptionRecord.value() == null) {
             if (handleDeletes.equals(DeleteHandling.DROP)) {
                 LOGGER.trace("Delete {} arrived and requested to be dropped", record.key());
                 return null;
@@ -251,16 +254,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
             Set<Entry<String, BsonValue>> valuePairs = valueDocument.entrySet();
             for (Entry<String, BsonValue> valuePairsForSchema : valuePairs) {
-                if (valuePairsForSchema.getKey().equalsIgnoreCase("$set")) {
-                    BsonDocument val1 = BsonDocument.parse(valuePairsForSchema.getValue().toString());
-                    Set<Entry<String, BsonValue>> keyValuesForSetSchema = val1.entrySet();
-                    for (Entry<String, BsonValue> keyValuesForSetSchemaEntry : keyValuesForSetSchema) {
-                        converter.addFieldSchema(keyValuesForSetSchemaEntry, valueSchemaBuilder);
-                    }
-                }
-                else {
-                    converter.addFieldSchema(valuePairsForSchema, valueSchemaBuilder);
-                }
+                converter.addFieldSchema(valuePairsForSchema, valueSchemaBuilder);
             }
 
             if (!additionalFields.isEmpty()) {
@@ -270,16 +264,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             finalValueSchema = valueSchemaBuilder.build();
             finalValueStruct = new Struct(finalValueSchema);
             for (Entry<String, BsonValue> valuePairsForStruct : valuePairs) {
-                if (valuePairsForStruct.getKey().equalsIgnoreCase("$set")) {
-                    BsonDocument val1 = BsonDocument.parse(valuePairsForStruct.getValue().toString());
-                    Set<Entry<String, BsonValue>> keyValueForSetStruct = val1.entrySet();
-                    for (Entry<String, BsonValue> keyValueForSetStructEntry : keyValueForSetStruct) {
-                        converter.convertRecord(keyValueForSetStructEntry, finalValueSchema, finalValueStruct);
-                    }
-                }
-                else {
-                    converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
-                }
+                converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
+
             }
 
             if (!additionalFields.isEmpty()) {
@@ -313,35 +299,29 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         }
     }
 
-    private BsonDocument getUpdateDocument(R patchRecord, BsonDocument keyDocument) {
+    private BsonDocument getPartialUpdateDocument(R beforeRecord, R updateDescriptionRecord, BsonDocument keyDocument) {
         BsonDocument valueDocument = new BsonDocument();
-        BsonDocument document = BsonDocument.parse(patchRecord.value().toString());
 
-        if (document.containsKey("$set")) {
-            valueDocument = document.getDocument("$set");
+        Struct updateDescription = requireStruct(updateDescriptionRecord.value(), MongoDbFieldName.UPDATE_DESCRIPTION);
+
+        String updated = updateDescription.getString(MongoDbFieldName.UPDATED_FIELDS);
+        List<String> removed = updateDescription.getArray(MongoDbFieldName.REMOVED_FIELDS);
+
+        if (beforeRecord.value() != null) {
+            valueDocument = BsonDocument.parse(beforeRecord.value().toString());
         }
 
-        if (document.containsKey("$unset")) {
-            Set<Entry<String, BsonValue>> unsetDocumentEntry = document.getDocument("$unset").entrySet();
-
-            for (Entry<String, BsonValue> valueEntry : unsetDocumentEntry) {
-                // In case unset of a key is false we don't have to do anything with it,
-                // if it's true we want to set the value to null
-                if (!valueEntry.getValue().asBoolean().getValue()) {
-                    continue;
-                }
-                valueDocument.append(valueEntry.getKey(), new BsonNull());
+        if (updated != null) {
+            BsonDocument updatedBson = BsonDocument.parse(updated);
+            for (Entry<String, BsonValue> valueEntry : updatedBson.entrySet()) {
+                valueDocument.append(valueEntry.getKey(), valueEntry.getValue());
             }
         }
 
-        if (!document.containsKey("$set") && !document.containsKey("$unset")) {
-            if (!document.containsKey("_id")) {
-                throw new ConnectException("Unable to process Mongo Operation, a '$set' or '$unset' is necessary " +
-                        "for partial updates or '_id' is expected for full Document replaces.");
+        if (removed != null) {
+            for (String field : removed) {
+                valueDocument.keySet().remove(field);
             }
-            // In case of a full update we can use the whole Document as it is
-            // see https://docs.mongodb.com/manual/reference/method/db.collection.update/#replace-a-document-entirely
-            valueDocument = document;
         }
 
         if (!valueDocument.containsKey("_id")) {
@@ -357,7 +337,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         return valueDocument;
     }
 
-    private BsonDocument getInsertDocument(R record, BsonDocument key) {
+    private BsonDocument getAfterFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
     }
 
@@ -427,15 +407,18 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
+        final Map<String, String> beforeExtractorConfig = new HashMap<>();
+        beforeExtractorConfig.put("field", FieldName.BEFORE);
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", FieldName.AFTER);
-        final Map<String, String> patchExtractorConfig = new HashMap<>();
-        patchExtractorConfig.put("field", MongoDbFieldName.PATCH);
+        final Map<String, String> updateDescriptionExtractorConfig = new HashMap<>();
+        updateDescriptionExtractorConfig.put("field", MongoDbFieldName.UPDATE_DESCRIPTION);
         final Map<String, String> keyExtractorConfig = new HashMap<>();
         keyExtractorConfig.put("field", "id");
 
+        beforeExtractor.configure(beforeExtractorConfig);
         afterExtractor.configure(afterExtractorConfig);
-        patchExtractor.configure(patchExtractorConfig);
+        updateDescriptionExtractor.configure(updateDescriptionExtractorConfig);
         keyExtractor.configure(keyExtractorConfig);
 
         final Map<String, String> delegateConfig = new HashMap<>();
@@ -499,8 +482,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
          */
         private static String determineStruct(String simpleFieldName) {
             if (simpleFieldName.equals(Envelope.FieldName.OPERATION) ||
-                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP) ||
-                    simpleFieldName.equals(MongoDbFieldName.PATCH)) {
+                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
                 return null;
             }
             else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||
