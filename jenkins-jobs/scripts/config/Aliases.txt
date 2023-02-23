@@ -203,5 +203,6 @@ hiscat,My Lang Pangzi
 bpaquet,Bertrand Paquet
 brenoavm,Breno Moreira
 ddsr-ops,ddsr-ops
-eizners,Sergey Eizner
 subkanthi,Kanthi Subramanian
+benw-at-birdie,Ben White
+miguelbirdie, Miguel Angel Sotomayor
