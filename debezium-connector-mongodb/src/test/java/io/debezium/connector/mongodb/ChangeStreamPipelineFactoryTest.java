@@ -41,8 +41,6 @@ public class ChangeStreamPipelineFactoryTest {
         // Given:
         given(connectorConfig.getSkippedOperations())
                 .willReturn(EnumSet.of(Envelope.Operation.TRUNCATE)); // The default
-        given(filterConfig.getBuiltInDbNames())
-                .willCallRealMethod();
         given(filterConfig.getCollectionIncludeList())
                 .willReturn("dbit.*");
         given(rsOffsetContext.lastResumeToken())
@@ -72,18 +70,12 @@ public class ChangeStreamPipelineFactoryTest {
                         "{\n" +
                         "  \"$match\" : {\n" +
                         "    \"$and\" : [ {\n" +
-                        "      \"$and\" : [ {\n" +
-                        "        \"ns.db\" : {\n" +
-                        "          \"$nin\" : [ \"admin\", \"config\", \"local\" ]\n" +
+                        "      \"namespace\" : {\n" +
+                        "        \"$regularExpression\" : {\n" +
+                        "          \"pattern\" : \"dbit.*\",\n" +
+                        "          \"options\" : \"i\"\n" +
                         "        }\n" +
-                        "      }, {\n" +
-                        "        \"namespace\" : {\n" +
-                        "          \"$regularExpression\" : {\n" +
-                        "            \"pattern\" : \"dbit.*\",\n" +
-                        "            \"options\" : \"i\"\n" +
-                        "          }\n" +
-                        "        }\n" +
-                        "      } ]\n" +
+                        "      }\n" +
                         "    }, {\n" +
                         "      \"operationType\" : {\n" +
                         "        \"$in\" : [ \"insert\", \"update\", \"replace\", \"delete\" ]\n" +

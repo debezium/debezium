@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Field;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.OperationType;
 
@@ -82,19 +81,14 @@ class ChangeStreamPipelineFactory {
 
     private static Optional<Bson> createCollectionFilter(FilterConfig filterConfig) {
         // Database filters
+        // Note: No need to exclude `filterConfig.getBuiltInDbNames()` since these are not streamed per
+        // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
         var dbFilters = Optional.<Bson> empty();
         if (filterConfig.getDbIncludeList() != null) {
             dbFilters = Optional.of(Filters.regex("ns.db", filterConfig.getDbIncludeList().replaceAll(",", "|"), "i"));
         }
         else if (filterConfig.getDbExcludeList() != null) {
             dbFilters = Optional.of(Filters.regex("ns.db", "(?!" + filterConfig.getDbExcludeList().replaceAll(",", "|") + ")", "i"));
-        }
-
-        // TODO: This should be removed since, from https://www.mongodb.com/docs/manual/changeStreams/:
-        // > non-system collections across all databases except for `admin`, `local`, and `config`
-        var excludedBuiltInDbs = Optional.<Bson> empty();
-        if (filterConfig.getBuiltInDbNames() != null) {
-            excludedBuiltInDbs = Optional.of(Filters.nin("ns.db", filterConfig.getBuiltInDbNames()));
         }
 
         // Collection filters
@@ -114,7 +108,6 @@ class ChangeStreamPipelineFactory {
 
         // Combined filters
         return andFilters(
-                excludedBuiltInDbs,
                 dbFilters,
                 orFilters(
                         includedSignalCollectionFilters,
@@ -204,26 +197,12 @@ class ChangeStreamPipelineFactory {
                 .collect(toList());
     }
 
-    private static Bson regexMatch(String regex, String options, Bson input) {
-        return new BasicDBObject("$regexMatch", new BasicDBObject()
-                .append("input", input)
-                .append("regex", regex)
-                .append("options", options));
-    }
-
     private static Bson concat(Object... expressions) {
         return new BasicDBObject("$concat", List.of(expressions));
-    }
-
-    private static Bson set(String name, Bson expression) {
-        return Aggregates.set(new Field<>(name, expression));
-    }
-
-    private static Bson unset(String name) {
-        return new BasicDBObject("$unset", List.of(name));
     }
 
     private static Bson addFields(String name, Object expression) {
         return new BasicDBObject("$addFields", new BasicDBObject(name, expression));
     }
+
 }
