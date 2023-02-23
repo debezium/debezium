@@ -81,7 +81,7 @@
         <version.surefire.plugin>3.0.0-M6</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.7.0</version.impsort>
+        <version.impsort>1.8.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
