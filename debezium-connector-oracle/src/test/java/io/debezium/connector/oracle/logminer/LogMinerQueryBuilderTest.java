@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
+import static io.debezium.connector.oracle.OracleConnectorConfig.PDB_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Iterator;
@@ -35,17 +36,20 @@ public class LogMinerQueryBuilderTest {
 
     private static final String OPERATION_CODES_LOB_ENABLED = "(1,2,3,5,6,7,9,10,11,29,34,36,255)";
     private static final String OPERATION_CODES_LOB_DISABLED = "(1,2,3,5,6,7,34,36,255)";
+    private static final String OPERATION_CODES_PDB_LOB_ENABLED = "(1,2,3,5,9,10,11,29,34,255)";
+    private static final String OPERATION_CODES_PDB_LOB_DISABLED = "(1,2,3,5,34,255)";
 
-    /**
-     * A template that defines the expected SQL output when the configuration specifies
-     * {@code schema.history.internal.store.only.captured.tables.ddl} is {@code false}.
-     */
     private static final String LOG_MINER_CONTEXT_QUERY = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD# " +
-            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? " +
-            "${pdbPredicate}" +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
+            "THREAD# FROM V$LOGMNR_CONTENTS " +
+            "WHERE SCN > ? AND SCN <= ? " +
             "${systemTablePredicate}" +
-            "AND OPERATION_CODE IN ${operationCodes} ";
+            "${operationCodesTemplate}";
+
+    private static final String OPERATION_CODES_PDB_TEMPLATE = "AND (OPERATION_CODE IN (6,7,36) " +
+            "OR (${pdbPredicate} AND OPERATION_CODE IN ${operationCodes}))";
+
+    private static final String OPERATION_CODES_NON_PDB_TEMPLATE = "AND OPERATION_CODE IN ${operationCodes}";
 
     @Test
     @FixFor("DBZ-5648")
@@ -54,6 +58,12 @@ public class LogMinerQueryBuilderTest {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig));
+
+        config = TestHelper.defaultConfig().with(PDB_NAME, "").build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig));
     }
 
@@ -64,6 +74,12 @@ public class LogMinerQueryBuilderTest {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
         String result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig));
+
+        config = TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(connectorConfig));
     }
 
@@ -88,15 +104,42 @@ public class LogMinerQueryBuilderTest {
             query = query.replace("${systemTablePredicate}", "");
         }
 
-        query = query.replace("${operationCodes}", config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED);
-        query = query.replace("${pdbPredicate}", getPdbPredicate(config));
+        String template = getOperationCodesTemplate(config);
+        template = template.replace("${pdbPredicate}", getPdbPredicate(config));
+        template = template.replace("${operationCodes}", getOperationCodes(config));
+        query = query.replace("${operationCodesTemplate}", template);
+
+        System.out.println(query);
         return query;
     }
 
     private String getPdbPredicate(OracleConnectorConfig config) {
         if (!Strings.isNullOrBlank(config.getPdbName())) {
-            return "AND SRC_CON_NAME = '" + TestHelper.DATABASE + "' ";
+            return "SRC_CON_NAME = '" + TestHelper.DATABASE + "'";
         }
         return "";
     }
+
+    private String getOperationCodes(OracleConnectorConfig config) {
+        if (config.isLobEnabled()) {
+            if (!Strings.isNullOrEmpty(config.getPdbName())) {
+                return OPERATION_CODES_PDB_LOB_ENABLED;
+            }
+            return OPERATION_CODES_LOB_ENABLED;
+        }
+        else if (!Strings.isNullOrEmpty(config.getPdbName())) {
+            return OPERATION_CODES_PDB_LOB_DISABLED;
+        }
+        else {
+            return OPERATION_CODES_LOB_DISABLED;
+        }
+    }
+
+    private String getOperationCodesTemplate(OracleConnectorConfig config) {
+        if (!Strings.isNullOrEmpty(config.getPdbName())) {
+            return OPERATION_CODES_PDB_TEMPLATE;
+        }
+        return OPERATION_CODES_NON_PDB_TEMPLATE;
+    }
+
 }

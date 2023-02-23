@@ -254,6 +254,7 @@ There are also other options available
 * `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
 * `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deploments
+* `io.debezium.storage.redis.history.RocketMqSchemaHistory` for RocketMQ deploments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
@@ -311,6 +312,43 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |[[debezium-source-database-history-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.schema.history.internal.redis.wait.retry.delay.ms`>>
 |`1000`
 |If using Redis to store schema history, defines the delay of retry on wait for replica failure.
+
+
+|[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
+|
+|The name of the rocketmq topic for the database schema history.
+
+|[[schema-history-internal-rocketmq-namesrvAddr]]<<schema-history-internal-rocketmq-namesrvAddr, `debezium.source.schema.history.internal.rocketmq.name.srv.addr`>>
+|`localhost:9876`
+|RocketMq service discovery NameServer address configuration.
+
+|[[schema-history-internal-rocketmq-acl-enabled]]<<schema-history-internal-rocketmq-acl-enabled, `debezium.source.schema.history.internal.rocketmq.acl.enabled`>>
+|`false`
+|RocketMq access control enable configuration, default is 'false'.
+
+|[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key, `debezium.source.schema.history.internal.rocketmq.access.key`>>
+|
+|RocketMq access key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key, `debezium.source.schema.history.internal.rocketmq.secret.key`>>
+|
+|RocketMq secret key. If `debezium.source.schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be
+empty.
+
+|[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`debezium.source.schema.history.internal.rocketmq.recovery.attempts`>>
+| `60`
+|The maximum number of attempts to recover database schema history.
+
+|[[schema-history-internal-rocketmq-recovery-poll-interval-ms]]<<schema-history-internal-rocketmq-recovery-poll-interval-ms,`debezium.source.schema.history.internal.rocketmq.recovery.poll.interval.ms`>>
+| `1000`
+|The number of milliseconds to wait while polling for persisted
+data during recovery.
+
+|[[schema-history-internal-rocketmq-store-record-timeout-ms]]<<schema-history-internal-rocketmq-store-record-timeout-ms,`debezium.source.schema.history.internal.rocketmq.store.record.timeout.ms`>>
+| `60000`
+|Timeout for sending messages to RocketMq.
+
 
 |===
 
@@ -1295,7 +1333,7 @@ The name of the bean is used as the `debezium.sink.type` option.
 The sink needs to read the configuration using Microprofile Config API.
 The execution path must pass the messages into the target system and regularly commit the passed/processed messages.
 
-See the https://github.com/debezium/debezium/blob/main/debezium-server/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
+See the https://github.com/debezium/debezium-server/blob/main/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
 === Customization of an existing sink

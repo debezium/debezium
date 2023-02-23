@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.schema.SchemaFactory;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 

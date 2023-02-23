@@ -116,7 +116,7 @@ public class ConnectionContext implements AutoCloseable {
     public void shutdown() {
         try {
             // Closing all connections ...
-            logger().info("Closing all connections to {}", connectionSeed());
+            logger().info("Closing all connections to {}", maskedConnectionSeed());
             pool.clear();
         }
         catch (Throwable e) {
@@ -284,7 +284,7 @@ public class ConnectionContext implements AutoCloseable {
                 catch (Throwable t) {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
-                if (attempts > maxAttempts) {
+                if (attempts >= maxAttempts) {
                     throw new ConnectException("Unable to connect to " + preference.getName() + " node of '" + replicaSet +
                             "' after " + attempts + " failed attempts");
                 }

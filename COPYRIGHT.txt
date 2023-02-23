@@ -136,6 +136,7 @@ Eric Weaver
 Eric S. Kreiseir
 Erik Malm
 Ethan Zou
+Eugene Abramchuk
 Ewen Cheslack-Postava
 Ezer Karavani
 Fabian Aussems
@@ -165,6 +166,7 @@ Gurnaaz Randhawa
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
+Jacob Barrieault
 Jacob Gminder
 Jakub Zalas
 Jan Doms
@@ -192,6 +194,7 @@ Hyunjin Oh
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+Ingmar Fjolla
 Indra Shukla
 Inki Hwang
 ismail Simsek
@@ -261,6 +264,7 @@ Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
 Liu Lang Wa
+Liz Chatman
 Lokesh Sanapalli
 Luca Scannapieco
 Luis Garcés-Erice
@@ -290,6 +294,7 @@ Matthias Wessendorf
 Mauricio Scheffer
 Max Kaplan
 Martín Pérez
+Mehmet Firat Komurcu
 Meng Qiu
 Melissa Winstanley
 Michael Cizmar
@@ -422,6 +427,7 @@ Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
+Tim Loes
 Timo Roeseler
 Tin Nguyen
 Tom Bentley

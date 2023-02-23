@@ -157,7 +157,7 @@ public class OracleConnectorConfigTest {
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
-        assertEquals(connectorConfig.getQueryFetchSize(), 0);
+        assertEquals(connectorConfig.getQueryFetchSize(), 2_000);
     }
 
     @Test

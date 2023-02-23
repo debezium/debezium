@@ -27,9 +27,9 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleOffsetContext> {
@@ -52,7 +52,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         TopicNamingStrategy topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
-        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
+        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig);

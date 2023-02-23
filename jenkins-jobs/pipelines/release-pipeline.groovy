@@ -247,7 +247,10 @@ def setTargetReleaseForJiraIssues() {
 def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
     def repoId = null
     dir(repoDir) {
-        sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=${IGNORE_SNAPSHOTS} -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
+        // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
+        // and it is not possible to override it with a stable version
+        def ignoreSnaphots = (repoDir == 'server') ? true : IGNORE_SNAPSHOTS
+        sh "mvn release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=$ignoreSnaphots -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
         if (!DRY_RUN) {
             withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                 sh "git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repoName}\" HEAD:$branchName --follow-tags"
@@ -518,7 +521,7 @@ node('Slave') {
             dir("$IMAGES_DIR/server/$IMAGE_TAG") {
                 modifyFile('Dockerfile') {
                     it
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/${ADDITIONAL_REPOSITORIES['server'].mavenRepoId}/\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
                 }

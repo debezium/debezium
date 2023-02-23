@@ -185,3 +185,7 @@ erdinc,Erdinç Taşkın
 luca.scannapieco,Luca Scannapieco
 sunxiaojian,Sun Xiao Jian
 Sanapalli Lokesh,Lokesh Sanapalli
+TimLoes,Tim Loes
+jbarrieault,Jacob Barrieault
+ingmarfjolla,Ingmar Fjolla
+Mehmet Firat KOMURCU,Mehmet Firat Komurcu

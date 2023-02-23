@@ -1549,8 +1549,9 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         final Integer monitoredOrd = (Integer) monitoredOffset.get(SourceInfo.ORDER);
         assertThat(records.recordsForTopic("__debezium-heartbeat.mongo")).hasSize(1);
         final Map<String, ?> hbAfterMonitoredOffset = records.recordsForTopic("__debezium-heartbeat.mongo").get(0).sourceOffset();
-        assertThat(monitoredTs).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.TIMESTAMP));
-        assertThat(monitoredOrd).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.ORDER));
+
+        // Change events are sent on empty cursor `getMore` batches. The first empty batch happens prior to the first monitored event
+        assertThat(monitoredTs).isGreaterThanOrEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.TIMESTAMP));
 
         try (var client = connect()) {
             MongoDatabase db1 = client.getDatabase("dbit");
@@ -1756,7 +1757,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 
@@ -1815,7 +1815,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 

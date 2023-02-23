@@ -18,7 +18,7 @@ pipelineJob('release-debezium-upstream') {
         stringParam('DEBEZIUM_BRANCH', 'main', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
-                'spanner#github.com/debezium/debezium-connector-spanner.git#main db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main',
+                'spanner#github.com/debezium/debezium-connector-spanner.git#main db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main server#github.com/debezium/debezium-server.git#main',
                 'A space separated list of additional repositories from which Debezium incubating components are built (id#repo#branch)'
         )
         stringParam('IMAGES_REPOSITORY', 'github.com/debezium/container-images.git', 'Repository from which Debezium images are built')

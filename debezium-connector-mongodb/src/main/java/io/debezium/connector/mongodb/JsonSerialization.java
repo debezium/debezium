@@ -52,7 +52,7 @@ class JsonSerialization {
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
     }
 
-    public String getDocumentIdOplog(BsonDocument document) {
+    public String getDocumentIdSnapshot(BsonDocument document) {
         if (document == null) {
             return null;
         }

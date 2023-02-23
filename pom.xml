@@ -93,12 +93,11 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.3.1</version.kafka>
+        <version.kafka>3.4.0</version.kafka>
         <version.zookeeper>3.6.3</version.zookeeper>
-        <!-- Kafka uses 2.12.6 but we need to bump due to CVE-2020-36518 before Kafka fixes it -->
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
-        <version.jackson>2.13.3</version.jackson>
-        <version.jackson.databind>2.13.3</version.jackson.databind>
+        <version.jackson>2.13.4</version.jackson>
+        <version.jackson.databind>2.13.4.2</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
         <version.netty>4.1.78.Final</version.netty>
 
@@ -112,6 +111,7 @@
 
         <!-- Quarkus -->
         <!-- Must be aligned with Apicurio version below -->
+        <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
         <quarkus.version>2.16.0.Final</quarkus.version>
 
         <!-- Apicurio -->
@@ -139,6 +139,9 @@
         <!-- Infinispan version for Oracle and Debezium Server sink -->
         <version.infinispan>14.0.4.Final</version.infinispan>
         <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
+
+        <!-- RocketMQ version for RocketMQ storage and Server sink -->
+        <version.rocketmq>4.9.4</version.rocketmq>
     </properties>
 
     <modules>
@@ -159,9 +162,10 @@
         <module>debezium-connector-oracle</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
+        <module>debezium-quarkus-outbox-common</module>
         <module>debezium-quarkus-outbox</module>
+        <module>debezium-quarkus-outbox-reactive</module>
         <module>debezium-scripting</module>
-        <module>debezium-server</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>

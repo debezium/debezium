@@ -25,8 +25,10 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.schema.DefaultRegexTopicNamingStrategy;
+import io.debezium.schema.DefaultUnicodeTopicNamingStrategy;
 import io.debezium.util.Testing;
 
 public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
@@ -78,7 +80,7 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
 
         String expectedSchemaTopic = "my_prefix";
         List<SourceRecord> schemaChangeEvents = records.recordsForTopic(expectedSchemaTopic);
-        assertThat(schemaChangeEvents.size()).isEqualTo(10);
+        assertThat(schemaChangeEvents.size()).isEqualTo(12);
 
         // insert data
         try (Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
@@ -171,6 +173,31 @@ public class MySqlTopicNamingStrategyIT extends AbstractConnectorTest {
         List<SourceRecord> records = sourceRecords.allRecordsInOrder();
         // BEGIN + 1 INSERT + END
         assertEquals(1 + 1 + 1, records.size());
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-5743")
+    public void testUnicodeTopicNamingStrategy() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz5743中文"))
+                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true")
+                .with(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, "io.debezium.schema.DefaultUnicodeTopicNamingStrategy")
+                .build();
+
+        start(MySqlConnector.class, config);
+
+        assertConnectorIsRunning();
+
+        String tableName = String.join(".", DATABASE.getDatabaseName(), "dbz5743中文");
+        DefaultUnicodeTopicNamingStrategy strategy = new DefaultUnicodeTopicNamingStrategy(config.asProperties());
+        String expectedDataTopic = strategy.dataChangeTopic(TableId.parse(tableName));
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(100);
+        List<SourceRecord> dataChangeEvents = sourceRecords.recordsForTopic(expectedDataTopic);
+        assertEquals(1, dataChangeEvents.size());
 
         stopConnector();
     }

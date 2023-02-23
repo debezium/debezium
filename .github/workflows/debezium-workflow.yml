@@ -28,7 +28,6 @@ jobs:
       postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
       oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
       sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
-      debezium-server-changed: ${{ steps.changed-files-debezium-server.outputs.any_changed }}
       outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
       rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
@@ -46,7 +45,7 @@ jobs:
 
       - name: Get modified files (Common)
         id: changed-files-common
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             support/checkstyle/**
@@ -64,56 +63,49 @@ jobs:
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connector-mongodb/**
 
       - name: Get modified files (MySQL)
         id: changed-files-mysql
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connector-mysql/**
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connector-postgres/**
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connector-oracle/**
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connector-sqlserver/**
 
-      - name: Get modified files (Debezium Server)
-        id: changed-files-debezium-server
-        uses: tj-actions/changed-files@v14.3
-        with:
-          files: |
-            debezium-server/**
-
       - name: Get modified files (Quarkus Outbox)
         id: changed-files-outbox
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-quarkus-outbox/**
 
       - name: Get modified files (REST Extension)
         id: changed-files-rest-extension
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-connect-rest-extension/**
@@ -125,7 +117,7 @@ jobs:
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-schema-generator/**
@@ -137,14 +129,14 @@ jobs:
 
       - name: Get modified files (Debezium Testing)
         id: changed-files-debezium-testing
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-testing/**
 
       - name: Get modified files (Debezium UI)
         id: changed-files-debezium-ui
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-core/**
@@ -164,7 +156,7 @@ jobs:
 
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mysql/**
@@ -173,7 +165,7 @@ jobs:
 
       - name: Get modified files (Oracle DDL parser)
         id: changed-files-oracle-ddl-parser
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
@@ -183,14 +175,14 @@ jobs:
 
       - name: Get modified files (Documentation)
         id: changed-files-documentation
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             documentation/**
 
       - name: Get modified files (Storage)
         id: changed-files-storage
-        uses: tj-actions/changed-files@v14.3
+        uses: tj-actions/changed-files@v35.5.6
         with:
           files: |
             debezium-storage/**
@@ -205,14 +197,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -253,14 +245,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
         id: maven-cache-check
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -295,13 +287,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -329,13 +321,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -365,13 +357,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -398,13 +390,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -434,13 +426,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -457,47 +449,6 @@ jobs:
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -Ddebezium.test.records.waittime=10
 
-  build_debezium_server:
-    needs: [check_style, file_changes]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-server-changed == 'true' }}
-    name: "Debezium Server"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v3
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v2
-        with:
-          distribution: 'temurin'
-          java-version: 17
-
-      - name: Cache Maven Repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-
-      - name: Build Debezium Server
-        run: >
-          ./mvnw clean install -Dquick -B -pl debezium-testing/debezium-testing-testcontainers,debezium-server,:debezium-storage-redis -Pserver-ci -am -amd
-          -Dcheckstyle.skip=true
-          -Dformat.skip=true
-          -Dhttp.keepAlive=false
-          -Dmaven.wagon.http.pool=false
-          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-          -DskipITs=true
-          -DskipTests=true
-
-      - name: Test Debezium Server
-        run: >
-          ./mvnw install -B -pl debezium-server -Pserver-ci -amd
-          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-          -Dmaven.wagon.http.pool=false
-          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-
   build_outbox:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.outbox-changed == 'true' }}
@@ -508,13 +459,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -541,13 +492,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -573,13 +524,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -605,13 +556,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -638,13 +589,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -681,7 +632,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -689,7 +640,7 @@ jobs:
             maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -735,7 +686,7 @@ jobs:
           path: db2
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -744,7 +695,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -792,7 +743,7 @@ jobs:
           path: vitess
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
@@ -801,7 +752,7 @@ jobs:
       # For this build, we do not care if there are or are not changes in the sibling repository since this
       # job will only ever fire if there are changes in the common paths identified in the files_changed job.
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
@@ -831,6 +782,119 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+  build_spanner:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Spanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v3
+        with:
+          path: core
+
+      - name: Checkout Action (Spanner)
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+           ./core/mvnw clean install -f core/pom.xml
+           -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+           -am
+           -DskipTests=true
+           -DskipITs=true
+           -Dcheckstyle.skip=true
+           -Dformat.skip=true
+           -Drevapi.skip
+           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+           -Dmaven.wagon.http.pool=false
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Connector Spanner
+        run: >
+          ./core/mvnw clean install -f spanner/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+  build_debezium_server:
+    needs: [check_style, file_changes]
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    name: "Debezium Server"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v3
+        with:
+          path: core
+
+      - name: Checkout Action (Debezium Server)
+        uses: actions/checkout@v3
+        with:
+          repository: debezium/debezium-server
+          path: server
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # We explicitly use only the hash of the POM files from the core repository by default
+      # For this build, we do not care if there are or are not changes in the sibling repository since this
+      # job will only ever fire if there are changes in the common paths identified in the files_changed job.
+      - name: Cache Maven Repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: |
+            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+           ./core/mvnw clean install -f core/pom.xml
+           -DskipTests=true
+           -DskipITs=true
+           -Dcheckstyle.skip=true
+           -Dformat.skip=true
+           -Drevapi.skip
+           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+           -Dmaven.wagon.http.pool=false
+           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Build Debezium Server
+        run: >
+          ./core/mvnw clean install -fae -f server/pom.xml -Passembly
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DskipNonCore
+
   build_ui:
     needs: [check_style, file_changes]
     if: ${{ needs.file_changes.outputs.debezium-ui-changed == 'true' }}
@@ -844,13 +908,13 @@ jobs:
           path: debezium-ui
 
       - name: Set up Java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: 17
 
       - name: Cache Maven Repository
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}

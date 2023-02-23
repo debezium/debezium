@@ -51,13 +51,13 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
 /**

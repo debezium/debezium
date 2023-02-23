@@ -21,8 +21,8 @@ import io.debezium.data.Json;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * @author Chris Cranford
@@ -74,9 +74,6 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .name(adjuster.adjust(Envelope.schemaName(topicName)))
                     .field(FieldName.BEFORE, Json.builder().optional().build())
                     .field(FieldName.AFTER, Json.builder().optional().build())
-                    // Oplog fields
-                    .field(MongoDbFieldName.PATCH, Json.builder().optional().build())
-                    .field(MongoDbFieldName.FILTER, Json.builder().optional().build())
                     // Change Streams field
                     .field(MongoDbFieldName.UPDATE_DESCRIPTION, UPDATED_DESCRIPTION_SCHEMA)
                     .field(FieldName.SOURCE, sourceSchema)
@@ -91,7 +88,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     id,
                     fieldFilter,
                     keySchema,
-                    serialization::getDocumentIdOplog,
+                    serialization::getDocumentIdSnapshot,
                     serialization::getDocumentIdChangeStream,
                     envelope,
                     valueSchema,

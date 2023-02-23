@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 import oracle.sql.RAW;
@@ -72,6 +73,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCommitConsumer.class);
     private static final String NULL_COLUMN = "__debezium_null";
+    private static final String BLOB_TYPE = "BLOB";
+    private static final String CLOB_TYPE = "CLOB";
 
     private final Handler<LogMinerEvent> delegate;
     private final OracleConnectorConfig connectorConfig;
@@ -229,9 +232,17 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
                         merge = true;
                         break;
                     case UPDATE:
-                        mergeEvents(prev, next);
-                        merge = true;
-                        break;
+                        if (EventType.UPDATE == prev.getEventType()) {
+                            if (isUpdateForSameTableWithLobColumnChanges(prev, next)) {
+                                mergeEvents(prev, next);
+                                merge = true;
+                            }
+                        }
+                        else {
+                            // UPDATE always merges into other event types.
+                            mergeEvents(prev, next);
+                            merge = true;
+                        }
                     default:
                 }
             default:
@@ -246,11 +257,49 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         Object[] intoVals = newValues(into);
         Object[] fromVals = newValues(from);
         for (int i = 0; i < intoVals.length; i++) {
-            if (fromVals[i] != null && !OracleValueConverters.UNAVAILABLE_VALUE.equals(fromVals[i])) {
+            if (!OracleValueConverters.UNAVAILABLE_VALUE.equals(fromVals[i])) {
                 LOGGER.trace("\t\tMerge column {}: replacing {} with {}.", i, intoVals[i], fromVals[i]);
                 intoVals[i] = fromVals[i];
             }
         }
+    }
+
+    private boolean isUpdateForSameTableWithLobColumnChanges(DmlEvent into, DmlEvent event) {
+        if (!into.getTableId().equals(event.getTableId())) {
+            LOGGER.trace("\tUPDATE is for table '{}' and cannot be merged into an event for table '{}'.",
+                    event.getTableId(), into.getTableId());
+            return false;
+        }
+
+        final Table table = schema.tableFor(event.getTableId());
+        if (Objects.isNull(table)) {
+            throw new DebeziumException("Failed to find schema for update on table: " + event.getTableId());
+        }
+
+        final Object[] newValues = newValues(event);
+        if (newValues.length > table.columns().size()) {
+            throw new DebeziumException(String.format(
+                    "Schema mismatch between event with %d columns and table having %d columns",
+                    newValues.length, table.columns().size()));
+        }
+
+        // For each new value being SET by the UPDATE, we check whether the column is a BLOB or CLOB
+        // If the column is an LOB and its new value isn't the placeholder, we force a merge.
+        for (int i = 0; i < newValues.length; ++i) {
+            final Column column = table.columns().get(i);
+            if (isLobColumn(column) && !OracleValueConverters.UNAVAILABLE_VALUE.equals(newValues[i])) {
+                LOGGER.trace("\tFor table {} which has an LOB column {}, merging.", event.getTableId(), column.name());
+                return true;
+            }
+        }
+
+        // The UPDATE isn't setting any LOB columns, so it's safe to assume a separate logical change and not merge.
+        LOGGER.trace("\tFor table {} that has no LOB columns, merge skipped.", event.getTableId());
+        return false;
+    }
+
+    private boolean isLobColumn(Column column) {
+        return BLOB_TYPE.equalsIgnoreCase(column.typeName()) || CLOB_TYPE.equalsIgnoreCase(column.typeName());
     }
 
     private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {

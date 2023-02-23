@@ -360,7 +360,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         @Override
         public EmbeddedEngine build() {
             if (classLoader == null) {
-                classLoader = getClass().getClassLoader();
+                classLoader = Instantiator.getClassLoader();
             }
             if (clock == null) {
                 clock = Clock.system();

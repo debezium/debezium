@@ -19,6 +19,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.types.BSONTimestamp;
 
+import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.Immutable;
@@ -297,6 +298,20 @@ public final class SourceInfo extends BaseSourceInfo {
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, 0L);
+    }
+
+    public void noEvent(String replicaSetName, MongoChangeStreamCursor<?> cursor) {
+        if (cursor == null || cursor.getResumeToken() == null) {
+            return;
+        }
+
+        String namespace = "";
+        long wallTime = 0L;
+        BsonTimestamp ts = ResumeTokens.getTimestamp(cursor.getResumeToken());
+        Position position = Position.changeStreamPosition(ts, cursor.getResumeToken().getString("_data").getValue(), null);
+        positionsByReplicaSetName.put(replicaSetName, position);
+
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
     }
 
     public void changeStreamEvent(String replicaSetName, ChangeStreamDocument<BsonDocument> changeStreamEvent) {

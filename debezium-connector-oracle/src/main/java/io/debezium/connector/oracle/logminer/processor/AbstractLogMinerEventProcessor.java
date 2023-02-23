@@ -379,10 +379,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         final Scn commitScn = row.getScn();
         if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
-            final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
-            LOGGER.debug("Transaction {} has already been processed. "
-                    + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
-                    transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+            if (transaction.getNumberOfEvents() > 0) {
+                final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
+                LOGGER.debug("Transaction {} has already been processed. "
+                        + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
+                        transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+            }
             removeTransactionAndEventsFromCache(transaction);
             metrics.setActiveTransactions(getTransactionCache().size());
             return;
@@ -957,6 +959,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                                                                           EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
 
+        LOGGER.warn("Obtaining schema for table {}, which should be already loaded, this may signal potential bug in fetching table schemas.", tableId);
         final String tableDdl;
         try {
             tableDdl = getTableMetadataDdl(tableId);

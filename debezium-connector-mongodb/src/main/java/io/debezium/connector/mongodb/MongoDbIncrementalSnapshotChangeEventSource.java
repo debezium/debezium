@@ -27,6 +27,7 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
+import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
@@ -157,7 +158,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      */
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
                                                                            OffsetContext offsetContext, Object[] row) {
-        return new MongoDbChangeSnapshotOplogRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0], true);
+        return new MongoDbSnapshotRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0]);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -450,7 +451,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 if (firstRow == null) {
                     firstRow = row;
                 }
-                final Struct keyStruct = currentCollection.keyFromDocumentOplog(doc);
+                final Struct keyStruct = currentCollection.keyFromDocumentSnapshot(doc);
                 window.put(keyStruct, row);
                 if (logTimer.expired()) {
                     long stop = clock.currentTimeInMillis();
@@ -501,7 +502,34 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (row == null) {
             return null;
         }
-        return new Object[]{ ((BsonDocument) row[0]).getInt32(DOCUMENT_ID).getValue() };
+        var documentId = ((BsonDocument) row[0]).get(DOCUMENT_ID);
+
+        Object key;
+
+        switch (documentId.getBsonType()) {
+            case DOUBLE:
+                key = documentId.asDouble().getValue();
+                break;
+            case INT32:
+                key = documentId.asInt32().getValue();
+                break;
+            case INT64:
+                key = documentId.asInt64().getValue();
+                break;
+            case DECIMAL128:
+                key = documentId.asDecimal128().getValue();
+                break;
+            case OBJECT_ID:
+                key = documentId.asObjectId().getValue();
+                break;
+            case STRING:
+                key = documentId.asString().getValue();
+                break;
+            default:
+                throw new IllegalStateException("Unsupported type of document id");
+        }
+
+        return new Object[]{ key };
     }
 
     protected void setContext(IncrementalSnapshotContext<CollectionId> context) {

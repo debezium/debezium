@@ -34,7 +34,6 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = MongoDbFieldName.PATCH;
 
     @Test
     public void shouldNotExcludeFieldsForEventOfOtherCollection() throws InterruptedException {
@@ -1399,9 +1398,6 @@ public class FieldExcludeListIT extends AbstractMongoConnectorIT {
         Struct value = getValue(record);
 
         String json = value.getString(AFTER);
-        if (json == null) {
-            json = value.getString(PATCH);
-        }
 
         assertThat(json).isNull();
     }
