@@ -2947,6 +2947,28 @@ For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>
 If the publication exists, the connector updates the publication for tables that match the current filter configuration.
 For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
 
+|[[postgresql-replica-autoset-type]]<<postgresql-replica-autoset-type, `+replica.identity.autoset.values+`>>
+|_empty string_
+|The setting determines the value for link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] at table level. +
+ +
+This option will overwrite the existing value in database.
+A comma-separated list of expressions that match fully-qualified tables and replica identity value to be used in the table. +
+ +
+Each expression must match the pattern '<fully-qualified table name>:<replica identity>', where the table name could be defined as (`SCHEMA_NAME.TABLE_NAME`), and the replica identity values are: +
+ +
+`DEFAULT` - Records the old values of the columns of the primary key, if any. This is the default for non-system tables. +
+ +
+`INDEX index_name` - Records the old values of the columns covered by the named index, that must be unique, not partial, not deferrable, and include only columns marked NOT NULL. If this index is dropped, the behavior is the same as NOTHING. +
+ +
+`FULL` - Records the old values of all columns in the row. +
+ +
+`NOTHING` - Records no information about the old row. This is the default for system tables. +
+ +
+For example,
+
+ schema1.table1:FULL,schema2.table2:NOTHING,schema2.table3:INDEX idx_name
+
+
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
 |Specifies how binary (`bytea`) columns should be represented in change events: +

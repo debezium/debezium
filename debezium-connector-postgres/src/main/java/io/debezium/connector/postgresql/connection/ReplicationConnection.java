@@ -15,6 +15,7 @@ import org.postgresql.replication.PGReplicationStream;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
+import io.debezium.connector.postgresql.ReplicaIdentityMapper;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.relational.RelationalTableFilters;
@@ -149,6 +150,15 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #PROTOBUF_PLUGIN_NAME
          */
         Builder withPlugin(PostgresConnectorConfig.LogicalDecoder plugin);
+
+        /**
+         * Sets the Replica Identity value
+         *
+         * @param replicaIdentityMapper object, may not be null.
+         * @return this instance
+         * @see #PostgresConnectorConfig.REPLICA_AUTOSET_TYPE
+         */
+        Builder withReplicaIdentity(ReplicaIdentityMapper replicaIdentityMapper);
 
         /**
          * Whether or not to drop the replication slot once the replication connection closes

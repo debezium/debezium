@@ -72,6 +72,7 @@ import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
@@ -96,6 +97,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
+import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -1074,6 +1076,162 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE backend_type='walsender'");
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 3, 3);
+    }
+
+    @Test
+    public void shouldUpdateReplicaIdentity() throws Exception {
+
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        String setupStmt = SETUP_TABLES_STMT;
+        TestHelper.execute(setupStmt);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:DEFAULT")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning();
+
+        // Waiting for Replica Identity is updated
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            TableId tableIds1 = new TableId("", "s1", "a");
+            TableId tableIds2 = new TableId("", "s2", "a");
+            assertEquals(ServerInfo.ReplicaIdentity.FULL, connection.readReplicaIdentityInfo(tableIds1));
+            assertEquals(ServerInfo.ReplicaIdentity.DEFAULT, connection.readReplicaIdentityInfo(tableIds2));
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to FULL for table '%s'", tableIds1))).isTrue();
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity for table '%s' is already DEFAULT", tableIds2))).isTrue();
+        }
+    }
+
+    @Test
+    public void shouldUpdateReplicaIdentityWithOneTable() throws Exception {
+
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        String setupStmt = SETUP_TABLES_STMT;
+        TestHelper.execute(setupStmt);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning();
+
+        // Waiting for Replica Identity is updated
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            TableId tableIds1 = new TableId("", "s1", "a");
+            assertEquals(ServerInfo.ReplicaIdentity.FULL, connection.readReplicaIdentityInfo(tableIds1));
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to FULL for table '%s'", tableIds1))).isTrue();
+        }
+    }
+
+    @Test
+    public void shouldUpdateReplicaIdentityUsingIndex() throws Exception {
+
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        String setupStmt = SETUP_TABLES_STMT;
+        TestHelper.execute(setupStmt);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:INDEX a_pkey")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning();
+
+        // Waiting for Replica Identity is updated
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            TableId tableIds1 = new TableId("", "s1", "a");
+            TableId tableIds2 = new TableId("", "s2", "a");
+            String index_name = connection.readIndexOfReplicaIdentity(tableIds2);
+            assertEquals(ServerInfo.ReplicaIdentity.FULL, connection.readReplicaIdentityInfo(tableIds1));
+            assertEquals(ServerInfo.ReplicaIdentity.INDEX, connection.readReplicaIdentityInfo(tableIds2));
+            assertEquals("a_pkey", index_name);
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to FULL for table '%s'", tableIds1))).isTrue();
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to USING INDEX %s for table '%s'", index_name, tableIds2))).isTrue();
+        }
+    }
+
+    @Test
+    public void shouldLogOwnershipErrorForReplicaIdentityUpdate() throws Exception {
+
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnection.class);
+
+        TestHelper.executeDDL("postgres_create_role_specific_tables.ddl");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.a:DEFAULT")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "DISABLED")
+                .with("database.user", "role_2")
+                .with("database.password", "role_2_pass")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning();
+
+        // Waiting for Replica Identity is updated
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        assertThat(logInterceptor.containsMessage(String.format("Replica identity could not be updated because of lack of privileges"))).isTrue();
+    }
+
+    @Test
+    public void shouldCheckTablesToUpdateReplicaIdentityAreCaptured() throws Exception {
+
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresReplicationConnection.class);
+
+        String setupStmt = SETUP_TABLES_STMT;
+        TestHelper.execute(setupStmt);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.REPLICA_IDENTITY_AUTOSET_VALUES, "s1.a:FULL,s2.b:DEFAULT")
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning();
+
+        // Waiting for Replica Identity is updated
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            TableId tableIds1 = new TableId("", "s1", "a");
+            assertEquals(ServerInfo.ReplicaIdentity.FULL, connection.readReplicaIdentityInfo(tableIds1));
+            assertThat(logInterceptor.containsMessage(String.format("Replica identity set to FULL for table '%s'", tableIds1))).isTrue();
+
+            assertThat(logInterceptor
+                    .containsMessage("Replica identity for table 's2.b' will not be updated because it is not in the list of captured tables."))
+                    .isTrue();
+        }
     }
 
     @Test

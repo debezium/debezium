@@ -189,3 +189,5 @@ TimLoes,Tim Loes
 jbarrieault,Jacob Barrieault
 ingmarfjolla,Ingmar Fjolla
 Mehmet Firat KOMURCU,Mehmet Firat Komurcu
+benw-at-birdie,Ben White
+miguelbirdie, Miguel Angel Sotomayor
