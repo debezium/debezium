@@ -97,7 +97,7 @@ public class PostgresConnectionIT {
                 "CREATE TABLE test(pk serial, PRIMARY KEY (pk));";
         TestHelper.execute(statement);
         try (PostgresConnection connection = TestHelper.create()) {
-            assertEquals(ServerInfo.ReplicaIdentity.DEFAULT, connection.readReplicaIdentityInfo(TableId.parse("public.test")));
+            assertEquals(ReplicaIdentityInfo.ReplicaIdentity.DEFAULT.toString(), connection.readReplicaIdentityInfo(TableId.parse("public.test")).toString());
         }
     }
 
