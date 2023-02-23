@@ -163,7 +163,8 @@ public class PostgresConnection extends JdbcConnection {
      * @return the replica identity information; never null
      * @throws SQLException if there is a problem obtaining the replica identity information for the given table
      */
-    public ServerInfo.ReplicaIdentity readReplicaIdentityInfo(TableId tableId) throws SQLException {
+    @VisibleForTesting
+    public ReplicaIdentityInfo readReplicaIdentityInfo(TableId tableId) throws SQLException {
         String statement = "SELECT relreplident FROM pg_catalog.pg_class c " +
                 "LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
                 "WHERE n.nspname=? and c.relname=?";
@@ -180,7 +181,65 @@ public class PostgresConnection extends JdbcConnection {
                 LOGGER.warn("Cannot determine REPLICA IDENTITY information for table '{}'", tableId);
             }
         });
-        return ServerInfo.ReplicaIdentity.parseFromDB(replIdentity.toString());
+        return new ReplicaIdentityInfo(ReplicaIdentityInfo.ReplicaIdentity.parseFromDB(replIdentity.toString()));
+    }
+
+    /**
+     * This query retrieves information about the INDEX as long as replica identity is configure USING INDEX
+     *
+     * @param tableId the identifier of the table
+     * @return Index name linked to replica identity; never null
+     * @throws SQLException if there is a problem obtaining the replica identity and index information for the given table
+     */
+    @VisibleForTesting
+    public String readIndexOfReplicaIdentity(TableId tableId) throws SQLException {
+        String statement = "with rel_index as (" +
+                "select split_part(indexrelid::regclass::text, '.', 1) as index_schema, split_part(indexrelid::regclass::text, '.', 2) as index_name " +
+                "from pg_catalog.pg_index " +
+                "where indisreplident " +
+                ") " +
+                "SELECT i.index_name " +
+                "FROM pg_catalog.pg_class c " +
+                "    LEFT JOIN pg_catalog.pg_namespace n ON c.relnamespace=n.oid " +
+                "    LEFT join rel_index i on n.nspname = i.index_schema " +
+                "WHERE n.nspname=? and c.relname=?";
+        String schema = tableId.schema() != null && tableId.schema().length() > 0 ? tableId.schema() : "public";
+        StringBuilder indexName = new StringBuilder();
+        prepareQuery(statement, stmt -> {
+            stmt.setString(1, schema);
+            stmt.setString(2, tableId.table());
+        }, rs -> {
+            if (rs.next()) {
+                indexName.append(rs.getString(1));
+            }
+            else {
+                LOGGER.warn("Cannot determine index linked to REPLICA IDENTITY for table '{}'", tableId);
+            }
+        });
+        return indexName.toString();
+    }
+
+    /**
+     * Update REPLICA IDENTITY status of a table.
+     * This in turn determines how much information is available for UPDATE and DELETE operations for logical replication.
+     *
+     * @param tableId the identifier of the table
+     * @param replicaIdentityValue Replica Identity value
+     */
+    public void setReplicaIdentityForTable(TableId tableId, ReplicaIdentityInfo replicaIdentityValue) {
+        try {
+            LOGGER.debug("Updating Replica Identity '{}'", tableId.table());
+            execute(String.format("ALTER TABLE %s REPLICA IDENTITY %s;", tableId, replicaIdentityValue));
+        }
+        catch (SQLException e) {
+
+            if (e.getSQLState().equals("42501")) {
+                LOGGER.error("Replica identity could not be updated because of lack of privileges", e);
+            }
+            else {
+                LOGGER.error("Unexpected error while attempting to alter Replica Identity", e);
+            }
+        }
     }
 
     /**

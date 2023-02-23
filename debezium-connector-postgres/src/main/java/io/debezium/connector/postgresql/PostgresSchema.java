@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
-import io.debezium.connector.postgresql.connection.ServerInfo;
+import io.debezium.connector.postgresql.connection.ReplicaIdentityInfo;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -96,7 +96,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     private void printReplicaIdentityInfo(PostgresConnection connection, TableId tableId) {
         try {
-            ServerInfo.ReplicaIdentity replicaIdentity = connection.readReplicaIdentityInfo(tableId);
+            ReplicaIdentityInfo replicaIdentity = connection.readReplicaIdentityInfo(tableId);
             LOGGER.info("REPLICA IDENTITY for '{}' is '{}'; {}", tableId, replicaIdentity, replicaIdentity.description());
         }
         catch (SQLException e) {
