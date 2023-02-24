@@ -23,6 +23,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
@@ -240,6 +241,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         for (FieldReference fieldReference : additionalFields) {
             updatedValue = updateValue(fieldReference, updatedValue, originalRecordValue);
+            Header dbHeader = unwrappedRecord.headers().lastWithName("__db");
+            if (dbHeader != null) {
+                updatedValue.put("__table", dbHeader.value().toString() + "." + updatedValue.get("__table"));
+            }
         }
 
         return unwrappedRecord.newRecord(
