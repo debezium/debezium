@@ -1,9 +1,16 @@
-/*
- * Copyright Debezium Authors.
- *
- * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
- */
 package io.debezium.embedded;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.config.Instantiator;
+import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.util.Clock;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
+import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Map;
@@ -12,48 +19,55 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class DefaultTaskOffsetManager implements TaskOffsetManager {
 
-import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.util.Clock;
-
-/**
- * Default implementation of {@link OffsetCommitter} that uses Kafka's OffsetStorageWriter to commit offsets.
- * This class is meant to be used in a thread confined manner and is not thread safe.
- */
-public class DefaultOffsetCommitter implements OffsetCommitter {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOffsetCommitter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultTaskOffsetManager.class);
 
     private final Clock clock;
     private final SourceTask sourceTask;
-    private final Duration commitTimeout;
-    private final OffsetStorageWriter offsetStorageWriter;
-    private final OffsetCommitPolicy offsetCommitPolicy;
     private final EmbeddedEngineState embeddedEngineState;
+    private Duration commitTimeout;
+    private OffsetCommitPolicy offsetCommitPolicy;
 
     private long recordsSinceLastCommit = 0;
     private long timeOfLastCommitMillis;
+    private OffsetManager offsetManager;
+    private OffsetStorageWriter offsetStorageWriter;
+    private OffsetStorageReader offsetStorageReader;
 
-    public DefaultOffsetCommitter(
-                                  Clock clock,
-                                  SourceTask sourceTask,
-                                  Duration commitTimeout,
-                                  OffsetStorageWriter offsetStorageWriter,
-                                  OffsetCommitPolicy offsetCommitPolicy,
-                                  EmbeddedEngineState embeddedEngineState) {
+    public DefaultTaskOffsetManager(
+            Clock clock,
+            SourceTask sourceTask,
+            EmbeddedEngineState embeddedEngineState
+    ) {
         this.clock = clock;
+        this.sourceTask = sourceTask;
+        this.embeddedEngineState = embeddedEngineState;
 
         this.timeOfLastCommitMillis = clock.currentTimeInMillis();
-        this.sourceTask = sourceTask;
-        this.commitTimeout = commitTimeout;
-        this.offsetStorageWriter = offsetStorageWriter;
-        this.offsetCommitPolicy = offsetCommitPolicy;
-        this.embeddedEngineState = embeddedEngineState;
+    }
+
+    @Override
+    public void configure(Configuration config) {
+        // Set up the offset commit policy ...
+        this.offsetCommitPolicy = Instantiator.getInstanceWithProperties(
+                config.getString(OFFSET_COMMIT_POLICY), config.asProperties());
+        this.commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
+
+        this.offsetManager = new DefaultOffsetManager();
+        this.offsetManager.configure(config);
+        this.offsetStorageWriter = offsetManager.offsetStorageWriter();
+        this.offsetStorageReader = offsetManager.offsetStorageReader();
+    }
+
+    @Override
+    public void stop() {
+        this.offsetManager.stop();
+    }
+
+    @Override
+    public OffsetStorageReader offsetStorageReader() {
+        return this.offsetStorageReader;
     }
 
     @Override
@@ -99,8 +113,7 @@ public class DefaultOffsetCommitter implements OffsetCommitter {
             sourceTask.commit();
             recordsSinceLastCommit = 0;
             timeOfLastCommitMillis = clock.currentTimeInMillis();
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             LOGGER.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetStorageWriter.cancelFlush();
 
@@ -111,12 +124,10 @@ public class DefaultOffsetCommitter implements OffsetCommitter {
                 Thread.currentThread().interrupt();
                 throw e;
             }
-        }
-        catch (ExecutionException e) {
+        } catch (ExecutionException e) {
             LOGGER.error("Flush of {} offsets threw an unexpected exception: ", this, e);
             offsetStorageWriter.cancelFlush();
-        }
-        catch (TimeoutException e) {
+        } catch (TimeoutException e) {
             LOGGER.error("Timed out waiting to flush {} offsets to storage", this);
             offsetStorageWriter.cancelFlush();
         }
@@ -125,8 +136,7 @@ public class DefaultOffsetCommitter implements OffsetCommitter {
     protected void completedFlush(Throwable error, Void result) {
         if (error != null) {
             LOGGER.error("Failed to flush {} offsets to storage: ", this, error);
-        }
-        else {
+        } else {
             LOGGER.trace("Finished flushing {} offsets to storage", this);
         }
     }

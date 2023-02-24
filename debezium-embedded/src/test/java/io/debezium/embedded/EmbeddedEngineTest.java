@@ -196,7 +196,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 .with(EmbeddedEngine.CONNECTOR_CLASS, InterruptedConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                 .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .with(OffsetManager.OFFSET_STORAGE, InterruptingOffsetStore.class)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
@@ -232,7 +232,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .with(OffsetManager.OFFSET_STORAGE, InterruptingOffsetStore.class)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);

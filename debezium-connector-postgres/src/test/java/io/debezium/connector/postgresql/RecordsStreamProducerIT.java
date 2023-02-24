@@ -40,6 +40,7 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 
+import io.debezium.embedded.OffsetManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -2074,7 +2075,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), true);
+                .with(OffsetManager.OFFSET_STORAGE, MemoryOffsetBackingStore.class), true);
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -2088,7 +2089,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
-                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
+                .with(OffsetManager.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
 
         consumer.expects(3);
         consumer.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);

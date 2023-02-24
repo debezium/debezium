@@ -31,7 +31,6 @@ import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
@@ -42,13 +41,9 @@ import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.source.SourceTaskContext;
-import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,19 +95,18 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .required();
 
     /**
-     * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
-     * and that will be used to store offsets recorded by the connector.
+     * An optional field to specify total number of embedded engines that will
+     * be instantiated. An embedded engine can identify the tasks based on its
+     * taskId and maxTasks
      */
-    public static final Field OFFSET_STORAGE = Field.create("offset.storage")
-            .withDescription("The Java class that implements the `OffsetBackingStore` "
-                    + "interface, used to periodically store offsets so that, upon "
-                    + "restart, the connector can resume where it last left off.")
-            .withDefault(FileOffsetBackingStore.class.getName());
+    public static final Field MAX_TASKS = Field.create("maxTasks")
+            .withDescription("Total number of tasks instantiated.")
+            .withDefault(1);
 
     /**
      * An optional field that specifies the file location for the {@link FileOffsetBackingStore}.
      *
-     * @see #OFFSET_STORAGE
+     * @see OffsetManager#OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
             .withDescription("The file where offsets are to be stored. Required when "
@@ -123,7 +117,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * An optional field that specifies the topic name for the {@link KafkaOffsetBackingStore}.
      *
-     * @see #OFFSET_STORAGE
+     * @see OffsetManager#OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
             .withDescription("The name of the Kafka topic where offsets are to be stored. "
@@ -134,7 +128,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * An optional field that specifies the number of partitions for the {@link KafkaOffsetBackingStore}.
      *
-     * @see #OFFSET_STORAGE
+     * @see OffsetManager#OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
             .withType(ConfigDef.Type.INT)
@@ -145,40 +139,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * An optional field that specifies the replication factor for the {@link KafkaOffsetBackingStore}.
      *
-     * @see #OFFSET_STORAGE
+     * @see OffsetManager#OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
             .withType(ConfigDef.Type.SHORT)
             .withDescription("Replication factor used when creating the offset storage topic. "
                     + "Required with other properties when 'offset.storage' is set to the "
                     + KafkaOffsetBackingStore.class.getName() + " class.");
-
-    /**
-     * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
-     * for an offset commit to complete.
-     */
-    public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
-            .withDescription("Interval at which to try committing offsets, given in milliseconds. Defaults to 1 minute (60,000 ms).")
-            .withDefault(60000L)
-            .withValidation(Field::isNonNegativeInteger);
-
-    /**
-     * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
-     * for an offset commit to complete.
-     */
-    public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
-            .withDescription("Time to wait for records to flush and partition offset data to be"
-                    + " committed to offset storage before cancelling the process and restoring the offset "
-                    + "data to be committed in a future attempt, given in milliseconds. Defaults to 5 seconds (5000 ms).")
-            .withDefault(5000L)
-            .withValidation(Field::isPositiveInteger);
-
-    public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
-            .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
-                    + OffsetCommitPolicy.class.getName()
-                    + ". The default is a periodic commit policy based upon time intervals.")
-            .withDefault(io.debezium.embedded.spi.OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
-            .withValidation(Field::isClassName);
 
     /**
      * A list of Predicates that can be assigned to transformations.
@@ -248,8 +215,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * The array of all exposed fields.
      */
-    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
-            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
+    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(
             ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
 
     public static final class BuilderImpl implements Builder {
@@ -589,8 +555,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private final DebeziumEngine.CompletionCallback completionCallback;
     private final DebeziumEngine.ConnectorCallback connectorCallback;
     private final VariableLatch latch = new VariableLatch(0);
-    private final Converter keyConverter;
-    private final Converter valueConverter;
     private final WorkerConfig workerConfig;
     private final CompletionResult completionResult;
     private OffsetCommitPolicy offsetCommitPolicy;
@@ -622,11 +586,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         assert this.handler != null;
         assert this.classLoader != null;
         assert this.clock != null;
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        keyConverter.configure(internalConverterConfig, true);
-        valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        valueConverter.configure(internalConverterConfig, false);
 
         transformations = new Transformations(config);
 
@@ -722,44 +681,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     return;
                 }
 
-                // Instantiate the offset store ...
-                final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-                OffsetBackingStore offsetStore = null;
-                try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                    offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
-                }
-                catch (Throwable t) {
-                    fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
-                    return;
-                }
-
-                // Initialize the offset store ...
-                try {
-                    offsetStore.configure(workerConfig);
-                    offsetStore.start();
-                }
-                catch (Throwable t) {
-                    fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
-                    offsetStore.stop();
-                    return;
-                }
-
-                // Set up the offset commit policy ...
-                if (offsetCommitPolicy == null) {
-                    try {
-                        offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
-                                config.asProperties());
-                    }
-                    catch (Throwable t) {
-                        fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);
-                        return;
-                    }
-                }
-
-                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                        keyConverter, valueConverter);
+                OffsetManager offsetManager = new DefaultOffsetManager();
+                offsetManager.configure(config);
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                 ConnectorContext context = new SourceConnectorContext() {
@@ -776,20 +699,18 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
                     @Override
                     public OffsetStorageReader offsetStorageReader() {
-                        return offsetReader;
+                        return offsetManager.offsetStorageReader();
                     }
                 };
                 connector.initialize(context);
-                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
-                        keyConverter, valueConverter);
 
-                Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
+                int maxTasks = config.getInteger(MAX_TASKS);
 
                 try {
                     // Start the connector with the given properties and get the task configurations ...
                     connector.start(connectorConfig);
                     connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
-                    List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+                    List<Map<String, String>> taskConfigs = connector.taskConfigs(maxTasks);
                     Class<? extends Task> taskClass = connector.taskClass();
                     if (taskConfigs.isEmpty()) {
                         String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
@@ -804,11 +725,17 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
                         return;
                     }
+
+                    TaskOffsetManager taskOffsetManager = new DefaultTaskOffsetManager(
+                            this.clock, task, embeddedEngineState
+                    );
+                    taskOffsetManager.configure(config);
+
                     try {
                         SourceTaskContext taskContext = new SourceTaskContext() {
                             @Override
                             public OffsetStorageReader offsetStorageReader() {
-                                return offsetReader;
+                                return taskOffsetManager.offsetStorageReader();
                             }
 
                             // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
@@ -840,10 +767,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     }
 
                     Throwable handlerError = null, retryError = null;
-                    OffsetCommitter offsetCommitter = new DefaultOffsetCommitter(
-                            this.clock, this.task, commitTimeout, offsetWriter, offsetCommitPolicy, embeddedEngineState);
+
                     try {
-                        RecordCommitter committer = buildRecordCommitter(offsetCommitter);
+                        RecordCommitter committer = buildRecordCommitter(taskOffsetManager);
                         while (embeddedEngineState.isRunning()) {
                             List<SourceRecord> changeRecords = null;
                             try {
@@ -944,7 +870,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             task.stop();
                             connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
-                            offsetCommitter.commitOffsets();
+                            taskOffsetManager.commitOffsets();
                         }
                         catch (InterruptedException e) {
                             LOGGER.debug("Interrupted while committing offsets");
@@ -961,7 +887,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 finally {
                     // Close the offset storage and finally the connector ...
                     try {
-                        offsetStore.stop();
+                        offsetManager.stop();
                     }
                     catch (Throwable t) {
                         fail("Error while trying to stop the offset store", t);
@@ -996,17 +922,17 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * about the updates to the given batch
      * @return the new recordCommitter to be used for a given batch
      */
-    protected RecordCommitter buildRecordCommitter(OffsetCommitter offsetCommitter) {
+    protected RecordCommitter buildRecordCommitter(TaskOffsetManager taskOffsetManager) {
         return new RecordCommitter() {
 
             @Override
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
-                offsetCommitter.commit(record);
+                taskOffsetManager.commit(record);
             }
 
             @Override
             public synchronized void markBatchFinished() throws InterruptedException {
-                offsetCommitter.maybeFlush();
+                taskOffsetManager.maybeFlush();
             }
 
             @Override
