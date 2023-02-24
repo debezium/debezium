@@ -202,18 +202,36 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     Statement stmt = conn.createStatement();
                     ResultSet rs = stmt.executeQuery(DATABASE_HISTORY_TABLE_SELECT);
                     String prevHistoryId = "-1";
-                    StringBuilder historyData = new StringBuilder();
+                    // StringBuilder historyData = new StringBuilder();
+
                     while (rs.next()) {
                         String historyId = rs.getString("id");
-                        if (!historyId.equals(prevHistoryId)) {
-                            if (historyData.length() > 0) {
-                                records.accept(new HistoryRecord(reader.read(historyData.toString())));
-                            }
-                            prevHistoryId = historyId;
-                            historyData = new StringBuilder();
+                        String historyData = rs.getString("history_data");
+
+                        if (historyData.isEmpty() == false) {
+                            records.accept(new HistoryRecord(reader.read(historyData)));
                         }
-                        historyData.append(rs.getString("history_data"));
+                        // String historyId = rs.getString("id");
+                        // // System.out.println("HISTORY ID" + historyId);
+                        // if (!historyId.equals(prevHistoryId)) {
+                        // if (historyData.length() > 0) {
+                        // // System.out.println("RECORDS ACCEPT");
+                        // records.accept(new HistoryRecord(reader.read(historyData.toString())));
+                        // }
+                        // else {
+                        // // System.out.println("HISTORY DATA EMPTY");
+                        // }
+                        // prevHistoryId = historyId;
+                        // historyData = new StringBuilder();
+                        // }
+                        // historyData.append(rs.getString("history_data"));
+                        // // System.out.println("HISTORY DATA" + historyData);
+
                     }
+                }
+                else {
+                    // System.out.println("STORAGE DOES NOT EXIST");
+                    LOG.error("Storage does not exist when recovering records");
                 }
             }
             catch (IOException | SQLException e) {

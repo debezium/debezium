@@ -45,6 +45,10 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-ddl-parser</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-mysql</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
@@ -79,6 +83,31 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.36.0.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-connect-avro-converter</artifactId>
+            <version>7.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
+            <version>7.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -119,59 +148,6 @@
                     <verbose>true</verbose>
                     <!--autoPull>always</autoPull-->
                     <images>
-                        <image>
-                            <!-- A Docker image using a partial MySQL installation maintained by MySQL team. -->
-                            <name>debezium/mysql-server-test-database</name>
-                            <run>
-                                <namingStrategy>none</namingStrategy>
-                                <env>
-                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
-                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
-                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
-                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
-                                </env>
-                                <ports>
-                                    <port>${mysql.port}:3306</port>
-                                </ports>
-                                <log>
-                                    <prefix>mysql</prefix>
-                                    <enabled>true</enabled>
-                                    <color>yellow</color>
-                                </log>
-                                <wait>
-                                    <log>MySQL init process done. Ready for start up.(?s)(.*)mysqld: ready for connections.</log>
-                                    <time>${mysql.init.timeout}</time>
-                                </wait>
-                            </run>
-                            <build>
-                                <from>mysql/mysql-server:${version.mysql.server}</from>
-                                <runCmds>
-                                    <run>${docker.initimage}</run>
-                                </runCmds>
-                                <assembly>
-                                    <inline>
-                                        <fileSets>
-                                            <fileSet>
-                                                <directory>${project.basedir}/src/test/docker/server</directory>
-                                                <includes>
-                                                    <include>my.cnf</include>
-                                                </includes>
-                                                <outputDirectory>etc/mysql</outputDirectory>
-                                            </fileSet>
-                                            <fileSet>
-                                                <directory>${project.basedir}/src/test/docker/init</directory>
-                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
-                                            </fileSet>
-                                        </fileSets>
-                                    </inline>
-                                    <targetDir>/</targetDir>
-                                </assembly>
-                            </build>
-                            <external>
-                                <type>properties</type>
-                                <mode>override</mode>
-                            </external>
-                        </image>
                     </images>
                 </configuration>
                 <!--
