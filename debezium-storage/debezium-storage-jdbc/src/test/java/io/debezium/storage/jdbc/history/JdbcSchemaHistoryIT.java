@@ -5,7 +5,9 @@
  */
 package io.debezium.storage.jdbc.history;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.*;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
