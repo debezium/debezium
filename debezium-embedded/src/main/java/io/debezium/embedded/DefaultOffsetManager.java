@@ -5,9 +5,9 @@
  */
 package io.debezium.embedded;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.config.Instantiator;
+import java.util.Collections;
+import java.util.Map;
+
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
@@ -19,8 +19,9 @@ import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.Map;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.config.Instantiator;
 
 /**
  * Default implementation of {@link OffsetManager} that uses Kafka's OffsetStorageWriter to commit offsets.
@@ -65,7 +66,8 @@ public class DefaultOffsetManager implements OffsetManager {
 
             offsetStore.configure(workerConfig);
             offsetStore.start();
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             offsetStore.stop();
             throw new RuntimeException(t);
 

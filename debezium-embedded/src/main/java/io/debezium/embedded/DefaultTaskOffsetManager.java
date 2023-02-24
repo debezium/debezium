@@ -1,16 +1,9 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.embedded;
-
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.config.Instantiator;
-import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.util.Clock;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
-import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Map;
@@ -18,6 +11,18 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.storage.OffsetStorageReader;
+import org.apache.kafka.connect.storage.OffsetStorageWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Instantiator;
+import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.util.Clock;
 
 public class DefaultTaskOffsetManager implements TaskOffsetManager {
 
@@ -36,10 +41,9 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
     private OffsetStorageReader offsetStorageReader;
 
     public DefaultTaskOffsetManager(
-            Clock clock,
-            SourceTask sourceTask,
-            EmbeddedEngineState embeddedEngineState
-    ) {
+                                    Clock clock,
+                                    SourceTask sourceTask,
+                                    EmbeddedEngineState embeddedEngineState) {
         this.clock = clock;
         this.sourceTask = sourceTask;
         this.embeddedEngineState = embeddedEngineState;
@@ -113,7 +117,8 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
             sourceTask.commit();
             recordsSinceLastCommit = 0;
             timeOfLastCommitMillis = clock.currentTimeInMillis();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             LOGGER.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetStorageWriter.cancelFlush();
 
@@ -124,10 +129,12 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
                 Thread.currentThread().interrupt();
                 throw e;
             }
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             LOGGER.error("Flush of {} offsets threw an unexpected exception: ", this, e);
             offsetStorageWriter.cancelFlush();
-        } catch (TimeoutException e) {
+        }
+        catch (TimeoutException e) {
             LOGGER.error("Timed out waiting to flush {} offsets to storage", this);
             offsetStorageWriter.cancelFlush();
         }
@@ -136,7 +143,8 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
     protected void completedFlush(Throwable error, Void result) {
         if (error != null) {
             LOGGER.error("Failed to flush {} offsets to storage: ", this, error);
-        } else {
+        }
+        else {
             LOGGER.trace("Finished flushing {} offsets to storage", this);
         }
     }

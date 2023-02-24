@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -29,7 +30,6 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.AbstractHerder;
 import org.apache.kafka.connect.runtime.WorkerConfig;
@@ -40,7 +40,6 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceConnectorContext;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
@@ -57,7 +56,6 @@ import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.Clock;
-import io.debezium.util.DelayStrategy;
 import io.debezium.util.VariableLatch;
 
 /**
@@ -169,35 +167,35 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("Optional list of single message transformations applied on the messages. "
                     + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
 
-    private static final int DEFAULT_ERROR_MAX_RETRIES = -1;
+//     static final int DEFAULT_ERROR_MAX_RETRIES = -1;
 
-    public static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
-            .withDisplayName("The maximum number of retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(DEFAULT_ERROR_MAX_RETRIES)
-            .withValidation(Field::isInteger)
-            .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
+    // private static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
+    // .withDisplayName("The maximum number of retries")
+    // .withType(Type.INT)
+    // .withWidth(Width.SHORT)
+    // .withImportance(Importance.MEDIUM)
+    // .withDefault(DEFAULT_ERROR_MAX_RETRIES)
+    // .withValidation(Field::isInteger)
+    // .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
 
-    public static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
-            .withDisplayName("Initial delay for retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(300)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Initial delay (in ms) for retries when encountering connection errors."
-                    + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
-
-    public static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
-            .withDisplayName("Max delay between retries")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(10000)
-            .withValidation(Field::isPositiveInteger)
-            .withDescription("Max delay (in ms) between retries when encountering connection errors.");
+    // private static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
+    // .withDisplayName("Initial delay for retries")
+    // .withType(Type.INT)
+    // .withWidth(Width.SHORT)
+    // .withImportance(Importance.MEDIUM)
+    // .withDefault(300)
+    // .withValidation(Field::isPositiveInteger)
+    // .withDescription("Initial delay (in ms) for retries when encountering connection errors."
+    // + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
+    //
+    // private static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
+    // .withDisplayName("Max delay between retries")
+    // .withType(Type.INT)
+    // .withWidth(Width.SHORT)
+    // .withImportance(Importance.MEDIUM)
+    // .withDefault(10000)
+    // .withValidation(Field::isPositiveInteger)
+    // .withDescription("Max delay (in ms) between retries when encountering connection errors.");
 
     public static final Field WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS = Field.create("debezium.embedded.shutdown.pause.before.interrupt.ms")
             .withDisplayName("Time to wait to engine completion before interrupt")
@@ -208,15 +206,16 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     "Must be bigger than the time it takes two polling loops to finish ({} ms)", ChangeEventSourceCoordinator.SHUTDOWN_WAIT_TIMEOUT.toMillis() * 2));
 
     /**
-     * The array of fields that are required by each connectors.
+     * The array of fields that are required by each connector.
      */
     public static final Field.Set CONNECTOR_FIELDS = Field.setOf(ENGINE_NAME, CONNECTOR_CLASS);
+    public static final Field OFFSET_FLUSH_INTERVAL_MS = TaskOffsetManager.OFFSET_FLUSH_INTERVAL_MS;
+    public static final Field OFFSET_COMMIT_POLICY = TaskOffsetManager.OFFSET_COMMIT_POLICY;
 
     /**
      * The array of all exposed fields.
      */
-    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(
-            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
+    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with();
 
     public static final class BuilderImpl implements Builder {
         private Configuration config;
@@ -711,175 +710,186 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     connector.start(connectorConfig);
                     connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
                     List<Map<String, String>> taskConfigs = connector.taskConfigs(maxTasks);
+
                     Class<? extends Task> taskClass = connector.taskClass();
                     if (taskConfigs.isEmpty()) {
                         String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
                         fail(msg);
                         return;
                     }
-                    task = null;
-                    try {
-                        task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-                    }
-                    catch (IllegalAccessException | InstantiationException t) {
-                        fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
-                        return;
-                    }
 
-                    TaskOffsetManager taskOffsetManager = new DefaultTaskOffsetManager(
-                            this.clock, task, embeddedEngineState
-                    );
-                    taskOffsetManager.configure(config);
+                    IntStream.range(0, taskConfigs.size()).forEach(taskId -> {
+                        Map<String, String> taskConfig = taskConfigs.get(taskId);
 
-                    try {
-                        SourceTaskContext taskContext = new SourceTaskContext() {
-                            @Override
-                            public OffsetStorageReader offsetStorageReader() {
-                                return taskOffsetManager.offsetStorageReader();
-                            }
+                        TaskWorker taskWorker = new TaskWorker(
+                                taskId, taskClass, embeddedEngineState, handler, transformations, clock, connectorCallback.orElse(null), completionResult, taskConfig);
+                        taskWorker.configure(config);
+                        taskWorker.run();
+                    });
 
-                            // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
-                            // and otherwise would break builds based on Kafka 1.x
-                            public Map<String, String> configs() {
-                                // TODO Auto-generated method stub
-                                return null;
-                            }
-                        };
-                        task.initialize(taskContext);
-                        task.start(taskConfigs.get(0));
-                        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
-                    }
-                    catch (Throwable t) {
-                        // Clean-up allocated resources
-                        try {
-                            LOGGER.debug("Stopping the task");
-                            task.stop();
-                        }
-                        catch (Throwable tstop) {
-                            LOGGER.info("Error while trying to stop the task");
-                        }
-                        // Mask the passwords ...
-                        Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
-                        String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
-                                + config;
-                        fail(msg, t);
-                        return;
-                    }
+                    // task = null;
+                    // try {
+                    // task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
+                    // }
+                    // catch (IllegalAccessException | InstantiationException t) {
+                    // fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
+                    // return;
+                    // }
+                    //
+                    // TaskOffsetManager taskOffsetManager = new DefaultTaskOffsetManager(
+                    // this.clock, task, embeddedEngineState
+                    // );
+                    // taskOffsetManager.configure(config);
 
-                    Throwable handlerError = null, retryError = null;
+                    // try {
+                    // SourceTaskContext taskContext = new SourceTaskContext() {
+                    // @Override
+                    // public OffsetStorageReader offsetStorageReader() {
+                    // return taskOffsetManager.offsetStorageReader();
+                    // }
+                    //
+                    // // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
+                    // // and otherwise would break builds based on Kafka 1.x
+                    // public Map<String, String> configs() {
+                    // // TODO Auto-generated method stub
+                    // return null;
+                    // }
+                    // };
+                    // task.initialize(taskContext);
+                    // task.start(taskConfigs.get(0));
+                    // connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
+                    // }
+                    // catch (Throwable t) {
+                    // // Clean-up allocated resources
+                    // try {
+                    // LOGGER.debug("Stopping the task");
+                    // task.stop();
+                    // }
+                    // catch (Throwable tstop) {
+                    // LOGGER.info("Error while trying to stop the task");
+                    // }
+                    // // Mask the passwords ...
+                    // Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
+                    // String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
+                    // + config;
+                    // fail(msg, t);
+                    // return;
+                    // }
 
-                    try {
-                        RecordCommitter committer = buildRecordCommitter(taskOffsetManager);
-                        while (embeddedEngineState.isRunning()) {
-                            List<SourceRecord> changeRecords = null;
-                            try {
-                                LOGGER.debug("Embedded engine is polling task for records on thread {}", Thread.currentThread());
-                                changeRecords = task.poll(); // blocks until there are values ...
-                                LOGGER.debug("Embedded engine returned from polling task for records");
-                            }
-                            catch (InterruptedException e) {
-                                // Interrupted while polling ...
-                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", Thread.currentThread());
-                                if (this.embeddedEngineState.isRunning()) {
-                                    // the engine is still marked as running -> we were not interrupted
-                                    // due the stop() call -> probably someone else called the interrupt on us ->
-                                    // -> we should raise the interrupt flag
-                                    Thread.currentThread().interrupt();
-                                }
-                                break;
-                            }
-                            catch (RetriableException e) {
-                                int maxRetries = getErrorsMaxRetries();
-                                LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-                                if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
-                                    retryError = e;
-                                    throw e;
-                                }
-                                else if (maxRetries != 0) {
-                                    DelayStrategy delayStrategy = delayStrategy(config);
-                                    int totalRetries = 0;
-                                    boolean startedSuccessfully = false;
-                                    while (!startedSuccessfully) {
-                                        try {
-                                            totalRetries++;
-                                            LOGGER.info("Starting connector, attempt {}", totalRetries);
-                                            task.stop();
-                                            task.start(taskConfigs.get(0));
-                                            startedSuccessfully = true;
-                                        }
-                                        catch (Exception ex) {
-                                            if (totalRetries == maxRetries) {
-                                                LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
-                                                retryError = ex;
-                                                throw ex;
-                                            }
-                                            else {
-                                                LOGGER.error("Can't start the connector, will retry later...", ex);
-                                            }
-                                        }
-                                        delayStrategy.sleepWhen(!startedSuccessfully);
-                                    }
-                                }
-                            }
-                            try {
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} records from the task", changeRecords.size());
-                                    changeRecords = changeRecords.stream()
-                                            .map(transformations::transform)
-                                            .filter(x -> x != null)
-                                            .collect(Collectors.toList());
-                                }
-
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
-
-                                    try {
-                                        handler.handleBatch(changeRecords, committer);
-                                    }
-                                    catch (StopConnectorException e) {
-                                        break;
-                                    }
-                                }
-                                else {
-                                    LOGGER.debug("Received no records from the task");
-                                }
-                            }
-                            catch (Throwable t) {
-                                // There was some sort of unexpected exception, so we should stop work
-                                handlerError = t;
-                                break;
-                            }
-                        }
-                    }
-                    finally {
-                        if (handlerError != null) {
-                            // There was an error in the handler so make sure it's always captured...
-                            fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
-                                    handlerError);
-                        }
-                        else if (retryError != null) {
-                            fail("Stopping connector after retry error: " + retryError.getMessage(), retryError);
-                        }
-                        else {
-                            // We stopped normally ...
-                            succeed("Connector '" + connectorClassName + "' completed normally.");
-                        }
-                        try {
-                            // First stop the task ...
-                            LOGGER.info("Stopping the task and engine");
-                            task.stop();
-                            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
-                            // Always commit offsets that were captured from the source records we actually processed ...
-                            taskOffsetManager.commitOffsets();
-                        }
-                        catch (InterruptedException e) {
-                            LOGGER.debug("Interrupted while committing offsets");
-                            Thread.currentThread().interrupt();
-                        }
-                        catch (Throwable t) {
-                            fail("Error while trying to stop the task and commit the offsets", t);
-                        }
-                    }
+                    // Throwable handlerError = null, retryError = null;
+                    //
+                    // try {
+                    // RecordCommitter committer = buildRecordCommitter(taskOffsetManager);
+                    // while (embeddedEngineState.isRunning()) {
+                    // List<SourceRecord> changeRecords = null;
+                    // try {
+                    // LOGGER.debug("Embedded engine is polling task for records on thread {}", Thread.currentThread());
+                    // changeRecords = task.poll(); // blocks until there are values ...
+                    // LOGGER.debug("Embedded engine returned from polling task for records");
+                    // }
+                    // catch (InterruptedException e) {
+                    // // Interrupted while polling ...
+                    // LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", Thread.currentThread());
+                    // if (this.embeddedEngineState.isRunning()) {
+                    // // the engine is still marked as running -> we were not interrupted
+                    // // due the stop() call -> probably someone else called the interrupt on us ->
+                    // // -> we should raise the interrupt flag
+                    // Thread.currentThread().interrupt();
+                    // }
+                    // break;
+                    // }
+                    // catch (RetriableException e) {
+                    // int maxRetries = getErrorsMaxRetries();
+                    // LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
+                    // if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
+                    // retryError = e;
+                    // throw e;
+                    // }
+                    // else if (maxRetries != 0) {
+                    // DelayStrategy delayStrategy = delayStrategy(config);
+                    // int totalRetries = 0;
+                    // boolean startedSuccessfully = false;
+                    // while (!startedSuccessfully) {
+                    // try {
+                    // totalRetries++;
+                    // LOGGER.info("Starting connector, attempt {}", totalRetries);
+                    // task.stop();
+                    // task.start(taskConfigs.get(0));
+                    // startedSuccessfully = true;
+                    // }
+                    // catch (Exception ex) {
+                    // if (totalRetries == maxRetries) {
+                    // LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
+                    // retryError = ex;
+                    // throw ex;
+                    // }
+                    // else {
+                    // LOGGER.error("Can't start the connector, will retry later...", ex);
+                    // }
+                    // }
+                    // delayStrategy.sleepWhen(!startedSuccessfully);
+                    // }
+                    // }
+                    // }
+                    // try {
+                    // if (changeRecords != null && !changeRecords.isEmpty()) {
+                    // LOGGER.debug("Received {} records from the task", changeRecords.size());
+                    // changeRecords = changeRecords.stream()
+                    // .map(transformations::transform)
+                    // .filter(x -> x != null)
+                    // .collect(Collectors.toList());
+                    // }
+                    //
+                    // if (changeRecords != null && !changeRecords.isEmpty()) {
+                    // LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
+                    //
+                    // try {
+                    // handler.handleBatch(changeRecords, committer);
+                    // }
+                    // catch (StopConnectorException e) {
+                    // break;
+                    // }
+                    // }
+                    // else {
+                    // LOGGER.debug("Received no records from the task");
+                    // }
+                    // }
+                    // catch (Throwable t) {
+                    // // There was some sort of unexpected exception, so we should stop work
+                    // handlerError = t;
+                    // break;
+                    // }
+                    // }
+                    // }
+                    // finally {
+                    // if (handlerError != null) {
+                    // // There was an error in the handler so make sure it's always captured...
+                    // fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
+                    // handlerError);
+                    // }
+                    // else if (retryError != null) {
+                    // fail("Stopping connector after retry error: " + retryError.getMessage(), retryError);
+                    // }
+                    // else {
+                    // // We stopped normally ...
+                    // succeed("Connector '" + connectorClassName + "' completed normally.");
+                    // }
+                    // try {
+                    // // First stop the task ...
+                    // LOGGER.info("Stopping the task and engine");
+                    // task.stop();
+                    // connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
+                    // // Always commit offsets that were captured from the source records we actually processed ...
+                    // taskOffsetManager.commitOffsets();
+                    // }
+                    // catch (InterruptedException e) {
+                    // LOGGER.debug("Interrupted while committing offsets");
+                    // Thread.currentThread().interrupt();
+                    // }
+                    // catch (Throwable t) {
+                    // fail("Error while trying to stop the task and commit the offsets", t);
+                    // }
+                    // }
                 }
                 catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);
@@ -912,17 +922,17 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         }
     }
 
-    private int getErrorsMaxRetries() {
-        int maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
-        return maxRetries;
-    }
+    // private int getErrorsMaxRetries() {
+    // int maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
+    // return maxRetries;
+    // }
 
     /**
      * Creates a new RecordCommitter that is responsible for informing the engine
      * about the updates to the given batch
      * @return the new recordCommitter to be used for a given batch
      */
-    protected RecordCommitter buildRecordCommitter(TaskOffsetManager taskOffsetManager) {
+    static RecordCommitter buildRecordCommitter(TaskOffsetManager taskOffsetManager) {
         return new RecordCommitter() {
 
             @Override
@@ -955,7 +965,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * Implementation of {@link DebeziumEngine.Offsets} which can be used to construct a {@link SourceRecord}
      * with its offsets.
      */
-    protected class SourceRecordOffsets implements DebeziumEngine.Offsets {
+    static class SourceRecordOffsets implements DebeziumEngine.Offsets {
         private HashMap<String, Object> offsets = new HashMap<>();
 
         /**
@@ -1036,10 +1046,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         consumer.accept(task);
     }
 
-    private DelayStrategy delayStrategy(Configuration config) {
-        return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
-                Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
-    }
+    // private DelayStrategy delayStrategy(Configuration config) {
+    // return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
+    // Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
+    // }
 
     protected static class EmbeddedConfig extends WorkerConfig {
         private static final ConfigDef CONFIG;

@@ -5,13 +5,13 @@
  */
 package io.debezium.embedded;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.engine.spi.OffsetCommitPolicy;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 
 /**
  * Interface for committing offsets.
