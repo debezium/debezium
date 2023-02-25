@@ -112,7 +112,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         r = recordConverter.convert(r);
 
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.apply(r);
         }
 
@@ -312,13 +312,13 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     }
 
     public void close() {
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.close();
         }
     }
 
     public void configure(Map<String, ?> configMap) {
-        if (ActivateTracingSpan.isOpenTracingAvailable()) {
+        if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.configure(configMap);
             if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
                 tracingSmt.setRequireContextField(true);

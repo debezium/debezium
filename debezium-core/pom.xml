@@ -52,6 +52,7 @@
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Testing -->
