@@ -6,15 +6,11 @@
 package io.debezium.transforms.tracing;
 
 import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,21 +18,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.transforms.SmtManager;
 import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.context.propagation.TextMapSetter;
 
 /**
  * This SMT enables integration with a tracing system.
@@ -53,23 +38,12 @@ import io.opentelemetry.context.propagation.TextMapSetter;
  */
 public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    private static final String DB_FIELDS_PREFIX = "db.";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpan.class);
 
     private static final String DEFAULT_TRACING_SPAN_CONTEXT_FIELD = "tracingspancontext";
     private static final String DEFAULT_TRACING_OPERATION_NAME = "debezium-read";
 
-    private static final String TRACING_COMPONENT = ActivateTracingSpan.class.getName();
-    private static final String TX_LOG_WRITE_OPERATION_NAME = "db-log-write";
-
-    private static final boolean OPEN_TRACING_AVAILABLE = resolveOpenTracingApiAvailable();
-
-    private static final OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
-    private static final Tracer tracer = openTelemetry.getTracer(TRACING_COMPONENT);
-    private static final TextMapPropagator TEXT_MAP_PROPAGATOR = openTelemetry.getPropagators().getTextMapPropagator();
-    private static final TextMapSetter<Headers> SETTER = KafkaConnectHeadersSetter.INSTANCE;
-    private static final TextMapGetter<Properties> GETTER = PropertiesGetter.INSTANCE;
+    private static final boolean OPEN_TELEMETRY_AVAILABLE = resolveOpenTelemetryApiAvailable();
 
     public static final Field TRACING_SPAN_CONTEXT_FIELD = Field.create("tracing.span.context.field")
             .withDisplayName("Serialized tracing span context field")
@@ -145,64 +119,10 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         }
 
         try {
-            return traceRecord(connectRecord, envelope, source, propagatedSpanContext);
+            return ActivateTracingSpanDelegate.Builder.build().traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
         }
         catch (NoClassDefFoundError e) {
             throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
-        }
-    }
-
-    private R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext) {
-        if (propagatedSpanContext != null) {
-
-            Properties props = PropertiesGetter.extract(propagatedSpanContext);
-
-            Context parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
-                    .extract(Context.current(), props, GETTER);
-
-            SpanBuilder txLogSpanBuilder = tracer.spanBuilder(TX_LOG_WRITE_OPERATION_NAME)
-                    .setSpanKind(SpanKind.INTERNAL)
-                    .setParent(parentSpanContext);
-
-            if (source != null) {
-                Long eventTimestamp = source.getInt64(AbstractSourceInfo.TIMESTAMP_KEY);
-                if (Objects.nonNull(eventTimestamp)) {
-                    txLogSpanBuilder.setStartTimestamp(eventTimestamp, TimeUnit.MILLISECONDS);
-                }
-            }
-
-            Span txLogSpan = txLogSpanBuilder.startSpan();
-
-            try (Scope ignored = txLogSpan.makeCurrent()) {
-                if (source != null) {
-                    for (org.apache.kafka.connect.data.Field field : source.schema().fields()) {
-                        addFieldToSpan(txLogSpan, source, field.name(), DB_FIELDS_PREFIX);
-                    }
-                }
-                debeziumSpan(envelope);
-                TEXT_MAP_PROPAGATOR.inject(Context.current(), connectRecord.headers(), SETTER);
-
-            }
-            finally {
-                txLogSpan.end();
-            }
-        }
-
-        return connectRecord;
-    }
-
-    private void debeziumSpan(Struct envelope) {
-        final Long processingTimestamp = envelope.getInt64(Envelope.FieldName.TIMESTAMP);
-        Span debeziumSpan = tracer.spanBuilder(operationName)
-                .setStartTimestamp(processingTimestamp, TimeUnit.MILLISECONDS)
-                .startSpan();
-
-        try (Scope ignored = debeziumSpan.makeCurrent()) {
-            addFieldToSpan(debeziumSpan, envelope, Envelope.FieldName.OPERATION, "");
-            addFieldToSpan(debeziumSpan, envelope, Envelope.FieldName.TIMESTAMP, "");
-        }
-        finally {
-            debeziumSpan.end();
         }
     }
 
@@ -222,30 +142,11 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
         return config;
     }
 
-    private void addFieldToSpan(Span span, Struct struct, String field, String prefix) {
-        final Object fieldValue = struct.get(field);
-        if (fieldValue != null) {
-            String targetFieldName = prefix + field;
-            if (DB_FIELDS_PREFIX.equals(prefix)) {
-                if ("db".equals(field)) {
-                    targetFieldName = prefix + "instance";
-                }
-                else if ("connector".equals(field)) {
-                    targetFieldName = prefix + "type";
-                }
-                else if ("name".equals(field)) {
-                    targetFieldName = prefix + "cdc-name";
-                }
-            }
-            span.setAttribute(targetFieldName, fieldValue.toString());
-        }
+    public static boolean isOpenTelemetryAvailable() {
+        return OPEN_TELEMETRY_AVAILABLE;
     }
 
-    public static boolean isOpenTracingAvailable() {
-        return OPEN_TRACING_AVAILABLE;
-    }
-
-    private static boolean resolveOpenTracingApiAvailable() {
+    private static boolean resolveOpenTelemetryApiAvailable() {
         try {
             GlobalOpenTelemetry.get();
             return true;

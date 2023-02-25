@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms.tracing;
+package io.debezium.tracing;
 
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
