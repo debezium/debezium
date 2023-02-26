@@ -29,11 +29,8 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
-import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
-import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
-import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
-import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.source.snapshot.incremental.OpenIncrementalSnapshotWindow;
+import io.debezium.pipeline.source.snapshot.SnapshotStatus;
+import io.debezium.pipeline.source.snapshot.incremental.*;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -111,6 +108,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
+            dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.PAUSED);
             progressListener.snapshotPaused(partition);
         }
     }
@@ -120,6 +118,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
+            dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.RESUMED);
             progressListener.snapshotResumed(partition);
             window.clear();
             context.revertChunk();
@@ -232,6 +231,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
         try {
+            dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.STARTED);
             progressListener.snapshotStarted(partition);
             readChunk(partition);
         }
@@ -309,9 +309,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private void nextDataCollection(MongoDbPartition partition) {
+    private void nextDataCollection(MongoDbPartition partition) throws InterruptedException {
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
+            dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.COMPLETED);
             progressListener.snapshotCompleted(partition);
         }
     }
@@ -348,6 +349,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 .collect(Collectors.toList());
         final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds, null);
         if (shouldReadChunk) {
+            dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.STARTED);
             progressListener.snapshotStarted(partition);
             progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()
                     .map(x -> x.getId()).collect(Collectors.toList()));
@@ -357,7 +359,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void stopSnapshot(MongoDbPartition partition, List<String> dataCollectionIds, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
@@ -371,6 +373,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     window.clear();
                     closeWindow(partition, context.currentChunkId(), offsetContext);
 
+                    dispatcher.dispatchSnapshotStatusEvent(partition, context, SnapshotStatus.ABORTED);
                     progressListener.snapshotAborted(partition);
                 }
                 catch (InterruptedException e) {

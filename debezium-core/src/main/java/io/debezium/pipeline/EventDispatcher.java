@@ -27,7 +27,10 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.source.snapshot.SnapshotStatus;
+import io.debezium.pipeline.source.snapshot.SnapshotStatusNotification;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
@@ -69,6 +72,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
+    private final SnapshotStatusNotification snapshotStatusNotification;
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<P, T> inconsistentSchemaHandler;
@@ -92,21 +96,23 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster);
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null),
+                connectorConfig.createSnapshotStatusNotification(topicNamingStrategy, schemaNameAdjuster), schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           Heartbeat heartbeat, SnapshotStatusNotification snapshotStatusNotification, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster);
+                heartbeat, snapshotStatusNotification, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SnapshotStatusNotification snapshotStatusNotification,
+                           SchemaNameAdjuster schemaNameAdjuster) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -125,6 +131,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.signal = new Signal<>(connectorConfig, this);
         this.heartbeat = heartbeat;
+        this.snapshotStatusNotification = snapshotStatusNotification;
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
@@ -134,7 +141,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, Heartbeat heartbeat,
-                           SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor) {
+                           SnapshotStatusNotification snapshotStatusNotification, SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -151,6 +158,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = transactionMonitor;
         this.signal = new Signal<>(connectorConfig, this);
         this.heartbeat = heartbeat;
+        this.snapshotStatusNotification = snapshotStatusNotification;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
@@ -343,6 +351,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
+    public void dispatchSnapshotStatusEvent(P partition, IncrementalSnapshotContext context, SnapshotStatus status) throws InterruptedException {
+        snapshotStatusNotification.updateStatus(
+                partition.getSourcePartition(),
+                context,
+                status,
+                this::enqueueSnapshotStatus);
+    }
+
     public void alwaysDispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
         heartbeat.forcedBeat(
                 partition.getSourcePartition(),
@@ -359,6 +375,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     public boolean heartbeatsEnabled() {
         return heartbeat.isEnabled();
+    }
+
+    private void enqueueSnapshotStatus(SourceRecord record) throws InterruptedException {
+        queue.enqueue(new DataChangeEvent(record));
     }
 
     private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {

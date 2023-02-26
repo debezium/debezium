@@ -38,6 +38,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.pipeline.source.snapshot.SnapshotNotificationImpl;
+import io.debezium.pipeline.source.snapshot.SnapshotStatusNotification;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
@@ -1043,6 +1045,10 @@ public abstract class CommonConnectorConfig {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+    }
+
+    public SnapshotStatusNotification createSnapshotStatusNotification(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster) {
+        return new SnapshotNotificationImpl();
     }
 
     public static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
