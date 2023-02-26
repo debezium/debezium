@@ -917,7 +917,7 @@ public abstract class CommonConnectorConfig {
         return config.validateAndRecord(fields, problems);
     }
 
-    private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateMaxQueueSize(Configuration config, Field field, ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
         int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         int count = 0;
@@ -1037,7 +1037,7 @@ public abstract class CommonConnectorConfig {
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
     }
 
-    public static int validateTopicName(Configuration config, Field field, Field.ValidationOutput problems) {
+    public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {
         String name = config.getString(field);
 
         if (name != null) {
