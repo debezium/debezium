@@ -863,7 +863,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     .with(SimpleSourceConnector.TASK_VALUE_OFFSET, offset)
                     .build();
 
-            CountDownLatch latch = new CountDownLatch(3 * 5); //3 tasks * 5 records per task
+            CountDownLatch latch = new CountDownLatch(3 * 5); // 3 tasks * 5 records per task
 
             var actual = new HashSet<Integer>();
             var expected = IntStream.range(0, 3).map(x -> x * offset + 1).flatMap(x -> IntStream.range(x, x + 5)).boxed().toArray(Integer[]::new);
@@ -894,7 +894,8 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
             System.out.println(latch.getCount());
             assertThat(finished).as("Latch reached 0").isTrue();
             assertThat(actual).containsOnly(expected);
-        } finally {
+        }
+        finally {
             Testing.Files.delete(testingStoragePath.getParent());
         }
     }

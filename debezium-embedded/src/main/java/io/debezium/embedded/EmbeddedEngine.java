@@ -731,6 +731,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 Map<String, String> taskConfig = taskConfigs.get(taskId);
 
                                 if (maxTasks > 0) {
+                                    taskConfig = new HashMap<>(taskConfig);
                                     if (taskConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
                                         taskConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(),
                                                 String.format(connectorConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), taskId));

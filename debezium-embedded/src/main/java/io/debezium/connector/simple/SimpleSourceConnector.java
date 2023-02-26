@@ -146,7 +146,7 @@ public class SimpleSourceConnector extends SourceConnector {
                 int maxTasks = config.getInteger(INTERNAL_TASKS_MAX, 1);
                 int valueOffset = config.getInteger(TASK_VALUE_OFFSET, DEFAULT_TASK_VALUE_OFFSET);
 
-                        // Create the partition and schemas ...
+                // Create the partition and schemas ...
                 Map<String, ?> partition = maxTasks > 1
                         ? Collect.hashMapOf("source", "simple", "task", taskId)
                         : Collect.hashMapOf("source", "simple");
