@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 
@@ -20,6 +21,10 @@ import io.debezium.util.HexConverter;
  * Adaptation of <a href="https://github.com/mongodb/mongo-kafka/blob/master/src/main/java/com/mongodb/kafka/connect/util/ResumeTokenUtils.java">ResumeTokenUtils</a>
  */
 public final class ResumeTokens {
+
+    public static BsonDocument fromData(String data) {
+        return new BsonDocument("_data", new BsonString(data));
+    }
 
     public static BsonTimestamp getTimestamp(BsonDocument resumeToken) {
         BsonValue data = getData(resumeToken);

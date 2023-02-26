@@ -509,6 +509,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The maximum processing time in milliseconds to wait for the oplog cursor to process a single poll request");
 
+    public static final Field CURSOR_READ_PREFERENCE_MONITORING_ENABLED = Field.create("cursor.read.preference.monitoring.enabled")
+            .withDisplayName("If cursor read preference monitoring is enabled")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Should read monitoring to restart cursor when the configured read preference invalidated due to an election should be enabled.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -568,6 +575,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private CaptureMode captureMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    private final boolean cursorReadPreferenceMonitoringEnabled;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -580,6 +588,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+        this.cursorReadPreferenceMonitoringEnabled = config.getBoolean(MongoDbConnectorConfig.CURSOR_READ_PREFERENCE_MONITORING_ENABLED, false);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -691,6 +700,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
+    }
+
+    public boolean isCursorReadPreferenceMonitoringEnabled() {
+        return cursorReadPreferenceMonitoringEnabled;
     }
 
     @Override
