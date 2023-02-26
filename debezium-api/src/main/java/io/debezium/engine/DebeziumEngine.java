@@ -91,11 +91,27 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         }
 
         /**
+         * Called after a connector task has been successfully started by the engine; i.e. {@link SourceTask#start(Map)} has
+         * completed successfully
+         */
+        default void taskStarted(int taskId) {
+            taskStarted();
+        }
+
+        /**
          * Called after a connector task has been successfully stopped by the engine; i.e. {@link SourceTask#stop()} has
          * completed successfully
          */
         default void taskStopped() {
             // nothing by default
+        }
+
+        /**
+         * Called after a connector task has been successfully stopped by the engine; i.e. {@link SourceTask#stop()} has
+         * completed successfully
+         */
+        default void taskStopped(int taskId) {
+            taskStopped();
         }
     }
 

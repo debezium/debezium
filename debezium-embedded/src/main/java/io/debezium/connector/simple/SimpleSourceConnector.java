@@ -50,6 +50,9 @@ import io.debezium.util.Collect;
  * }
  * </pre>
  *
+ * In multitask configuration <pre>key.id</pre> has a positive offset equal to <pre>task.id * @{@link #TASK_VALUE_OFFSET}</pre>
+ *  * E.g. with 3 task (0, 1, 2) the <pre>key.id</pre> of 1st record emitted by task with <pre>task.id=1</pre> is by default <pre>10_001</pre>
+ *
  * @author Randall Hauch
  */
 public class SimpleSourceConnector extends SourceConnector {
@@ -62,9 +65,13 @@ public class SimpleSourceConnector extends SourceConnector {
     public static final String DEFAULT_TOPIC_NAME = "simple.topic";
     public static final String INCLUDE_TIMESTAMP = "include.timestamp";
     public static final String RETRIABLE_ERROR_ON = "error.retriable.on";
+    public static final String INTERNAL_TASK_ID = "task.id";
+    public static final String TASK_VALUE_OFFSET = "task.value.offset";
+    public static final String INTERNAL_TASKS_MAX = "tasks.max";
     public static final int DEFAULT_RECORD_COUNT_PER_BATCH = 1;
     public static final int DEFAULT_BATCH_COUNT = 10;
     public static final boolean DEFAULT_INCLUDE_TIMESTAMP = false;
+    public static final int DEFAULT_TASK_VALUE_OFFSET = 10_000;
 
     private Map<String, String> config;
 
@@ -88,8 +95,17 @@ public class SimpleSourceConnector extends SourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
+        Configuration config = Configuration.from(this.config);
         List<Map<String, String>> configs = new ArrayList<>();
-        configs.add(config);
+        for (int i = 0; i < maxTasks; i++) {
+            Map<String, String> taskConfig = config.edit()
+                    .with(INTERNAL_TASK_ID, i)
+                    .with(INTERNAL_TASKS_MAX, maxTasks)
+                    .build()
+                    .asMap();
+
+            configs.add(taskConfig);
+        }
         return configs;
     }
 
@@ -126,9 +142,14 @@ public class SimpleSourceConnector extends SourceConnector {
                 String topic = config.getString(TOPIC_NAME, DEFAULT_TOPIC_NAME);
                 boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP, DEFAULT_INCLUDE_TIMESTAMP);
                 errorOnRecord = config.getInteger(RETRIABLE_ERROR_ON, -1);
+                int taskId = config.getInteger(INTERNAL_TASK_ID, 0);
+                int maxTasks = config.getInteger(INTERNAL_TASKS_MAX, 1);
+                int valueOffset = config.getInteger(TASK_VALUE_OFFSET, DEFAULT_TASK_VALUE_OFFSET);
 
-                // Create the partition and schemas ...
-                Map<String, ?> partition = Collect.hashMapOf("source", "simple");
+                        // Create the partition and schemas ...
+                Map<String, ?> partition = maxTasks > 1
+                        ? Collect.hashMapOf("source", "simple", "task", taskId)
+                        : Collect.hashMapOf("source", "simple");
                 Schema keySchema = SchemaBuilder.struct()
                         .name("simple.key")
                         .field("id", Schema.INT32_SCHEMA)
@@ -147,7 +168,7 @@ public class SimpleSourceConnector extends SourceConnector {
                 // Generate the records that we need ...
                 records = new LinkedList<>();
                 long initialTimestamp = System.currentTimeMillis();
-                int id = 0;
+                int id = valueOffset * taskId;
                 for (int batch = 0; batch != batchCount; ++batch) {
                     for (int recordNum = 0; recordNum != recordsPerBatch; ++recordNum) {
                         ++id;

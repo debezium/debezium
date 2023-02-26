@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.AbstractHerder;
+import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.rest.entities.ConfigInfos;
@@ -45,6 +47,7 @@ import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
@@ -92,12 +95,12 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("The Java class for the connector")
             .required();
 
+    public static final Field OFFSET_STORAGE = OffsetManager.OFFSET_STORAGE;
     /**
      * An optional field to specify total number of embedded engines that will
-     * be instantiated. An embedded engine can identify the tasks based on its
-     * taskId and maxTasks
+     * be instantiated.
      */
-    public static final Field MAX_TASKS = Field.create("maxTasks")
+    public static final Field MAX_TASKS = Field.create(ConnectorConfig.TASKS_MAX_CONFIG)
             .withDescription("Total number of tasks instantiated.")
             .withDefault(1);
 
@@ -145,6 +148,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     + "Required with other properties when 'offset.storage' is set to the "
                     + KafkaOffsetBackingStore.class.getName() + " class.");
 
+    public static final Field OFFSET_FLUSH_INTERVAL_MS = TaskOffsetManager.OFFSET_FLUSH_INTERVAL_MS;
+    public static final Field OFFSET_COMMIT_TIMEOUT_MS = TaskOffsetManager.OFFSET_COMMIT_TIMEOUT_MS;
+    public static final Field OFFSET_COMMIT_POLICY = TaskOffsetManager.OFFSET_COMMIT_POLICY;
     /**
      * A list of Predicates that can be assigned to transformations.
      */
@@ -209,13 +215,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * The array of fields that are required by each connector.
      */
     public static final Field.Set CONNECTOR_FIELDS = Field.setOf(ENGINE_NAME, CONNECTOR_CLASS);
-    public static final Field OFFSET_FLUSH_INTERVAL_MS = TaskOffsetManager.OFFSET_FLUSH_INTERVAL_MS;
-    public static final Field OFFSET_COMMIT_POLICY = TaskOffsetManager.OFFSET_COMMIT_POLICY;
 
     /**
      * The array of all exposed fields.
      */
-    protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with();
+    static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
+            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
+            TaskWorker.ERRORS_MAX_RETRIES, TaskWorker.ERRORS_RETRY_DELAY_INITIAL_MS, TaskWorker.ERRORS_RETRY_DELAY_MAX_MS);
 
     public static final class BuilderImpl implements Builder {
         private Configuration config;
@@ -557,13 +563,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private final WorkerConfig workerConfig;
     private final CompletionResult completionResult;
     private OffsetCommitPolicy offsetCommitPolicy;
-
-    private SourceTask task;
     private final Transformations transformations;
 
     private final EmbeddedEngineState embeddedEngineState = new EmbeddedEngineState();
 
-    private final Map<Integer, TaskExecutionContext> taskExecutionContext = new ConcurrentHashMap<>();
+    private final Map<Integer, TaskWorker> taskWorkers = new ConcurrentHashMap<>();
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, DebeziumEngine.ChangeConsumer<SourceRecord> handler,
                            DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback,
@@ -645,6 +649,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     public void run() {
         if (this.embeddedEngineState.isStopped()) {
             this.embeddedEngineState.start();
+            ExecutorService executorService = Executors.newCachedThreadPool();
 
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
@@ -718,178 +723,50 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         return;
                     }
 
+                    CountDownLatch waitForCompletion = new CountDownLatch(taskConfigs.size());
                     IntStream.range(0, taskConfigs.size()).forEach(taskId -> {
-                        Map<String, String> taskConfig = taskConfigs.get(taskId);
+                        executorService.submit(() -> {
+                            try {
+                                MDC.put("taskId", String.valueOf(taskId));
+                                Map<String, String> taskConfig = taskConfigs.get(taskId);
 
-                        TaskWorker taskWorker = new TaskWorker(
-                                taskId, taskClass, embeddedEngineState, handler, transformations, clock, connectorCallback.orElse(null), completionResult, taskConfig);
-                        taskWorker.configure(config);
-                        taskWorker.run();
+                                if (maxTasks > 0) {
+                                    if (taskConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
+                                        taskConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(),
+                                                String.format(connectorConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), taskId));
+                                    }
+                                    else if (taskConfig.containsKey(OFFSET_STORAGE_KAFKA_TOPIC.name())) {
+                                        taskConfig.replace(OFFSET_STORAGE_KAFKA_TOPIC.name(),
+                                                String.format(connectorConfig.get(OFFSET_STORAGE_KAFKA_TOPIC.name()), taskId));
+                                    }
+                                }
+
+                                TaskWorker taskWorker = new TaskWorker(
+                                        taskId, taskClass, embeddedEngineState, handler, transformations, clock, connectorCallback.orElse(null), completionResult);
+                                taskWorkers.put(taskId, taskWorker);
+
+                                taskWorker.configure(Configuration.from(taskConfig));
+                                taskWorker.run();
+                            }
+                            catch (Throwable t) {
+                                fail("Error while trying to run task class '" + taskClass.getName() + "'", t);
+                            }
+                            finally {
+                                MDC.clear();
+                                waitForCompletion.countDown();
+                            }
+                        });
                     });
 
-                    // task = null;
-                    // try {
-                    // task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-                    // }
-                    // catch (IllegalAccessException | InstantiationException t) {
-                    // fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
-                    // return;
-                    // }
-                    //
-                    // TaskOffsetManager taskOffsetManager = new DefaultTaskOffsetManager(
-                    // this.clock, task, embeddedEngineState
-                    // );
-                    // taskOffsetManager.configure(config);
-
-                    // try {
-                    // SourceTaskContext taskContext = new SourceTaskContext() {
-                    // @Override
-                    // public OffsetStorageReader offsetStorageReader() {
-                    // return taskOffsetManager.offsetStorageReader();
-                    // }
-                    //
-                    // // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
-                    // // and otherwise would break builds based on Kafka 1.x
-                    // public Map<String, String> configs() {
-                    // // TODO Auto-generated method stub
-                    // return null;
-                    // }
-                    // };
-                    // task.initialize(taskContext);
-                    // task.start(taskConfigs.get(0));
-                    // connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
-                    // }
-                    // catch (Throwable t) {
-                    // // Clean-up allocated resources
-                    // try {
-                    // LOGGER.debug("Stopping the task");
-                    // task.stop();
-                    // }
-                    // catch (Throwable tstop) {
-                    // LOGGER.info("Error while trying to stop the task");
-                    // }
-                    // // Mask the passwords ...
-                    // Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
-                    // String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
-                    // + config;
-                    // fail(msg, t);
-                    // return;
-                    // }
-
-                    // Throwable handlerError = null, retryError = null;
-                    //
-                    // try {
-                    // RecordCommitter committer = buildRecordCommitter(taskOffsetManager);
-                    // while (embeddedEngineState.isRunning()) {
-                    // List<SourceRecord> changeRecords = null;
-                    // try {
-                    // LOGGER.debug("Embedded engine is polling task for records on thread {}", Thread.currentThread());
-                    // changeRecords = task.poll(); // blocks until there are values ...
-                    // LOGGER.debug("Embedded engine returned from polling task for records");
-                    // }
-                    // catch (InterruptedException e) {
-                    // // Interrupted while polling ...
-                    // LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", Thread.currentThread());
-                    // if (this.embeddedEngineState.isRunning()) {
-                    // // the engine is still marked as running -> we were not interrupted
-                    // // due the stop() call -> probably someone else called the interrupt on us ->
-                    // // -> we should raise the interrupt flag
-                    // Thread.currentThread().interrupt();
-                    // }
-                    // break;
-                    // }
-                    // catch (RetriableException e) {
-                    // int maxRetries = getErrorsMaxRetries();
-                    // LOGGER.info("Retriable exception thrown, connector will be restarted; errors.max.retries={}", maxRetries, e);
-                    // if (maxRetries < DEFAULT_ERROR_MAX_RETRIES) {
-                    // retryError = e;
-                    // throw e;
-                    // }
-                    // else if (maxRetries != 0) {
-                    // DelayStrategy delayStrategy = delayStrategy(config);
-                    // int totalRetries = 0;
-                    // boolean startedSuccessfully = false;
-                    // while (!startedSuccessfully) {
-                    // try {
-                    // totalRetries++;
-                    // LOGGER.info("Starting connector, attempt {}", totalRetries);
-                    // task.stop();
-                    // task.start(taskConfigs.get(0));
-                    // startedSuccessfully = true;
-                    // }
-                    // catch (Exception ex) {
-                    // if (totalRetries == maxRetries) {
-                    // LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
-                    // retryError = ex;
-                    // throw ex;
-                    // }
-                    // else {
-                    // LOGGER.error("Can't start the connector, will retry later...", ex);
-                    // }
-                    // }
-                    // delayStrategy.sleepWhen(!startedSuccessfully);
-                    // }
-                    // }
-                    // }
-                    // try {
-                    // if (changeRecords != null && !changeRecords.isEmpty()) {
-                    // LOGGER.debug("Received {} records from the task", changeRecords.size());
-                    // changeRecords = changeRecords.stream()
-                    // .map(transformations::transform)
-                    // .filter(x -> x != null)
-                    // .collect(Collectors.toList());
-                    // }
-                    //
-                    // if (changeRecords != null && !changeRecords.isEmpty()) {
-                    // LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
-                    //
-                    // try {
-                    // handler.handleBatch(changeRecords, committer);
-                    // }
-                    // catch (StopConnectorException e) {
-                    // break;
-                    // }
-                    // }
-                    // else {
-                    // LOGGER.debug("Received no records from the task");
-                    // }
-                    // }
-                    // catch (Throwable t) {
-                    // // There was some sort of unexpected exception, so we should stop work
-                    // handlerError = t;
-                    // break;
-                    // }
-                    // }
-                    // }
-                    // finally {
-                    // if (handlerError != null) {
-                    // // There was an error in the handler so make sure it's always captured...
-                    // fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
-                    // handlerError);
-                    // }
-                    // else if (retryError != null) {
-                    // fail("Stopping connector after retry error: " + retryError.getMessage(), retryError);
-                    // }
-                    // else {
-                    // // We stopped normally ...
-                    // succeed("Connector '" + connectorClassName + "' completed normally.");
-                    // }
-                    // try {
-                    // // First stop the task ...
-                    // LOGGER.info("Stopping the task and engine");
-                    // task.stop();
-                    // connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
-                    // // Always commit offsets that were captured from the source records we actually processed ...
-                    // taskOffsetManager.commitOffsets();
-                    // }
-                    // catch (InterruptedException e) {
-                    // LOGGER.debug("Interrupted while committing offsets");
-                    // Thread.currentThread().interrupt();
-                    // }
-                    // catch (Throwable t) {
-                    // fail("Error while trying to stop the task and commit the offsets", t);
-                    // }
-                    // }
+                    try {
+                        waitForCompletion.await();
+                    }
+                    catch (InterruptedException e) {
+                        if (embeddedEngineState.isRunning()) {
+                            // the engine thread was interrupted for an unknown reason...
+                        }
+                        Thread.currentThread().interrupt();
+                    }
                 }
                 catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);
@@ -916,16 +793,12 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             finally {
                 latch.countDown();
                 this.embeddedEngineState.stop();
+                executorService.shutdown();
                 // after we've "shut down" the engine, fire the completion callback based on the results we collected
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
             }
         }
     }
-
-    // private int getErrorsMaxRetries() {
-    // int maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
-    // return maxRetries;
-    // }
 
     /**
      * Creates a new RecordCommitter that is responsible for informing the engine
@@ -966,7 +839,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * with its offsets.
      */
     static class SourceRecordOffsets implements DebeziumEngine.Offsets {
-        private HashMap<String, Object> offsets = new HashMap<>();
+        private final HashMap<String, Object> offsets = new HashMap<>();
 
         /**
          * Performs {@link HashMap#put(Object, Object)} on the offsets map.
@@ -1043,13 +916,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     }
 
     public void runWithTask(Consumer<SourceTask> consumer) {
-        consumer.accept(task);
+        taskWorkers.values().forEach(worker -> consumer.accept(worker.task()));
     }
-
-    // private DelayStrategy delayStrategy(Configuration config) {
-    // return DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
-    // Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
-    // }
 
     protected static class EmbeddedConfig extends WorkerConfig {
         private static final ConfigDef CONFIG;

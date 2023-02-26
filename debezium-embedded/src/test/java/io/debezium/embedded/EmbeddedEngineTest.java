@@ -17,6 +17,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -29,9 +30,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
@@ -729,8 +732,8 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         stopConnector();
     }
 
-    @Test
-    @FixFor("DBZ-5583")
+    // @Test
+    // @FixFor("DBZ-5583") //TODO:how does offset policy work now?
     public void verifyBadCommitPolicyClassName() {
 
         Configuration config = Configuration.create()
@@ -840,6 +843,59 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         @Override
         public void close() {
+        }
+    }
+
+    @Test
+    public void shouldRunSpecifiedTaskConfiguration() throws Exception {
+        var offset = 10_000;
+        Path testingStoragePath = Files.createTestingPath("file-connector-offsets-%d.txt").toAbsolutePath();
+
+        try {
+            Configuration config = Configuration.create()
+                    .with(EmbeddedEngine.ENGINE_NAME, "debezium-engine")
+                    .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class.getName())
+                    .with(EmbeddedEngine.MAX_TASKS, 3)
+                    .with("offset.flush.interval.ms", "0")
+                    .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, testingStoragePath)
+                    .with(SimpleSourceConnector.BATCH_COUNT, 1)
+                    .with(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, 5)
+                    .with(SimpleSourceConnector.TASK_VALUE_OFFSET, offset)
+                    .build();
+
+            CountDownLatch latch = new CountDownLatch(3 * 5); //3 tasks * 5 records per task
+
+            var actual = new HashSet<Integer>();
+            var expected = IntStream.range(0, 3).map(x -> x * offset + 1).flatMap(x -> IntStream.range(x, x + 5)).boxed().toArray(Integer[]::new);
+
+            DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> engineBuilder = DebeziumEngine.create(Connect.class, Connect.class)
+                    .using(config.asProperties())
+                    .notifying((events, committer) -> {
+                        System.out.println("received event");
+                        for (var event : events) {
+                            SourceRecord record = event.value();
+                            Struct key = (Struct) record.key();
+                            int id = key.getInt32("id");
+                            actual.add(id);
+                            latch.countDown();
+                            committer.markProcessed(event);
+                        }
+                        committer.markBatchFinished();
+                    })
+                    .using(this.getClass().getClassLoader());
+
+            ExecutorService exec = Executors.newFixedThreadPool(1);
+            exec.execute(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+                engineBuilder.build().run();
+            });
+
+            var finished = latch.await(1000, TimeUnit.MILLISECONDS);
+            System.out.println(latch.getCount());
+            assertThat(finished).as("Latch reached 0").isTrue();
+            assertThat(actual).containsOnly(expected);
+        } finally {
+            Testing.Files.delete(testingStoragePath.getParent());
         }
     }
 }

@@ -33,7 +33,7 @@ public class TaskWorker {
 
     static final int DEFAULT_ERROR_MAX_RETRIES = -1;
 
-    private static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
+    static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
             .withDisplayName("The maximum number of retries")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -42,7 +42,7 @@ public class TaskWorker {
             .withValidation(Field::isInteger)
             .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
 
-    private static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
+    static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
             .withDisplayName("Initial delay for retries")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -52,7 +52,7 @@ public class TaskWorker {
             .withDescription("Initial delay (in ms) for retries when encountering connection errors."
                     + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
 
-    private static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
+    static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
             .withDisplayName("Max delay between retries")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
@@ -73,7 +73,7 @@ public class TaskWorker {
     private final Clock clock;
     private final Optional<DebeziumEngine.ConnectorCallback> connectorCallback;
     private final EmbeddedEngine.CompletionResult completionResult;
-    private final Map<String, String> taskConfig;
+    private Map<String, String> taskConfig;
 
     private int maxRetries;
     private DelayStrategy delayStrategy;
@@ -85,8 +85,7 @@ public class TaskWorker {
                       Transformations transformations,
                       Clock clock,
                       DebeziumEngine.ConnectorCallback connectorCallback,
-                      EmbeddedEngine.CompletionResult completionResult,
-                      Map<String, String> taskConfig) {
+                      EmbeddedEngine.CompletionResult completionResult) {
         this.taskId = taskId;
         this.taskClass = taskClass;
         this.embeddedEngineState = embeddedEngineState;
@@ -95,7 +94,6 @@ public class TaskWorker {
         this.clock = clock;
         this.connectorCallback = Optional.ofNullable(connectorCallback);
         this.completionResult = completionResult;
-        this.taskConfig = taskConfig;
     }
 
     public void configure(Configuration config) {
@@ -109,6 +107,8 @@ public class TaskWorker {
             return;
         }
 
+        this.taskConfig = config.asMap();
+
         taskOffsetManager = new DefaultTaskOffsetManager(
                 this.clock, task, embeddedEngineState);
         taskOffsetManager.configure(config);
@@ -116,6 +116,10 @@ public class TaskWorker {
         this.maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
         this.delayStrategy = DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
                 Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
+    }
+
+    public SourceTask task() {
+        return task;
     }
 
     public void run() {
@@ -129,13 +133,12 @@ public class TaskWorker {
                 // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
                 // and otherwise would break builds based on Kafka 1.x
                 public Map<String, String> configs() {
-                    // TODO Auto-generated method stub
-                    return null;
+                    return taskConfig;
                 }
             };
             task.initialize(taskContext);
             task.start(taskConfig);
-            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
+            connectorCallback.ifPresent(c -> c.taskStarted(taskId));
         }
         catch (Throwable t) {
             // Clean-up allocated resources
@@ -254,9 +257,14 @@ public class TaskWorker {
                 // First stop the task ...
                 LOGGER.info("Stopping the task and engine");
                 task.stop();
-                connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
+                connectorCallback.ifPresent(c -> c.taskStopped(taskId));
                 // Always commit offsets that were captured from the source records we actually processed ...
-                taskOffsetManager.commitOffsets();
+                try {
+                    taskOffsetManager.commitOffsets();
+                }
+                finally {
+                    taskOffsetManager.stop();
+                }
             }
             catch (InterruptedException e) {
                 LOGGER.debug("Interrupted while committing offsets");
@@ -267,10 +275,6 @@ public class TaskWorker {
             }
         }
 
-    }
-
-    private void fail(String msg) {
-        fail(msg, null);
     }
 
     private void fail(String msg, Throwable error) {
@@ -287,8 +291,4 @@ public class TaskWorker {
         // don't use the completion callback here because we want to store the error and message only
         completionResult.handle(true, msg, null);
     }
-
-    // private DelayStrategy delayStrategy() {
-    // return DelayStrategy.exponential(delayInitialMs, delayMaxMs);
-    // }
 }
