@@ -228,9 +228,7 @@ public final class Field {
             if (other == null || other == this) {
                 return this;
             }
-            return (config, field, problems) -> {
-                return validate(config, field, problems) + other.validate(config, field, problems);
-            };
+            return (config, field, problems) -> validate(config, field, problems) + other.validate(config, field, problems);
         }
     }
 

@@ -10,6 +10,7 @@ import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.HOSTNAME;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,6 +27,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.function.Predicates;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
+import io.debezium.util.Collect;
 
 /**
  * @author Randall Hauch
@@ -337,6 +339,22 @@ public class ConfigurationTest {
         assertThat(errorList.get(0))
                 .isEqualTo(
                         Field.validationOutput(TOPIC_PREFIX, "server@X has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)"));
+    }
+
+    @Test
+    @FixFor("DBZ-6156")
+    public void testHostnameValidation() {
+        config = Configuration.create().with(HOSTNAME, "").build();
+        assertThat(config.validate(Field.setOf(HOSTNAME)).get(HOSTNAME.name()).errorMessages().get(0))
+                .isEqualTo("The 'database.hostname' value is invalid: A value is required");
+
+        List<String> invalidHostnames = Collect.arrayListOf("~hostname", "hostname@", "host-*-name", "(hostname)");
+        String errorMessage = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
+        invalidHostnames.stream().forEach(hostname -> {
+            config = Configuration.create().with(HOSTNAME, hostname).build();
+            List<String> errorList = config.validate(Field.setOf(HOSTNAME)).get(HOSTNAME.name()).errorMessages();
+            assertThat(errorList.get(0)).isEqualTo(Field.validationOutput(HOSTNAME, hostname + errorMessage));
+        });
     }
 
     @Test
