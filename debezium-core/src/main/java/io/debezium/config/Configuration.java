@@ -1936,9 +1936,7 @@ public interface Configuration {
     default Map<String, ConfigValue> validate(Field.Set fields) {
         // Create a map of configuration values for each field ...
         Map<String, ConfigValue> configValuesByFieldName = new HashMap<>();
-        fields.forEach(field -> {
-            configValuesByFieldName.put(field.name(), new ConfigValue(field.name()));
-        });
+        fields.forEach(field -> configValuesByFieldName.put(field.name(), new ConfigValue(field.name())));
 
         // If any dependents don't exist ...
         fields.forEachMissingDependent(missingDepedent -> {
@@ -1949,9 +1947,7 @@ public interface Configuration {
         });
 
         // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> {
-            field.validate(this, fields::fieldWithName, configValuesByFieldName);
-        });
+        fields.forEachTopLevelField(field -> field.validate(this, fields::fieldWithName, configValuesByFieldName));
 
         return configValuesByFieldName;
     }

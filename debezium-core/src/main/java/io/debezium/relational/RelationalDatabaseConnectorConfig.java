@@ -64,6 +64,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String DEFAULT_UNAVAILABLE_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
+    public static final Pattern HOSTNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_.]+$");
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -152,6 +153,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .required()
+            .withValidation(RelationalDatabaseConnectorConfig::validateHostname)
             .withDescription("Resolvable hostname or IP address of the database server.");
 
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
@@ -607,11 +609,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return columnsFiltered;
     }
 
-    public Boolean isFullColummnScanRequired() {
+    public Boolean isFullColumnScanRequired() {
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
-    private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(COLUMN_INCLUDE_LIST);
         String excludeList = config.getString(COLUMN_EXCLUDE_LIST);
 
@@ -695,7 +697,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
-    private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {
         String includeList = config.getString(SCHEMA_INCLUDE_LIST);
         String excludeList = config.getString(SCHEMA_EXCLUDE_LIST);
 
@@ -716,7 +718,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
-    private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
+    private static int validateMessageKeyColumnsField(Configuration config, Field field, ValidationOutput problems) {
         String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
         int problemCount = 0;
 
@@ -734,5 +736,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
         }
         return problemCount;
+    }
+
+    private static int validateHostname(Configuration config, Field field, ValidationOutput problems) {
+        String hostName = config.getString(field);
+        if (!Strings.isNullOrBlank(hostName)) {
+            if (!HOSTNAME_PATTERN.asPredicate().test(hostName)) {
+                problems.accept(field, hostName, hostName + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
+                return 1;
+            }
+        }
+        return 0;
     }
 }
