@@ -127,7 +127,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         String ddl = "create table debezium.customer (" +
                 "  id numeric(9,0) not null, " +
                 "  name varchar2(1000), " +
-                "  score decimal(6, 2), " +
+                "  f_core_aaaaaaaaadddddddddddddd decimal(6, 2), " +
                 "  registered timestamp, " +
                 "  primary key (id)" +
                 ")";
@@ -284,7 +284,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         Struct after = (Struct) ((Struct) record1.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
         assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
@@ -298,7 +298,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isNull();
 
         assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
@@ -598,7 +598,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         expectedRecordCount += 1;
 
-        connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018-03-23', 'yyyy-mm-dd') WHERE id = 1");
+        connection.execute(
+                "UPDATE debezium.customer SET name = 'Bruce', f_core_aaaaaaaaadddddddddddddd = 2345.67, registered = TO_DATE('2018-03-23', 'yyyy-mm-dd') WHERE id = 1");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -620,7 +621,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
         Map<String, ?> offset = testTableRecords.get(0).sourceOffset();
@@ -632,13 +633,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         Struct before = (Struct) ((Struct) testTableRecords.get(1).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(1);
         assertThat(before.get("NAME")).isEqualTo("Billie-Bob");
-        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(before.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
         after = (Struct) ((Struct) testTableRecords.get(1).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
 
         // update of PK
@@ -646,7 +647,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         before = (Struct) ((Struct) testTableRecords.get(2).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(1);
         assertThat(before.get("NAME")).isEqualTo("Bruce");
-        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(before.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
 
         VerifyRecord.isValidTombstone(testTableRecords.get(3));
@@ -655,7 +656,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) testTableRecords.get(4).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
-        assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
 
         // delete
@@ -663,7 +664,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         before = (Struct) ((Struct) testTableRecords.get(5).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(2);
         assertThat(before.get("NAME")).isEqualTo("Bruce");
-        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
+        assertThat(before.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 3, 23, 0, 0, 0)));
 
         VerifyRecord.isValidTombstone(testTableRecords.get(6));
@@ -706,7 +707,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final Struct before = ((Struct) testTableRecords.get(1).value()).getStruct("before");
         assertThat(before.get("ID")).isEqualTo(1);
         assertThat(before.get("NAME")).isEqualTo("Billie-Bob");
-        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(before.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
         VerifyRecord.isValidInsert(testTableRecords.get(2), "ID", 2);
@@ -728,7 +729,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             String ddl = "create table debezium.customer2 (" +
                     "  id numeric(9,0) not null, " +
                     "  name varchar2(1000), " +
-                    "  score decimal(6, 2), " +
+                    "  f_core_aaaaaaaaadddddddddddddd decimal(6, 2), " +
                     "  registered timestamp, " +
                     "  primary key (id)" +
                     ")";
@@ -748,7 +749,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
             assertThat(after.get("ID")).isEqualTo(2);
             assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
-            assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+            assertThat(after.get("f_core_aaaaaaaaadddddddddddddd")).isEqualTo(BigDecimal.valueOf(1234.56));
             assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
         }
         finally {
@@ -2501,7 +2502,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
-        connection.execute("INSERT INTO customer (id,name,score) values (1001, 'DBZ3668', 100)");
+        connection.execute("INSERT INTO customer (id,name,f_core_aaaaaaaaadddddddddddddd) values (1001, 'DBZ3668', 100)");
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
@@ -2519,7 +2520,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(customer, "oracle", "server1", false);
         }
 
-        connection.execute("INSERT INTO customer (id,name,score) values (1002, 'DBZ3668', 95)");
+        connection.execute("INSERT INTO customer (id,name,f_core_aaaaaaaaadddddddddddddd) values (1002, 'DBZ3668', 95)");
         records = consumeRecordsByTopic(1);
 
         customers = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
@@ -3805,7 +3806,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @FixFor("DbZ-3318")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldSuccessfullyConnectAndStreamWithDatabaseUrl() throws Exception {
-        connection.execute("INSERT INTO customer (id,name,score) values (1001, 'DBZ3668', 100)");
+        connection.execute("INSERT INTO customer (id,name,f_core_aaaaaaaaadddddddddddddd) values (1001, 'DBZ3668', 100)");
 
         // Use the default configuration as a baseline.
         // The default configuration automatically adds the `database.hostname` property, but we want to
@@ -4320,7 +4321,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // NOTE: Forward slashes are not valid in topic names, will be converted to underscore.
+            // NOTE: Forward slashes are not valid in topic names, will be converted to underf_core_aaaaaaaaadddddddddddddd.
             // The following takes this into account.
             SourceRecords records = consumeRecordsByTopic(1);
             List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM." + topicTableName);
