@@ -61,7 +61,7 @@ To route change event records for multiple physical tables to the same topic, co
 * The tables for which to route records. These tables must all have the same schema.
 * The destination topic name.
 
-For example, configuration in a `.properties` file looks like this:
+The connector configuration in the following example sets several options for the topic routing SMT:
 
 [source]
 ----

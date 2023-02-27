@@ -179,7 +179,8 @@ One example could be a column `eventType` which conveys a user-defined value tha
 [[basic-outbox-configuration]]
 == Basic configuration
 
-To configure a {prodname} connector to support the outbox pattern, configure the `outbox.EventRouter` SMT. For example, the basic configuration in a `.properties` file looks like this:
+To configure a {prodname} connector to support the outbox pattern, configure the `outbox.EventRouter` SMT.
+To obtain the default behavior of the SMT, add it to the connector configuration without specifying any options, as in the following example:
 
 [source]
 ----
