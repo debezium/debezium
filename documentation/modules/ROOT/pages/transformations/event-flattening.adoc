@@ -137,7 +137,8 @@ Similarly, instead of dropping the tombstone record, you can configure the event
 // Title: Configuration of {prodname} event flattening transformation
 == Configuration
 
-Configure the {prodname} event flattening SMT in a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration. To obtain the default behavior, in a `.properties` file, you would specify something like the following:
+Configure the {prodname} event flattening SMT in a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration.
+For example, to obtain the default behavior of the transformation, add it to the connector configuration without specifying any options, as in the following example:
 
 [source]
 ----
