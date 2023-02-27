@@ -2059,6 +2059,7 @@ When using a physical standby, it is sufficient to reconfigure the {prodname} Or
 In the case of a logical standby, the standby is not an exact copy of the production database, so the SCN offsets in the standby differ from those in the production database.
 If you use a logical standby, to help ensure that {prodname} does not miss any change events, after the database is open, configure a new connector and perform a new database snapshot.
 endif::community[]
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-oracle-connectors
 // Title: Deployment of {prodname} Oracle connectors
@@ -2077,6 +2078,9 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle connector plug-in archive].
 . Extract the files into your Kafka Connect environment.
 . Download the link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[JDBC driver for Oracle] from Maven Central and extract the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file.
++
+NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
+For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
@@ -2110,26 +2114,12 @@ For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Or
 === Obtaining the Oracle JDBC driver
 
 Due to licensing requirements, the Oracle JDBC driver file that {prodname} requires to connect to an Oracle database is not included in the {prodname} Oracle connector archive.
-ifdef::product[]
 The driver is available for download from Maven Central.
 Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
 
 * If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-oracle-connectors[].
 * If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
 For more information, see xref:deploying-debezium-oracle-connectors[Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile].
-
-endif::product[]
-ifdef::community[]
-
-NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
-For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
-
-.Procedure
-
-. From a browser, link:https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/{ojdbc8-version}/ojdbc8-{ojdbc8-version}.jar[download the 'ojdbc8.jar' from Maven Central].
-. Copy the downloaded driver file to the directory that contains the {prodname} Oracle connector JAR file (`debezium-connector-oracle-{debezium-version}.jar`).
-endif::community[]
-
 
 // Type: concept
 [id="openshift-streams-oracle-connector-deployment"]
@@ -2433,7 +2423,6 @@ The following JSON example shows the same configuration as in the preceding exam
 }
 ----
 endif::community[]
-
 
 For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
 
