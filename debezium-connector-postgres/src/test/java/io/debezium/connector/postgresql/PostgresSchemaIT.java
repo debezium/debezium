@@ -16,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -459,8 +458,8 @@ public class PostgresSchemaIT {
             assertColumnDefault("timestamp", TimeUnit.SECONDS.toMicros(1616247868), columns, defaultValueConverter);
             assertColumnDefault("timestamp_func", 0L, columns, defaultValueConverter);
             assertColumnDefault("timestamp_opt", null, columns, defaultValueConverter);
-            assertColumnDefault("timestamptz", Instant.ofEpochSecond(1616247868).toString(), columns, defaultValueConverter);
-            assertColumnDefault("timestamptz_func", Instant.ofEpochSecond(0).toString(), columns, defaultValueConverter);
+            assertColumnDefault("timestamptz", "2021-03-20T13:44:28.000000Z", columns, defaultValueConverter);
+            assertColumnDefault("timestamptz_func", "1970-01-01T00:00:00.000000Z", columns, defaultValueConverter);
             assertColumnDefault("timestamptz_opt", null, columns, defaultValueConverter);
 
             assertColumnDefault("uuid", "76019d1a-ad2e-4b22-96e9-1a6d6543c818", columns, defaultValueConverter);

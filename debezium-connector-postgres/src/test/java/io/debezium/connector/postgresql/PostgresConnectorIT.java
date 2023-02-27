@@ -614,7 +614,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             // check that the schema defaults will be in-sync after column changes refreshes schema
             final Integer refreshedIntDefault = 4;
             final String refreshedTextDefault = "boo";
-            final String refreshedTstzDefault = Instant.ofEpochSecond(1616247868).toString();
+            final String refreshedTstzDefault = "2021-03-20T13:44:28.000000Z";
             final SourceRecords afterRefreshRecords = consumeRecordsByTopic(1);
 
             afterRefreshRecords.recordsForTopic(topicName).forEach(snapshotRecord -> {
@@ -705,7 +705,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             final String refreshedTextDefault = "bar";
             final Long initialBigIntDefault = 1L;
             final Long refreshedBigIntDefault = 2L;
-            final String refreshedTstzDefault = Instant.ofEpochSecond(1616247868).toString();
+            final String refreshedTstzDefault = "2021-03-20T13:44:28.000000Z";
             final SourceRecords oldOfflineRecord = consumeRecordsByTopic(1);
 
             // record fields will have the default value that was applied on insert, but schema will show the current default value
