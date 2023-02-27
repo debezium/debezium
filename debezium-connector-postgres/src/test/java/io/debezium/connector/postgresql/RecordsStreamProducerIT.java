@@ -2701,7 +2701,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                                 OffsetDateTime.of(2020, 4, 25, 3, 4, 5, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000)),
                 new SchemaAndValueField("timestamptza",
                         SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).build(),
-                        Arrays.asList("2020-04-01T04:01:02Z", "2020-04-25T07:04:05Z")));
+                        Arrays.asList("2020-04-01T04:01:02.000000Z", "2020-04-25T07:04:05.000000Z")));
         assertRecordSchemaAndValues(expectedUpdate, update, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
 

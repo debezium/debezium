@@ -107,7 +107,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_NEGATIVE_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('($1234.11)')";
     protected static final String INSERT_NULL_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES (NULL)";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, date_pinf, date_ninf, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min, ts_pinf, ts_ninf, tz_pinf, tz_ninf) "
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, date_pinf, date_ninf, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min, ts_pinf, ts_ninf, tz_pinf, tz_ninf, tz_zero) "
             +
             "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, "
             +
@@ -123,7 +123,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "'infinity'::TIMESTAMP," +
             "'-infinity'::TIMESTAMP," +
             "'infinity'::TIMESTAMPTZ," +
-            "'-infinity'::TIMESTAMPTZ"
+            "'-infinity'::TIMESTAMPTZ," +
+            "'21016-11-04T13:51:30.000000+07:00'::TIMESTAMPTZ"
             + ")";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
@@ -606,6 +607,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         long expectedTsLargeMs = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 124000000, ZoneOffset.UTC).toInstant().toEpochMilli();
 
         String expectedTzLarge = "+21016-11-04T06:51:30.123456Z";
+        String expectedTzLargeZero = "+21016-11-04T06:51:30.000000Z";
 
         // The assertion for minimimum timestamps is problematic as it seems that Java and PostgreSQL handles conversion from large negative date
         // to microseconds in different way
@@ -658,7 +660,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ts_pinf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_POSITIVE_INFINITY),
                 new SchemaAndValueField("ts_ninf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_NEGATIVE_INFINITY),
                 new SchemaAndValueField("tz_pinf", ZonedTimestamp.builder().optional().build(), "infinity"),
-                new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"));
+                new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"),
+                new SchemaAndValueField("tz_zero", ZonedTimestamp.builder().optional().build(), expectedTzLargeZero));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForTimeArrayTypes() {
@@ -668,8 +671,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         final String expectedTimeTz2 = "12:51:03Z";
         final long expectedTimestamp1 = OffsetDateTime.of(2020, 4, 1, 0, 1, 2, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
         final long expectedTimestamp2 = OffsetDateTime.of(2020, 4, 1, 1, 2, 3, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
-        final String expectedTimestampTz1 = "2020-04-01T11:51:02Z";
-        final String expectedTimestampTz2 = "2020-04-01T12:51:03Z";
+        final String expectedTimestampTz1 = "2020-04-01T11:51:02.000000Z";
+        final String expectedTimestampTz2 = "2020-04-01T12:51:03.000000Z";
 
         return Arrays.asList(new SchemaAndValueField("timea",
                 SchemaBuilder.array(MicroTime.builder().optional().build()).build(),

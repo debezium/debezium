@@ -872,8 +872,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
             return "-infinity";
         }
+        else if (data instanceof OffsetDateTime) {
+            data = ((OffsetDateTime) data).toZonedDateTime();
+        }
 
-        return super.convertTimestampWithZone(column, fieldDefn, data);
+        final Object javaData = data;
+        return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
+            try {
+                // Fractional width for zoned timestamp is set in scale if schema obtained via snapshot
+                final Integer fraction = column.scale().orElse(column.length());
+                r.deliver(ZonedTimestamp.toIsoString(javaData, defaultOffset, adjuster, fraction));
+            }
+            catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     @Override
