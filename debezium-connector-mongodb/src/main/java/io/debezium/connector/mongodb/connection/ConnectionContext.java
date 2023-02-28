@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.connection;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +18,8 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.Filters;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.function.BlockingConsumer;
 
 /**
@@ -77,6 +79,10 @@ public class ConnectionContext implements AutoCloseable {
                         builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
 
         pool = poolBuilder.build();
+    }
+
+    public MongoDbConnectorConfig getConnectorConfig() {
+        return new MongoDbConnectorConfig(config);
     }
 
     protected Logger logger() {

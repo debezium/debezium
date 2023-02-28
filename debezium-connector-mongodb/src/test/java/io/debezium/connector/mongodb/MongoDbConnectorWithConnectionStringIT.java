@@ -29,6 +29,7 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.util.IoUtil;

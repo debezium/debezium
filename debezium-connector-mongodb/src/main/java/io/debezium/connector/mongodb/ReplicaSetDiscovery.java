@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.HashSet;
 import java.util.Set;
 
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,8 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 
 /**
  * A component that monitors a single replica set or the set of replica sets that make up the shards in a sharded cluster.

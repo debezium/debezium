@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.util.ConnectorUtils;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.util.Strings;
 
 /**

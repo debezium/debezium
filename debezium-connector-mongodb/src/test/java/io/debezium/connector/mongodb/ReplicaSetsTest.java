@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import org.junit.Test;
 
 import com.mongodb.ConnectionString;

@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
