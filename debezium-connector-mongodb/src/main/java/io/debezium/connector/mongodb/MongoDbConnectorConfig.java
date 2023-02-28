@@ -514,7 +514,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Should read monitoring to restart cursor when the configured read preference invalidated due to an election should be enabled.");
+            .withDescription("" +
+                    "Specifies if cursor monitoring should be performed while streaming to detect if a cluster election has invalidated the cursor’s read preference. " +
+                    "When this is detected, the cursor and client will be closed, and the stream will be recreated in an effort to satisfy the read preference. " +
+                    "This feature only works for replica sets and will do nothing for standalone clusters.");
 
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")

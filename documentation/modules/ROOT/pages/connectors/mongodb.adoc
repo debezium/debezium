@@ -1669,6 +1669,12 @@ A value of `0` disables this behavior.
 |30000 (30 seconds)
 |The number of milliseconds the driver will wait to select a server before it times out and throws an error.
 
+|[[mongodb-property-cursor-read-preference.monitoring-enabled]]<<mongodb-property-cursor-read-preference-monitoring-enabled, `+cursor.read.preference.monitoring.enabled+`>>
+|`false`
+|Specifies if cursor monitoring should be performed while streaming to detect if a cluster election has invalidated the cursor's read preference.
+
+When this is detected, the cursor and client will be closed, and the stream will be recreated in an effort to satisfy the read preference. This feature only works for replica sets and will do nothing for standalone clusters.
+
 |[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
 |`0`
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
