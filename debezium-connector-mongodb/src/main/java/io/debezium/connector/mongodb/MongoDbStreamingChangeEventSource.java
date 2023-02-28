@@ -275,20 +275,29 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 }
 
                 if (taskContext.getConnectorConfig().isCursorReadPreferenceMonitoringEnabled()) {
-                    // This gets updated asynchronously in the background
-                    var cluster = client.getClusterDescription();
-
-                    // For replica sets, only single connection mode is supported until DBZ-6032 can be resolved
-                    if (cluster.getType() == ClusterType.REPLICA_SET && cluster.getConnectionMode() == ClusterConnectionMode.SINGLE) {
-                        var servers = cluster.getServerDescriptions();
-                        var server = servers.get(0);
-                        if (server.isPrimary()) {
-                            LOGGER.warn("Closing cursor due to election invalidating read preference at offsets: {}", rsOffsetContext.getOffset());
-                            throw new MongoDbCursorReadPreferenceViolationException(server);
-                        }
-                    }
+                    checkReadPreference(client, rsOffsetContext);
                 }
             }
+        }
+    }
+
+    private static void checkReadPreference(MongoClient client, ReplicaSetOffsetContext rsOffsetContext) {
+        // Some information contained in this value gets updated asynchronously in the background. Most importantly
+        // for this method is primary status
+        var cluster = client.getClusterDescription();
+
+        // For replica sets, only single connection mode is supported until DBZ-6032 can be resolved
+        // See
+        if (cluster.getType() != ClusterType.REPLICA_SET || cluster.getConnectionMode() != ClusterConnectionMode.SINGLE) {
+            return;
+        }
+
+        // Since this is SINGLE, only one returned
+        var servers = cluster.getServerDescriptions();
+        var server = servers.get(0);
+        if (server.isPrimary()) {
+            LOGGER.warn("Closing cursor due to election invalidating read preference at offsets: {}", rsOffsetContext.getOffset());
+            throw new MongoDbCursorReadPreferenceViolationException(server);
         }
     }
 

@@ -8,7 +8,7 @@ package io.debezium.connector.mongodb;
 import com.mongodb.connection.ServerDescription;
 
 public class MongoDbCursorReadPreferenceViolationException extends RuntimeException {
-    private ServerDescription server;
+    private final ServerDescription server;
 
     public MongoDbCursorReadPreferenceViolationException(ServerDescription server) {
         this.server = server;
