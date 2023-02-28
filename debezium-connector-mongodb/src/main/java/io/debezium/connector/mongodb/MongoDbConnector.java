@@ -27,6 +27,8 @@ import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;

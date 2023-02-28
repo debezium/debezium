@@ -29,6 +29,9 @@ import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.connection.RetryingMongoClient;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;

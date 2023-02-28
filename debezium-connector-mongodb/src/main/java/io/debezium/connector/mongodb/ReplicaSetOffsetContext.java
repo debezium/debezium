@@ -16,6 +16,7 @@ import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;

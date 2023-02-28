@@ -25,6 +25,8 @@ import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+
 public class ReplicaSetDiscoveryTest {
 
     private ReplicaSetDiscovery replicaSetDiscovery;

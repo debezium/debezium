@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.connection;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,6 +21,9 @@ import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.connector.mongodb.Filters;
+import io.debezium.connector.mongodb.MongoUtil;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;

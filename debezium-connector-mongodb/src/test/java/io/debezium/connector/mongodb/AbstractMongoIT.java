@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.ReadPreference;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.connection.RetryingMongoClient;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMongoIT extends AbstractBaseMongoIT {

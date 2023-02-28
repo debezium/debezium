@@ -33,6 +33,9 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.connection.RetryingMongoClient;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
