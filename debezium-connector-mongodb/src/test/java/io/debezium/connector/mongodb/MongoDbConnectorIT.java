@@ -656,6 +656,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SKIPPED_OPERATIONS, "u")
+                .with(MongoDbConnectorConfig.CURSOR_READ_PREFERENCE_MONITORING_ENABLED, true)
                 .build();
 
         // Set up the replication context for connections ...

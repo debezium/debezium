@@ -24,13 +24,13 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.ChangeStreamIterable;
+import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
-import com.mongodb.connection.ServerDescription;
-import com.mongodb.internal.selector.ReadPreferenceServerSelector;
+import com.mongodb.connection.ClusterConnectionMode;
+import com.mongodb.connection.ClusterType;
 
 import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
@@ -40,7 +40,6 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
-import io.debezium.util.RateLimiter;
 import io.debezium.util.Threads;
 
 /**
@@ -104,24 +103,32 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
-        MongoPreferredNode mongo = null;
-        try {
-            mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred());
-            if (mongo != null) {
-                final AtomicReference<MongoPreferredNode> mongoReference = new AtomicReference<>(mongo);
-                mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
-                    readChangeStream(client, mongoReference.get(), replicaSet, context, offsetContext);
-                });
+        while (true) {
+            MongoPreferredNode mongo = null;
+            try {
+                mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred());
+                if (mongo != null) {
+                    final AtomicReference<MongoPreferredNode> mongoReference = new AtomicReference<>(mongo);
+                    mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
+                        readChangeStream(client, mongoReference.get(), replicaSet, context, offsetContext);
+                    });
+                }
             }
-        }
-        catch (Throwable t) {
-            LOGGER.error("Streaming for replica set {} failed", replicaSet.replicaSetName(), t);
-            errorHandler.setProducerThrowable(t);
-        }
-        finally {
-            if (mongo != null) {
-                mongo.stop();
+            catch (MongoDbCursorReadPreferenceViolationException e) {
+                LOGGER.warn("Restarting streaming due to read preference violation with server {}...", e.getServer());
+                continue;
             }
+            catch (Throwable t) {
+                LOGGER.error("Streaming for replica set {} failed", replicaSet.replicaSetName(), t);
+                errorHandler.setProducerThrowable(t);
+            }
+            finally {
+                if (mongo != null) {
+                    mongo.stop();
+                }
+            }
+
+            break;
         }
     }
 
@@ -163,8 +170,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
             else {
                 dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-                LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new ConnectException("Error while attempting to " + desc, error);
+                if (error instanceof MongoDbCursorReadPreferenceViolationException) {
+                    throw (MongoDbCursorReadPreferenceViolationException) error;
+                }
+                else {
+                    LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+                    throw new ConnectException("Error while attempting to " + desc, error);
+                }
             }
         });
     }
@@ -179,14 +191,31 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         ReplicaSetChangeStreamsContext oplogContext = new ReplicaSetChangeStreamsContext(rsPartition, rsOffsetContext, mongo, replicaSet);
 
         final ServerAddress nodeAddress = MongoUtil.getPreferredAddress(client, mongo.getPreference());
-        LOGGER.info("Reading change stream for '{}'/{} from {} starting at {}", replicaSet, mongo.getPreference().getName(), nodeAddress, oplogStart);
+        LOGGER.info("Reading change stream at offset {} for '{}'/{} from node {}",
+                rsOffsetContext.getOffset(), replicaSet, mongo.getPreference().getName(), nodeAddress);
 
-        var rsChangeStream = createChangeStream(client, rsOffsetContext);
-        var cursor = rsChangeStream.cursor();
+        final List<Bson> pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig()).create();
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = client.watch(pipeline, BsonDocument.class);
+        if (taskContext.getCaptureMode().isFullUpdate()) {
+            rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
+        }
+        if (taskContext.getCaptureMode().isIncludePreImage()) {
+            rsChangeStream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        }
+        if (rsOffsetContext.lastResumeToken() != null) {
+            LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
+            rsChangeStream.resumeAfter(ResumeTokens.fromData(rsOffsetContext.lastResumeToken()));
+        }
+        else if (oplogStart.getTime() > 0) {
+            LOGGER.info("Resume token not available, starting streaming from time '{}'", oplogStart);
+            rsChangeStream.startAtOperationTime(oplogStart);
+        }
 
-        // Once every 10 seconds
-        var preferenceRateLimiter = new RateLimiter(1, 0.1F);
-        try {
+        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
+            rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
+        }
+
+        try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = rsChangeStream.cursor()) {
             // In Replicator, this used cursor.hasNext() but this is a blocking call and I observed that this can
             // delay the shutdown of the connector by up to 15 seconds or longer. By introducing a Metronome, we
             // can respond to the stop request much faster and without much overhead.
@@ -245,65 +274,22 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     }
                 }
 
-                if (taskContext.getConnectorConfig().isCursorReadPreferenceMonitoringEnabled() && preferenceRateLimiter.tryConsume(1)
-                        && !isSelectedReadPreference(client, mongo.getPreference(), cursor)) {
-                    LOGGER.info("Closing and recreating cursor due to election invalidating read preference");
-                    cursor.close();
-                    // Note: There is an edge case currently unaccounted for when an election happens during the first iteration of the cursor.
-                    // In this case, we need to set resume token in rsOffsetContext for this to skip the initial snapshot last timestamp.
-                    // But this is currently immutable.
-                    rsChangeStream = createChangeStream(client, rsOffsetContext);
-                    cursor = rsChangeStream.cursor();
+                if (taskContext.getConnectorConfig().isCursorReadPreferenceMonitoringEnabled()) {
+                    // This gets updated asynchronously in the background
+                    var cluster = client.getClusterDescription();
+
+                    // For replica sets, only single connection mode is supported until DBZ-6032 can be resolved
+                    if (cluster.getType() == ClusterType.REPLICA_SET && cluster.getConnectionMode() == ClusterConnectionMode.SINGLE) {
+                        var servers = cluster.getServerDescriptions();
+                        var server = servers.get(0);
+                        if (server.isPrimary()) {
+                            LOGGER.warn("Closing cursor due to election invalidating read preference at offsets: {}", rsOffsetContext.getOffset());
+                            throw new MongoDbCursorReadPreferenceViolationException(server);
+                        }
+                    }
                 }
             }
         }
-        finally {
-            cursor.close();
-        }
-    }
-
-    private ChangeStreamIterable<BsonDocument> createChangeStream(MongoClient client, ReplicaSetOffsetContext rsOffsetContext) {
-        final List<Bson> pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig()).create();
-
-        final ChangeStreamIterable<BsonDocument> rsChangeStream = client.watch(pipeline, BsonDocument.class);
-        if (taskContext.getCaptureMode().isFullUpdate()) {
-            rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
-        }
-        if (taskContext.getCaptureMode().isIncludePreImage()) {
-            rsChangeStream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
-        }
-
-        if (rsOffsetContext.lastResumeToken() != null) {
-            LOGGER.info("Resuming streaming from token '{}'", rsOffsetContext.lastResumeToken());
-            rsChangeStream.resumeAfter(ResumeTokens.fromData(rsOffsetContext.lastResumeToken()));
-        }
-        else if (rsOffsetContext.lastOffsetTimestamp().getTime() > 0) {
-            LOGGER.info("Resume token not available, starting streaming from time '{}'", rsOffsetContext.lastOffsetTimestamp());
-            rsChangeStream.startAtOperationTime(rsOffsetContext.lastOffsetTimestamp());
-        }
-
-        if (connectorConfig.getCursorMaxAwaitTime() > 0) {
-            rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
-        }
-        return rsChangeStream;
-    }
-
-    private static boolean isSelectedReadPreference(MongoClient client, ReadPreference readPreference,
-                                                    MongoCursor<?> cursor) {
-        // Find all remaining nodes that match our preference
-        var candidates = new ReadPreferenceServerSelector(readPreference)
-                .select(client.getClusterDescription());
-
-        // Determine if the cursor matches any one of these candidates
-        return candidates.stream()
-                .map(ServerDescription::getAddress)
-                .anyMatch(preferredAddress -> {
-                    // TODO: In general, the host names returned between commands can be different (DNS or IP potentially).
-                    // For example, we see test-mongo1:27017 (defined in rs.init()) and e253ef34bd93:27017 (the container’s hostname).
-                    // Thus, canonicalization must be performed when making comparison.
-                    var cursorAddress = cursor.getServerCursor() == null ? null : cursor.getServerCursor().getAddress();
-                    return preferredAddress.equals(cursorAddress);
-                });
     }
 
     protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,

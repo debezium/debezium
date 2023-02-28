@@ -27,7 +27,7 @@ public final class MongoDbDatabaseProvider {
         var replicaSize = Integer.parseInt(System.getProperty(MONGO_REPLICA_SIZE, "1"));
 
         return MongoDbReplicaSet.replicaSet()
-                .memberCount(replicaSize)
+                .memberCount(3)
                 .portResolver(portResolver)
                 .build();
     }
