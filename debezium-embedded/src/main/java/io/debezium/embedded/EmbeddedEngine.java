@@ -311,8 +311,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
             Objects.requireNonNull(config, "A connector configuration must be specified.");
             Objects.requireNonNull(handler, "A connector consumer or changeHandler must be specified.");
+
+            if (offsetCommitPolicy != null) {
+                config = config.edit().with(TaskOffsetManager.OFFSET_COMMIT_POLICY, offsetCommitPolicy.getClass().getName()).build();
+            }
+
             return new EmbeddedEngine(config, classLoader, clock,
-                    handler, completionCallback, connectorCallback, offsetCommitPolicy);
+                    handler, completionCallback, connectorCallback);
         }
 
         // backward compatibility methods
@@ -570,8 +575,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private final Map<Integer, TaskWorker> taskWorkers = new ConcurrentHashMap<>();
 
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, DebeziumEngine.ChangeConsumer<SourceRecord> handler,
-                           DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback,
-                           OffsetCommitPolicy offsetCommitPolicy) {
+                           DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback) {
         this.config = config;
         this.handler = handler;
         this.classLoader = classLoader;
@@ -583,8 +587,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         };
         this.connectorCallback = connectorCallback;
         this.completionResult = new CompletionResult();
-        this.offsetCommitPolicy = offsetCommitPolicy;
-
         assert this.config != null;
         assert this.handler != null;
         assert this.classLoader != null;
@@ -621,11 +623,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         }
         // don't use the completion callback here because we want to store the error and message only
         completionResult.handle(false, msg, error);
-    }
-
-    private void succeed(String msg) {
-        // don't use the completion callback here because we want to store the error and message only
-        completionResult.handle(true, msg, null);
     }
 
     /**

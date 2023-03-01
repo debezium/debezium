@@ -236,6 +236,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
                 .with(OffsetManager.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .with(TaskOffsetManager.OFFSET_COMMIT_POLICY, OffsetCommitPolicy.AlwaysCommitOffsetPolicy.class) // TODO: workaround for offset commit ignored as part of builder
+                .with(SimpleSourceConnector.BATCH_COUNT, 1)
+                .with(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, 5)
+                .with(SimpleSourceConnector.TASK_VALUE_OFFSET, 100)
                 .build();
 
         CountDownLatch firstLatch = new CountDownLatch(1);
@@ -732,8 +736,8 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         stopConnector();
     }
 
-    // @Test
-    // @FixFor("DBZ-5583") //TODO:how does offset policy work now?
+    @Test
+    @FixFor("DBZ-5583")
     public void verifyBadCommitPolicyClassName() {
 
         Configuration config = Configuration.create()
@@ -899,69 +903,69 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
             Testing.Files.delete(testingStoragePath.getParent());
         }
     }
-}
 
-class InterruptedConnector extends SimpleSourceConnector {
+    public static class InterruptedConnector extends SimpleSourceConnector {
 
-    @Override
-    public Class<? extends Task> taskClass() {
-        return InterruptedTask.class;
-    }
-}
-
-class InterruptedTask extends SimpleSourceConnector.SimpleConnectorTask {
-
-    @Override
-    public List<SourceRecord> poll() throws InterruptedException {
-        throw new InterruptedException();
-    }
-}
-
-class InterruptingOffsetStore implements OffsetBackingStore {
-
-    @Override
-    public void start() {
+        @Override
+        public Class<? extends Task> taskClass() {
+            return InterruptedTask.class;
+        }
     }
 
-    @Override
-    public void stop() {
+    public static class InterruptedTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+        @Override
+        public List<SourceRecord> poll() throws InterruptedException {
+            throw new InterruptedException();
+        }
     }
 
-    @Override
-    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
-        // called by the offset reader. return null for no offsets stored.
-        return new CompletableFuture<Map<ByteBuffer, ByteBuffer>>() {
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get(long timeout, TimeUnit unit) {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
+    public static class InterruptingOffsetStore implements OffsetBackingStore {
 
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get() {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
-        };
-    }
+        @Override
+        public void start() {
+        }
 
-    /**
-     * Implementation that throws InterruptedException when offset commits are called.
-     */
-    @Override
-    public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
-        return new CompletableFuture<Void>() {
-            @Override
-            public Void get() throws InterruptedException {
-                throw new InterruptedException();
-            }
+        @Override
+        public void stop() {
+        }
 
-            @Override
-            public Void get(long timeout, TimeUnit unit) throws InterruptedException {
-                throw new InterruptedException();
-            }
-        };
-    }
+        @Override
+        public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
+            // called by the offset reader. return null for no offsets stored.
+            return new CompletableFuture<>() {
+                @Override
+                public Map<ByteBuffer, ByteBuffer> get(long timeout, TimeUnit unit) {
+                    return new HashMap<>();
+                }
 
-    @Override
-    public void configure(WorkerConfig workerConfig) {
+                @Override
+                public Map<ByteBuffer, ByteBuffer> get() {
+                    return new HashMap<>();
+                }
+            };
+        }
+
+        /**
+         * Implementation that throws InterruptedException when offset commits are called.
+         */
+        @Override
+        public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
+            return new CompletableFuture<>() {
+                @Override
+                public Void get() throws InterruptedException {
+                    throw new InterruptedException();
+                }
+
+                @Override
+                public Void get(long timeout, TimeUnit unit) throws InterruptedException {
+                    throw new InterruptedException();
+                }
+            };
+        }
+
+        @Override
+        public void configure(WorkerConfig workerConfig) {
+        }
     }
 }

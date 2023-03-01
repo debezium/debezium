@@ -24,6 +24,9 @@ public interface OffsetCommitPolicy {
      */
     class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
 
+        public AlwaysCommitOffsetPolicy(Properties properties) {
+        }
+
         @Override
         public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
             return true;
@@ -50,7 +53,7 @@ public interface OffsetCommitPolicy {
     }
 
     static OffsetCommitPolicy always() {
-        return new AlwaysCommitOffsetPolicy();
+        return new AlwaysCommitOffsetPolicy(null);
     }
 
     static OffsetCommitPolicy periodic(Properties config) {
