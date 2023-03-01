@@ -646,17 +646,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
-        // Add the current batch size to the starting system change number
-        final Scn currentBatchSizeScn = Scn.valueOf(streamingMetrics.getBatchSize());
-        Scn topScnToMine = startScn.add(currentBatchSizeScn);
+        final Scn defaultBatchSize = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
+        final Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
 
         // Control adjusting batch size
         boolean topMiningScnInFarFuture = false;
-        if (topScnToMine.subtract(currentScn).compareTo(currentBatchSizeScn) > 0) {
+        if (topScnToMine.subtract(currentScn).compareTo(defaultBatchSize) > 0) {
             streamingMetrics.changeBatchSize(false, connectorConfig.isLobEnabled());
             topMiningScnInFarFuture = true;
         }
-        if (currentScn.subtract(topScnToMine).compareTo(currentBatchSizeScn) > 0) {
+        if (currentScn.subtract(topScnToMine).compareTo(defaultBatchSize) > 0) {
             streamingMetrics.changeBatchSize(true, connectorConfig.isLobEnabled());
         }
 
