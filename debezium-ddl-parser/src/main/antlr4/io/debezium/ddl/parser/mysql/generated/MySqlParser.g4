@@ -2259,7 +2259,9 @@ dataType
       lengthOneDimension? BINARY?
       (charSet charsetName)?
       (COLLATE collationName | BINARY)?                             #stringDataType
-    | NATIONAL typeName=(VARCHAR | CHARACTER | CHAR) VARYING?
+    | NATIONAL typeName=(CHAR | CHARACTER) VARYING
+      lengthOneDimension? BINARY?                                   #nationalVaryingStringDataType
+    | NATIONAL typeName=(VARCHAR | CHARACTER | CHAR)
       lengthOneDimension? BINARY?                                   #nationalStringDataType
     | NCHAR typeName=VARCHAR
       lengthOneDimension? BINARY?                                   #nationalStringDataType
