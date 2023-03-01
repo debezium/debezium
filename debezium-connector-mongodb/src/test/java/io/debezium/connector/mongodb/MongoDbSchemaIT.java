@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.After;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -20,13 +19,6 @@ public class MongoDbSchemaIT {
 
     private Configuration config;
     private MongoDbTaskContext taskContext;
-
-    @After
-    public void afterEach() {
-        if (taskContext != null) {
-            taskContext.getConnectionContext().close();
-        }
-    }
 
     @Test
     public void shouldAlwaysProduceCollectionSchema() {

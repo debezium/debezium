@@ -39,6 +39,14 @@ public final class ConnectionStrings {
         return parseFromHosts(hosts).orElseThrow(() -> new DebeziumException("Unable to build connection string"));
     }
 
+    /**
+     * Appends new parameter to connection string
+     *
+     * @param connectionString original connection string
+     * @param name parameter name
+     * @param value parameter value
+     * @return new connection string with added parameter
+     */
     public static String appendParameter(String connectionString, String name, String value) {
         var param = name + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8);
 
@@ -57,6 +65,12 @@ public final class ConnectionStrings {
         return connectionString + "&" + param;
     }
 
+    /**
+     * Mask credential information in connection string
+     *
+     * @param connectionString original connection string
+     * @return connection string with masked credential information
+     */
     public static String mask(String connectionString) {
         var cs = new ConnectionString(connectionString);
         var credentials = cs.getCredential();

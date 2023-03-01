@@ -118,7 +118,7 @@ public class MongoDbConnector extends SourceConnector {
             // Set up and start the thread that monitors the members of all of the replica sets ...
             replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, taskContext.serverName(), "replica-set-monitor");
             ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(taskContext);
-            monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, connectionContext.pollInterval(),
+            monitorThread = new ReplicaSetMonitorThread(connectionContext, monitor::getReplicaSets, connectionContext.pollInterval(),
                     Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             replicaSetMonitorExecutor.execute(monitorThread);
             logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
@@ -186,14 +186,7 @@ public class MongoDbConnector extends SourceConnector {
             if (replicaSetMonitorExecutor != null) {
                 replicaSetMonitorExecutor.shutdownNow();
             }
-            try {
-                if (this.connectionContext != null) {
-                    this.connectionContext.close();
-                }
-            }
-            finally {
-                logger.info("Stopped MongoDB connector");
-            }
+            logger.info("Stopped MongoDB connector");
         }
         finally {
             if (previousLogContext != null) {
@@ -225,17 +218,17 @@ public class MongoDbConnector extends SourceConnector {
                 && userValue.errorMessages().isEmpty()
                 && passwordValue.errorMessages().isEmpty()
                 && connectionStringValue.errorMessages().isEmpty()) {
-            // Try to connect to the database ...
-            try (ConnectionContext connContext = new ConnectionContext(config)) {
 
-                try (MongoClient client = connContext.connect()) {
-                    client.listDatabaseNames();
-                }
+            // Try to connect to the database ...
+            ConnectionContext connContext = new ConnectionContext(config);
+            try (MongoClient client = connContext.connect()) {
+                client.listDatabaseNames();
             }
             catch (MongoException e) {
                 hostsValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
+
         return new Config(new ArrayList<>(results.values()));
     }
 }

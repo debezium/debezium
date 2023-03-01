@@ -9,13 +9,15 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoInterruptedException;
+import com.mongodb.client.MongoClient;
 
+import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -30,7 +32,8 @@ public final class ReplicaSetMonitorThread implements Runnable {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Metronome metronome;
     private final CountDownLatch initialized = new CountDownLatch(1);
-    private final Supplier<ReplicaSets> monitor;
+    private final ConnectionContext connectionContext;
+    private final Function<MongoClient, ReplicaSets> monitor;
     private final Consumer<ReplicaSets> onChange;
     private final Runnable onStartup;
     private volatile ReplicaSets replicaSets = ReplicaSets.empty();
@@ -42,11 +45,12 @@ public final class ReplicaSetMonitorThread implements Runnable {
      * @param onStartup the function to call when the thread is started; may be null if not needed
      * @param onChange the function to call when the set of replica set specifications has changed; may be null if not needed
      */
-    public ReplicaSetMonitorThread(Supplier<ReplicaSets> monitor, Duration period, Clock clock, Runnable onStartup,
+    public ReplicaSetMonitorThread(ConnectionContext connectionContext, Function<MongoClient, ReplicaSets> monitor, Duration period, Clock clock, Runnable onStartup,
                                    Consumer<ReplicaSets> onChange) {
         if (clock == null) {
             clock = Clock.system();
         }
+        this.connectionContext = connectionContext;
         this.monitor = monitor;
         this.metronome = Metronome.sleeper(period, clock);
         this.onChange = onChange != null ? onChange : (rsSpecs) -> {
@@ -62,9 +66,9 @@ public final class ReplicaSetMonitorThread implements Runnable {
         }
 
         while (!Thread.currentThread().isInterrupted()) {
-            try {
+            try (var client = connectionContext.connect()) {
                 ReplicaSets previousReplicaSets = replicaSets;
-                replicaSets = monitor.get();
+                replicaSets = monitor.apply(client);
                 initialized.countDown();
                 // Determine if any replica set specifications have changed ...
                 if (replicaSets.haveChangedSince(previousReplicaSets)) {
