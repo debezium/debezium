@@ -403,12 +403,12 @@ createDefinitions
 
 createDefinition
     : fullColumnName columnDefinition                               #columnDeclaration
-    | tableConstraint                                               #constraintDeclaration
+    | tableConstraint NOT? ENFORCED?                                #constraintDeclaration
     | indexColumnDefinition                                         #indexDeclaration
     ;
 
 columnDefinition
-    : dataType columnConstraint*
+    : dataType columnConstraint* NOT? ENFORCED?
     ;
 
 columnConstraint
@@ -464,7 +464,7 @@ referenceAction
     ;
 
 referenceControlType
-    : RESTRICT | CASCADE | SET NULL_LITERAL | NO ACTION
+    : RESTRICT | CASCADE | SET NULL_LITERAL | NO ACTION | SET DEFAULT
     ;
 
 indexColumnDefinition
@@ -693,7 +693,8 @@ alterSpecification
       indexColumnNames indexOption*                                 #alterByAddSpecialIndex
     | ADD (CONSTRAINT name=uid?)? FOREIGN KEY ifNotExists?          // ifNotExists is MariaDB-specific only
       indexName=uid? indexColumnNames referenceDefinition           #alterByAddForeignKey
-    | ADD (CONSTRAINT name=uid?)? CHECK '(' expression ')'          #alterByAddCheckTableConstraint
+    | ADD (CONSTRAINT name=uid?)? CHECK ( stringLiteral | '(' expression ')' )
+        NOT? ENFORCED?                                              #alterByAddCheckTableConstraint
     | ALGORITHM '='? algType=(DEFAULT | INSTANT | INPLACE | COPY)   #alterBySetAlgorithm
     | ALTER COLUMN? uid
       (SET DEFAULT defaultValue | DROP DEFAULT)                     #alterByChangeDefault
@@ -709,6 +710,10 @@ alterSpecification
     | DROP PRIMARY KEY                                              #alterByDropPrimaryKey
     | DROP indexFormat=(INDEX | KEY) ifExists? uid                  #alterByDropIndex  // here ifExists is MariaDB-specific only
     | RENAME indexFormat=(INDEX | KEY) uid TO uid                   #alterByRenameIndex
+    | ALTER COLUMN? uid (
+        SET DEFAULT ( stringLiteral | '(' expression ')' )
+        | SET (VISIBLE | INVISIBLE)
+        | DROP DEFAULT)                                             #alterByAlterColumnDefault
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                         #alterByAlterIndexVisibility
     | DROP FOREIGN KEY ifExists? uid                                #alterByDropForeignKey // here ifExists is MariaDB-specific only
     | DISABLE KEYS                                                  #alterByDisableKeys
@@ -2254,12 +2259,10 @@ dataType
       lengthOneDimension? BINARY?
       (charSet charsetName)?
       (COLLATE collationName | BINARY)?                             #stringDataType
-    | NATIONAL typeName=(VARCHAR | CHARACTER)
+    | NATIONAL typeName=(VARCHAR | CHARACTER | CHAR) VARYING?
       lengthOneDimension? BINARY?                                   #nationalStringDataType
     | NCHAR typeName=VARCHAR
       lengthOneDimension? BINARY?                                   #nationalStringDataType
-    | NATIONAL typeName=(CHAR | CHARACTER) VARYING
-      lengthOneDimension? BINARY?                                   #nationalVaryingStringDataType
     | typeName=(
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
         | MIDDLEINT | INT1 | INT2 | INT3 | INT4 | INT8
@@ -2286,7 +2289,7 @@ dataType
     | typeName=(
         GEOMETRYCOLLECTION | GEOMCOLLECTION | LINESTRING | MULTILINESTRING
         | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON | JSON | GEOMETRY
-      )                                                             #spatialDataType
+      ) (SRID decimalLiteral)?                                      #spatialDataType
     | typeName=LONG VARCHAR?
       BINARY?
       (charSet charsetName)?
@@ -2742,7 +2745,7 @@ keywordsCanBeId
     | COPY | COUNT | CPU | CURRENT | CURRENT_USER | CURSOR_NAME | DATA | DATAFILE | DEALLOCATE | DEFAULT | DEFAULT_AUTH
     | DEFINER | DELAY_KEY_WRITE | DES_KEY_FILE | DIAGNOSTICS | DIRECTORY | DISABLE | DISCARD | DISK | DO | DUMPFILE
     | DUPLICATE | DYNAMIC | EMPTY | ENABLE | ENCRYPTION | ENCRYPTION_KEY_ADMIN | END | ENDS | ENGINE | ENGINE_ATTRIBUTE
-    | ENGINES | ERROR | ERRORS | ESCAPE | EUR | EVEN | EVENT | EVENTS | EVERY | EXCEPT | EXCHANGE | EXCLUSIVE | EXPIRE
+    | ENGINES | ENFORCED | ERROR | ERRORS | ESCAPE | EUR | EVEN | EVENT | EVENTS | EVERY | EXCEPT | EXCHANGE | EXCLUSIVE | EXPIRE
     | EXPORT | EXTENDED | EXTENT_SIZE | FAILED_LOGIN_ATTEMPTS | FAST | FAULTS | FIELDS | FILE_BLOCK_SIZE | FILTER
     | FIREWALL_ADMIN | FIREWALL_USER | FIRST | FIXED | FLUSH | FOLLOWS | FOUND | FULL | FUNCTION | GENERAL | GLOBAL
     | GRANTS | GROUP | GROUP_CONCAT | GROUP_REPLICATION | GROUP_REPLICATION_ADMIN | HANDLER | HASH | HELP | HISTORY
