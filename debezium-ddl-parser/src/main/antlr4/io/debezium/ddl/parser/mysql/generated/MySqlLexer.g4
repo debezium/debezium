@@ -95,6 +95,7 @@ ELSE:                                'ELSE';
 ELSEIF:                              'ELSEIF';
 EMPTY:                               'EMPTY';
 ENCLOSED:                            'ENCLOSED';
+ENFORCED:                            'ENFORCED';
 ESCAPED:                             'ESCAPED';
 EXCEPT:                              'EXCEPT';
 EXISTS:                              'EXISTS';
