@@ -11,7 +11,6 @@ import static org.junit.Assert.fail;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -30,6 +29,7 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 
 /**
@@ -70,7 +70,7 @@ public class TestHelper {
         return cfgBuilder.build();
     }
 
-    public static BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
+    public static MongoDbConnection.ErrorHandler connectionErrorHandler(int numErrorsBeforeFailing) {
         AtomicInteger attempts = new AtomicInteger();
         return (desc, error) -> {
             if (attempts.incrementAndGet() > numErrorsBeforeFailing) {

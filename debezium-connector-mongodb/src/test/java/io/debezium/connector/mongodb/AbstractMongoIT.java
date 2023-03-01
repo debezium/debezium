@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
-import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,8 +16,8 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.ReadPreference;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.connector.mongodb.connection.RetryingMongoClient;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
@@ -28,7 +27,7 @@ public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected ReplicaSet replicaSet;
-    protected RetryingMongoClient primary;
+    protected MongoDbConnection primary;
 
     @Before
     public void beforeEach() {
@@ -87,13 +86,5 @@ public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
         // Get a connection to the primary ...
         primary = context.getConnectionContext().connect(
                 replicaSet, ReadPreference.primary(), context.filters(), TestHelper.connectionErrorHandler(3));
-    }
-
-    @After
-    public void afterEach() {
-        if (context != null) {
-            // close all connections
-            context.getConnectionContext().close();
-        }
     }
 }

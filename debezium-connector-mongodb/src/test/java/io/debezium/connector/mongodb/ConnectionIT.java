@@ -52,8 +52,8 @@ public class ConnectionIT extends AbstractMongoIT {
                 .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
                 .build());
 
-        primary.executeBlocking("Try SSL connection", mongo -> {
-            primary.stop();
+        primary.execute("Try SSL connection", mongo -> {
+            primary.close();
             mongo.getDatabase("dbit").listCollectionNames().first();
         });
     }

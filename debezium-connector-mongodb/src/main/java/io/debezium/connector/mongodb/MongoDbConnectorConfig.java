@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -32,6 +31,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;

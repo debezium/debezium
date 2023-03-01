@@ -26,8 +26,8 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.connector.mongodb.connection.RetryingMongoClient;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -72,8 +72,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     protected IncrementalSnapshotContext<CollectionId> context = null;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
-    private RetryingMongoClient primary;
-    private RetryingMongoClient secondary;
+    private MongoDbConnection mongo;
 
     private CollectionId signallingCollectionId;
 
@@ -180,7 +179,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected void emitWindowOpen() throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-open";
-        primary.executeBlocking(
+        mongo.executeBlocking(
                 "emit window open for chunk '" + context.currentChunkId() + "'",
                 client -> {
                     final MongoDatabase database = client.getDatabase(collectionId.dbName());
@@ -201,7 +200,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected void emitWindowClose() throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
         final String id = context.currentChunkId() + "-close";
-        primary.executeBlocking(
+        mongo.executeBlocking(
                 "emit window close for chunk '" + context.currentChunkId() + "'",
                 client -> {
                     final MongoDatabase database = client.getDatabase(collectionId.dbName());
@@ -219,8 +218,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        primary = establishConnection(partition, ReadPreference.primary(), replicaSets.all().get(0));
-        secondary = establishConnection(partition, ReadPreference.secondaryPreferred(), replicaSets.all().get(0));
+        // Only ReplicaSet deployments are supported by incremental snapshot
+        // Thus assume replicaSets.size() == 1
+        mongo = establishConnection(partition, ReadPreference.secondaryPreferred(), replicaSets.all().get(0));
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -322,7 +322,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private Object[] readMaximumKey() throws InterruptedException {
         final CollectionId collectionId = (CollectionId) currentCollection.id();
         final AtomicReference<Object> key = new AtomicReference<>();
-        secondary.executeBlocking("maximum key for '" + collectionId + "'", client -> {
+        mongo.executeBlocking("maximum key for '" + collectionId + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<Document> collection = database.getCollection(collectionId.name());
 
@@ -417,7 +417,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         long exportStart = clock.currentTimeInMillis();
         LOGGER.debug("Exporting data chunk from collection '{}' (total {} collections)", currentCollection.id(), context.dataCollectionsToBeSnapshottedCount());
 
-        secondary.executeBlocking("chunk query key for '" + currentCollection.id() + "'", client -> {
+        mongo.executeBlocking("chunk query key for '" + currentCollection.id() + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
@@ -564,7 +564,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private RetryingMongoClient establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
+    private MongoDbConnection establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
         return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {

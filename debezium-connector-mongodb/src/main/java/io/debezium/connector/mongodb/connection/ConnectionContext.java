@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb.connection;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,20 +25,18 @@ import io.debezium.function.BlockingConsumer;
  * @author Randall Hauch
  *
  */
-public class ConnectionContext implements AutoCloseable {
+public class ConnectionContext {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
 
-    protected final Configuration config;
-    protected final MongoClients pool;
+    private final Configuration config;
+    private final MongoDbClientFactory clientFactory;
 
     /**
      * @param config the configuration
      */
     public ConnectionContext(Configuration config) {
         this.config = config;
-
-        final ConnectionString connectionString = connectionString();
 
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
@@ -53,40 +50,32 @@ public class ConnectionContext implements AutoCloseable {
         final int serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
 
         // Set up the client pool so that it ...
-        MongoClients.Builder poolBuilder = MongoClients.create();
+        clientFactory = MongoDbClientFactory.create(settings -> {
+            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToClusterSettings(
+                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToServerSettings(
+                            builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
 
-        poolBuilder.settings()
-                .applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                        .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
-                .applyToClusterSettings(
-                        builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS))
-                .applyToServerSettings(
-                        builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
+            // Use credential if provided as properties
+            if (username != null || password != null) {
+                settings.credential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
+            }
+            if (useSSL) {
+                settings.applyToSslSettings(
+                        builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
+            }
 
-        // Use credential if provided as properties
-        if (username != null || password != null) {
-            poolBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
-        }
-        if (useSSL) {
-            poolBuilder.settings().applyToSslSettings(
-                    builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
-        }
-
-        poolBuilder.settings()
-                .applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
-                        .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
-                .applyToClusterSettings(
-                        builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
-
-        pool = poolBuilder.build();
+            settings.applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                    .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                    .applyToClusterSettings(
+                            builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
+        });
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {
         return new MongoDbConnectorConfig(config);
-    }
-
-    protected Logger logger() {
-        return LOGGER;
     }
 
     /**
@@ -121,7 +110,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     public MongoClient connect() {
-        return pool.client(connectionString());
+        return clientFactory.client(connectionString());
     }
 
     /**
@@ -130,23 +119,11 @@ public class ConnectionContext implements AutoCloseable {
      * @param replicaSet the replica set information; may not be null
      * @param filters the filter configuration
      * @param errorHandler the function to be called whenever the node is unable to
-     *            {@link RetryingMongoClient#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
+     *            {@link MongoDbConnection#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public RetryingMongoClient connect(ReplicaSet replicaSet, ReadPreference preference, Filters filters,
-                                       BiConsumer<String, Throwable> errorHandler) {
-        return new RetryingMongoClient(replicaSet, preference, pool::client, filters, errorHandler);
-    }
-
-    @Override
-    public final void close() {
-        try {
-            // Closing all connections ...
-            logger().info("Closing all connections to {}", maskedConnectionSeed());
-            pool.clear();
-        }
-        catch (Throwable e) {
-            logger().error("Unexpected error shutting down the MongoDB clients", e);
-        }
+    public MongoDbConnection connect(ReplicaSet replicaSet, ReadPreference preference, Filters filters,
+                                     MongoDbConnection.ErrorHandler errorHandler) {
+        return new MongoDbConnection(replicaSet, preference, clientFactory, filters, errorHandler);
     }
 }
