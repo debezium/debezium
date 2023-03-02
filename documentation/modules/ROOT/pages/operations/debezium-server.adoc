@@ -765,6 +765,15 @@ Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Sourc
 |1000
 |The number of milliseconds to wait before another attempt to send record is made after failure (default of 1s).
 
+|[[httpclient-headers-prefix]]<<httpclient-headers-prefix, `debezium.sink.http.headers.prefix` >>
+|X-DEBEZIUM-
+|Headers will be prefixed with this value (defaults to X-DEBEZIUM-).
+
+|[[httpclient-headers-encode-base64]]<<httpclient-headers-encode-base64, `debezium.sink.http.headers.encode.base64` >>
+|true
+|Header values will be base64 encoded (defaults to true).
+
+
 |===
 
 ==== Apache Pulsar
