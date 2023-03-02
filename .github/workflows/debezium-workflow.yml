@@ -659,6 +659,10 @@ jobs:
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
+      - name: Install dse dependency artifacts (for Debezium Connector Cassandra)
+        working-directory: cassandra
+        run: sh ./install-artifacts.sh
+
       - name: Build Debezium Connector Cassandra
         run: >
           ./core/mvnw clean install -f cassandra/pom.xml -Passembly

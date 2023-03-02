@@ -118,6 +118,9 @@ jobs:
           release: ${{ matrix.feature }}
       - name: Build Debezium Core
         run: ./core/mvnw clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Install dse dependency artifacts (for Debezium Connector Cassandra)
+        working-directory: cassandra
+        run: sh ./install-artifacts.sh
       - name: Build Debezium Connectors Cassandra
         run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
