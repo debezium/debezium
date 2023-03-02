@@ -62,6 +62,9 @@ node('Slave') {
         additionalDirs.each { id ->
             stage("Build and deploy Debezium ${id.capitalize()}") {
                 dir(id) {
+                    // Execute a dependency installation script if provided by the repository
+                    sh "if [ -f install-artifacts.sh ]; then ./install-artifacts.sh; fi"
+
                     sh "mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000"
                 }
             }
