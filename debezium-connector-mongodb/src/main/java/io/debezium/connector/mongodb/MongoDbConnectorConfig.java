@@ -219,7 +219,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The comma-separated list of replica set names
      */
-    public static final Field REPLICA_SETS = Field.create("mongodb.replica.sets")
+    public static final Field REPLICA_SETS = Field.createInternal("mongodb.replica.sets")
             .withDescription("Internal use only")
             .withType(Type.LIST);
 
