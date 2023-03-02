@@ -80,7 +80,6 @@ The following example shows what a CloudEvents change event record emitted by a 
   "iodebeziumdb" : "postgres",
   "iodebeziumschema" : "s1",
   "iodebeziumtable" : "a",
-  "iodebeziumtxId" : "565",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
   "iodebeziumtxid": "565",                           <9>
