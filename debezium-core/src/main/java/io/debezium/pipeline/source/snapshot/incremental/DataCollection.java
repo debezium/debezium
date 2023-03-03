@@ -16,40 +16,35 @@ import java.util.Optional;
  */
 public class DataCollection<T> {
 
-    private T id;
+    private final T id;
 
-    private Optional<String> additionalCondition;
+    private final Optional<String> additionalCondition;
 
-    private Optional<String> surrogateKey;
+    private final Optional<String> surrogateKey;
+
+    public DataCollection(T id) {
+        this(id, Optional.empty(), Optional.empty());
+    }
 
     public DataCollection(T id, Optional<String> additionalCondition, Optional<String> surrogateKey) {
+        Objects.requireNonNull(additionalCondition);
+        Objects.requireNonNull(surrogateKey);
+
         this.id = id;
-        this.additionalCondition = additionalCondition == null ? Optional.empty() : additionalCondition;
-        this.surrogateKey = surrogateKey == null ? Optional.empty() : surrogateKey;
+        this.additionalCondition = additionalCondition;
+        this.surrogateKey = surrogateKey;
     }
 
     public T getId() {
         return id;
     }
 
-    public void setId(T id) {
-        this.id = id;
-    }
-
     public Optional<String> getAdditionalCondition() {
         return additionalCondition;
     }
 
-    public void setAdditionalCondition(Optional<String> additionalCondition) {
-        this.additionalCondition = additionalCondition;
-    }
-
     public Optional<String> getSurrogateKey() {
         return surrogateKey;
-    }
-
-    public void setSurrogateKey(Optional<String> surrogateKey) {
-        this.surrogateKey = surrogateKey;
     }
 
     @Override
