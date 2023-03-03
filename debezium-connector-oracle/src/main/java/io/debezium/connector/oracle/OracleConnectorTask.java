@@ -20,7 +20,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
-import io.debezium.jdbc.DefaultMainConnectionFactory;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -57,7 +57,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new OracleConnection(jdbcConfig));
+        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> new OracleConnection(jdbcConfig));
         jdbcConnection = connectionFactory.mainConnection();
 
         validateRedoLogConfiguration();

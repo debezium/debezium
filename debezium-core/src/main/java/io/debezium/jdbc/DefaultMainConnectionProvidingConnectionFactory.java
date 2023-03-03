@@ -5,13 +5,13 @@
  */
 package io.debezium.jdbc;
 
-public class DefaultMainConnectionFactory<T> implements MainConnectionProvidingConnectionFactory<T> {
+public class DefaultMainConnectionProvidingConnectionFactory<T> implements MainConnectionProvidingConnectionFactory<T> {
 
     private ConnectionFactory<T> delegate;
 
     private T mainConnection;
 
-    public DefaultMainConnectionFactory(ConnectionFactory<T> delegate) {
+    public DefaultMainConnectionProvidingConnectionFactory(ConnectionFactory<T> delegate) {
         this.delegate = delegate;
         this.mainConnection = delegate.newConnection();
     }
