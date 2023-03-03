@@ -3182,12 +3182,13 @@ _topic.prefix_._topic.transaction_ +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |[[mysql-property-snapshot-max-threads]]<<mysql-property-snapshot-max-threads, `snapshot.max.threads`>>
-|1
-|Controls the number of threads used for the initial snapshot. A value `greater than 1` will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+|`1`
+|Controls the number of threads used for the initial snapshot. A value _greater than 1_ will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+This feature is incubating.
 
 |[[mysql-property-snapshot-tables-order-by-row-count]]<<mysql-property-snapshot-tables-order-by-row-count, `snapshot.tables.order.by.row.count`>>
-|0
-|Controls the order in which tables are processed in the initial snapshot. A `negative` value will order the tables by row count descending. A `positive` value will order the tables by row count ascending. A value of `0` will disable ordering by row count.
+|`disabled`
+|Controls the order in which tables are processed in the initial snapshot. The `descending` value will order the tables by row count descending. The `ascending` value will order the tables by row count ascending. The value of `disabled` will disable ordering by row count.
 
 |===
 

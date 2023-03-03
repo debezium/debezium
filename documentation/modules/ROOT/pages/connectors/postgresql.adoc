@@ -3292,8 +3292,9 @@ _topic.prefix_._topic.transaction_ +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |[[postgresql-property-snapshot-max-threads]]<<postgresql-property-snapshot-max-threads, `snapshot.max.threads`>>
-|1
-|Controls the number of threads used for the initial snapshot. A value `greater than 1` will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+|`1`
+|Controls the number of threads used for the initial snapshot. A value _greater than 1_ will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+This feature is incubating.
 
 |===
 
