@@ -75,8 +75,9 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> new MySqlConnection(new MySqlConnectionConfiguration(config),
-                connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
+        MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new MySqlConnection(new MySqlConnectionConfiguration(config),
+                        connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
 
         connection = connectionFactory.mainConnection();
 

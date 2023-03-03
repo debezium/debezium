@@ -11,7 +11,7 @@ package io.debezium.jdbc;
  * @param <T>
  */
 @FunctionalInterface
-public interface ConnectionFactory<T> {
+public interface ConnectionFactory<T extends JdbcConnection> {
 
     T newConnection();
 }

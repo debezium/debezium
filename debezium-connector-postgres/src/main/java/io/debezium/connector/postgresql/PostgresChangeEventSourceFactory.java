@@ -39,7 +39,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
+    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter,
+                                            MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
                                             ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
                                             SlotState startingSlotInfo) {
