@@ -9,6 +9,7 @@
 :connector-file: {context}
 :connector-class: MongoDb
 :connector-name: MongoDB
+:include-list-example: public.inventory
 ifdef::community[]
 
 :toc:
@@ -1060,7 +1061,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 [id="using-streams-to-deploy-debezium-mongodb-connectors"]
 === Using {StreamsName} to deploy a {prodname} MongoDB connector
 
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mongodb-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-mongodb-connectors"]

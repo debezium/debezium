@@ -5,9 +5,12 @@
 
 :context: oracle
 :data-collection: table
+:database-port: 1521
 :mbean-name: {context}
+:connector-class: Oracle
 :connector-file: {context}
 :connector-name: Oracle
+:include-list-example: PUBLIC.INVENTORY
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -2140,7 +2143,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 // Type: procedure
 [id="using-streams-to-deploy-debezium-oracle-connectors"]
 === Using {StreamsName} to deploy a {prodname} Oracle connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ora-pg-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-oracle-connectors"]

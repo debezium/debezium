@@ -5,10 +5,12 @@
 
 :context: postgresql
 :data-collection: table
+:database-port: 5432
 :mbean-name: postgres
 :connector-file: postgres
 :connector-class: Postgres
 :connector-name: PostgreSQL
+:include-list-example: public.inventory
 ifdef::community[]
 
 :toc:
@@ -2300,7 +2302,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 [id="using-streams-to-deploy-debezium-postgresql-connectors"]
 === Using {StreamsName} to deploy a {prodname} PostgreSQL connector
 
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ora-pg-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 [id="deploying-debezium-postgresql-connectors"]
