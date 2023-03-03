@@ -52,6 +52,7 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
@@ -377,11 +378,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
         }
 
-        int snapshotOrderByRowCount = connectorConfig.snapshotOrderByRowCount();
-        if (snapshotOrderByRowCount != 0) {
-            LOGGER.info("Sort tables by row count {}", snapshotOrderByRowCount > 0 ? "asc" : "desc");
+        if (connectorConfig.snapshotOrderByRowCount() != SnapshotTablesRowCountOrder.DISABLED) {
+            LOGGER.info("Sort tables by row count '{}'", connectorConfig.snapshotOrderByRowCount());
+            final var orderFactor = (connectorConfig.snapshotOrderByRowCount() == SnapshotTablesRowCountOrder.ASCENDING) ? 1 : -1;
             rowCountTables = rowCountTables.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue((a, b) -> snapshotOrderByRowCount * ((Long) a.orElse(0)).compareTo(b.orElse(0))))
+                    .sorted(Map.Entry.comparingByValue((a, b) -> orderFactor * ((Long) a.orElse(0)).compareTo(b.orElse(0))))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         }
 
