@@ -5,10 +5,12 @@
 
 :context: mysql
 :data-collection: table
+:database-port: 3306
 :mbean-name: {context}
 :connector-file: {context}
 :connector-class: MySql
 :connector-name: MySQL
+:include-list-example: inventory
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -2225,7 +2227,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 //Type: procedure
 [id="using-streams-to-deploy-a-debezium-mysql-connector"]
 === Using {StreamsName} to deploy a {prodname} MySQL connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
@@ -2389,7 +2391,7 @@ and captures changes to the `inventory` database.
       database.password: dbz
       database.server.id: 184054  // <5>
       topic.prefix: dbserver1 // <6>
-      database.include.list: inventory  // <7>
+      table.include.list: inventory  // <7>
       schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
       schema.history.internal.kafka.topic: schema-changes.inventory  // <9>
 ----
@@ -2425,7 +2427,7 @@ those tasks will be redistributed to running services.
 This name is used as the prefix for all Kafka topics that receive change event records.
 
 |7
-|Changes in only the `inventory` database are captured.
+|The connector captures changes from the `inventory` table only.
 
 |8
 |The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.

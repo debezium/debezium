@@ -6,10 +6,12 @@
 
 :context: sqlserver
 :data-collection: table
+:database-port: 1433
 :mbean-name: sql_server
 :connector-file: {context}
 :connector-class: SqlServer
 :connector-name: SQL Server
+:include-list-example: dbo.customers
 ifdef::community[]
 
 :toc:
@@ -1784,7 +1786,7 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 // Type: procedure
 [id="using-streams-to-deploy-debezium-sqlserver-connectors"]
 === Using {StreamsName} to deploy a {prodname} SQL Server connector
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-connector.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
 // Type: procedure
 // ModuleID: deploying-debezium-sqlserver-connectors
@@ -1949,7 +1951,7 @@ spec:
     database.password: dbz // <6>
     database.names: testDB1,testDB2 // <7>
     topic.prefix: fullfullment // <8>
-    database.include.list: dbo.customers // <9>
+    table.include.list: dbo.customers // <9>
     schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
     schema.history.internal.kafka.topic: schemahistory.fullfillment // <11>
     database.ssl.truststore: path/to/trust-store // <12>
@@ -1986,7 +1988,7 @@ spec:
 |The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 
 |9
-|A list of all tables whose changes {prodname} should capture.
+|The connector captures changes from the `dbo.customers` table only.
 
 |10
 |The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
