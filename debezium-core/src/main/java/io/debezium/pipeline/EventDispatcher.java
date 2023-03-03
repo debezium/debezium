@@ -438,7 +438,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
-        private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(new BufferedDataChangeEvent());
+        private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
 
         @Override
         public void changeRecord(P partition,
@@ -474,7 +474,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             // It is possible that the last snapshotted table was empty
             // this way we ensure that the last event is always marked as last
             // even if it originates form non-last table
-            final BufferedDataChangeEvent bufferedEvent = bufferedEventRef.getAndSet(new BufferedDataChangeEvent());
+            final BufferedDataChangeEvent bufferedEvent = bufferedEventRef.getAndSet(BufferedDataChangeEvent.NULL);
             DataChangeEvent event = bufferedEvent.dataChangeEvent;
             if (event != null) {
                 SourceRecord record = event.getRecord();
@@ -493,6 +493,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     private static final class BufferedDataChangeEvent {
+        private static final BufferedDataChangeEvent NULL = new BufferedDataChangeEvent();
 
         private DataChangeEvent dataChangeEvent;
         private OffsetContext offsetContext;
