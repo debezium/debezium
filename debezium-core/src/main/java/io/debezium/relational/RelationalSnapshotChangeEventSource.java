@@ -86,7 +86,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = jdbcConnectionFactory.getMainConnection();
+        this.jdbcConnection = jdbcConnectionFactory.mainConnection();
         this.jdbcConnectionFactory = jdbcConnectionFactory;
         this.schema = schema;
         this.dispatcher = dispatcher;
