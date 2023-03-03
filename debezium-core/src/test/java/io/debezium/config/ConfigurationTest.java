@@ -348,7 +348,7 @@ public class ConfigurationTest {
         assertThat(config.validate(Field.setOf(HOSTNAME)).get(HOSTNAME.name()).errorMessages().get(0))
                 .isEqualTo("The 'database.hostname' value is invalid: A value is required");
 
-        List<String> invalidHostnames = Collect.arrayListOf("~hostname", "hostname@", "host-*-name", "(hostname)");
+        List<String> invalidHostnames = Collect.arrayListOf("~hostname", "hostname@", "host-*-name", "(hostname)", "hostname?inject_parameter=1234");
         String errorMessage = " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)";
         invalidHostnames.stream().forEach(hostname -> {
             config = Configuration.create().with(HOSTNAME, hostname).build();
