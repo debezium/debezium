@@ -58,7 +58,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
         MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new OracleConnection(jdbcConfig));
-        jdbcConnection = connectionFactory.getMainConnection();
+        jdbcConnection = connectionFactory.mainConnection();
 
         validateRedoLogConfiguration();
 

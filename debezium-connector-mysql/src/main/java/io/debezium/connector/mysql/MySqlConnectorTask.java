@@ -78,7 +78,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new MySqlConnection(new MySqlConnectionConfiguration(config),
                 connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
 
-        connection = connectionFactory.getMainConnection();
+        connection = connectionFactory.mainConnection();
 
         validateBinlogConfiguration(connectorConfig);
 

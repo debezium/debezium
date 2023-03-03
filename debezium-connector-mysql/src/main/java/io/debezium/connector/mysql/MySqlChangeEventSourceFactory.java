@@ -74,7 +74,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -88,10 +88,10 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                                                                                                                                               SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
                                                                                                                                               DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
         if (configuration.isReadOnlyConnection()) {
-            if (connectionFactory.getMainConnection().isGtidModeEnabled()) {
+            if (connectionFactory.mainConnection().isGtidModeEnabled()) {
                 return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource<>(
                         configuration,
-                        connectionFactory.getMainConnection(),
+                        connectionFactory.mainConnection(),
                         dispatcher,
                         schema,
                         clock,
@@ -107,7 +107,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         }
         return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,

@@ -53,7 +53,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
     public StreamingChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getStreamingChangeEventSource() {
         return new SqlServerStreamingChangeEventSource(
                 configuration,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 metadataConnection,
                 dispatcher,
                 errorHandler,
@@ -73,7 +73,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         }
         final SignalBasedIncrementalSnapshotChangeEventSource<SqlServerPartition, TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,

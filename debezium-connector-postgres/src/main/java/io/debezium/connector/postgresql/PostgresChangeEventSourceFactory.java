@@ -75,7 +75,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         return new PostgresStreamingChangeEventSource(
                 configuration,
                 snapshotter,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -96,7 +96,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         }
         final PostgresSignalBasedIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,

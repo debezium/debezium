@@ -57,7 +57,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     @Override
     public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getStreamingChangeEventSource() {
         return configuration.getAdapter().getSource(
-                connectionFactory.getMainConnection(),
+                connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -84,7 +84,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         // PDB when reading snapshot records.
         return Optional.of(new OracleSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
-                new OracleConnection(connectionFactory.getMainConnection().config()),
+                new OracleConnection(connectionFactory.mainConnection().config()),
                 dispatcher,
                 schema,
                 clock,

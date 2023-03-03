@@ -17,7 +17,7 @@ public class DefaultMainConnectionFactory<T> implements MainConnectionProvidingC
     }
 
     @Override
-    public T getMainConnection() {
+    public T mainConnection() {
         return mainConnection;
     }
 

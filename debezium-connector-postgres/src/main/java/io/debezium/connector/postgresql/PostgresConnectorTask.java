@@ -86,7 +86,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = connectionFactory.getMainConnection();
+        jdbcConnection = connectionFactory.mainConnection();
         try {
             jdbcConnection.setAutoCommit(false);
         }

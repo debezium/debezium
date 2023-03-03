@@ -68,7 +68,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics);
         this.connectorConfig = connectorConfig;
-        this.connection = connectionFactory.getMainConnection();
+        this.connection = connectionFactory.mainConnection();
         this.filters = connectorConfig.getTableFilters();
         this.metrics = metrics;
         this.databaseSchema = schema;

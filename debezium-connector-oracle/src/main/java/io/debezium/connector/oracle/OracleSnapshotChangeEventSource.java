@@ -50,7 +50,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = connectionFactory.getMainConnection();
+        this.jdbcConnection = connectionFactory.mainConnection();
         this.databaseSchema = schema;
     }
 

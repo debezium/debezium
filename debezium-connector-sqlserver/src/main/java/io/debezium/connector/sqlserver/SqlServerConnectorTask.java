@@ -73,7 +73,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
                 valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
-        dataConnection = connectionFactory.getMainConnection();
+        dataConnection = connectionFactory.mainConnection();
         metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
