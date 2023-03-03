@@ -5,7 +5,7 @@
  */
 package io.debezium.jdbc;
 
-public class DefaultMainConnectionFactory<T> implements MainConnectionFactory<T> {
+public class DefaultMainConnectionFactory<T> implements MainConnectionProvidingConnectionFactory<T> {
 
     private ConnectionFactory<T> delegate;
 

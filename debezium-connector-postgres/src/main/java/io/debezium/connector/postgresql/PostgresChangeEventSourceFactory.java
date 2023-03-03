@@ -12,7 +12,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -28,7 +28,7 @@ import io.debezium.util.Strings;
 public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresPartition, PostgresOffsetContext> {
 
     private final PostgresConnectorConfig configuration;
-    private final MainConnectionFactory<PostgresConnection> connectionFactory;
+    private final MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final PostgresEventDispatcher<TableId> dispatcher;
     private final Clock clock;
@@ -39,7 +39,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, MainConnectionFactory<PostgresConnection> connectionFactory,
+    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
                                             ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
                                             SlotState startingSlotInfo) {

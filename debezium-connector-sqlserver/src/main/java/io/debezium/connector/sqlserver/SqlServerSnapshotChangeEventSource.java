@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerOffsetContext.Loader;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
@@ -46,7 +46,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private final SqlServerDatabaseSchema sqlServerDatabaseSchema;
     private final Map<SqlServerPartition, Map<TableId, SqlServerChangeTable>> changeTablesByPartition = new HashMap<>();
 
-    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, MainConnectionFactory<SqlServerConnection> connectionFactory,
+    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                               SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
                                               SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);

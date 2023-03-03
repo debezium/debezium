@@ -8,7 +8,7 @@ package io.debezium.connector.oracle;
 import java.util.Optional;
 
 import io.debezium.config.Configuration;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -25,7 +25,7 @@ import io.debezium.util.Strings;
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OraclePartition, OracleOffsetContext> {
 
     private final OracleConnectorConfig configuration;
-    private final MainConnectionFactory<OracleConnection> connectionFactory;
+    private final MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
@@ -34,7 +34,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleTaskContext taskContext;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
-    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionFactory<OracleConnection> connectionFactory,
+    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
