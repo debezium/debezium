@@ -18,6 +18,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The action to trigger an ad-hoc snapshot.
@@ -74,11 +75,11 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
 
     public static Optional<String> getAdditionalCondition(Document data) {
         String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
-        return (additionalCondition == null || additionalCondition.trim().isEmpty()) ? Optional.empty() : Optional.of(additionalCondition);
+        return Strings.isNullOrBlank(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);
     }
 
     public static Optional<String> getSurrogateKey(Document data) {
         String surrogateKey = data.getString(FIELD_SURROGATE_KEY);
-        return (surrogateKey == null || surrogateKey.trim().isEmpty()) ? Optional.empty() : Optional.of(surrogateKey);
+        return Strings.isNullOrBlank(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);
     }
 }

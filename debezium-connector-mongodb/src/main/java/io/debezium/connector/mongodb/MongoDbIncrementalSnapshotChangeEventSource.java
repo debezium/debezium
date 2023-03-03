@@ -355,7 +355,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 .stream()
                 .map(x -> rsName + "." + x)
                 .collect(Collectors.toList());
-        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds, null, null);
+        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds, Optional.empty(), Optional.empty());
         if (shouldReadChunk) {
             progressListener.snapshotStarted(partition);
             progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()
