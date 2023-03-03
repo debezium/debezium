@@ -49,6 +49,7 @@ import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
@@ -699,7 +700,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
                         "connector_test_ro_(.*).Products,connector_test_ro_(.*).dbz_342_timetest")
-                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, 10)
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, SnapshotTablesRowCountOrder.ASCENDING)
                 .build();
 
         // Start the connector ...
@@ -735,7 +736,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
                         "connector_test_ro_(.*).dbz_342_timetest,connector_test_ro_(.*).Products")
-                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, -5)
+                .with(MySqlConnectorConfig.SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT, SnapshotTablesRowCountOrder.DESCENDING)
                 .build();
 
         // Start the connector ...

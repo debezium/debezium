@@ -145,6 +145,60 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public enum SnapshotTablesRowCountOrder implements EnumeratedValue {
+        ASCENDING("ascending"),
+        DESCENDING("descending"),
+        DISABLED("disabled");
+
+        private final String value;
+
+        SnapshotTablesRowCountOrder(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotTablesRowCountOrder parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotTablesRowCountOrder option : SnapshotTablesRowCountOrder.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotTablesRowCountOrder parse(String value, String defaultValue) {
+            SnapshotTablesRowCountOrder mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
             .withDisplayName("Hostname")
             .withType(Type.STRING)
@@ -467,14 +521,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public static final Field SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT = Field.create("snapshot.tables.order.by.row.count")
             .withDisplayName("Initial snapshot tables order by row count")
-            .withType(Type.INT)
+            .withEnum(SnapshotTablesRowCountOrder.class, SnapshotTablesRowCountOrder.DISABLED)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 111))
-            .withValidation(Field::isInteger)
             .withDescription("Controls the order in which tables are processed in the initial snapshot. "
-                    + "A `negative` value will order the tables by row count descending. "
-                    + "A `positive` value will order the tables by row count ascending. "
-                    + "A value of `0` will disable ordering by row count.")
-            .withDefault(0);
+                    + "A `descending` value will order the tables by row count descending. "
+                    + "A `ascending` value will order the tables by row count ascending. "
+                    + "A value of `disabled` (the default) will disable ordering by row count.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
@@ -514,7 +566,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final JdbcConfiguration jdbcConfig;
     private final String heartbeatActionQuery;
     private final FieldNamer<Column> fieldNamer;
-    private int snapshotOrderByRowCount;
+    private final SnapshotTablesRowCountOrder snapshotOrderByRowCount;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
@@ -550,7 +602,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
         this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
-        this.snapshotOrderByRowCount = config.getInteger(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT);
+        this.snapshotOrderByRowCount = SnapshotTablesRowCountOrder.parse(config.getString(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT));
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -628,7 +680,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
-    public int snapshotOrderByRowCount() {
+    public SnapshotTablesRowCountOrder snapshotOrderByRowCount() {
         return snapshotOrderByRowCount;
     }
 
