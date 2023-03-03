@@ -5,7 +5,7 @@
  */
 package io.debezium.jdbc;
 
-public interface MainConnectionFactory<T> extends ConnectionFactory<T> {
+public interface MainConnectionProvidingConnectionFactory<T> extends ConnectionFactory<T> {
 
     T getMainConnection();
 }

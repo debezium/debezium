@@ -36,7 +36,7 @@ import io.debezium.connector.mysql.MySqlOffsetContext.Loader;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -62,7 +62,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
-    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionFactory<MySqlConnection> connectionFactory,
+    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {

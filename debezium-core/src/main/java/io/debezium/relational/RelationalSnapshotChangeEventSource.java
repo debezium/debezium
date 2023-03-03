@@ -41,7 +41,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -75,13 +75,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
-    private final MainConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
+    private final MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory;
     private final RelationalDatabaseSchema schema;
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig, MainConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
+    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
                                                SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);

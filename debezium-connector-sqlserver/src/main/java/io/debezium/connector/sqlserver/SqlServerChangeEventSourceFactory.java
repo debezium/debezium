@@ -7,7 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Optional;
 
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -25,14 +25,14 @@ import io.debezium.util.Strings;
 public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory<SqlServerPartition, SqlServerOffsetContext> {
 
     private final SqlServerConnectorConfig configuration;
-    private final MainConnectionFactory<SqlServerConnection> connectionFactory;
+    private final MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory;
     private final SqlServerConnection metadataConnection;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
 
-    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionFactory<SqlServerConnection> connectionFactory,
+    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                              SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
                                              Clock clock, SqlServerDatabaseSchema schema) {
         this.configuration = configuration;

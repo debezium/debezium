@@ -24,7 +24,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.DefaultMainConnectionFactory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.jdbc.MainConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -75,7 +75,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        MainConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new MySqlConnection(new MySqlConnectionConfiguration(config),
+        MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new MySqlConnection(new MySqlConnectionConfiguration(config),
                 connectorConfig.useCursorFetch() ? new MySqlBinaryProtocolFieldReader(connectorConfig) : new MySqlTextProtocolFieldReader(connectorConfig)));
 
         connection = connectionFactory.getMainConnection();
