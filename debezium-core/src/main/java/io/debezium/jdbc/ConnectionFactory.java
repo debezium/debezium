@@ -5,6 +5,11 @@
  */
 package io.debezium.jdbc;
 
+/**
+ * An on-demand provider of a JDBC connection.
+ *
+ * @param <T>
+ */
 @FunctionalInterface
 public interface ConnectionFactory<T> {
 

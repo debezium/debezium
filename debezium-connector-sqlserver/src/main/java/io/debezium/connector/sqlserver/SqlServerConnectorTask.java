@@ -19,7 +19,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
-import io.debezium.jdbc.DefaultMainConnectionFactory;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -71,7 +71,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
-        MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionFactory<>(() -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
+        MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
                 valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
         dataConnection = connectionFactory.mainConnection();
         metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
