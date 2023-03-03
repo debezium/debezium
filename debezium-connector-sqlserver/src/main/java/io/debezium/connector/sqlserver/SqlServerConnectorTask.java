@@ -71,8 +71,9 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
-        MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
-                valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
+        MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
+                        valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
         dataConnection = connectionFactory.mainConnection();
         metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());

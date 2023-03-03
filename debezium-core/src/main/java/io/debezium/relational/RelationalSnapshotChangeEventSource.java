@@ -81,7 +81,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
+    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
+                                               MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
                                                SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);

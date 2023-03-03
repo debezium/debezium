@@ -12,7 +12,7 @@ package io.debezium.jdbc;
  *
  * @param <T>
  */
-public interface MainConnectionProvidingConnectionFactory<T> extends ConnectionFactory<T> {
+public interface MainConnectionProvidingConnectionFactory<T extends JdbcConnection> extends ConnectionFactory<T> {
 
     T mainConnection();
 }
