@@ -103,6 +103,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
 
         Connection connection = null;
+        Exception exceptionWhileSnapshot = null;
         Queue<JdbcConnection> connectionPool = null;
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
@@ -165,15 +166,29 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.partition, ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
+        catch (final Exception e) {
+            LOGGER.error("Error during snapshot", e);
+            exceptionWhileSnapshot = e;
+            throw e;
+        }
         finally {
-            if (connectionPool != null) {
-                for (JdbcConnection conn : connectionPool) {
-                    if (!jdbcConnection.equals(conn)) {
-                        conn.close();
+            try {
+                if (connectionPool != null) {
+                    for (JdbcConnection conn : connectionPool) {
+                        if (!jdbcConnection.equals(conn)) {
+                            conn.close();
+                        }
                     }
                 }
+                rollbackTransaction(connection);
             }
-            rollbackTransaction(connection);
+            catch (final Exception e) {
+                LOGGER.error("Error in finally block", e);
+                if (exceptionWhileSnapshot != null) {
+                    e.addSuppressed(exceptionWhileSnapshot);
+                }
+                throw e;
+            }
         }
     }
 
