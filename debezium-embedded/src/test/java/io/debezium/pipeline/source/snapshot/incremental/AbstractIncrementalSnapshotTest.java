@@ -982,7 +982,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         populateTable();
         startConnector();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.of("\"pk\""), tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.of("\"aa\""), tableDataCollectionId());
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
@@ -1007,7 +1007,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of(String.format("\"aa = %s\"", expectedValue)), Optional.of("\"pk\""),
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of(String.format("\"aa = %s\"", expectedValue)), Optional.of("\"aa\""),
                 tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
