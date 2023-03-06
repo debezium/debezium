@@ -115,3 +115,9 @@ SET DEFAULT ROLE 'admin', 'developer' TO 'joe'@'10.0.0.1';
 SET DEFAULT ROLE `admin`@'%' to `dt_user`@`%`;
 -- MySQL on Amazon RDS
 GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, LOAD FROM S3, SELECT INTO S3, INVOKE LAMBDA ON *.* TO 'debezium_user'@'127.0.0.1';
+
+#begin
+-- From MariaDB 10.1.2, pre-query variables are supported
+-- src: https://mariadb.com/kb/en/set-statement/
+SET STATEMENT max_statement_time=60 FOR grant delete history on *.* to 'root'@'%'
+#end
