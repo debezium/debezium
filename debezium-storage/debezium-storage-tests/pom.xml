@@ -14,6 +14,9 @@
     <properties>
 	<!-- S3 -->
         <version.s3mock>2.4.14</version.s3mock>
+
+    <!-- Azurite -->
+        <version.azurite>3.22.0</version.azurite>
     </properties>
 
     <dependencyManagement>
@@ -81,6 +84,12 @@
             <artifactId>debezium-storage-s3</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-azure-blob</artifactId>
+            <version>2.2.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Source system -->
         <dependency>
@@ -105,6 +114,12 @@
             <groupId>com.adobe.testing</groupId>
             <artifactId>s3mock-testcontainers</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Azure Blob Storage -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
         </dependency>
     </dependencies>
 
@@ -133,6 +148,7 @@
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <tag.smock>${version.s3mock}</tag.smock>
+                        <tag.azurite>${version.azurite}</tag.azurite>
                     </systemPropertyVariables>
                     <runOrder>alphabetical</runOrder>
                     <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
