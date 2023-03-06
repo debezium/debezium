@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -898,7 +899,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
         this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
-        this.replicaIdentityMapper = new ReplicaIdentityMapper(config.getString(REPLICA_IDENTITY_AUTOSET_VALUES));
+        final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
+        this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
     }
 
     protected String hostname() {
@@ -998,8 +1000,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return placeholder.getBytes();
     }
 
-    public ReplicaIdentityMapper getTableToReplicaIdentityMap() {
-        return this.replicaIdentityMapper;
+    public Optional<ReplicaIdentityMapper> replicaIdentityMapper() {
+        return Optional.ofNullable(this.replicaIdentityMapper);
     }
 
     protected int moneyFractionDigits() {

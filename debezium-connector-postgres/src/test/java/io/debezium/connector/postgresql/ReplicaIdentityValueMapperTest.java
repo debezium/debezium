@@ -31,7 +31,7 @@ public class ReplicaIdentityValueMapperTest {
 
         ReplicaIdentityMapper replicaIdentityMapper = new ReplicaIdentityMapper(replica_autoset_type_field);
 
-        assertEquals(expectedMap, replicaIdentityMapper.getReplicaIdentityMapper());
+        assertEquals(expectedMap, replicaIdentityMapper.getReplicaIdentityMap());
     }
 
     @Test
@@ -50,6 +50,6 @@ public class ReplicaIdentityValueMapperTest {
 
         ReplicaIdentityMapper replicaIdentityMapper = new ReplicaIdentityMapper(replica_autoset_type_field);
 
-        assertEquals(expectedMap, replicaIdentityMapper.getReplicaIdentityMapper());
+        assertEquals(expectedMap, replicaIdentityMapper.getReplicaIdentityMap());
     }
 }

@@ -34,7 +34,7 @@ public class ReplicaIdentityMapper {
 
     public ReplicaIdentityMapper(String replicaAutoSetValue) {
         this.replicaAutoSetValue = replicaAutoSetValue;
-        this.replicaIdentityMapper = getReplicaIdentityMapper();
+        this.replicaIdentityMapper = getReplicaIdentityMap();
     }
 
     public Set<TableId> getTableIds() {
@@ -48,7 +48,7 @@ public class ReplicaIdentityMapper {
     }
 
     @VisibleForTesting
-    Map<TableId, ServerInfo.ReplicaIdentity> getReplicaIdentityMapper() {
+    Map<TableId, ServerInfo.ReplicaIdentity> getReplicaIdentityMap() {
 
         if (replicaAutoSetValue == null) {
             return null;
