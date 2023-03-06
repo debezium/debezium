@@ -23,5 +23,6 @@
         <module>debezium-storage-s3</module>
         <module>debezium-storage-tests</module>
         <module>debezium-storage-rocketmq</module>
+        <module>debezium-storage-azure-blob</module>
     </modules>
 </project>

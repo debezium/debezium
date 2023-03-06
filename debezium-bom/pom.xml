@@ -44,6 +44,9 @@
         <!-- S3 -->
         <version.s3>2.17.241</version.s3>
 
+        <!-- Blob Storage -->
+        <version.azure.blob>12.21.0</version.azure.blob>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.fest>1.4</version.fest>
@@ -452,6 +455,12 @@
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>s3</artifactId>
                 <version>${version.s3}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-storage-blob</artifactId>
+                <version>${version.azure.blob}</version>
             </dependency>
 
 
