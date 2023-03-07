@@ -350,6 +350,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 }
                 else {
                     LOGGER.debug("Processed {} records from database history", numRecordsProcessed);
+                    recoveryAttempts = 0;
                 }
             } while (lastProcessedOffset < endOffset - 1);
         }
