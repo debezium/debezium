@@ -374,9 +374,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
                 switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                     case FAIL:
-                        throw new DebeziumException(
-                                String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
-                                        e.getMessage()));
                     case WARN:
                         LOGGER.warn("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
                                 e.getMessage(), e);
