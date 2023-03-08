@@ -53,6 +53,8 @@ IMAGES_DIR = 'images'
 UI_DIR = 'ui'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
 
+INSTALL_ARTIFACTS_SCRIPT = 'install-artifacts.sh'
+
 VERSION_TAG = "v$RELEASE_VERSION"
 VERSION_PARTS = RELEASE_VERSION.split('\\.')
 VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
@@ -461,6 +463,10 @@ node('Slave') {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
+                    // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
+                    if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
+                        sh "./$INSTALL_ARTIFACTS_SCRIPT"
+                    }
                     sh "mvn clean install -DskipTests -DskipITs"
                 }
                 ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, "-Dversion.debezium=$RELEASE_VERSION")
