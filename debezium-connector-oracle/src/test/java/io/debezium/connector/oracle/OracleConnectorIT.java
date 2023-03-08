@@ -4949,6 +4949,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         try {
             connection.execute("CREATE TABLE tz_test (a timestamp with time zone)");
             connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+            TestHelper.streamTable(connection, "tz_test");
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TZ_TEST")
@@ -4985,6 +4986,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         try {
             connection.execute("CREATE TABLE tz_test (a timestamp with time zone)");
             connection.execute("INSERT INTO tz_test values (to_timestamp_tz('2010-12-01 23:12:56.788 -12:44', 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'))");
+            TestHelper.streamTable(connection, "tz_test");
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TZ_TEST")
