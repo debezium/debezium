@@ -98,9 +98,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
         try (MongoDbConnection mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred())) {
-            final AtomicReference<MongoDbConnection> mongoReference = new AtomicReference<>(mongo);
             mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
-                readChangeStream(client, mongoReference.get(), replicaSet, context, offsetContext);
+                readChangeStream(client, replicaSet, context, offsetContext);
             });
         }
         catch (Throwable t) {
@@ -153,14 +152,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         });
     }
 
-    private void readChangeStream(MongoClient client, MongoDbConnection mongo, ReplicaSet replicaSet, ChangeEventSourceContext context,
+    private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
                                   MongoDbOffsetContext offsetContext) {
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
-
-        ReplicaSetChangeStreamsContext oplogContext = new ReplicaSetChangeStreamsContext(rsPartition, rsOffsetContext, mongo, replicaSet);
 
         LOGGER.info("Reading change stream for '{}' starting at {}", replicaSet, oplogStart);
 
@@ -201,8 +198,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
-                    oplogContext.getOffset().changeStreamEvent(event);
-                    oplogContext.getOffset().getOffset();
+                    rsOffsetContext.changeStreamEvent(event);
+                    rsOffsetContext.getOffset();
                     CollectionId collectionId = new CollectionId(
                             replicaSet.replicaSetName(),
                             event.getNamespace().getDatabaseName(),
@@ -211,11 +208,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     try {
                         // Note that this will trigger a heartbeat request
                         dispatcher.dispatchDataChangeEvent(
-                                oplogContext.getPartition(),
+                                rsPartition,
                                 collectionId,
                                 new MongoDbChangeRecordEmitter(
-                                        oplogContext.getPartition(),
-                                        oplogContext.getOffset(),
+                                        rsPartition,
+                                        rsOffsetContext,
                                         clock,
                                         event));
                     }
@@ -230,8 +227,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         // Guard against `null` to be protective of issues like SERVER-63772, and situations called out in the Javadocs:
                         // > resume token [...] can be null if the cursor has either not been iterated yet, or the cursor is closed.
                         if (cursor.getResumeToken() != null) {
-                            oplogContext.getOffset().noEvent(cursor);
-                            dispatcher.dispatchHeartbeatEvent(oplogContext.getPartition(), oplogContext.getOffset());
+                            rsOffsetContext.noEvent(cursor);
+                            dispatcher.dispatchHeartbeatEvent(rsPartition, rsOffsetContext);
                         }
                     }
                     catch (InterruptedException e) {
@@ -268,39 +265,5 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false), positions);
-    }
-
-    /**
-     * A context associated with a given replica set oplog read operation.
-     */
-    private static class ReplicaSetChangeStreamsContext {
-        private final ReplicaSetPartition partition;
-        private final ReplicaSetOffsetContext offset;
-        private final MongoDbConnection mongo;
-        private final ReplicaSet replicaSet;
-
-        ReplicaSetChangeStreamsContext(ReplicaSetPartition partition, ReplicaSetOffsetContext offsetContext,
-                                       MongoDbConnection mongo, ReplicaSet replicaSet) {
-            this.partition = partition;
-            this.offset = offsetContext;
-            this.mongo = mongo;
-            this.replicaSet = replicaSet;
-        }
-
-        ReplicaSetPartition getPartition() {
-            return partition;
-        }
-
-        ReplicaSetOffsetContext getOffset() {
-            return offset;
-        }
-
-        MongoDbConnection getMongo() {
-            return mongo;
-        }
-
-        String getReplicaSetName() {
-            return replicaSet.replicaSetName();
-        }
     }
 }
