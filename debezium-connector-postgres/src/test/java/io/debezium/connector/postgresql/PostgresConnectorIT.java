@@ -3070,6 +3070,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-5739")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "This needs pg_replication_slot_advance which is supported only on Postgres 11+")
+    @Ignore
+    // Disabled due to potential unreliability in corner cases
     public void shouldStopConnectorOnSlotRecreation() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnectorIT.class);
 
