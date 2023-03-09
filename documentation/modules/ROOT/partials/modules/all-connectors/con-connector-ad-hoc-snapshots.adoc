@@ -53,7 +53,7 @@ endif::[]
 ifeval::['{context}' != 'mongodb']
 |`surrogate-key`
 |_N/A_
-| An optional string, which represents a column name that will be used during the snapshot process as a primary key of the {data-collection}(s).
+| An optional string that specifies the column name that the connector uses as the primary key of a {data-collection} during the snapshot process.
 endif::[]
 
 |===
