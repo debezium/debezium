@@ -2,6 +2,52 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.3.Final
+March 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400843)
+
+### New features since 2.1.2.Final
+
+* Reduce verbosity of skipped transactions if transaction has no events relevant to captured tables [DBZ-6094](https://issues.redhat.com/browse/DBZ-6094)
+* Support String type for key in Mongo incremental snapshot [DBZ-6116](https://issues.redhat.com/browse/DBZ-6116)
+* Add hostname validator to connector configuration [DBZ-6156](https://issues.redhat.com/browse/DBZ-6156)
+
+
+### Breaking changes since 2.1.2.Final
+
+* Reading SSN field can lead to Numeric Overflow if a transaction contains more than Integer.MAX_VALUE SQL sequences [DBZ-6091](https://issues.redhat.com/browse/DBZ-6091)
+* Debezium truncating micro/nanosecond part if it is all zeros with time zone [DBZ-6163](https://issues.redhat.com/browse/DBZ-6163)
+
+
+### Fixes since 2.1.2.Final
+
+* ActivateTracingSpan wrong timestamps reported [DBZ-5827](https://issues.redhat.com/browse/DBZ-5827)
+* Postgresql Data Loss on restarts [DBZ-5915](https://issues.redhat.com/browse/DBZ-5915)
+* debezium-connector-cassandra 2.1.0.Alpha2 plugin can no longer run "out of the box" [DBZ-5925](https://issues.redhat.com/browse/DBZ-5925)
+* MongoDB Incremental Snapshot not Working [DBZ-5973](https://issues.redhat.com/browse/DBZ-5973)
+* Mask password in log statement [DBZ-6064](https://issues.redhat.com/browse/DBZ-6064)
+* Loading Custom offset storage fails with Class not found error [DBZ-6075](https://issues.redhat.com/browse/DBZ-6075)
+* SQL Server tasks fail if the number of databases is smaller than maxTasks [DBZ-6084](https://issues.redhat.com/browse/DBZ-6084)
+* GCP Spanner connector start failing when there are multiple indexes on a single column [DBZ-6101](https://issues.redhat.com/browse/DBZ-6101)
+* When using LOB support, an UPDATE against multiple rows can lead to inconsistent event data [DBZ-6107](https://issues.redhat.com/browse/DBZ-6107)
+* Negative remaining attempts on MongoDB reconnect case [DBZ-6113](https://issues.redhat.com/browse/DBZ-6113)
+* Tables with spaces or non-ASCII characters in their name are not captured by Oracle because they must be quoted. [DBZ-6120](https://issues.redhat.com/browse/DBZ-6120)
+* Offsets are not advanced in a CDB deployment with low frequency of changes to PDB [DBZ-6125](https://issues.redhat.com/browse/DBZ-6125)
+* Oracle TIMESTAMP WITH TIME ZONE is emitted as GMT during snapshot rather than the specified TZ [DBZ-6143](https://issues.redhat.com/browse/DBZ-6143)
+* Config options internal.schema.history.internal.ddl.filter not working [DBZ-6190](https://issues.redhat.com/browse/DBZ-6190)
+
+
+### Other changes since 2.1.2.Final
+
+* Prepare MongoDB ExtractNewDocumentState SMT doc for downstream GA [DBZ-6006](https://issues.redhat.com/browse/DBZ-6006)
+* Refactor OCP deployment job [DBZ-6044](https://issues.redhat.com/browse/DBZ-6044)
+* Refactor ARO deployment job [DBZ-6045](https://issues.redhat.com/browse/DBZ-6045)
+* Invalid links breaking downstream documentation build [DBZ-6069](https://issues.redhat.com/browse/DBZ-6069)
+* Remove references to adding configuration settings to a .properties file  [DBZ-6130](https://issues.redhat.com/browse/DBZ-6130)
+* Upgrade Quarkus dependencies to 2.16.3.Final [DBZ-6150](https://issues.redhat.com/browse/DBZ-6150)
+* Disable advance slot checking [DBZ-6191](https://issues.redhat.com/browse/DBZ-6191)
+
+
+
 ## 2.1.2.Final
 January 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400304)
 
