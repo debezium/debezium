@@ -50,6 +50,12 @@ ifeval::['{context}' != 'mongodb']
 subset of the contents of the {data-collection}(s).
 endif::[]
 
+ifeval::['{context}' != 'mongodb']
+|`surrogate-key`
+|_N/A_
+| An optional string, which represents a column name that will be used during the snapshot process as a primary key of the {data-collection}(s).
+endif::[]
+
 |===
 
 .Triggering an ad hoc snapshot
