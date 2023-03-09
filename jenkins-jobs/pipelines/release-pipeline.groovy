@@ -525,9 +525,13 @@ node('Slave') {
             }
             echo "Modifying Server Dockerfile"
             dir("$IMAGES_DIR/server/$IMAGE_TAG") {
+                def serverStagingRepoId = ADDITIONAL_REPOSITORIES['server']?.mavenRepoId
+                if (serverStagingRepoId == null) {
+                    serverStagingRepoId = STAGING_REPO_ID
+                }
                 modifyFile('Dockerfile') {
                     it
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/${ADDITIONAL_REPOSITORIES['server'].mavenRepoId}/\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$serverStagingRepoId/\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
                 }
