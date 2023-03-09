@@ -48,7 +48,7 @@ tag::sql-based-snapshot[]
 +
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_","surrogate-key":"_<surrogate-key>_"}');
 ----
 +
 For example,
@@ -128,6 +128,9 @@ If you do not specify a value, the connector runs an incremental snapshot.
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
 subset of the contents of the {data-collection}s.
 For more information about the `additional-condition` parameter, see xref:{context}-incremental-snapshots-additional-condition[].
+|7
+|`surrogate-key`
+|An optional string, which specifies a column name to use as the primary key for the snapshot. This allows to override the default primary key of the table.
 |===
 
 [id="{context}-incremental-snapshots-additional-condition"]
