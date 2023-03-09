@@ -189,3 +189,5 @@ TimLoes,Tim Loes
 jbarrieault,Jacob Barrieault
 ingmarfjolla,Ingmar Fjolla
 Mehmet Firat KOMURCU,Mehmet Firat Komurcu
+shantanu-sharechat,Shantanu Sharma
+imtj1,Tony Joseph
