@@ -60,7 +60,8 @@ values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
     "type":"incremental"}, // <5>
-    "additional-condition":"color=blue"}'); // <6>
+    "additional-condition":"color=blue"}, // <6>
+    "surrogate-key":"tenant-id"}'); // <7>
 ----
 end::sql-based-snapshot[]
 
@@ -130,7 +131,7 @@ subset of the contents of the {data-collection}s.
 For more information about the `additional-condition` parameter, see xref:{context}-incremental-snapshots-additional-condition[].
 |7
 |`surrogate-key`
-|An optional string, which specifies a column name to use as the primary key for the snapshot. This allows to override the default primary key of the table.
+|An optional string that specifies the column name that the connector uses as the primary key for snapshots.
 |===
 
 [id="{context}-incremental-snapshots-additional-condition"]
