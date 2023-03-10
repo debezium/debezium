@@ -32,10 +32,12 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
     private final EventDispatcher<SqlServerPartition, TableId> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
+    private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
 
     public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                              SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
-                                             Clock clock, SqlServerDatabaseSchema schema) {
+                                             Clock clock, SqlServerDatabaseSchema schema,
+                                             NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.metadataConnection = metadataConnection;
@@ -43,6 +45,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -60,7 +63,8 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
                 dispatcher,
                 errorHandler,
                 clock,
-                schema);
+                schema,
+                notificationService);
     }
 
     @Override
