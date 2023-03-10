@@ -6,6 +6,7 @@
 package io.debezium.schema;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -46,4 +47,10 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
     default boolean storeOnlyCapturedTables() {
         return false;
     }
+
+    default boolean skipUnparseableDdlStatements() {
+        return false;
+    }
+
+    Predicate<String> ddlFilter();
 }

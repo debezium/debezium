@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -183,4 +184,6 @@ public interface SchemaHistory {
     boolean storeOnlyCapturedTables();
 
     boolean skipUnparseableDdlStatements();
+
+    Predicate<String> ddlFilter();
 }

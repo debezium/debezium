@@ -35,6 +35,7 @@ import io.debezium.connector.mysql.MySqlReadOnlyIncrementalSnapshotContext;
 import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -56,7 +57,7 @@ public class KafkaSchemaHistoryTest {
     private KafkaSchemaHistory history;
     private Offsets<Partition, MySqlOffsetContext> offsets;
     private MySqlOffsetContext position;
-
+    private LogInterceptor interceptor;
     private static final int PARTITION_NO = 0;
 
     @BeforeClass
@@ -119,6 +120,7 @@ public class KafkaSchemaHistoryTest {
     }
 
     private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+        interceptor = new LogInterceptor(KafkaSchemaHistory.class);
         // Start up the history ...
         Configuration config = Configuration.create()
                 .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -135,6 +137,7 @@ public class KafkaSchemaHistoryTest {
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
                 .with(KafkaSchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                .with(KafkaSchemaHistory.DDL_FILTER, "CREATE\\s+ROLE.*")
                 .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
                 .with(KafkaSchemaHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
                 .build();
@@ -294,6 +297,34 @@ public class KafkaSchemaHistoryTest {
         }
 
         testHistoryTopicContent(topicName, false);
+    }
+
+    @Test
+    public void shouldSkipMessageOnDDLFilter() throws Exception {
+        String topicName = "stop-on-ddlfilter-schema-changes";
+
+        // Create the empty topic ...
+        kafka.createTopic(topicName, 1, 1);
+
+        // Create invalid records
+        final ProducerRecord<String, String> invalidSQL = new ProducerRecord<>(topicName, PARTITION_NO, null,
+                "{\"source\":{\"server\":\"my-server\"},\"position\":{\"filename\":\"my-txn-file.log\",\"position\":39},\"databaseName\":\"db1\",\"ddl\":\"create  role if not exists 'RL_COMPLIANCE_NSA';\"}");
+
+        final Configuration intruderConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "intruder")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(intruderConfig.asProperties())) {
+            producer.send(invalidSQL).get();
+        }
+
+        testHistoryTopicContent(topicName, true);
+
+        boolean result = interceptor
+                .containsMessage("a DDL 'create  role if not exists 'RL_COMPLIANCE_NSA';' was filtered out of processing by regular expression 'CREATE\\s+ROLE.*");
+        assertThat(result).isTrue();
     }
 
     @Test
