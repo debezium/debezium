@@ -573,7 +573,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
-        if (connectorConfig.getDdlFilter().test(sql)) {
+        if (taskContext.getSchema().ddlFilter().test(sql)) {
             LOGGER.debug("DDL '{}' was filtered out of processing", sql);
             return;
         }

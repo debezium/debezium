@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Field;
@@ -2908,6 +2909,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         @Override
         public boolean skipUnparseableDdlStatements() {
             return false;
+        }
+
+        @Override
+        public Predicate<String> ddlFilter() {
+            return ddl -> false;
         }
     }
 }

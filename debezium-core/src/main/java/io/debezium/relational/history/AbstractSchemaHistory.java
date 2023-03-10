@@ -213,4 +213,9 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
     public boolean skipUnparseableDdlStatements() {
         return skipUnparseableDDL;
     }
+
+    @Override
+    public Predicate<String> ddlFilter() {
+        return ddlFilter;
+    }
 }

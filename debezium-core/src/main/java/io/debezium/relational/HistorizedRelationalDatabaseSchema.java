@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import io.debezium.DebeziumException;
 import io.debezium.pipeline.spi.Offsets;
@@ -112,8 +113,14 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         return schemaHistory.storeOnlyCapturedTables();
     }
 
+    @Override
     public boolean skipUnparseableDdlStatements() {
         return schemaHistory.skipUnparseableDdlStatements();
+    }
+
+    @Override
+    public Predicate<String> ddlFilter() {
+        return schemaHistory.ddlFilter();
     }
 
     @Override
