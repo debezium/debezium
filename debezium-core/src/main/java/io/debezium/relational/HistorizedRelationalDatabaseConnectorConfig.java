@@ -106,6 +106,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         // Do not remove the prefix from the subset of config properties ...
         Configuration schemaHistoryConfig = config.subset(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
+                .with(config.subset(Field.INTERNAL_PREFIX + SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING, false))
                 .withDefault(SchemaHistory.NAME, getLogicalName() + "-schemahistory")
                 .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
                 .withDefault(AbstractSchemaHistory.INTERNAL_CONNECTOR_ID, logicalName)

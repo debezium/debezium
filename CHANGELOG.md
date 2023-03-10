@@ -2,6 +2,59 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.Alpha3
+March 8th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12402444)
+
+### New features since 2.2.0.Alpha2
+
+* Optionally parallelize initial snapshots [DBZ-823](https://issues.redhat.com/browse/DBZ-823)
+* Server side database and collection filtering on MongoDB change stream [DBZ-5102](https://issues.redhat.com/browse/DBZ-5102)
+* Create a Datastax connector based on Cassandra connector [DBZ-5951](https://issues.redhat.com/browse/DBZ-5951)
+* Add support for honouring MongoDB read preference in change stream after promotion [DBZ-5953](https://issues.redhat.com/browse/DBZ-5953)
+* Add support for header to all Debezium Server sinks [DBZ-6017](https://issues.redhat.com/browse/DBZ-6017)
+* Add support for surrogate keys for incremental snapshots [DBZ-6023](https://issues.redhat.com/browse/DBZ-6023)
+* Support String type for key in Mongo incremental snapshot [DBZ-6116](https://issues.redhat.com/browse/DBZ-6116)
+* fix typo in sqlserver doc. change "evemts" to "events". [DBZ-6123](https://issues.redhat.com/browse/DBZ-6123)
+* Support change stream filtering using MongoDB's aggregation pipeline step [DBZ-6131](https://issues.redhat.com/browse/DBZ-6131)
+* Remove hardcoded list of system database exclusions that are not required for change streaming [DBZ-6152](https://issues.redhat.com/browse/DBZ-6152)
+
+
+### Breaking changes since 2.2.0.Alpha2
+
+* Debezium truncating micro/nanosecond part if it is all zeros with time zone [DBZ-6163](https://issues.redhat.com/browse/DBZ-6163)
+
+
+### Fixes since 2.2.0.Alpha2
+
+* When using `snapshot.collection.include.list`, relational schema isn't populated correctly [DBZ-3594](https://issues.redhat.com/browse/DBZ-3594)
+* Debezium UI should use fast-jar again with Quarkus 2.x [DBZ-4621](https://issues.redhat.com/browse/DBZ-4621)
+* GCP Spanner connector start failing when there are multiple indexes on a single column [DBZ-6101](https://issues.redhat.com/browse/DBZ-6101)
+* Negative remaining attempts on MongoDB reconnect case [DBZ-6113](https://issues.redhat.com/browse/DBZ-6113)
+* Tables with spaces or non-ASCII characters in their name are not captured by Oracle because they must be quoted. [DBZ-6120](https://issues.redhat.com/browse/DBZ-6120)
+* Offsets are not advanced in a CDB deployment with low frequency of changes to PDB [DBZ-6125](https://issues.redhat.com/browse/DBZ-6125)
+* Oracle TIMESTAMP WITH TIME ZONE is emitted as GMT during snapshot rather than the specified TZ [DBZ-6143](https://issues.redhat.com/browse/DBZ-6143)
+* Debezium UI E2E Frontend build failing randomly with corrupted Node 16 tar file [DBZ-6146](https://issues.redhat.com/browse/DBZ-6146)
+* Debezium UI SQL Server tests randomly fail due to slow agent start-up [DBZ-6149](https://issues.redhat.com/browse/DBZ-6149)
+* RelationalSnapshotChangeEventSource swallows exception generated during snapshot [DBZ-6179](https://issues.redhat.com/browse/DBZ-6179)
+
+
+### Other changes since 2.2.0.Alpha2
+
+* Remove redundancies between MySqlJdbcContext and MySqlConnection [DBZ-4855](https://issues.redhat.com/browse/DBZ-4855)
+* Refactor connection management for mongodb connector [DBZ-6032](https://issues.redhat.com/browse/DBZ-6032)
+* Conditionalization anomalies in Oracle connector doc [DBZ-6073](https://issues.redhat.com/browse/DBZ-6073)
+* Optimize debezium-testing-system image to build only modules necessary for tests [DBZ-6108](https://issues.redhat.com/browse/DBZ-6108)
+* Migrate system test jobs to gitlab [DBZ-6109](https://issues.redhat.com/browse/DBZ-6109)
+* Remove references to adding configuration settings to a .properties file  [DBZ-6130](https://issues.redhat.com/browse/DBZ-6130)
+* Fix Debezium Server Redis random test failures [DBZ-6133](https://issues.redhat.com/browse/DBZ-6133)
+* Allow TestContainers test framework to expose ConnectorConfiguration as JSON [DBZ-6136](https://issues.redhat.com/browse/DBZ-6136)
+* Upgrade impsort-maven-plugin from 1.7.0 to 1.8.0 [DBZ-6144](https://issues.redhat.com/browse/DBZ-6144)
+* Upgrade Quarkus dependencies to 2.16.3.Final [DBZ-6150](https://issues.redhat.com/browse/DBZ-6150)
+* Github workflows not working for Cassandra job (step Build Debezium Connector Cassandra) [DBZ-6171](https://issues.redhat.com/browse/DBZ-6171)
+* Create SSL scenarios for integration tests for MySQL connector [DBZ-6184](https://issues.redhat.com/browse/DBZ-6184)
+
+
+
 ## 2.2.0.Alpha2
 February 16th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400776)
 
