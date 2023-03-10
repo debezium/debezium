@@ -12,10 +12,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -28,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.Notification;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.ChangeTable;
 import io.debezium.relational.Table;
@@ -87,14 +93,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private final ElapsedTimeStrategy pauseBetweenCommits;
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
+    private final Map<SqlServerPartition, Set<SqlServerChangeTable>> changeTablesWithKnownStopLsn = new HashMap<>();
 
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
+    private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
                                                EventDispatcher<SqlServerPartition, TableId> dispatcher,
-                                               ErrorHandler errorHandler, Clock clock, SqlServerDatabaseSchema schema) {
+                                               ErrorHandler errorHandler, Clock clock, SqlServerDatabaseSchema schema,
+                                               NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -102,6 +111,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
+        this.notificationService = notificationService;
         this.pollInterval = connectorConfig.getPollInterval();
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
         this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
@@ -211,9 +221,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             schemaChangeCheckpoints.add(table);
                         }
                     }
+                    collectChangeTablesWithKnownStopLsn(partition, tables);
                 }
                 if (tablesSlot.get() == null) {
                     tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn));
+                    collectChangeTablesWithKnownStopLsn(partition, tablesSlot.get());
                 }
                 try {
                     dataConnection.getChangesForTables(databaseName, tablesSlot.get(), fromLsn, toLsn, resultSets -> {
@@ -350,6 +362,21 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         return effectiveOffset;
     }
 
+    private void collectChangeTablesWithKnownStopLsn(SqlServerPartition partition, SqlServerChangeTable[] tables) {
+        for (SqlServerChangeTable table : tables) {
+            if (table.getStopLsn().isAvailable()) {
+                synchronized (changeTablesWithKnownStopLsn) {
+                    if (!changeTablesWithKnownStopLsn.containsKey(partition)) {
+                        changeTablesWithKnownStopLsn.put(partition, new HashSet<>());
+                    }
+
+                    LOGGER.info("The stop lsn of {} change table became known", table);
+                    changeTablesWithKnownStopLsn.get(partition).add(table);
+                }
+            }
+        }
+    }
+
     private void commitTransaction() throws SQLException {
         // When reading from read-only Always On replica the default and only transaction isolation
         // is snapshot. This means that CDC metadata are not visible for long-running transactions.
@@ -482,5 +509,50 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         return connection.getNthTransactionLsnFromLast(databaseName, fromLsn, maxTransactionsPerIteration);
+    }
+
+    @Override
+    public void commitOffset(Map<String, ?> sourcePartition, Map<String, ?> offset) {
+        Lsn commitLsn = Lsn.valueOf((String) offset.get("commit_lsn"));
+        synchronized (changeTablesWithKnownStopLsn) {
+            Optional<SqlServerPartition> optionalPartition = changeTablesWithKnownStopLsn.keySet().stream()
+                    .filter(p -> p.getSourcePartition().equals(sourcePartition))
+                    .findFirst();
+
+            if (optionalPartition.isEmpty()) {
+                return;
+            }
+
+            SqlServerPartition partition = optionalPartition.get();
+            Set<SqlServerChangeTable> partitionTables = changeTablesWithKnownStopLsn.get(partition);
+
+            List<SqlServerChangeTable> changeTablesToCompleteReadingFrom = partitionTables.stream()
+                    .filter(t -> t.getStopLsn().compareTo(commitLsn) < 0)
+                    .collect(Collectors.toList());
+
+            for (SqlServerChangeTable table : changeTablesToCompleteReadingFrom) {
+                Map<String, String> additionalData = new HashMap<>();
+                additionalData.put("connector_name", connectorConfig.getLogicalName());
+                additionalData.put("capture_instance", table.getCaptureInstance());
+                additionalData.put("start_lsn", table.getStartLsn().toString());
+                additionalData.put("stop_lsn", table.getStopLsn().toString());
+                additionalData.put("commit_lsn", commitLsn.toString());
+                additionalData.putAll(partition.getSourcePartition());
+
+                notificationService.notify(Notification.Builder.builder()
+                        .withId(UUID.randomUUID().toString())
+                        .withAggregateType("Capture Instance")
+                        .withType("COMPLETED")
+                        .withAdditionalData(additionalData)
+                        .withTimestamp(clock.currentTimeInMillis())
+                        .build());
+
+                partitionTables.remove(table);
+
+                LOGGER.info(
+                        "Complete reading from change table {} as the committed change lsn ({}) is greater than the table's stop lsn ({})",
+                        table, offset, table.getStopLsn().toString());
+            }
+        }
     }
 }
