@@ -1164,7 +1164,7 @@ public class JdbcConnection implements AutoCloseable {
                     totalTables++;
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
-                        // Read table column metadata for multi-schema setup only once for each table
+                        // Read table column metadata for multischema setup only once for each table
                         if (schemaNamePattern == null) {
                             tableId = new TableId(
                                     catalogName,
