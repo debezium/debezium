@@ -96,16 +96,17 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     /**
      * Determines if the incremental snapshot was paused or not.
      */
-    private AtomicBoolean paused = new AtomicBoolean(false);
-    private ObjectMapper mapper = new ObjectMapper();
+    private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final ObjectMapper mapper = new ObjectMapper();
 
-    private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
+    private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
     };
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
+    @Override
     public boolean openWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
@@ -116,6 +117,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return true;
     }
 
+    @Override
     public boolean closeWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
@@ -126,16 +128,19 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return true;
     }
 
+    @Override
     public void pauseSnapshot() {
         LOGGER.info("Pausing incremental snapshot");
         paused.set(true);
     }
 
+    @Override
     public void resumeSnapshot() {
         LOGGER.info("Resuming incremental snapshot");
         paused.set(false);
     }
 
+    @Override
     public boolean isSnapshotPaused() {
         return paused.get();
     }
@@ -151,6 +156,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return currentChunkId == null || !id.startsWith(currentChunkId);
     }
 
+    @Override
     public boolean deduplicationNeeded() {
         return windowOpened;
     }
@@ -213,10 +219,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
     }
 
+    @Override
     public boolean snapshotRunning() {
         return !dataCollectionsToSnapshot.isEmpty();
     }
 
+    @Override
     public Map<String, Object> store(Map<String, Object> offset) {
         if (!snapshotRunning()) {
             return offset;
@@ -231,6 +239,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         dataCollectionsToSnapshot.addAll(dataCollectionIds);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
@@ -249,7 +258,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
+        return dataCollectionsToSnapshot.removeAll(List.of(new DataCollection<T>(collectionId)));
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
@@ -269,22 +278,27 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return context;
     }
 
+    @Override
     public void sendEvent(Object[] key) {
         lastEventKeySent = key;
     }
 
+    @Override
     public DataCollection<T> currentDataCollectionId() {
         return dataCollectionsToSnapshot.peek();
     }
 
+    @Override
     public int dataCollectionsToBeSnapshottedCount() {
         return dataCollectionsToSnapshot.size();
     }
 
+    @Override
     public void nextChunkPosition(Object[] end) {
         chunkEndPosition = end;
     }
 
+    @Override
     public Object[] chunkEndPosititon() {
         return chunkEndPosition;
     }
@@ -297,33 +311,40 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         schemaVerificationPassed = false;
     }
 
+    @Override
     public void revertChunk() {
         chunkEndPosition = lastEventKeySent;
         windowOpened = false;
     }
 
+    @Override
     public boolean isNonInitialChunk() {
         return chunkEndPosition != null;
     }
 
+    @Override
     public DataCollection<T> nextDataCollection() {
         resetChunk();
         return dataCollectionsToSnapshot.poll();
     }
 
+    @Override
     public void startNewChunk() {
         currentChunkId = UUID.randomUUID().toString();
         LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
     }
 
+    @Override
     public String currentChunkId() {
         return currentChunkId;
     }
 
+    @Override
     public void maximumKey(Object[] key) {
         maximumKey = key;
     }
 
+    @Override
     public Optional<Object[]> maximumKey() {
         return Optional.ofNullable(maximumKey);
     }

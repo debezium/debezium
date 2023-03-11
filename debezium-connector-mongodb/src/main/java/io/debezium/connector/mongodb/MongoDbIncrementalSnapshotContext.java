@@ -81,18 +81,19 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     /**
      * Determines if the incremental snapshot was paused or not.
      */
-    private AtomicBoolean paused = new AtomicBoolean(false);
-    private ObjectMapper mapper = new ObjectMapper();
+    private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final ObjectMapper mapper = new ObjectMapper();
 
-    private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
+    private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
     };
 
-    private TypeReference<List<Map<String, String>>> offsetMapperTypeRef = new TypeReference<>() {
+    private final TypeReference<List<Map<String, String>>> offsetMapperTypeRef = new TypeReference<>() {
     };
 
     public MongoDbIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
     }
 
+    @Override
     public boolean openWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
@@ -103,6 +104,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return true;
     }
 
+    @Override
     public boolean closeWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
@@ -113,16 +115,19 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return true;
     }
 
+    @Override
     public void pauseSnapshot() {
         LOGGER.info("Pausing incremental snapshot");
         paused.set(true);
     }
 
+    @Override
     public void resumeSnapshot() {
         LOGGER.info("Resuming incremental snapshot");
         paused.set(false);
     }
 
+    @Override
     public boolean isSnapshotPaused() {
         return paused.get();
     }
@@ -138,6 +143,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return currentChunkId == null || !id.startsWith(currentChunkId);
     }
 
+    @Override
     public boolean deduplicationNeeded() {
         return windowOpened;
     }
@@ -197,10 +203,12 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         }
     }
 
+    @Override
     public boolean snapshotRunning() {
         return !dataCollectionsToSnapshot.isEmpty();
     }
 
+    @Override
     public Map<String, Object> store(Map<String, Object> offset) {
         if (!snapshotRunning()) {
             return offset;
@@ -241,6 +249,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         dataCollectionsToSnapshot.addAll(dataCollectionIds);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> _additionalCondition,
                                                                     Optional<String> surrogateKey) {
@@ -290,22 +299,28 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return context;
     }
 
+
+    @Override
     public void sendEvent(Object[] key) {
         lastEventKeySent = key;
     }
 
+    @Override
     public DataCollection<T> currentDataCollectionId() {
         return dataCollectionsToSnapshot.peek();
     }
 
+    @Override
     public int dataCollectionsToBeSnapshottedCount() {
         return dataCollectionsToSnapshot.size();
     }
 
+    @Override
     public void nextChunkPosition(Object[] end) {
         chunkEndPosition = end;
     }
 
+    @Override
     public Object[] chunkEndPosititon() {
         return chunkEndPosition;
     }
@@ -318,33 +333,40 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         schemaVerificationPassed = false;
     }
 
+    @Override
     public void revertChunk() {
         chunkEndPosition = lastEventKeySent;
         windowOpened = false;
     }
 
+    @Override
     public boolean isNonInitialChunk() {
         return chunkEndPosition != null;
     }
 
+    @Override
     public DataCollection<T> nextDataCollection() {
         resetChunk();
         return dataCollectionsToSnapshot.poll();
     }
 
+    @Override
     public void startNewChunk() {
         currentChunkId = UUID.randomUUID().toString();
         LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
     }
 
+    @Override
     public String currentChunkId() {
         return currentChunkId;
     }
 
+    @Override
     public void maximumKey(Object[] key) {
         maximumKey = key;
     }
 
+    @Override
     public Optional<Object[]> maximumKey() {
         return Optional.ofNullable(maximumKey);
     }
