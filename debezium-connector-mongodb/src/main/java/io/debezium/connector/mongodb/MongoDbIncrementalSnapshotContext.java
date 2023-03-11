@@ -10,14 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Queue;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -48,14 +41,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     // TODO Consider which (if any) information should be exposed in source info
     public static final String INCREMENTAL_SNAPSHOT_KEY = "incremental_snapshot";
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
-
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID = DATA_COLLECTIONS_TO_SNAPSHOT_KEY + "_id";
-
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
-            + "_additional_condition";
-    public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
-    public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID = "id";
+    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = "additional_condition";
+    public static final String EVENT_PRIMARY_KEY = "primary_key";
+    public static final String TABLE_MAXIMUM_KEY = "maximum_key";
 
     /**
      * @code(true) if window is opened and deduplication should be executed
@@ -96,6 +85,9 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private ObjectMapper mapper = new ObjectMapper();
 
     private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
+    };
+
+    private TypeReference<List<Map<String, String>>> offsetMapperTypeRef = new TypeReference<>() {
     };
 
     public MongoDbIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
@@ -213,10 +205,36 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         if (!snapshotRunning()) {
             return offset;
         }
-        offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
-        offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
-        offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
-        return offset;
+
+        return serializeIncrementalSnapshotOffsets(offset);
+    }
+
+    private Map<String, Object> serializeIncrementalSnapshotOffsets(Map<String, Object> offset) {
+        try {
+            List<LinkedHashMap<String, String>> offsets = dataCollectionsToSnapshot.stream().map(dc -> {
+                LinkedHashMap<String, String> o = new LinkedHashMap<>();
+                o.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, dc.getId().toString());
+                o.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
+                        dc.getAdditionalCondition().orElse(null));
+                o.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
+                o.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
+                return o;
+            }).collect(Collectors.toList());
+
+            offset.put(INCREMENTAL_SNAPSHOT_KEY, mapper.writeValueAsString(offsets));
+            return offset;
+        } catch (JsonProcessingException e) {
+            throw new DebeziumException(String.format("Cannot serialize %s information", INCREMENTAL_SNAPSHOT_KEY));
+        }
+    }
+
+    private List<Map<String,String>> parseIncrementalSnapshotOffsets(Map<String, ?> offsets) {
+        try {
+            final String incrementalSnapshotOffsetsStr = (String) offsets.get(INCREMENTAL_SNAPSHOT_KEY);
+            return incrementalSnapshotOffsetsStr == null ? null : mapper.readValue(incrementalSnapshotOffsetsStr, offsetMapperTypeRef);
+        } catch (JsonProcessingException e) {
+            throw new DebeziumException(String.format("Cannot deserialize %s information", INCREMENTAL_SNAPSHOT_KEY));
+        }
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
@@ -246,20 +264,29 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId));
     }
 
+
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
-        final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
-        context.chunkEndPosition = (lastEventSentKeyStr != null)
-                ? context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr)
-                : null;
-        context.lastEventKeySent = null;
-        final String maximumKeyStr = (String) offsets.get(TABLE_MAXIMUM_KEY);
-        context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
-                : null;
-        final String dataCollectionsStr = (String) offsets.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
-        context.dataCollectionsToSnapshot.clear();
-        if (dataCollectionsStr != null) {
-            context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
+        List<Map<String,String>> incrementalSnapshotOffsets = context.parseIncrementalSnapshotOffsets(offsets);
+
+        List<DataCollection<U>> dataCollections = new ArrayList<>();
+        if (incrementalSnapshotOffsets != null) {
+            incrementalSnapshotOffsets.stream().forEach(collectionOffset -> {
+                final String lastEventSentKeyStr = collectionOffset.get(EVENT_PRIMARY_KEY);
+                context.chunkEndPosition = (lastEventSentKeyStr != null)
+                        ? context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr)
+                        : null;
+                context.lastEventKeySent = null;
+
+                final String maximumKeyStr = collectionOffset.get(TABLE_MAXIMUM_KEY);
+                context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
+                        : null;
+
+                dataCollections.add(new DataCollection(CollectionId.parse(collectionOffset.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID))));
+            });
         }
+
+        context.dataCollectionsToSnapshot.clear();
+        context.addTablesIdsToSnapshot(dataCollections);
         return context;
     }
 
