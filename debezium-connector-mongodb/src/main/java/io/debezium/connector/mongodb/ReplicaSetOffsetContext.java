@@ -10,7 +10,6 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
-import org.bson.BsonTimestamp;
 
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -103,6 +102,10 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.lastOffset(replicaSetName);
     }
 
+    public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
+        sourceInfo.initEvent(replicaSetName, cursor);
+    }
+
     public void noEvent(MongoChangeStreamCursor<?> cursor) {
         sourceInfo.noEvent(replicaSetName, cursor);
     }
@@ -111,12 +114,13 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.changeStreamEvent(replicaSetName, changeStreamEvent);
     }
 
-    public BsonTimestamp lastOffsetTimestamp() {
-        return sourceInfo.lastOffsetTimestamp(replicaSetName);
-    }
-
     public String lastResumeToken() {
         return sourceInfo.lastResumeToken(replicaSetName);
+    }
+
+    public BsonDocument lastResumeTokenDoc() {
+        final String data = sourceInfo.lastResumeToken(replicaSetName);
+        return (data == null) ? null : ResumeTokens.fromData(data);
     }
 
     @Override

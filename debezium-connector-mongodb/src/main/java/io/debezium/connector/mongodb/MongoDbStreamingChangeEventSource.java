@@ -6,17 +6,13 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.bson.BsonDocument;
 import org.bson.BsonString;
-import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +46,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
 
-    private static final String OPERATION_FIELD = "op";
-    private static final String OBJECT_FIELD = "o";
-    private static final String OPERATION_CONTROL = "c";
-    private static final String TX_OPS = "applyOps";
-
     private final MongoDbConnectorConfig connectorConfig;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -82,7 +73,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final List<ReplicaSet> validReplicaSets = replicaSets.all();
 
         if (offsetContext == null) {
-            offsetContext = initializeOffsets(connectorConfig, partition, replicaSets);
+            offsetContext = emptyOffsets(connectorConfig);
         }
 
         if (validReplicaSets.size() == 1) {
@@ -157,9 +148,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
-        final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
-
-        LOGGER.info("Reading change stream for '{}' starting at {}", replicaSet, oplogStart);
+        LOGGER.info("Reading change stream for '{}'", replicaSet);
 
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig())
                 .create();
@@ -176,10 +165,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             final BsonDocument doc = new BsonDocument();
             doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
             rsChangeStream.resumeAfter(doc);
-        }
-        else if (oplogStart.getTime() > 0) {
-            LOGGER.info("Resume token not available, starting streaming from time '{}'", oplogStart);
-            rsChangeStream.startAtOperationTime(oplogStart);
         }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
@@ -249,21 +234,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    protected MongoDbOffsetContext initializeOffsets(MongoDbConnectorConfig connectorConfig, MongoDbPartition partition,
-                                                     ReplicaSets replicaSets)
-            throws InterruptedException {
-        final Map<ReplicaSet, BsonDocument> positions = new LinkedHashMap<>();
-        for (var replicaSet : replicaSets.all()) {
-            LOGGER.info("Determine Snapshot Offset for replica-set {}", replicaSet.replicaSetName());
-
-            try (MongoDbConnection mongo = establishConnection(partition, replicaSet, ReadPreference.primaryPreferred())) {
-                mongo.execute("get oplog position", client -> {
-                    positions.put(replicaSet, MongoUtil.getOplogEntry(client, -1, LOGGER));
-                });
-            }
-        }
-
-        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(),
-                new MongoDbIncrementalSnapshotContext<>(false), positions);
+    protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
+        LOGGER.info("Initializing empty Offset context");
+        return new MongoDbOffsetContext(
+                new SourceInfo(connectorConfig),
+                new TransactionContext(),
+                new MongoDbIncrementalSnapshotContext<>(false));
     }
 }

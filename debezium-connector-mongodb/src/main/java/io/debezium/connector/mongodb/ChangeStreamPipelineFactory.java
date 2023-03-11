@@ -56,8 +56,7 @@ class ChangeStreamPipelineFactory {
         var filters = Stream
                 .of(
                         createCollectionFilter(filterConfig),
-                        createOperationTypeFilter(connectorConfig),
-                        createClusterTimeFilter(rsOffsetContext))
+                        createOperationTypeFilter(connectorConfig))
                 .flatMap(Optional::stream)
                 .collect(toList());
 
@@ -162,16 +161,6 @@ class ChangeStreamPipelineFactory {
         return Optional.of(Filters.in("operationType", includedOperations.stream()
                 .map(OperationType::getValue)
                 .collect(toList())));
-    }
-
-    private static Optional<Bson> createClusterTimeFilter(ReplicaSetOffsetContext rsOffsetContext) {
-        if (rsOffsetContext.lastResumeToken() != null) {
-            return Optional.empty();
-        }
-
-        // After snapshot the oplogStart points to the last change snapshotted, so it must filtered-out to
-        // prevent duplicates
-        return Optional.of(Filters.ne("clusterTime", rsOffsetContext.lastOffsetTimestamp()));
     }
 
     @SafeVarargs
