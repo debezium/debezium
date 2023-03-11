@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.bson.BsonTimestamp;
 import org.bson.conversions.Bson;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,8 +31,6 @@ public class ChangeStreamPipelineFactoryTest {
     private ChangeStreamPipelineFactory sut;
 
     @Mock
-    private ReplicaSetOffsetContext rsOffsetContext;
-    @Mock
     private MongoDbConnectorConfig connectorConfig;
     @Mock
     private FilterConfig filterConfig;
@@ -47,10 +44,6 @@ public class ChangeStreamPipelineFactoryTest {
                 .willReturn("dbit.*");
         given(filterConfig.getUserPipeline())
                 .willReturn(new ChangeStreamPipeline("[{\"$match\": { \"$and\": [{\"operationType\": \"insert\"}, {\"fullDocument.eventId\": 1404 }] } }]"));
-        given(rsOffsetContext.lastResumeToken())
-                .willReturn(null);
-        given(rsOffsetContext.lastOffsetTimestamp())
-                .willReturn(new BsonTimestamp(0L));
 
         // When:
         var pipeline = sut.create();
@@ -78,15 +71,6 @@ public class ChangeStreamPipelineFactoryTest {
                         "    }, {\n" +
                         "      \"operationType\" : {\n" +
                         "        \"$in\" : [ \"insert\", \"update\", \"replace\", \"delete\" ]\n" +
-                        "      }\n" +
-                        "    }, {\n" +
-                        "      \"clusterTime\" : {\n" +
-                        "        \"$ne\" : {\n" +
-                        "          \"$timestamp\" : {\n" +
-                        "            \"t\" : 0,\n" +
-                        "            \"i\" : 0\n" +
-                        "          }\n" +
-                        "        }\n" +
                         "      }\n" +
                         "    } ]\n" +
                         "  }\n" +

@@ -71,11 +71,9 @@ public final class SourceInfo extends BaseSourceInfo {
 
     private static final String RESUME_TOKEN = "resume_token";
 
-    public static final int SCHEMA_VERSION = 1;
-
     public static final String SERVER_ID_KEY = "server_id";
     public static final String REPLICA_SET_NAME = "rs";
-    public static final String NAMESPACE = "ns";
+
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
     public static final String INITIAL_SYNC = "initsync";
@@ -115,10 +113,6 @@ public final class SourceInfo extends BaseSourceInfo {
             this.ts = ts;
             this.changeStreamSessionTxnId = changeStreamsSessionTxnId;
             this.resumeToken = resumeToken;
-        }
-
-        public static Position snapshotPosition(BsonTimestamp ts) {
-            return new Position(ts, null, null);
         }
 
         public static Position changeStreamPosition(BsonTimestamp ts, String resumeToken, SessionTransactionId sessionTxnId) {
@@ -210,24 +204,9 @@ public final class SourceInfo extends BaseSourceInfo {
         });
     }
 
-    /**
-     * Get the MongoDB timestamp of the last offset position for the replica set.
-     *
-     * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @return the timestamp of the last offset, or the beginning of time if there is none
-     */
-    public BsonTimestamp lastOffsetTimestamp(String replicaSetName) {
-        Position existing = positionsByReplicaSetName.get(replicaSetName);
-        return existing != null ? existing.ts : INITIAL_TIMESTAMP;
-    }
-
     public String lastResumeToken(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         return existing != null ? existing.resumeToken : null;
-    }
-
-    public Position lastPosition(String replicaSetName) {
-        return positionsByReplicaSetName.get(replicaSetName);
     }
 
     /**
@@ -243,14 +222,18 @@ public final class SourceInfo extends BaseSourceInfo {
         if (existing == null) {
             existing = INITIAL_POSITION;
         }
-        if (isInitialSyncOngoing(replicaSetName)) {
-            return addSessionTxnIdToOffset(existing, Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                    ORDER, Integer.valueOf(existing.getInc()),
-                    INITIAL_SYNC, true));
-        }
-        Map<String, Object> offset = Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                ORDER, Integer.valueOf(existing.getInc()));
 
+        if (isInitialSyncOngoing(replicaSetName)) {
+            Map<String, Object> offset = Collect.hashMapOf(
+                    TIMESTAMP, existing.getTime(),
+                    ORDER, existing.getInc(),
+                    INITIAL_SYNC, true);
+            return addSessionTxnIdToOffset(existing, offset);
+        }
+
+        Map<String, Object> offset = Collect.hashMapOf(
+                TIMESTAMP, existing.getTime(),
+                ORDER, existing.getInc());
         existing.getResumeToken().ifPresent(resumeToken -> offset.put(RESUME_TOKEN, resumeToken));
 
         return addSessionTxnIdToOffset(existing, offset);
@@ -277,27 +260,18 @@ public final class SourceInfo extends BaseSourceInfo {
         onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName), wallTime);
     }
 
-    /**
-     * Initializes a {@link Struct} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
-     * offset} information. The Struct complies with the {@link #schema} for the MongoDB connector.
-     * The method usually sets the position in the oplog after which the capturing should start.
-     *
-     * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
-     * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
-     *            the oplog
-     * @see #schema()
-     */
-    public void initialPosition(String replicaSetName, BsonDocument oplogEvent) {
-        Position position = INITIAL_POSITION;
-        String namespace = "";
-        if (oplogEvent != null) {
-            BsonTimestamp ts = extractEventTimestamp(oplogEvent);
-            position = Position.snapshotPosition(ts);
-            namespace = oplogEvent.getString("ns").getValue();
+    public void initEvent(String replicaSetName, MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
+        if (cursor == null) {
+            return;
         }
-        positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, 0L);
+        ChangeStreamDocument<BsonDocument> result = cursor.tryNext();
+        if (result == null) {
+            noEvent(replicaSetName, cursor);
+        }
+        else {
+            changeStreamEvent(replicaSetName, result);
+        }
     }
 
     public void noEvent(String replicaSetName, MongoChangeStreamCursor<?> cursor) {
@@ -308,7 +282,8 @@ public final class SourceInfo extends BaseSourceInfo {
         String namespace = "";
         long wallTime = 0L;
         BsonTimestamp ts = ResumeTokens.getTimestamp(cursor.getResumeToken());
-        Position position = Position.changeStreamPosition(ts, cursor.getResumeToken().getString("_data").getValue(), null);
+        String resumeToken = ResumeTokens.getDataString(cursor.getResumeToken());
+        Position position = Position.changeStreamPosition(ts, resumeToken, null);
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
@@ -320,8 +295,8 @@ public final class SourceInfo extends BaseSourceInfo {
         long wallTime = 0L;
         if (changeStreamEvent != null) {
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
-            position = Position.changeStreamPosition(ts, changeStreamEvent.getResumeToken().getString("_data").getValue(),
-                    MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
+            String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
+            position = Position.changeStreamPosition(ts, resumeToken, MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
             if (changeStreamEvent.getWallTime() != null) {
                 wallTime = changeStreamEvent.getWallTime().getValue();
@@ -330,16 +305,6 @@ public final class SourceInfo extends BaseSourceInfo {
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
-    }
-
-    /**
-     * Utility to extract the {@link BsonTimestamp timestamp} value from the event.
-     *
-     * @param oplogEvent the event
-     * @return the timestamp, or null if the event is null or there is no {@code ts} field
-     */
-    protected static BsonTimestamp extractEventTimestamp(BsonDocument oplogEvent) {
-        return oplogEvent != null ? oplogEvent.getTimestamp("ts") : null;
     }
 
     private void onEvent(String replicaSetName, CollectionId collectionId, Position position, long wallTime) {

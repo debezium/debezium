@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.connect.data.Schema;
-import org.bson.BsonDocument;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -38,12 +37,6 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         super(sourceInfo);
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
-    }
-
-    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext,
-                                IncrementalSnapshotContext<CollectionId> incrementalSnapshotContext, Map<ReplicaSet, BsonDocument> offsets) {
-        this(sourceInfo, transactionContext, incrementalSnapshotContext);
-        offsets.forEach((replicaSet, document) -> sourceInfo.initialPosition(replicaSet.replicaSetName(), document));
     }
 
     void startReplicaSetSnapshot(String replicaSetName) {

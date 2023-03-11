@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 
@@ -42,6 +43,14 @@ public final class ResumeTokens {
         }
 
         return resumeToken.get("_data");
+    }
+
+    public static String getDataString(BsonDocument resumeToken) {
+        return getData(resumeToken).asString().getValue();
+    }
+
+    public static BsonDocument fromData(String data) {
+        return (data == null) ? null : new BsonDocument("_data", new BsonString(data));
     }
 
     private static byte[] getDataBytes(BsonValue data) {

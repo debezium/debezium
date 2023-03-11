@@ -16,9 +16,7 @@ import java.util.regex.Pattern;
 
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.slf4j.Logger;
 
-import com.mongodb.MongoQueryException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -225,22 +223,6 @@ public class MongoUtil {
             }
         }
         return null;
-    }
-
-    public static BsonDocument getOplogEntry(MongoClient client, int sortOrder, Logger logger) throws MongoQueryException {
-        try {
-            MongoCollection<BsonDocument> oplog = client.getDatabase("local").getCollection("oplog.rs", BsonDocument.class);
-            return oplog.find().sort(new Document("$natural", sortOrder)).limit(1).first();
-        }
-        catch (MongoQueryException e) {
-            if (e.getMessage().contains("$natural:") && e.getMessage().contains("is not supported")) {
-                final String sortOrderType = sortOrder == -1 ? "descending" : "ascending";
-                // Amazon DocumentDB does not support $natural, assume no oplog entries when this occurs
-                logger.info("Natural {} sort is not supported on oplog, treating situation as no oplog entry exists.", sortOrderType);
-                return null;
-            }
-            throw e;
-        }
     }
 
     /**
