@@ -21,9 +21,9 @@ public interface IncrementalSnapshotContext<T> {
 
     int dataCollectionsToBeSnapshottedCount();
 
-    boolean openWindow(String id);
+    boolean openWindow(String id, String dataCollectionId);
 
-    boolean closeWindow(String id);
+    boolean closeWindow(String id, String dataCollectionId);
 
     void pauseSnapshot();
 

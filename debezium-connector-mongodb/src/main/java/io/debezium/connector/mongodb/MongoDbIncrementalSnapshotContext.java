@@ -93,7 +93,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     public MongoDbIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
     }
 
-    public boolean openWindow(String id) {
+    public boolean openWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;
@@ -103,7 +103,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return true;
     }
 
-    public boolean closeWindow(String id) {
+    public boolean closeWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;

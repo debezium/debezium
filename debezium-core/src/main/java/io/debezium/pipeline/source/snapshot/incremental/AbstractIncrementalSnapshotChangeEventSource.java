@@ -96,9 +96,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
+    public void closeWindow(P partition, String id, String dataCollectionId, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        if (!context.closeWindow(id)) {
+        if (!context.closeWindow(id, dataCollectionId)) {
             return;
         }
         sendWindowEvents(partition, offsetContext);

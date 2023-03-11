@@ -46,6 +46,8 @@ import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
+import javax.print.Doc;
+
 /**
  * An incremental snapshot change event source that emits events from a MongoDB change stream interleaved with snapshot events.
  */
@@ -99,9 +101,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void closeWindow(MongoDbPartition partition, String id, OffsetContext offsetContext) throws InterruptedException {
+    public void closeWindow(MongoDbPartition partition, String id, String dataCollectionId, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
-        if (!context.closeWindow(id)) {
+        if (!context.closeWindow(id, dataCollectionId)) {
             return;
         }
         sendWindowEvents(partition, offsetContext);
@@ -177,32 +179,21 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      * Update low watermark for the incremental snapshot chunk
      */
     protected void emitWindowOpen() throws InterruptedException {
-        final CollectionId collectionId = signallingCollectionId;
-        final String id = context.currentChunkId() + "-open";
-
-        mongo.execute(
-                "emit window open for chunk '" + context.currentChunkId() + "'",
-                client -> {
-                    final MongoDatabase database = client.getDatabase(collectionId.dbName());
-                    final MongoCollection<Document> collection = database.getCollection(collectionId.name());
-
-                    LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
-                    final Document signal = new Document();
-                    signal.put(DOCUMENT_ID, id);
-                    signal.put("type", OpenIncrementalSnapshotWindow.NAME);
-                    signal.put("payload", "");
-                    collection.insertOne(signal);
-                });
+        emitWindow("open");
     }
 
     /**
      * Update high watermark for the incremental snapshot chunk
      */
     protected void emitWindowClose() throws InterruptedException {
+        emitWindow("close");
+    }
+
+    private void emitWindow(String type) throws InterruptedException {
         final CollectionId collectionId = signallingCollectionId;
-        final String id = context.currentChunkId() + "-close";
+        final String id = context.currentChunkId() + "-" + type;
         mongo.execute(
-                "emit window close for chunk '" + context.currentChunkId() + "'",
+                "emit window "+ type+" for chunk '" + context.currentChunkId() + "'",
                 client -> {
                     final MongoDatabase database = client.getDatabase(collectionId.dbName());
                     final MongoCollection<Document> collection = database.getCollection(collectionId.name());
@@ -211,7 +202,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     final Document signal = new Document();
                     signal.put(DOCUMENT_ID, id);
                     signal.put("type", CloseIncrementalSnapshotWindow.NAME);
-                    signal.put("payload", "");
+
+                    final Document payload = new Document();
+                    payload.put("collection", collectionId.namespace());
+
+                    signal.put("payload", payload);
                     collection.insertOne(signal);
                 });
     }

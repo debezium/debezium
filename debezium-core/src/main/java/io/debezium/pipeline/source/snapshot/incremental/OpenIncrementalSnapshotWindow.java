@@ -23,7 +23,9 @@ public class OpenIncrementalSnapshotWindow<P extends Partition> implements Signa
 
     @Override
     public boolean arrived(Payload<P> signalPayload) {
-        signalPayload.offsetContext.getIncrementalSnapshotContext().openWindow(signalPayload.id);
+        signalPayload.offsetContext
+                .getIncrementalSnapshotContext()
+                .openWindow(signalPayload.id, signalPayload.data.get("collection").asString());
         return true;
     }
 

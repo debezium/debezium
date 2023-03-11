@@ -29,8 +29,8 @@ public class CloseIncrementalSnapshotWindow<P extends Partition> implements Sign
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
-        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.partition, signalPayload.id,
-                signalPayload.offsetContext);
+        dispatcher.getIncrementalSnapshotChangeEventSource()
+                .closeWindow(signalPayload.partition, signalPayload.id, signalPayload.data.get("collection").asString(), signalPayload.offsetContext);
         return true;
     }
 

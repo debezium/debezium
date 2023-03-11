@@ -21,7 +21,11 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 public interface IncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId> {
 
-    void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException;
+    void closeWindow(P partition, String id, String dataCollectionId, OffsetContext offsetContext) throws InterruptedException;
+
+    default void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
+        closeWindow(partition, id, null, offsetContext);
+    }
 
     void pauseSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException;
 

@@ -106,7 +106,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
-    public boolean openWindow(String id) {
+    public boolean openWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;
@@ -116,7 +116,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return true;
     }
 
-    public boolean closeWindow(String id) {
+    public boolean closeWindow(String id, String dataCollectionId) {
         if (notExpectedChunk(id)) {
             LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
             return false;
