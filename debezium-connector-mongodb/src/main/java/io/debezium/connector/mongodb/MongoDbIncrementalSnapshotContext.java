@@ -28,6 +28,9 @@ import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotConte
 import io.debezium.relational.Table;
 import io.debezium.util.HexConverter;
 
+import javax.ws.rs.core.Link;
+import javax.xml.crypto.Data;
+
 /**
  * Describes current state of incremental snapshot of MongoDB connector
  *
@@ -46,37 +49,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     public static final String EVENT_PRIMARY_KEY = "primary_key";
     public static final String TABLE_MAXIMUM_KEY = "maximum_key";
 
-    /**
-     * @code(true) if window is opened and deduplication should be executed
-     */
-    protected boolean windowOpened = false;
-
-    /**
-     * The last primary key in chunk that is now in process.
-     */
-    private Object[] chunkEndPosition;
-
     // TODO After extracting add into source info optional block
     // incrementalSnapshotWindow{String from, String to}
     // State to be stored and recovered from offsets
-    private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
-
-    /**
-     * The PK of the last record that was passed to Kafka Connect. In case of
-     * connector restart the start of the first chunk will be populated from it.
-     */
-    private Object[] lastEventKeySent;
-
-    private String currentChunkId;
-
-    /**
-     * The largest PK in the table at the start of snapshot.
-     */
-    private Object[] maximumKey;
-
-    private Table schema;
-
-    private boolean schemaVerificationPassed;
+    private final Map<T, DataCollection<T>> dataCollectionsToSnapshot = new LinkedHashMap();
 
     /**
      * Determines if the incremental snapshot was paused or not.
@@ -94,24 +70,24 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     @Override
-    public boolean openWindow(String id, String dataCollectionId) {
-        if (notExpectedChunk(id)) {
-            LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
-            return false;
-        }
-        LOGGER.debug("Opening window for incremental snapshot chunk");
-        windowOpened = true;
-        return true;
+    public boolean openWindow(String id, T dataCollectionId) {
+        return setWindowStatusForDataCollection(id, dataCollectionId, "open");
     }
 
     @Override
-    public boolean closeWindow(String id, String dataCollectionId) {
-        if (notExpectedChunk(id)) {
-            LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
+    public boolean closeWindow(String id, T dataCollectionId) {
+        return setWindowStatusForDataCollection(id, dataCollectionId, "close");
+    }
+
+    private boolean setWindowStatusForDataCollection(String id, T dataCollectionId, String type) {
+        // TODO: confirm if dataCollectionId is nullable
+        DataCollection<T> dataCollection = dataCollectionsToSnapshot.get(dataCollectionId);
+        if (notExpectedChunk(id, dataCollection)) {
+            LOGGER.info("Received request to "+type +" window with id = '{}', expected = '{}', request ignored", id, dataCollection.currentChunkId());
             return false;
         }
-        LOGGER.debug("Closing window for incremental snapshot chunk");
-        windowOpened = false;
+        LOGGER.debug(type +" window for incremental snapshot chunk");
+        dataCollection.setWindowOpened(type == "open");
         return true;
     }
 
@@ -139,13 +115,9 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
      * before the restart.
      * Such windowing signals are ignored.
      */
-    private boolean notExpectedChunk(String id) {
+    private boolean notExpectedChunk(String id, DataCollection<T> dataCollection) {
+        String currentChunkId = dataCollection.currentChunkId();
         return currentChunkId == null || !id.startsWith(currentChunkId);
-    }
-
-    @Override
-    public boolean deduplicationNeeded() {
-        return windowOpened;
     }
 
     private String arrayToSerializedString(Object[] array) {
@@ -170,39 +142,6 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         }
     }
 
-    private String dataCollectionsToSnapshotAsString() {
-        // TODO Handle non-standard table ids containing dots, commas etc.
-        try {
-            List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
-                    .map(x -> {
-                        LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
-                                x.getAdditionalCondition().orElse(null));
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-            return mapper.writeValueAsString(dataCollectionsMap);
-        }
-        catch (JsonProcessingException e) {
-            throw new DebeziumException("Cannot serialize dataCollectionsToSnapshot information");
-        }
-    }
-
-    private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr) {
-        try {
-            List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
-            List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
-                    .map(x -> new DataCollection<T>((T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID))))
-                    .filter(x -> x.getId() != null)
-                    .collect(Collectors.toList());
-            return dataCollectionsList;
-        }
-        catch (JsonProcessingException e) {
-            throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information");
-        }
-    }
-
     @Override
     public boolean snapshotRunning() {
         return !dataCollectionsToSnapshot.isEmpty();
@@ -219,13 +158,14 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     private Map<String, Object> serializeIncrementalSnapshotOffsets(Map<String, Object> offset) {
         try {
-            List<LinkedHashMap<String, String>> offsets = dataCollectionsToSnapshot.stream().map(dc -> {
+            List<LinkedHashMap<String, String>> offsets = dataCollectionsToSnapshot.entrySet().stream().map(entry -> {
+                DataCollection<T> dc = entry.getValue();
                 LinkedHashMap<String, String> o = new LinkedHashMap<>();
                 o.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, dc.getId().toString());
                 o.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
                         dc.getAdditionalCondition().orElse(null));
-                o.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
-                o.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
+                dc.lastEventKeySent().ifPresent(lastKeySent -> o.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastKeySent)));
+                dc.maximumKey().ifPresent(mk -> o.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(mk)));
                 return o;
             }).collect(Collectors.toList());
 
@@ -246,7 +186,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
-        dataCollectionsToSnapshot.addAll(dataCollectionIds);
+        dataCollectionIds.forEach(dc -> dataCollectionsToSnapshot.put(dc.getId(), dc));
     }
 
     @Override
@@ -269,45 +209,40 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @Override
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
-        final T collectionId = (T) CollectionId.parse(dataCollectionId);
-        return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId));
+        DataCollection<T> removedCollection = dataCollectionsToSnapshot.remove(dataCollectionId);
+        return removedCollection != null;
     }
 
-
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
-        List<Map<String,String>> incrementalSnapshotOffsets = context.parseIncrementalSnapshotOffsets(offsets);
+        context.dataCollectionsToSnapshot.clear();
 
-        List<DataCollection<U>> dataCollections = new ArrayList<>();
+        List<Map<String,String>> incrementalSnapshotOffsets = context.parseIncrementalSnapshotOffsets(offsets);
         if (incrementalSnapshotOffsets != null) {
-            incrementalSnapshotOffsets.stream().forEach(collectionOffset -> {
+            incrementalSnapshotOffsets.forEach(collectionOffset -> {
+                DataCollection<U> dataCollection = new DataCollection(CollectionId.parse(collectionOffset.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)));
+
                 final String lastEventSentKeyStr = collectionOffset.get(EVENT_PRIMARY_KEY);
-                context.chunkEndPosition = (lastEventSentKeyStr != null)
-                        ? context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr)
-                        : null;
-                context.lastEventKeySent = null;
+                if (lastEventSentKeyStr != null) {
+                    dataCollection.setChunkEndPosition(context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr));
+                }
+                dataCollection.setLastEventKeySent(null);
 
                 final String maximumKeyStr = collectionOffset.get(TABLE_MAXIMUM_KEY);
-                context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
-                        : null;
+                if (maximumKeyStr != null) {
+                    dataCollection.maximumKey( context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr));
+                }
 
-                dataCollections.add(new DataCollection(CollectionId.parse(collectionOffset.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID))));
+                context.dataCollectionsToSnapshot.put(dataCollection.getId(), dataCollection);
             });
         }
 
-        context.dataCollectionsToSnapshot.clear();
-        context.addTablesIdsToSnapshot(dataCollections);
         return context;
     }
 
 
     @Override
-    public void sendEvent(Object[] key) {
-        lastEventKeySent = key;
-    }
-
-    @Override
-    public DataCollection<T> currentDataCollectionId() {
-        return dataCollectionsToSnapshot.peek();
+    public void sendEvent(Object[] key, T dataCollectionId) {
+        dataCollectionsToSnapshot.get(dataCollectionId).setLastEventKeySent(key);
     }
 
     @Override
@@ -316,80 +251,9 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     @Override
-    public void nextChunkPosition(Object[] end) {
-        chunkEndPosition = end;
-    }
-
-    @Override
-    public Object[] chunkEndPosititon() {
-        return chunkEndPosition;
-    }
-
-    private void resetChunk() {
-        lastEventKeySent = null;
-        chunkEndPosition = null;
-        maximumKey = null;
-        schema = null;
-        schemaVerificationPassed = false;
-    }
-
-    @Override
-    public void revertChunk() {
-        chunkEndPosition = lastEventKeySent;
-        windowOpened = false;
-    }
-
-    @Override
-    public boolean isNonInitialChunk() {
-        return chunkEndPosition != null;
-    }
-
-    @Override
     public DataCollection<T> nextDataCollection() {
-        resetChunk();
-        return dataCollectionsToSnapshot.poll();
-    }
-
-    @Override
-    public void startNewChunk() {
-        currentChunkId = UUID.randomUUID().toString();
-        LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
-    }
-
-    @Override
-    public String currentChunkId() {
-        return currentChunkId;
-    }
-
-    @Override
-    public void maximumKey(Object[] key) {
-        maximumKey = key;
-    }
-
-    @Override
-    public Optional<Object[]> maximumKey() {
-        return Optional.ofNullable(maximumKey);
-    }
-
-    @Override
-    public Table getSchema() {
-        return schema;
-    }
-
-    @Override
-    public void setSchema(Table schema) {
-        this.schema = schema;
-    }
-
-    @Override
-    public boolean isSchemaVerificationPassed() {
-        return schemaVerificationPassed;
-    }
-
-    @Override
-    public void setSchemaVerificationPassed(boolean schemaVerificationPassed) {
-        this.schemaVerificationPassed = schemaVerificationPassed;
-        LOGGER.info("Incremental snapshot's schema verification passed = {}, schema = {}", schemaVerificationPassed, schema);
+        Iterator<Map.Entry<T, DataCollection<T>>> collections = dataCollectionsToSnapshot.entrySet().iterator();
+        return collections.hasNext() ? collections.next().getValue() : null;
     }
 
     public static <U> MongoDbIncrementalSnapshotContext<U> load(Map<String, ?> offsets, boolean useCatalogBeforeSchema) {
@@ -400,9 +264,6 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     @Override
     public String toString() {
-        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
-                + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
-                + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
-                + Arrays.toString(maximumKey) + "]";
+        return "MongoDbIncrementalSnapshotContext [" + Arrays.toString( dataCollectionsToSnapshot.values().toArray()) + "]";
     }
 }
