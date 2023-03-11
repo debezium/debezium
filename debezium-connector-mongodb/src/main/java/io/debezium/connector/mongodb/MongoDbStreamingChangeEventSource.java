@@ -202,7 +202,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                     LOGGER.trace("Arrived Change Stream event: {}", event);
 
                     oplogContext.getOffset().changeStreamEvent(event);
-                    oplogContext.getOffset().getOffset();
                     CollectionId collectionId = new CollectionId(
                             replicaSet.replicaSetName(),
                             event.getNamespace().getDatabaseName(),
