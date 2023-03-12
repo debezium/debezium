@@ -6,161 +6,123 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 
+import com.mongodb.MongoSocketOpenException;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoIterable;
+import com.mongodb.connection.ClusterConnectionMode;
+import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ClusterType;
+import com.mongodb.connection.ServerConnectionState;
+import com.mongodb.connection.ServerDescription;
+
+import io.debezium.util.Collect;
 
 /**
- * @author Randall Hauch
- *
+ * Tests to verify mongodb utilities
  */
 public class MongoUtilTest {
 
-    private ServerAddress address;
-    private List<ServerAddress> addresses = new ArrayList<>();
-
     @Test
-    public void shouldParseIPv4ServerAddressWithoutPort() {
-        address = MongoUtil.parseAddress("localhost");
-        assertThat(address.getHost()).isEqualTo("localhost");
-        assertThat(address.getPort()).isEqualTo(ServerAddress.defaultPort());
+    public void shouldGetClusterDescription() {
+        ClusterDescription expectedClusterDescription = new ClusterDescription(
+                ClusterConnectionMode.MULTIPLE,
+                ClusterType.REPLICA_SET,
+                List.of());
+
+        var client = mock(MongoClient.class);
+        when(client.getClusterDescription()).thenReturn(expectedClusterDescription);
+
+        var actualDescription = MongoUtil.clusterDescription(client);
+        assertThat(actualDescription).isEqualTo(expectedClusterDescription);
     }
 
     @Test
-    public void shouldParseIPv4ServerAddressWithoPort() {
-        address = MongoUtil.parseAddress("localhost:28017");
-        assertThat(address.getHost()).isEqualTo("localhost");
-        assertThat(address.getPort()).isEqualTo(28017);
+    public void shouldGetClusterDescriptionAfterForcedConnection() {
+        ClusterDescription unknwonClusterDescription = new ClusterDescription(
+                ClusterConnectionMode.MULTIPLE,
+                ClusterType.UNKNOWN,
+                List.of());
+
+        ClusterDescription expectedClusterDescription = new ClusterDescription(
+                ClusterConnectionMode.MULTIPLE,
+                ClusterType.REPLICA_SET,
+                List.of());
+
+        // > Mongodb may not connect right away which results in UNKNOWN cluster type.
+        // > MongoUtil.clusterDescription() forces the connection by listing databases when needed
+        @SuppressWarnings("unchecked")
+        var iterable = (MongoIterable<String>) mock(MongoIterable.class);
+        when(iterable.first()).thenReturn("name");
+
+        var client = mock(MongoClient.class);
+        when(client.getClusterDescription()).thenReturn(unknwonClusterDescription, expectedClusterDescription);
+        when(client.listDatabaseNames()).thenReturn(iterable);
+
+        var actualDescription = MongoUtil.clusterDescription(client);
+        assertThat(actualDescription).isEqualTo(expectedClusterDescription);
     }
 
     @Test
-    public void shouldParseIPv6ServerAddressWithoutPort() {
-        address = MongoUtil.parseAddress("[::1/128]");
-        assertThat(address.getHost()).isEqualTo("::1/128"); // removes brackets
-        assertThat(address.getPort()).isEqualTo(ServerAddress.defaultPort());
+    public void shouldGetReplicaSetName() {
+        var rsNames = Collect.arrayListOf(null, "rs0", "rs1");
+        var addresses = Collect.arrayListOf(new ServerAddress("host0"),
+                new ServerAddress("host1"),
+                new ServerAddress("host2"));
+
+        List<ServerDescription> serverDescriptions = List.of(
+                ServerDescription.builder()
+                        .address(addresses.get(0))
+                        .state(ServerConnectionState.CONNECTING)
+                        .exception(new MongoSocketOpenException("can't connect", addresses.get(0)))
+                        .build(),
+                ServerDescription.builder()
+                        .address(addresses.get(1))
+                        .state(ServerConnectionState.CONNECTED)
+                        .setName(rsNames.get(1))
+                        .build(),
+                ServerDescription.builder()
+                        .address(addresses.get(2))
+                        .state(ServerConnectionState.CONNECTED)
+                        .setName(rsNames.get(2)) // In reality servers will have the same rs name
+                        .build());
+
+        ClusterDescription clusterDescription = new ClusterDescription(
+                ClusterConnectionMode.MULTIPLE,
+                ClusterType.REPLICA_SET,
+                serverDescriptions);
+
+        var actualRsName = MongoUtil.replicaSetName(clusterDescription);
+
+        assertThat(actualRsName).hasValue(rsNames.get(1));
     }
 
     @Test
-    public void shouldParseIPv6ServerAddressWithPort() {
-        address = MongoUtil.parseAddress("[::1/128]:28017");
-        assertThat(address.getHost()).isEqualTo("::1/128"); // removes brackets
-        assertThat(address.getPort()).isEqualTo(28017);
-    }
+    public void shouldNotGetReplicaSetName() {
+        var address = new ServerAddress("host0");
 
-    @Test
-    public void shouldParseServerAddressesWithoutPort() {
-        addresses = MongoUtil.parseAddresses("host1,host2,[::1/128],host4");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("host1");
-        assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(2).getHost()).isEqualTo("::1/128");
-        assertThat(addresses.get(2).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(ServerAddress.defaultPort());
-    }
+        List<ServerDescription> serverDescriptions = List.of(
+                ServerDescription.builder()
+                        .address(address)
+                        .state(ServerConnectionState.CONNECTING)
+                        .exception(new MongoSocketOpenException("can't connect", address))
+                        .build());
 
-    @Test
-    public void shouldParseServerAddressesWithPort() {
-        addresses = MongoUtil.parseAddresses("host1:2111,host2:3111,[ff02::2:ff00:0/104]:4111,host4:5111");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("host1");
-        assertThat(addresses.get(0).getPort()).isEqualTo(2111);
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(3111);
-        assertThat(addresses.get(2).getHost()).isEqualTo("ff02::2:ff00:0/104");
-        assertThat(addresses.get(2).getPort()).isEqualTo(4111);
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(5111);
-    }
+        ClusterDescription clusterDescription = new ClusterDescription(
+                ClusterConnectionMode.MULTIPLE,
+                ClusterType.REPLICA_SET,
+                serverDescriptions);
 
-    @Test
-    public void shouldParseServerAddressesWithReplicaSetNameAndWithoutPort() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/host1,host2,[::1/128],host4");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("host1");
-        assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(2).getHost()).isEqualTo("::1/128");
-        assertThat(addresses.get(2).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(ServerAddress.defaultPort());
-    }
+        var actualRsName = MongoUtil.replicaSetName(clusterDescription);
 
-    @Test
-    public void shouldParseServerAddressesWithReplicaSetNameAndWithPort() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/host1:2111,host2:3111,[ff02::2:ff00:0/104]:4111,host4:5111");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("host1");
-        assertThat(addresses.get(0).getPort()).isEqualTo(2111);
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(3111);
-        assertThat(addresses.get(2).getHost()).isEqualTo("ff02::2:ff00:0/104");
-        assertThat(addresses.get(2).getPort()).isEqualTo(4111);
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(5111);
-    }
-
-    @Test
-    public void shouldParseServerIPv6AddressesWithReplicaSetNameAndWithoutPort() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/[::1/128],host2,[ff02::2:ff00:0/104],host4");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("::1/128");
-        assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(2).getHost()).isEqualTo("ff02::2:ff00:0/104");
-        assertThat(addresses.get(2).getPort()).isEqualTo(ServerAddress.defaultPort());
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(ServerAddress.defaultPort());
-    }
-
-    @Test
-    public void shouldParseServerIPv6AddressesWithReplicaSetNameAndWithPort() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/[::1/128]:2111,host2:3111,[ff02::2:ff00:0/104]:4111,host4:5111");
-        assertThat(addresses.size()).isEqualTo(4);
-        assertThat(addresses.get(0).getHost()).isEqualTo("::1/128");
-        assertThat(addresses.get(0).getPort()).isEqualTo(2111);
-        assertThat(addresses.get(1).getHost()).isEqualTo("host2");
-        assertThat(addresses.get(1).getPort()).isEqualTo(3111);
-        assertThat(addresses.get(2).getHost()).isEqualTo("ff02::2:ff00:0/104");
-        assertThat(addresses.get(2).getPort()).isEqualTo(4111);
-        assertThat(addresses.get(3).getHost()).isEqualTo("host4");
-        assertThat(addresses.get(3).getPort()).isEqualTo(5111);
-    }
-
-    @Test
-    public void shouldNotParseServerAddressesWithReplicaSetNameAndOpenBracket() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/[");
-        assertThat(addresses.size()).isEqualTo(0);
-    }
-
-    @Test
-    public void shouldNotParseServerAddressesWithReplicaSetNameAndNoAddress() {
-        addresses = MongoUtil.parseAddresses("replicaSetName/");
-        assertThat(addresses.size()).isEqualTo(1);
-        assertThat(addresses.get(0).getHost()).isEqualTo(ServerAddress.defaultHost());
-        assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
-    }
-
-    @Test
-    public void shouldParseReplicaSetName() {
-        assertThat(MongoUtil.replicaSetUsedIn("rs0/")).isEqualTo("rs0");
-        assertThat(MongoUtil.replicaSetUsedIn("rs0/localhost")).isEqualTo("rs0");
-        assertThat(MongoUtil.replicaSetUsedIn("rs0/[::1/128]")).isEqualTo("rs0");
-    }
-
-    @Test
-    public void shouldNotParseReplicaSetName() {
-        assertThat(MongoUtil.replicaSetUsedIn("")).isNull();
-        assertThat(MongoUtil.replicaSetUsedIn("localhost")).isNull();
-        assertThat(MongoUtil.replicaSetUsedIn("[::1/128]")).isNull();
+        assertThat(actualRsName).isEmpty();
     }
 
 }
