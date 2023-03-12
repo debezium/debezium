@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import io.debezium.pipeline.EventDispatcher;
+import io.debezium.spi.schema.DataCollectionId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,15 +19,16 @@ public class OpenIncrementalSnapshotWindow<P extends Partition> implements Signa
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenIncrementalSnapshotWindow.class);
 
     public static final String NAME = "snapshot-window-open";
+    private final EventDispatcher<P, ? extends DataCollectionId> dispatcher;
 
-    public OpenIncrementalSnapshotWindow() {
+    public OpenIncrementalSnapshotWindow(EventDispatcher<P, ? extends DataCollectionId> dispatcher) {
+        this.dispatcher = dispatcher;
     }
 
     @Override
-    public boolean arrived(Payload<P> signalPayload) {
-        signalPayload.offsetContext
-                .getIncrementalSnapshotContext()
-                .openWindow(signalPayload.id, signalPayload.data.get("collection").asString());
+    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
+        dispatcher.getIncrementalSnapshotChangeEventSource()
+                .openWindow(signalPayload.partition, signalPayload.id, signalPayload.data.get("collection").asString(), signalPayload.offsetContext);
         return true;
     }
 
