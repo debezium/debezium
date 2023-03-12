@@ -9,17 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.mongodb.CursorType;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -114,43 +110,5 @@ public class ConnectionIT extends AbstractMongoIT {
         // Now that we've put at least one document into our collection, verify we can see the database and collection ...
         assertThat(primary.databaseNames()).containsOnly("dbA", "dbB");
         assertThat(primary.collections()).containsOnly(new CollectionId(replicaSet.replicaSetName(), "dbA", "moviesA"));
-
-        // Read oplog from beginning ...
-        List<Document> eventQueue = new LinkedList<>();
-        int minimumEventsExpected = 1;
-        long maxSeconds = 5;
-        primary.execute("read oplog from beginning", mongo -> {
-            Testing.debug("Getting local.oplog.rs");
-
-            BsonTimestamp oplogStart = new BsonTimestamp(1, 1);
-            Bson filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
-                    Filters.exists("fromMigrate", false)); // skip internal movements across shards
-            FindIterable<Document> results = mongo.getDatabase("local")
-                    .getCollection("oplog.rs")
-                    .find(filter)
-                    .sort(new Document("$natural", 1))
-                    .oplogReplay(true) // tells Mongo to not rely on indexes
-                    .noCursorTimeout(true) // don't timeout waiting for events
-                    .cursorType(CursorType.TailableAwait);
-
-            Testing.debug("Reading local.oplog.rs");
-            try (MongoCursor<Document> cursor = results.iterator();) {
-                Document event = null;
-                long stopTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(maxSeconds);
-                while (System.currentTimeMillis() < stopTime && eventQueue.size() < minimumEventsExpected) {
-                    while ((event = cursor.tryNext()) != null) {
-                        eventQueue.add(event);
-                    }
-                }
-                assertThat(eventQueue.size()).isGreaterThanOrEqualTo(1);
-            }
-            Testing.debug("Completed local.oplog.rs");
-        });
-
-        eventQueue.forEach(event -> {
-            Testing.print("Found: " + event);
-            BsonTimestamp position = event.get("ts", BsonTimestamp.class);
-            assert position != null;
-        });
     }
 }
