@@ -186,7 +186,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
-        // TODO [discuss]: since we're using a Map instead of a queue internally to store dataCollectionsToSnapshot
+        // TODO [discuss]: since we're now using a Map instead of a queue internally to store dataCollectionsToSnapshot
         //      It introduces a behavior changes that no duplicate dataCollection can be snapshotted at the same time.
         //      Practically, this is probably ok since there is no real world benefit of snapshotting the same dataset at the same time.
         dataCollectionIds.forEach(dc -> dataCollectionsToSnapshot.put(dc.getId(), dc));
