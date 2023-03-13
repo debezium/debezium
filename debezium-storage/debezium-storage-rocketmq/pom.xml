@@ -9,7 +9,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-storage-rocketmq</artifactId>
-    <name>Debezium Storage RocketMq Module</name>
+    <name>Debezium Storage RocketMQ Module</name>
     <packaging>jar</packaging>
 
     <dependencies>

@@ -36,8 +36,10 @@ import org.apache.rocketmq.remoting.protocol.LanguageCode;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 import org.apache.rocketmq.tools.command.CommandUtil;
 
+import io.debezium.DebeziumException;
+
 /**
- * Tools for creating RocketMq topic and group
+ * Tools for creating RocketMQ topic and group
  */
 public class RocketMqAdminUtil {
 
@@ -116,7 +118,7 @@ public class RocketMqAdminUtil {
             }
         }
         catch (Exception e) {
-            throw new RuntimeException("RocketMq create schema history topic: " + topicConfig.getTopicName() + " " +
+            throw new DebeziumException("RocketMQ create schema history topic: " + topicConfig.getTopicName() + " " +
                     " failed", e);
         }
         finally {
@@ -169,7 +171,7 @@ public class RocketMqAdminUtil {
             }
         }
         catch (Exception e) {
-            throw new RuntimeException("RocketMq admin fetch all topic failed", e);
+            throw new DebeziumException("RocketMQ admin fetch all topic failed", e);
         }
         finally {
             if (defaultMQAdminExt != null) {

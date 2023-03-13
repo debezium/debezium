@@ -9,7 +9,7 @@ package io.debezium.storage.rocketmq;
 import java.util.Objects;
 
 /**
- * Configuration for connecting RocketMq
+ * Configuration for connecting RocketMQ
  */
 public class RocketMqConfig {
     private String namesrvAddr;
