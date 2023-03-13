@@ -19,7 +19,6 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
@@ -27,7 +26,6 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -55,7 +53,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private static final String DOCUMENT_ID = "_id";
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbIncrementalSnapshotChangeEventSource.class);
-    private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
 
     private final MongoDbConnectorConfig connectorConfig;
     private final Clock clock;
@@ -66,6 +63,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private final ReplicaSets replicaSets;
     private final ConnectionContext connectionContext;
     private final MongoDbTaskContext taskContext;
+    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
 
     private MongoDbCollectionSchema currentCollection;
 
@@ -78,7 +76,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
-                                                       ReplicaSets replicaSets,
+                                                       MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
@@ -87,6 +85,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.connectorConfig = config;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
+        this.connections = connections;
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.collectionSchema = collectionSchema;
@@ -221,7 +220,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
         // Only ReplicaSet deployments are supported by incremental snapshot
         // Thus assume replicaSets.size() == 1
-        mongo = establishConnection(partition, ReadPreference.secondaryPreferred(), replicaSets.all().get(0));
+        mongo = connections.get(replicaSets.all().get(0), partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
@@ -570,17 +569,4 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private MongoDbConnection establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
-        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
-            // propagate authorization failures
-            if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-            else {
-                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-                LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-        });
-    }
 }

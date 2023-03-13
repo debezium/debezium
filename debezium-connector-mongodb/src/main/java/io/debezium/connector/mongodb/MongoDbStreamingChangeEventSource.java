@@ -16,7 +16,6 @@ import org.bson.BsonString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ReadPreference;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoClient;
@@ -24,7 +23,6 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -44,8 +42,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbStreamingChangeEventSource.class);
 
-    private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
-
     private final MongoDbConnectorConfig connectorConfig;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -53,9 +49,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
+    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                             ReplicaSets replicaSets,
+                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                              ErrorHandler errorHandler, Clock clock) {
         this.connectorConfig = connectorConfig;
@@ -65,6 +62,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
+        this.connections = connections;
     }
 
     @Override
@@ -88,7 +86,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
                                             ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
-        try (MongoDbConnection mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred())) {
+        try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
             mongo.execute("read from change stream on '" + replicaSet + "'", client -> {
                 readChangeStream(client, replicaSet, context, offsetContext);
             });
@@ -127,20 +125,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
 
         executor.shutdown();
-    }
-
-    private MongoDbConnection establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
-        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
-            // propagate authorization failures
-            if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-            else {
-                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-                LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-        });
     }
 
     private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
