@@ -40,24 +40,24 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      SKIP_CHECK: ${{ steps.check.outputs.SKIP_CHECK }}
+      SKIP_CHECK: ${{ steps.skip.outputs.SKIP_CHECK }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
 
       - name: Check if author has Quay.io credentials
+        id: skip
         env:
           QUAY_IO_USERNAME: ${{ secrets.QUAY_IO_USERNAME }}
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: |
-          if [[ $QUAY_IO_USERNAME != '' && $QUAY_IO_PASSWORD != '' ]]; then
-            echo "SKIP_CHECK=false" >> $GITHUB_OUTPUT
+          if [[ $QUAY_IO_USERNAME == '' && $QUAY_IO_PASSWORD == '' ]]; then
+           echo "SKIP_CHECK=true" >> $GITHUB_OUTPUT
           fi
 
   build:
     runs-on: ubuntu-latest
-    needs: [check]
-    if: ${{ needs.check.outputs.SKIP_CHECK == 'false' || github.event_name == 'push' }}
+    if: ${{ needs.check.outputs.SKIP_CHECK != 'true' || contains(fromJSON('["push", "pull_request"]'), github.event_name) }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
@@ -75,7 +75,7 @@ jobs:
           java-version: 17
 
       # This workflow uses its own dependency cache rather than the main debezium workflow cache because
-      # we explicitly want to trigger this build on pushes separate from the other workflow.  
+      # we explicitly want to trigger this build on pushes separate from the other workflow.
       - name: Cache Maven Repository
         uses: actions/cache@v3
         with:
