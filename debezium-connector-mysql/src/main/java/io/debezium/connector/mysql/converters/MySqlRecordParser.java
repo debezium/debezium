@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -22,7 +23,6 @@ import io.debezium.util.Collect;
  */
 public class MySqlRecordParser extends RecordParser {
 
-    static final String TABLE_NAME_KEY = "table";
     static final String SERVER_ID_KEY = "server_id";
     static final String GTID_KEY = "gtid";
     static final String BINLOG_FILENAME_OFFSET_KEY = "file";
@@ -32,7 +32,7 @@ public class MySqlRecordParser extends RecordParser {
     static final String QUERY_KEY = "query";
 
     static final Set<String> MYSQL_SOURCE_FIELDS = Collect.unmodifiableSet(
-            TABLE_NAME_KEY,
+            AbstractSourceInfo.TABLE_NAME_KEY,
             SERVER_ID_KEY,
             GTID_KEY,
             BINLOG_FILENAME_OFFSET_KEY,

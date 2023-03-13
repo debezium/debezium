@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.mysql.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
-import io.debezium.connector.mysql.Module;
+import io.debezium.connector.mysql.transforms.MySqlAbstractRecordParserProvider;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -19,16 +16,7 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Chris Cranford
  */
-public class MySqlCloudEventsProvider implements CloudEventsProvider {
-    @Override
-    public String getName() {
-        return Module.name();
-    }
-
-    @Override
-    public RecordParser createParser(Schema schema, Struct record) {
-        return new MySqlRecordParser(schema, record);
-    }
+public class MySqlCloudEventsProvider extends MySqlAbstractRecordParserProvider implements CloudEventsProvider {
 
     @Override
     public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {

@@ -55,7 +55,9 @@ public abstract class RecordParser {
         SchemaBuilder builder = SchemaBuilder.struct().name("io.debezium.connector.mysql.Data");
 
         for (String field : fields) {
-            builder.field(field, schema.field(field).schema());
+            if (schema.field(field) != null) {
+                builder.field(field, schema.field(field).schema());
+            }
         }
 
         return builder.build();
@@ -68,7 +70,9 @@ public abstract class RecordParser {
         Struct data = new Struct(dataSchema());
 
         for (Field field : dataSchema.fields()) {
-            data.put(field, record.get(field));
+            if (record.get(field) != null) {
+                data.put(field, record.get(field));
+            }
         }
 
         return data;

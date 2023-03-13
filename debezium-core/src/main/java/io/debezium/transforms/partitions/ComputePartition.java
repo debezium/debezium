@@ -7,8 +7,6 @@ package io.debezium.transforms.partitions;
 
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;
-import static io.debezium.data.Envelope.FieldName.OPERATION;
-import static io.debezium.data.Envelope.FieldName.SOURCE;
 import static io.debezium.transforms.partitions.ComputePartitionConfigDefinition.FIELD_TABLE_FIELD_NAME_MAPPINGS_CONF;
 import static io.debezium.transforms.partitions.ComputePartitionConfigDefinition.FIELD_TABLE_PARTITION_NUM_MAPPINGS_CONF;
 import static io.debezium.transforms.partitions.ComputePartitionConfigDefinition.FIELD_TABLE_PARTITION_NUM_MAPPINGS_FIELD;
@@ -18,24 +16,29 @@ import static io.debezium.transforms.partitions.ComputePartitionConfigDefinition
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
+import io.debezium.transforms.spi.QualifiedTableNameResolver;
 
 /**
  * This SMT allow to use a specific table column to calculate the destination partition.
- *
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Mario Fiore Vitale
@@ -43,26 +46,12 @@ import io.debezium.transforms.SmtManager;
 public class ComputePartition<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ComputePartition.class);
-    public static final String SCHEMA_FIELD_NAME = "schema";
-    public static final String SQLSERVER_CONNECTOR = "sqlserver";
-    public static final String KEYSPACE_FIELD_NAME = "keyspace";
-    public static final String TABLE_FIELD_NAME = "table";
-    public static final String COLLECTION_FIELD_NAME = "collection";
-    public static final String CONNECTOR_FIELD_NAME = "connector";
-    public static final String MONGODB_CONNECTOR = "mongodb";
-    public static final String DB_FIELD_NAME = "db";
-    public static final String MYSQL_CONNECTOR = "mysql";
-    public static final String POSTGRES_CONNECTOR = "postgres";
-    public static final String ORACLE_CONNECTOR = "oracle";
-    public static final String DB2_CONNECTOR = "db2";
-    public static final String CASSANDRA_CONNECTOR = "cassandra";
-    public static final String VITESS_CONNECTOR = "vitess";
 
     private Set<String> tableNames;
     private SmtManager<R> smtManager;
     private Map<String, Integer> numberOfPartitionsByTable;
     private Map<String, String> fieldNameByTable;
-
+    private final ServiceLoader<QualifiedTableNameResolver> qualifiedTableNameResolverServiceLoader = ServiceLoader.load(QualifiedTableNameResolver.class);
     @Override
     public ConfigDef config() {
 
@@ -109,46 +98,59 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     }
 
     @Override
-    public R apply(R r) {
+    public R apply(R record) {
 
         LOGGER.trace("Starting ComputePartition SMT with conf: {} {} {}", tableNames, fieldNameByTable, numberOfPartitionsByTable);
 
-        if (r.value() == null || !smtManager.isValidEnvelope(r)) {
+        if (record.value() == null || !smtManager.isValidEnvelope(record)) {
             LOGGER.trace("Skipping tombstone or message without envelope");
-            return r;
+            return record;
         }
 
-        final Struct envelope = (Struct) r.value();
+        final Struct envelope = (Struct) record.value();
+        final Schema envelopeSchema = record.valueSchema();
+
+        QualifiedTableNameResolver qualifiedTableNameResolver = lookupQualifiedTableNameResolver(envelope);
+
+        RecordParser recordParser = qualifiedTableNameResolver.createParser(envelopeSchema, envelope);
+
         try {
-            final String table = getTableName(envelope);
+            final String qualifiedTableName = qualifiedTableNameResolver.resolve(recordParser);
 
-            if (skipRecord(table)) {
-                return r;
+            if (skipRecord(qualifiedTableName)) {
+                return record;
             }
 
-            Optional<Struct> payload = extractPayload(envelope);
+            Optional<Struct> data = extractPayload(recordParser);
 
-            if (payload.isEmpty()) {
-                return r;
+            if (data.isEmpty()) {
+                return record;
             }
 
-            Object fieldValue = payload.get().get(fieldNameByTable.get(table));
-            int partition = computePartition(fieldValue, table);
+            Object fieldValue = data.get().get(fieldNameByTable.get(qualifiedTableName));
+            int partition = computePartition(fieldValue, qualifiedTableName);
 
             LOGGER.trace("Message {} will be sent to partition {}", envelope, partition);
 
-            return r.newRecord(r.topic(), partition,
-                    r.keySchema(),
-                    r.key(),
-                    r.valueSchema(),
+            return record.newRecord(record.topic(), partition,
+                    record.keySchema(),
+                    record.key(),
+                    record.valueSchema(),
                     envelope,
-                    r.timestamp(),
-                    r.headers());
+                    record.timestamp(),
+                    record.headers());
         }
         catch (Exception e) {
             LOGGER.error("Error occurred while processing message {}. Skipping SMT", envelope);
             throw new ConnectException(String.format("Unprocessable message %s", envelope), e);
         }
+    }
+
+    private QualifiedTableNameResolver lookupQualifiedTableNameResolver(Struct envelope) {
+
+        String connectorType = envelope.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+        return qualifiedTableNameResolverServiceLoader.findFirst()
+                .orElseThrow(() -> new DataException("No usable QualifiedTableNameResolver for connector type \"" + connectorType + "\""));
     }
 
     private boolean skipRecord(String table) {
@@ -160,63 +162,27 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
 
         return false;
     }
-
-    private String getTableName(Struct envelope) {
-
-        Struct struct = (Struct) envelope.get(SOURCE);
-        String connector = struct.getString(CONNECTOR_FIELD_NAME);
-
-        String tablePrefix;
-        String dataCollection;
-        switch (connector) {
-            case MONGODB_CONNECTOR:
-                dataCollection = struct.getString(COLLECTION_FIELD_NAME);
-                tablePrefix = struct.getString(DB_FIELD_NAME);
-                break;
-            case MYSQL_CONNECTOR:
-                dataCollection = struct.getString(TABLE_FIELD_NAME);
-                tablePrefix = struct.getString(DB_FIELD_NAME);
-                break;
-            case POSTGRES_CONNECTOR:
-            case ORACLE_CONNECTOR:
-            case SQLSERVER_CONNECTOR:
-            case DB2_CONNECTOR:
-                dataCollection = struct.getString(TABLE_FIELD_NAME);
-                tablePrefix = struct.getString(SCHEMA_FIELD_NAME);
-                break;
-            case CASSANDRA_CONNECTOR:
-            case VITESS_CONNECTOR:
-                dataCollection = struct.getString(TABLE_FIELD_NAME);
-                tablePrefix = struct.getString(KEYSPACE_FIELD_NAME);
-                break;
-            default:
-                throw new IllegalArgumentException("Unmanaged connector: " + connector);
-        }
-
-        return String.format("%s.%s", tablePrefix, dataCollection);
-    }
-
     private int computePartition(Object fieldValue, String table) {
         // hashCode can be negative due to overflow. Since Math.abs(Integer.MIN_INT) will still return a negative number
         // we use bitwise operation to remove the sign
         return (fieldValue.hashCode() & Integer.MAX_VALUE) % numberOfPartitionsByTable.get(table);
     }
 
-    private Optional<Struct> extractPayload(Struct envelope) {
+    private Optional<Struct> extractPayload(RecordParser recordParser) {
 
-        Envelope.Operation operation = Envelope.Operation.forCode(envelope.getString(OPERATION));
+        Envelope.Operation operation = Envelope.Operation.forCode(recordParser.op());
 
         if (operation == null) {
-            throw new IllegalArgumentException("Unknown event operation: " + envelope.getString(OPERATION));
+            throw new IllegalArgumentException("Unknown event operation: " + recordParser.op());
         }
 
         switch (operation) {
             case CREATE:
             case READ:
             case UPDATE:
-                return Optional.of((Struct) envelope.get(AFTER));
+                return Optional.of((Struct) recordParser.data().get(AFTER));
             case DELETE:
-                return Optional.of((Struct) envelope.get(BEFORE));
+                return Optional.of((Struct) recordParser.data().get(BEFORE));
             case TRUNCATE:
             case MESSAGE:
                 return Optional.empty();

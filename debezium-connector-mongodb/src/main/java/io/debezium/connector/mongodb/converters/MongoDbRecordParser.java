@@ -25,7 +25,7 @@ public class MongoDbRecordParser extends RecordParser {
 
     static final String REPLICA_SET_NAME = "rs";
     static final String ORDER = "ord";
-    static final String COLLECTION = "collection";
+    public static final String COLLECTION = "collection";
     static final String WALL_TIME = "wallTime";
 
     static final Set<String> MONGODB_SOURCE_FIELD = Collect.unmodifiableSet(

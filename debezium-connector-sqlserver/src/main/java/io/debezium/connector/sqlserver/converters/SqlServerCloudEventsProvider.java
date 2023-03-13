@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.sqlserver.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
-import io.debezium.connector.sqlserver.Module;
+import io.debezium.connector.sqlserver.transforms.SqlServerAbstractRecordParserProvider;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.converters.spi.CloudEventsProvider;
 import io.debezium.converters.spi.RecordParser;
@@ -19,16 +16,7 @@ import io.debezium.converters.spi.SerializerType;
  *
  * @author Chris Cranford
  */
-public class SqlServerCloudEventsProvider implements CloudEventsProvider {
-    @Override
-    public String getName() {
-        return Module.name();
-    }
-
-    @Override
-    public RecordParser createParser(Schema schema, Struct record) {
-        return new SqlServerRecordParser(schema, record);
-    }
+public class SqlServerCloudEventsProvider extends SqlServerAbstractRecordParserProvider implements CloudEventsProvider {
 
     @Override
     public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {

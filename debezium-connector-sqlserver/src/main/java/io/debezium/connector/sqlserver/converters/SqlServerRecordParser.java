@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -25,11 +26,12 @@ public class SqlServerRecordParser extends RecordParser {
     static final String CHANGE_LSN_KEY = "change_lsn";
     static final String COMMIT_LSN_KEY = "commit_lsn";
     static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
-
     static final Set<String> SQLSERVER_SOURCE_FIELD = Collect.unmodifiableSet(
             CHANGE_LSN_KEY,
             COMMIT_LSN_KEY,
-            EVENT_SERIAL_NO_KEY);
+            EVENT_SERIAL_NO_KEY,
+            AbstractSourceInfo.TABLE_NAME_KEY,
+            AbstractSourceInfo.SCHEMA_NAME_KEY);
 
     public SqlServerRecordParser(Schema schema, Struct record) {
         super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);

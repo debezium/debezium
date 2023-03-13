@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
@@ -23,11 +24,12 @@ public class OracleRecordParser extends RecordParser {
     public static final String SCN_KEY = "scn";
     public static final String COMMIT_SCN_KEY = "commit_scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
-
     static final Set<String> ORACLE_SOURCE_FIELD = Collect.unmodifiableSet(
             SCN_KEY,
             COMMIT_SCN_KEY,
-            LCR_POSITION_KEY);
+            LCR_POSITION_KEY,
+            AbstractSourceInfo.SCHEMA_NAME_KEY,
+            AbstractSourceInfo.TABLE_NAME_KEY);
 
     public OracleRecordParser(Schema schema, Struct record) {
         super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
