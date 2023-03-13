@@ -457,12 +457,12 @@
                 <version>${version.s3}</version>
             </dependency>
 
+            <!-- Azure Blob Storage -->
             <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-storage-blob</artifactId>
                 <version>${version.azure.blob}</version>
             </dependency>
-
 
             <!-- Testing utilities -->
             <dependency>
@@ -569,6 +569,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-azure-blob</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
