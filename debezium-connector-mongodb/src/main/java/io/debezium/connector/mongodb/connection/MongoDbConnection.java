@@ -20,6 +20,7 @@ import com.mongodb.client.MongoClient;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
+import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoUtil;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BlockingFunction;
@@ -32,6 +33,8 @@ import io.debezium.util.Metronome;
  */
 public final class MongoDbConnection implements AutoCloseable {
 
+    public static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
+
     @FunctionalInterface
     public interface ErrorHandler {
         /**
@@ -40,6 +43,18 @@ public final class MongoDbConnection implements AutoCloseable {
          * @param error     the error which triggered this call
          */
         void onError(String desc, Throwable error);
+    }
+
+    @FunctionalInterface
+    public interface ChangeEventSourceConnectionFactory {
+        /**
+         * Create connection for given replica set and partition
+         *
+         * @param replicaSet    the replica set information; may not be null
+         * @param partition      database partition
+         * @return connection based on given parameters
+         */
+        MongoDbConnection get(ReplicaSet replicaSet, MongoDbPartition partition);
     }
 
     /**

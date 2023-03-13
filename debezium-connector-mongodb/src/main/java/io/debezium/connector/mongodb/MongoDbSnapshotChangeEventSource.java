@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoChangeStreamException;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCollection;
@@ -59,10 +58,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSnapshotChangeEventSource.class);
 
-    private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
-
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbTaskContext taskContext;
+    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
@@ -72,12 +70,13 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private AtomicBoolean aborted = new AtomicBoolean(false);
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                            ReplicaSets replicaSets,
+                                            MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
+        this.connections = connections;
         this.connectionContext = taskContext.getConnectionContext();
         this.replicaSets = replicaSets;
         this.dispatcher = dispatcher;
@@ -171,23 +170,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void snapshotReplicaSet(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet) throws InterruptedException {
-        try (MongoDbConnection mongo = establishConnection(snapshotCtx.partition, replicaSet, ReadPreference.secondaryPreferred())) {
+        try (MongoDbConnection mongo = connections.get(replicaSet, snapshotCtx.partition)) {
             createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo);
         }
-    }
-
-    private MongoDbConnection establishConnection(MongoDbPartition partition, ReplicaSet replicaSet, ReadPreference preference) {
-        return connectionContext.connect(replicaSet, preference, taskContext.filters(), (desc, error) -> {
-            // propagate authorization failures
-            if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-            else {
-                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-                LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-                throw new DebeziumException("Error while attempting to " + desc, error);
-            }
-        });
     }
 
     private boolean isSnapshotExpected(MongoDbPartition partition, ReplicaSet replicaSet, MongoDbOffsetContext offsetContext) {
@@ -212,20 +197,22 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private boolean isValidResumeToken(MongoDbPartition partition, ReplicaSet replicaSet, BsonDocument token) {
-        try (MongoDbConnection mongo = establishConnection(partition, replicaSet, ReadPreference.secondaryPreferred())) {
-            return mongo.execute("Checking change stream", client -> {
-                ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
-                stream.resumeAfter(token);
+        try {
+            try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
+                return mongo.execute("Checking change stream", client -> {
+                    ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
+                    stream.resumeAfter(token);
 
-                try (var ignored = stream.cursor()) {
-                    LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
-                    return false;
-                }
-                catch (MongoChangeStreamException e) {
-                    LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
-                    return true;
-                }
-            });
+                    try (var ignored = stream.cursor()) {
+                        LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
+                        return false;
+                    }
+                    catch (MongoChangeStreamException e) {
+                        LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
+                        return true;
+                    }
+                });
+            }
         }
         catch (InterruptedException e) {
             throw new DebeziumException("Interrupted while creating snapshotting task", e);

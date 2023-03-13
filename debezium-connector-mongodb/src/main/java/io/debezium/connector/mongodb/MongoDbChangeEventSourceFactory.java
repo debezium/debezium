@@ -5,8 +5,19 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.connector.mongodb.connection.MongoDbConnection.AUTHORIZATION_FAILURE_MESSAGE;
+
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.mongodb.ReadPreference;
+
+import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.connection.ConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -26,12 +37,15 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
+
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
+    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbSchema schema;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
@@ -43,6 +57,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
+        this.connections = getMongoDbConnectionFactory(taskContext.getConnectionContext());
         this.schema = schema;
     }
 
@@ -51,6 +66,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
+                connections,
                 replicaSets,
                 dispatcher,
                 clock,
@@ -63,6 +79,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,
+                connections,
                 replicaSets,
                 dispatcher,
                 errorHandler,
@@ -77,6 +94,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
                 taskContext,
+                connections,
                 replicaSets,
                 dispatcher,
                 schema,
@@ -84,5 +102,21 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 snapshotProgressListener,
                 dataChangeEventListener);
         return Optional.of(incrementalSnapshotChangeEventSource);
+    }
+
+    public MongoDbConnection.ChangeEventSourceConnectionFactory getMongoDbConnectionFactory(ConnectionContext connectionContext) {
+        return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
+                replicaSet, ReadPreference.secondaryPreferred(), taskContext.filters(), connectionErrorHandler(partition));
+    }
+
+    private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {
+        return (String desc, Throwable error) -> {
+            if (error.getMessage() == null || !error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
+                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
+            }
+
+            LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+            throw new DebeziumException("Error while attempting to " + desc, error);
+        };
     }
 }
