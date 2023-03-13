@@ -62,7 +62,7 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("RocketMq service discovery service nameserver address configuration")
+            .withDescription("RocketMQ service discovery service nameserver address configuration")
             .withValidation(Field::isRequired);
     public static final Field ROCKETMQ_ACL_ENABLE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "rocketmq.acl.enabled")
             .withDisplayName("Access control list enabled")
@@ -70,15 +70,15 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
             .withDefault(false)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("RocketMq access control enable configuration, default is 'false'");
+            .withDescription("RocketMQ access control enable configuration, default is 'false'");
     public static final Field ROCKETMQ_ACCESS_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "rocketmq.access.key")
-            .withDisplayName("RocketMq access key")
+            .withDisplayName("RocketMQ access key")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("RocketMQ access key. If " + ROCKETMQ_ACL_ENABLE + " is true, the value cannot be empty");
     public static final Field ROCKETMQ_SECRET_KEY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "rocketmq.secret.key")
-            .withDisplayName("RocketMq secret key")
+            .withDisplayName("RocketMQ secret key")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH)
@@ -106,12 +106,12 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
             .withValidation(Field::isLong);
     public static final Field STORE_RECORD_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "rocketmq.store.record.timeout.ms")
-            .withDisplayName("Timeout for sending messages to RocketMq")
+            .withDisplayName("Timeout for sending messages to RocketMQ")
             .withType(ConfigDef.Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Timeout for sending messages to RocketMq.")
+            .withDescription("Timeout for sending messages to RocketMQ.")
             .withDefault(60 * 1000)
             .withValidation(Field::isLong);
     private final static Logger LOGGER = LoggerFactory.getLogger(RocketMqSchemaHistory.class);
