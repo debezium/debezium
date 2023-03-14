@@ -2877,7 +2877,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             scenario.run();
 
             final String message1 = "1 of 1 retries will be attempted";
-            final String message2 = "The maximum number of retries: 1 has been attempted";
+            final String message2 = "The maximum number of 1 retries has been attempted";
             Awaitility.await()
                     .alias("Checking for maximum restart messages")
                     .pollInterval(100, TimeUnit.MILLISECONDS)

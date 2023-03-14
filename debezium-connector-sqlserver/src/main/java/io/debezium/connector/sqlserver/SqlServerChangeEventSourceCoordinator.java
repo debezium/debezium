@@ -42,7 +42,7 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
     private final Clock clock;
     private final Duration pollInterval;
 
-    private AtomicBoolean firstStreamingIterationCompletedSuccessfully;
+    private final AtomicBoolean firstStreamingIterationCompletedSuccessfully = new AtomicBoolean(false);
 
     public SqlServerChangeEventSourceCoordinator(Offsets<SqlServerPartition, SqlServerOffsetContext> previousOffsets, ErrorHandler errorHandler,
                                                  Class<? extends SourceConnector> connectorType,
@@ -54,7 +54,6 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  Clock clock) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
                 changeEventSourceMetricsFactory, eventDispatcher, schema);
-        this.firstStreamingIterationCompletedSuccessfully = new AtomicBoolean(false);
         this.clock = clock;
         this.pollInterval = connectorConfig.getPollInterval();
     }
