@@ -44,6 +44,7 @@ alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
 alter table add_test wait 100 add column col1 int not null;
 alter table default.task add column xxxx varchar(200) comment 'cdc test';
+ALTER TABLE `hcore`.comments COLLATE='utf8mb4_general_ci', CONVERT TO CHARSET UTF8MB4;
 #end
 #begin
 -- Alter database
