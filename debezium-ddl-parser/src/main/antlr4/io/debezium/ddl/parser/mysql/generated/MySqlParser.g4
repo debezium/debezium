@@ -693,8 +693,10 @@ alterSpecification
       indexColumnNames indexOption*                                 #alterByAddSpecialIndex
     | ADD (CONSTRAINT name=uid?)? FOREIGN KEY ifNotExists?          // ifNotExists is MariaDB-specific only
       indexName=uid? indexColumnNames referenceDefinition           #alterByAddForeignKey
-    | ADD (CONSTRAINT name=uid?)? CHECK ( stringLiteral | '(' expression ')' )
+    | ADD (CONSTRAINT name=uid?)? CHECK ( uid | stringLiteral | '(' expression ')' )
         NOT? ENFORCED?                                              #alterByAddCheckTableConstraint
+    | ALTER (CONSTRAINT name=uid?)? CHECK ( uid | stringLiteral | '(' expression ')' )
+        NOT? ENFORCED?                                              #alterByAlterCheckTableConstraint
     | ALGORITHM '='? algType=(DEFAULT | INSTANT | INPLACE | COPY)   #alterBySetAlgorithm
     | ALTER COLUMN? uid
       (SET DEFAULT defaultValue | DROP DEFAULT)                     #alterByChangeDefault
