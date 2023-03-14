@@ -715,7 +715,7 @@ alterSpecification
     | ENABLE KEYS                                                   #alterByEnableKeys
     | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
     | ORDER BY uidList                                              #alterByOrder
-    | CONVERT TO CHARACTER SET charsetName
+    | CONVERT TO (CHARSET | CHARACTER SET) charsetName
       (COLLATE collationName)?                                      #alterByConvertCharset
     | DEFAULT? CHARACTER SET '=' charsetName
       (COLLATE '=' collationName)?                                  #alterByDefaultCharset
