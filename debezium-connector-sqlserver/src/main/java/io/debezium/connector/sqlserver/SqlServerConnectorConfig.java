@@ -263,7 +263,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_MAX_RETRIES)
-            .withValidation(Field::isPositiveInteger)
+            .withValidation(Field::isInteger)
             .withDescription(
                     "The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
 
@@ -323,7 +323,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    MAX_RETRIES)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST)
