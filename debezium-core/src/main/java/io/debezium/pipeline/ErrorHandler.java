@@ -31,11 +31,7 @@ public class ErrorHandler {
 
     public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
                         ChangeEventQueue<?> queue) {
-        this.connectorConfig = connectorConfig;
-        this.queue = queue;
-        this.producerThrowable = new AtomicReference<>();
-        this.maxRetries = -1;
-        this.retries = 0;
+        this(connectorType, connectorConfig, queue, 0, -1);
     }
 
     /**
@@ -121,19 +117,21 @@ public class ErrorHandler {
      * @return true if maxRetries is -1 or retries < maxRetries
      */
     protected boolean hasMoreRetries() {
-        boolean doRetry = maxRetries == -1 || retries < maxRetries;
+        boolean doRetry = unlimitedRetries() || retries < maxRetries;
         if (doRetry) {
             retries++;
-            LOGGER.info("{} of {} retries will be attempted", retries,
-                    maxRetries);
+            LOGGER.warn("Retry {} of {} retries will be attempted", retries,
+                    unlimitedRetries() ? "unlimited" : maxRetries);
         }
         else {
-            String errorMsg = String.format(
-                    "The maximum number of retries: %d has been attempted", maxRetries);
-            LOGGER.error(errorMsg);
+            LOGGER.error("The maximum number of {} retries has been attempted", maxRetries);
         }
 
         return doRetry;
+    }
+
+    private boolean unlimitedRetries() {
+        return maxRetries == -1;
     }
 
     public int getRetries() {
