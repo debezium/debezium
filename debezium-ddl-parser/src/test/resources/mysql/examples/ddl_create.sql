@@ -180,6 +180,12 @@ GROUP_ID int(11) not null,
 DATE_ADD datetime DEFAULT NULL,
 primary key (USER_ID, GROUP_ID)
 );
+
+CREATE TABLE T1 (
+ID INT NOT NULL,
+NAME VARCHAR(255),
+UNIQUE KEY(ID)
+) PARTITION BY KEY() PARTITIONS 2;
 #end
 #begin
 -- Rename table
