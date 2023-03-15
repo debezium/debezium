@@ -51,7 +51,7 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:deployment-of-debezium-oracle-connectors[]
   * xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
   * xref:monitoring-debezium-oracle-connector-performance[]
-  * xref:oracle-frequently-asked-questions[]
+  * xref:debezium-oracle-connector-frequently-asked-questions[]
 endif::product[]
 
 // Type: assembly
@@ -4059,6 +4059,9 @@ This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[
 
 endif::community[]
 
+// Type: concept
+// ModuleID: debezium-oracle-connector-frequently-asked-questions
+// Title: Oracle connector frequently asked questions
 [[oracle-frequently-asked-questions]]
 == Frequently Asked Questions
 
