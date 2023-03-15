@@ -30,6 +30,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -428,7 +429,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
         else {
             Table table = resolvedTable.get();
-            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table, decoderContext);
             processor.process(new PgOutputReplicationMessage(
                     Operation.INSERT,
                     table.id().toDoubleQuotedString(),
@@ -469,13 +470,13 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             List<Column> oldColumns = null;
             char tupleType = (char) buffer.get();
             if ('O' == tupleType || 'K' == tupleType) {
-                oldColumns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+                oldColumns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table, decoderContext);
                 // Read the 'N' tuple type
                 // This is necessary so the stream position is accurate for resolving the column tuple data
                 tupleType = (char) buffer.get();
             }
 
-            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table, decoderContext);
             processor.process(new PgOutputReplicationMessage(
                     Operation.UPDATE,
                     table.id().toDoubleQuotedString(),
@@ -508,7 +509,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
         else {
             Table table = resolvedTable.get();
-            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table, decoderContext);
             processor.process(new PgOutputReplicationMessage(
                     Operation.DELETE,
                     table.id().toDoubleQuotedString(),
@@ -714,12 +715,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     /**
      * Resolve the replication stream's tuple data to a list of replication message columns.
      *
-     * @param buffer The replication stream buffer
-     * @param typeRegistry The database type registry
-     * @param table The database table
+     * @param buffer         The replication stream buffer
+     * @param typeRegistry   The database type registry
+     * @param table          The database table
+     * @param decoderContext
+     *
      * @return list of replication message columns
      */
-    private static List<Column> resolveColumnsFromStreamTupleData(ByteBuffer buffer, TypeRegistry typeRegistry, Table table) {
+    private static List<Column> resolveColumnsFromStreamTupleData(ByteBuffer buffer, TypeRegistry typeRegistry, Table table, MessageDecoderContext decoderContext) {
         // Read number of the columns
         short numberOfColumns = buffer.getShort();
 
@@ -744,9 +747,17 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 final String valueStr = readColumnValueAsString(buffer);
                 replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional) {
                     @Override
-                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                        return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
-                                typeRegistry);
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes,
+                                           PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode) {
+                        return PgOutputReplicationMessage.getValue(
+                                columnName,
+                                columnType,
+                                typeExpression,
+                                valueStr,
+                                connection,
+                                includeUnknownDatatypes,
+                                typeRegistry,
+                                decoderContext.getConfig().timezoneHandlingMode());
                     }
 
                     @Override
@@ -766,7 +777,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             else if (type == 'n') {
                 replicationMessageColumn = new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, true) {
                     @Override
-                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+                    public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes,
+                                           PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode) {
                         return null;
                     }
                 };

@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -23,24 +24,26 @@ public class ReplicationMessageColumnValueResolver {
     /**
      * Resolve the value of a {@link ColumnValue}.
      *
-     * @param columnName the column name
-     * @param type the postgres type
-     * @param fullType the full type-name for the column
-     * @param value the column value
-     * @param connection a postgres connection supplier
+     * @param columnName              the column name
+     * @param type                    the postgres type
+     * @param fullType                the full type-name for the column
+     * @param value                   the column value
+     * @param connection              a postgres connection supplier
      * @param includeUnknownDatatypes true to include unknown data types, false otherwise
-     * @param typeRegistry the postgres type registry
+     * @param typeRegistry            the postgres type registry
+     * @param timezoneHandlingMode
+     *
      * @return
      */
     public static Object resolveValue(String columnName, PostgresType type, String fullType, ColumnValue value, final PgConnectionSupplier connection,
-                                      boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
+                                      boolean includeUnknownDatatypes, TypeRegistry typeRegistry, PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode) {
         if (value.isNull()) {
             // nulls are null
             return null;
         }
 
         if (!type.isRootType()) {
-            return resolveValue(columnName, type.getParentType(), fullType, value, connection, includeUnknownDatatypes, typeRegistry);
+            return resolveValue(columnName, type.getParentType(), fullType, value, connection, includeUnknownDatatypes, typeRegistry, timezoneHandlingMode);
         }
 
         if (value.isArray(type)) {
@@ -103,7 +106,8 @@ public class ReplicationMessageColumnValueResolver {
 
             case "timestamp with time zone":
             case "timestamptz":
-                return value.asOffsetDateTimeAtUtc();
+                return timezoneHandlingMode == PostgresConnectorConfig.TimezoneHandlingMode.CONVERT_TO_UTC ? value.asOffsetDateTimeAtUtc()
+                        : value.asOffsetDateTimePreservingTimezone();
 
             case "timestamp":
             case "timestamp without time zone":

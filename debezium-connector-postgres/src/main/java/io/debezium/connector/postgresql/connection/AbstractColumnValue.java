@@ -60,14 +60,20 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public OffsetDateTime asOffsetDateTimeAtUtc() {
+    public OffsetDateTime asOffsetDateTimePreservingTimezone() {
         if ("infinity".equals(asString())) {
             return PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME;
         }
         else if ("-infinity".equals(asString())) {
             return PostgresValueConverter.NEGATIVE_INFINITY_OFFSET_DATE_TIME;
         }
-        return DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(asString()).withOffsetSameInstant(ZoneOffset.UTC);
+
+        return DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(asString());
+    }
+
+    @Override
+    public OffsetDateTime asOffsetDateTimeAtUtc() {
+        return asOffsetDateTimePreservingTimezone().withOffsetSameInstant(ZoneOffset.UTC);
     }
 
     @Override

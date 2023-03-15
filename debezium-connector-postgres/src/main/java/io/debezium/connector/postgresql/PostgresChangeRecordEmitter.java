@@ -176,7 +176,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {
-                Object value = column.getValue(() -> (BaseConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                Object value = column.getValue(() -> (BaseConnection) connection.connection(), connectorConfig.includeUnknownDatatypes(),
+                        connectorConfig.timezoneHandlingMode());
                 if (sourceOfToasted) {
                     cachedOldToastedValues.put(columnName, value);
                 }

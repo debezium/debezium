@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -3092,6 +3093,68 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    public void testStreamTimestamptzUsesDefaultTimezone() throws Exception {
+        // pgjdbc will set the timezone of the connection to the timezone the VM is running in
+        // therefore using the same timezone here as on the server
+        TimeZone.setDefault(TimeZone.getTimeZone("US/Samoa"));
+
+        TestHelper.execute("CREATE TABLE timezone_tests (pk SERIAL PRIMARY KEY, created_at timestamptz NOT NULL);");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TIMEZONE_HANDLING_MODE, PostgresConnectorConfig.TimezoneHandlingMode.USE_VM_TIMEZONE),
+                false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO timezone_tests (created_at) values ('2023-03-15 13:41:58.75198+01');");
+
+        SourceRecord rec = assertRecordInserted("public.timezone_tests", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "timezone_tests");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("created_at", ZonedTimestamp.builder().build(),
+                        "2023-03-15T01:41:58.751980-11:00"));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+
+        executeAndWait("INSERT INTO timezone_tests (created_at) values ('2023-03-14 10:41:58.75198+03:30');");
+
+        SourceRecord rec2 = assertRecordInserted("public.timezone_tests", PK_FIELD, 2);
+        assertSourceInfo(rec2, "postgres", "public", "timezone_tests");
+
+        List<SchemaAndValueField> expected2 = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 2),
+                new SchemaAndValueField("created_at", ZonedTimestamp.builder().build(),
+                        "2023-03-13T20:11:58.751980-11:00"));
+
+        assertRecordSchemaAndValues(expected2, rec2, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    public void testStreamTimestamptzConvertsTimezoneToUTC() throws Exception {
+        TestHelper.execute("CREATE TABLE timezone_tests (pk SERIAL PRIMARY KEY, created_at timestamptz NOT NULL);");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.TIMEZONE_HANDLING_MODE, PostgresConnectorConfig.TimezoneHandlingMode.CONVERT_TO_UTC), false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO timezone_tests (created_at) values ('2023-03-15 13:41:58.75198+01');");
+
+        SourceRecord rec = assertRecordInserted("public.timezone_tests", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "timezone_tests");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("created_at", ZonedTimestamp.builder().build(),
+                        "2023-03-15T12:41:58.751980Z"));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
     }
 
     private void assertHeartBeatRecord(SourceRecord heartbeat) {

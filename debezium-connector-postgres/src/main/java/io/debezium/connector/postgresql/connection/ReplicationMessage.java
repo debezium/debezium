@@ -20,6 +20,7 @@ import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
@@ -63,7 +64,7 @@ public interface ReplicationMessage {
          */
         ColumnTypeMetadata getTypeMetadata();
 
-        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+        Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes, PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode);
 
         boolean isOptional();
 
@@ -98,6 +99,8 @@ public interface ReplicationMessage {
         Object asDecimal();
 
         LocalDate asLocalDate();
+
+        OffsetDateTime asOffsetDateTimePreservingTimezone();
 
         OffsetDateTime asOffsetDateTimeAtUtc();
 

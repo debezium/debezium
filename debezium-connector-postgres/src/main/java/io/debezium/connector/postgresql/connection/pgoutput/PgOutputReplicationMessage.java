@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.OptionalLong;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -87,8 +88,9 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
      * @return the value; may be null
      */
     public static Object getValue(String columnName, PostgresType type, String fullType, String rawValue, final PgConnectionSupplier connection,
-                                  boolean includeUnknownDataTypes, TypeRegistry typeRegistry) {
+                                  boolean includeUnknownDataTypes, TypeRegistry typeRegistry, PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode) {
         final PgOutputColumnValue columnValue = new PgOutputColumnValue(rawValue);
-        return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDataTypes, typeRegistry);
+        return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDataTypes, typeRegistry,
+                timezoneHandlingMode);
     }
 }

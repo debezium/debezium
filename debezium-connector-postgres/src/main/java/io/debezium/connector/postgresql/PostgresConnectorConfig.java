@@ -175,6 +175,39 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public enum TimezoneHandlingMode implements EnumeratedValue {
+        CONVERT_TO_UTC("CONVERT_TO_UTC"),
+
+        /**
+         * Represents interval as ISO 8601 time interval
+         */
+        USE_VM_TIMEZONE("USE_VM_TIMEZONE");
+
+        private final String value;
+
+        TimezoneHandlingMode(String value) {
+            this.value = value;
+        }
+
+        public static TimezoneHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (TimezoneHandlingMode option : TimezoneHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
     /**
      * The set of predefined Snapshotter options or aliases.
      */
@@ -768,6 +801,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "'string' represents values as an exact ISO formatted string; "
                     + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
+    public static final Field TIMEZONE_HANDLING_MODE = Field.create("timezone.handling.mode")
+            .withDisplayName("Timezone Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 26))
+            .withEnum(TimezoneHandlingMode.class, TimezoneHandlingMode.CONVERT_TO_UTC)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how tiemstamp with time zone columns should be represented in change events, including: "
+                    + "'convert_to_utc' (default) represents values with the timezone converted to UTC; "
+                    + "'use_vm_timezone' represents values with the same timezone as in the database");
+
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
             .withDisplayName("Status update interval (ms)")
             .withType(Type.INT) // Postgres doesn't accept long for this value
@@ -856,6 +899,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
+    private final TimezoneHandlingMode timezoneHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
     private final boolean flushLsnOnSource;
@@ -874,6 +918,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
+        this.timezoneHandlingMode = TimezoneHandlingMode.parse(config.getString(PostgresConnectorConfig.TIMEZONE_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
         this.flushLsnOnSource = config.getBoolean(SHOULD_FLUSH_LSN_IN_SOURCE_DB);
@@ -941,6 +986,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected IntervalHandlingMode intervalHandlingMode() {
         return intervalHandlingMode;
+    }
+
+    public TimezoneHandlingMode timezoneHandlingMode() {
+        return timezoneHandlingMode;
     }
 
     protected boolean includeUnknownDatatypes() {
@@ -1023,6 +1072,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     INTERVAL_HANDLING_MODE,
+                    TIMEZONE_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,

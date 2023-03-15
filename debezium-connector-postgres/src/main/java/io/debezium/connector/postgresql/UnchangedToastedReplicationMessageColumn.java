@@ -39,7 +39,8 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     @Override
-    public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes,
+                           PostgresConnectorConfig.TimezoneHandlingMode timezoneHandlingMode) {
         return unchangedToastValue;
     }
 
