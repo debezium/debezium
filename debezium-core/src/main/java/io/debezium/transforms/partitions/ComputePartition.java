@@ -52,6 +52,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     private Map<String, Integer> numberOfPartitionsByTable;
     private Map<String, String> fieldNameByTable;
     private final ServiceLoader<QualifiedTableNameResolver> qualifiedTableNameResolverServiceLoader = ServiceLoader.load(QualifiedTableNameResolver.class);
+
     @Override
     public ConfigDef config() {
 
@@ -162,6 +163,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
 
         return false;
     }
+
     private int computePartition(Object fieldValue, String table) {
         // hashCode can be negative due to overflow. Since Math.abs(Integer.MIN_INT) will still return a negative number
         // we use bitwise operation to remove the sign

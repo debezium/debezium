@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
-import static io.debezium.data.Envelope.Operation.*;
+import static io.debezium.data.Envelope.Operation.CREATE;
+import static io.debezium.data.Envelope.Operation.DELETE;
+import static io.debezium.data.Envelope.Operation.TRUNCATE;
 import static io.debezium.transforms.SMTTestFramework.VALUE_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
