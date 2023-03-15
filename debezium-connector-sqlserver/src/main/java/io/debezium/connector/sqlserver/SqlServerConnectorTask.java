@@ -99,8 +99,12 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        int retries = (errorHandler == null) ? 0 : errorHandler.getRetries();
-        errorHandler = new SqlServerErrorHandler(connectorConfig, queue, retries, connectorConfig.getMaxRetries());
+        if (errorHandler == null) {
+            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, connectorConfig.getMaxRetries());
+        }
+        else {
+            errorHandler.initialize(connectorConfig, queue, connectorConfig.getMaxRetries());
+        }
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
