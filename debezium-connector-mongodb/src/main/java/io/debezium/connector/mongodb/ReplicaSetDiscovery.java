@@ -19,6 +19,7 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.ConnectionMode;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -67,15 +68,28 @@ public class ReplicaSetDiscovery {
         ConnectionContext connectionContext = context.getConnectionContext();
         Set<ReplicaSet> replicaSetSpecs = new HashSet<>();
 
+        LOGGER.info("Reading description of cluster at {}", maskedConnectionSeed);
         final ClusterDescription clusterDescription = MongoUtil.clusterDescription(client);
 
         if (clusterDescription.getType() == ClusterType.SHARDED) {
-            LOGGER.info("Cluster at {} identified as sharded cluster", maskedConnectionSeed);
-            readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
+            LOGGER.info("Cluster identified as sharded cluster");
+            var connectionMode = context.getConnectorConfig().getConnectionMode();
+
+            if (ConnectionMode.SHARDED.equals(connectionMode)) {
+                LOGGER.info("ConnectionMode set to '{}', single connection to sharded cluster will be used", connectionMode.getValue());
+                readShardedClusterAsReplicaSet(replicaSetSpecs, connectionContext);
+            }
+            else if (ConnectionMode.REPLICA_SET.equals(connectionMode)) {
+                LOGGER.info("ConnectionMode set to '{}, individual shard connections will be used", connectionMode.getValue());
+                readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
+            }
+            else {
+                LOGGER.warn("Incompatible connection mode '{}' specified", connectionMode.getValue());
+            }
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Cluster at '{}' identified as replicaSet", maskedConnectionSeed);
+            LOGGER.info("Cluster identified as replicaSet");
             readReplicaSetsFromCluster(replicaSetSpecs, clusterDescription, connectionContext);
         }
 
@@ -84,6 +98,12 @@ public class ReplicaSetDiscovery {
         }
 
         return new ReplicaSets(replicaSetSpecs);
+    }
+
+    private void readShardedClusterAsReplicaSet(Set<ReplicaSet> replicaSetSpecs, ConnectionContext connectionContext) {
+        LOGGER.info("Using '{}' as sharded cluster connection", maskedConnectionSeed);
+        var connectionString = connectionContext.connectionString();
+        replicaSetSpecs.add(ReplicaSet.forCluster(connectionString));
     }
 
     private void readReplicaSetsFromCluster(Set<ReplicaSet> replicaSetSpecs, ClusterDescription clusterDescription, ConnectionContext connectionContext) {
