@@ -158,17 +158,6 @@ public final class SourceInfo extends BaseSourceInfo {
         }
     }
 
-    /**
-     * Get the replica set name for the given partition.
-     *
-     * @param partition the partition map
-     * @return the replica set name (when the partition is valid), or {@code null} if the partition is null or has no replica
-     *         set name entry
-     */
-    public static String replicaSetNameForPartition(Map<String, ?> partition) {
-        return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
-    }
-
     public SourceInfo(MongoDbConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
@@ -199,9 +188,7 @@ public final class SourceInfo extends BaseSourceInfo {
         if (replicaSetName == null) {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
-        return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
-            return Collect.hashMapOf(SERVER_ID_KEY, serverName(), REPLICA_SET_NAME, rsName);
-        });
+        return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> Collect.hashMapOf(SERVER_ID_KEY, serverName(), REPLICA_SET_NAME, rsName));
     }
 
     public String lastResumeToken(String replicaSetName) {
@@ -349,15 +336,16 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
+        long changeStreamTxnNumber = longOffsetValue(sourceOffset, TXN_NUMBER);
         String changeStreamLsid = stringOffsetValue(sourceOffset, LSID);
-        Long changeStreamTxnNumber = longOffsetValue(sourceOffset, TXN_NUMBER);
         SessionTransactionId changeStreamTxnId = null;
-        if (changeStreamLsid != null || changeStreamTxnNumber != null) {
+        if (changeStreamLsid != null) {
             changeStreamTxnId = new SessionTransactionId(changeStreamLsid, changeStreamTxnNumber);
         }
         String resumeToken = stringOffsetValue(sourceOffset, RESUME_TOKEN);
-        positionsByReplicaSetName.put(replicaSetName,
-                new Position(new BsonTimestamp(time, order), changeStreamTxnId, resumeToken));
+        Position position = new Position(new BsonTimestamp(time, order), changeStreamTxnId, resumeToken);
+
+        positionsByReplicaSetName.put(replicaSetName, position);
         return true;
     }
 
