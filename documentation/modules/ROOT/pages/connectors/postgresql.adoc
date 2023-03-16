@@ -3298,8 +3298,22 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 |[[postgresql-property-snapshot-max-threads]]<<postgresql-property-snapshot-max-threads, `snapshot.max.threads`>>
 |`1`
-|Controls the number of threads used for the initial snapshot. A value _greater than 1_ will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+|Specifies the number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+ifdef::community[]
 This feature is incubating.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Parallel initial snapshots is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |===
 

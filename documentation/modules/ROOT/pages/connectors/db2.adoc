@@ -2435,9 +2435,15 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 |[[db2-property-snapshot-max-threads]]<<db2-property-snapshot-max-threads, `snapshot.max.threads`>>
 |`1`
-|Controls the number of threads used for the initial snapshot. A value _greater than 1_ will enable parallel initial snapshot, meaning that the tables will be processed in parallel.
+|Specifies the number of threads that the connector uses when performing an initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables concurrently.
+ifdef::community[]
 This feature is incubating.
-
+endif::community[]
+ifdef::product[]
+The use of parallel initial snapshots is a Technology Preview feature.
+endif::product[]
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]
