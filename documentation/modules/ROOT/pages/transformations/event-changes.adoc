@@ -146,3 +146,4 @@ The following table describes the options that you can specify to configure the 
 |[[extract-changes-header-unchanged-name]]<<extract-changes-header-unchanged-name, `+header.unchanged.name+`>>
 |
 |The Kafka message header name to use for storing a comma-separated list of the fields that remain unchanged after a database operation.
+|===
