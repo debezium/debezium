@@ -295,12 +295,12 @@ public class PostgresConnection extends JdbcConnection {
         try {
             confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "confirmed_flush_lsn");
             if (confirmedFlushedLsn == null) {
-                LOGGER.debug("Failed to obtain valid replication slot, confirmed flush lsn is null");
+                LOGGER.info("Failed to obtain valid replication slot, confirmed flush lsn is null");
                 AtomicBoolean hasConcurrentTransaction = new AtomicBoolean(false);
                 int connectionPID = ((PgConnection) connection()).getBackendPID();
                 query("select * from pg_stat_activity where state like 'idle in transaction' AND pid <> " + connectionPID, rset -> {
                     if (rset.next()) {
-                        hasConcurrentTransaction.compareAndSet(false, true);
+                        hasConcurrentTransaction.set(true);
                     }
                 });
                 if (!hasConcurrentTransaction.get()) {
@@ -321,8 +321,8 @@ public class PostgresConnection extends JdbcConnection {
         try {
             confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
         }
-        catch (SQLException e2) {
-            throw new ConnectException("Neither confirmed_flush_lsn nor restart_lsn could be found");
+        catch (SQLException e) {
+            throw new DebeziumException("Neither confirmed_flush_lsn nor restart_lsn could be found", e);
         }
         return confirmedFlushedLsn;
     }
@@ -333,7 +333,7 @@ public class PostgresConnection extends JdbcConnection {
             restartLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
         }
         catch (SQLException e) {
-            throw new ConnectException("restart_lsn could be found");
+            throw new DebeziumException("restart_lsn could be found");
         }
 
         return restartLsn;
@@ -350,13 +350,13 @@ public class PostgresConnection extends JdbcConnection {
             lsn = Lsn.valueOf(lsnStr);
         }
         catch (Exception e) {
-            throw new ConnectException("Value " + column + " in the pg_replication_slots table for slot = '"
+            throw new DebeziumException("Value " + column + " in the pg_replication_slots table for slot = '"
                     + slotName + "', plugin = '"
                     + pluginName + "', database = '"
                     + database + "' is not valid. This is an abnormal situation and the database status should be checked.");
         }
         if (!lsn.isValid()) {
-            throw new ConnectException("Invalid LSN returned from database");
+            throw new DebeziumException("Invalid LSN returned from database");
         }
         return lsn;
     }
