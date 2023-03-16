@@ -294,8 +294,9 @@ public final class SourceInfo extends BaseSourceInfo {
         String namespace = "";
         long wallTime = 0L;
         if (changeStreamEvent != null) {
-            BsonTimestamp ts = changeStreamEvent.getClusterTime();
             String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
+            // > Decode timestamp from resume token to be consistent with other events
+            BsonTimestamp ts = ResumeTokens.getTimestamp(changeStreamEvent.getResumeToken());
             position = Position.changeStreamPosition(ts, resumeToken, MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
             if (changeStreamEvent.getWallTime() != null) {
