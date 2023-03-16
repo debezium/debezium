@@ -3204,7 +3204,12 @@ endif::product[]
 
 |[[mysql-property-snapshot-tables-order-by-row-count]]<<mysql-property-snapshot-tables-order-by-row-count, `snapshot.tables.order.by.row.count`>>
 |`disabled`
-|Controls the order in which tables are processed in the initial snapshot. The `descending` value will order the tables by row count descending. The `ascending` value will order the tables by row count ascending. The value of `disabled` will disable ordering by row count.
+|Controls the order in which the connector processes tables when it performs an initial snapshot.
+Specify one of the following options:
+
+`descending`:: The connector snapshots tables in order, based on the number of rows from the highest to the lowest.
+`ascending`:: The connector snapshots tables in order, based on the number of rows, from lowest to highest.
+`disabled`:: The connector disregards row count when performing an initial snapshot.
 
 |===
 
