@@ -14,6 +14,8 @@ import io.debezium.annotation.Immutable;
 @Immutable
 public final class ReplicaSet implements Comparable<ReplicaSet> {
 
+    public static final String CLUSTER_RS_NAME = "cluster";
+
     private final String replicaSetName;
     private final ConnectionString connectionString;
     private final int hc;
@@ -30,6 +32,23 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
         this.connectionString = Objects.requireNonNull(connectionString, "Connection string cannot be null");
         this.replicaSetName = Objects.requireNonNull(replicaSetName, "Replica set name cannot be null");
         this.hc = Objects.hash(connectionString);
+    }
+
+    /**
+     * Creates a fake replica set representing entire sharded cluster
+     *
+     * @param connectionString connection string for sharded cluster
+     * @return sharded cluster as fake replica set
+     */
+    public static ReplicaSet forCluster(ConnectionString connectionString) {
+        return new ReplicaSet(CLUSTER_RS_NAME, connectionString);
+    }
+
+    /**
+     * Same as {@link #forCluster(ConnectionString)}
+     */
+    public static ReplicaSet forCluster(String connectionString) {
+        return new ReplicaSet(CLUSTER_RS_NAME, new ConnectionString(connectionString));
     }
 
     /**

@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -31,6 +32,7 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
@@ -214,6 +216,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined MongoDbConnectionMode options or aliases.
+     */
+    public enum ConnectionMode implements EnumeratedValue {
+        /**
+         * Connect individually to each replica set
+         */
+        REPLICA_SET("replica_set"),
+
+        /**
+         * Connect to sharded cluster with single connection via mongos
+         */
+        SHARDED("sharded");
+
+        private String value;
+
+        ConnectionMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ConnectionMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (ConnectionMode option : ConnectionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ConnectionMode parse(String value, String defaultValue) {
+            ConnectionMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
@@ -233,10 +299,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
             .withDescription("Database connection string.");
 
+    public static final Field CONNECTION_MODE = Field.create("mongodb.connection.mode")
+            .withDisplayName("Connection mode")
+            .withEnum(ConnectionMode.class, ConnectionMode.REPLICA_SET)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The method used to connect to MongoDB cluster. "
+                    + "Options include: "
+                    + "'replica_set' (the default) to individually connect to each replica set / shard "
+                    + "'sharded' to connect via single connection obtained from connection string");
+
     public static final Field USER = Field.create("mongodb.user")
             .withDisplayName("User")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Database user for connecting to MongoDB, if necessary.");
@@ -244,7 +321,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field PASSWORD = Field.create("mongodb.password")
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
@@ -252,7 +329,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(30_000L)
@@ -482,7 +559,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field HOSTS = Field.create("mongodb.hosts")
             .withDisplayName("Hosts")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateHosts)
@@ -493,7 +570,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
             .withDisplayName("Auto-discovery")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
@@ -508,6 +585,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .type(
                     TOPIC_PREFIX,
                     CONNECTION_STRING,
+                    CONNECTION_MODE,
                     HOSTS,
                     USER,
                     PASSWORD,
@@ -548,8 +626,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
+    private final ConnectionMode connectionMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    private final ReplicaSets replicaSets;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -560,8 +640,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
 
+        String connectionModeValue = config.getString(MongoDbConnectorConfig.CONNECTION_MODE);
+        this.connectionMode = ConnectionMode.parse(connectionModeValue, MongoDbConnectorConfig.CONNECTION_MODE.defaultValueAsString());
+
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+
+        this.replicaSets = resolveReplicaSets(config, connectionMode);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -688,6 +773,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return captureMode;
     }
 
+    public ConnectionMode getConnectionMode() {
+        return connectionMode;
+    }
+
+    public ReplicaSets getReplicaSets() {
+        return replicaSets;
+    }
+
     public int getCursorMaxAwaitTime() {
         return cursorMaxAwaitTimeMs;
     }
@@ -744,6 +837,28 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static int resolveSnapshotMaxThreads(Configuration config) {
         return config.getInteger(SNAPSHOT_MAX_THREADS);
+    }
+
+    private static ReplicaSets resolveReplicaSets(Configuration config, ConnectionMode connectionMode) {
+        if (!config.hasKey(MongoDbConnectorConfig.REPLICA_SETS)) {
+            return new ReplicaSets(List.of());
+        }
+
+        List<ReplicaSet> replicaSetSpecs;
+
+        switch (connectionMode) {
+            case REPLICA_SET:
+                replicaSetSpecs = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::new);
+                break;
+            case SHARDED:
+                replicaSetSpecs = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::forCluster);
+                break;
+            default:
+                LOGGER.warn("Unexpected connection mode '{}'", connectionMode);
+                replicaSetSpecs = List.of();
+        }
+
+        return new ReplicaSets(replicaSetSpecs);
     }
 
     @Override

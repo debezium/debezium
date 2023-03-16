@@ -23,7 +23,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -78,7 +77,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final ReplicaSets replicaSets = getReplicaSets(config);
+        final ReplicaSets replicaSets = getReplicaSets(connectorConfig);
         final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
         final Clock clock = Clock.system();
 
@@ -174,10 +173,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
-    private ReplicaSets getReplicaSets(Configuration config) {
-        var replicas = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::new);
-
-        final ReplicaSets replicaSets = new ReplicaSets(replicas);
+    private ReplicaSets getReplicaSets(MongoDbConnectorConfig connectorConfig) {
+        final ReplicaSets replicaSets = connectorConfig.getReplicaSets();
         if (replicaSets.size() == 0) {
             throw new DebeziumException("Unable to start MongoDB connector task since no replica sets were found");
         }
