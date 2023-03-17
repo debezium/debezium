@@ -5016,6 +5016,45 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6221")
+    public void testShouldProperlyMapCharacterColumnTypesAsCharWhenTableCreatedDuringStreamingPhase() throws Exception {
+        TestHelper.dropTable(connection, "dbz6221");
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ6221")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("CREATE TABLE dbz6221 (data0 character, data1 character(5), data2 character varying(5))");
+            TestHelper.streamTable(connection, "dbz6221");
+
+            connection.execute("INSERT INTO dbz6221 values ('a', 'abc', 'abc')");
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6221");
+            assertThat(tableRecords).hasSize(1);
+
+            final SourceRecord record = tableRecords.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().fields()).hasSize(3);
+            assertThat(after.schema().field("DATA0").schema().type()).isEqualTo(Schema.Type.STRING);
+            assertThat(after.schema().field("DATA1").schema().type()).isEqualTo(Schema.Type.STRING);
+            assertThat(after.schema().field("DATA2").schema().type()).isEqualTo(Schema.Type.STRING);
+            assertThat(after.get("DATA0")).isEqualTo("a");
+            assertThat(after.get("DATA1")).isEqualTo("abc  ");
+            assertThat(after.get("DATA2")).isEqualTo("abc");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6221");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();

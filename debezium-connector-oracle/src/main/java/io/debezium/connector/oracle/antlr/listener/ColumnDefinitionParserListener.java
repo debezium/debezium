@@ -194,7 +194,8 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.native_datatype_element().CHAR() != null) {
+            else if (ctx.native_datatype_element().CHAR() != null ||
+                    ctx.native_datatype_element().CHARACTER() != null) {
                 columnEditor
                         .jdbcType(Types.CHAR)
                         .type("CHAR")
