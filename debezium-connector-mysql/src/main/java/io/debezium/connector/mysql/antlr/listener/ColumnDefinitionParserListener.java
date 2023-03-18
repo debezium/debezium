@@ -255,6 +255,10 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             columnEditor.type("BIGINT UNSIGNED");
             serialColumn();
         }
+        else if (dataTypeName.equalsIgnoreCase("REAL")) {
+            // REAL is an alias for DOUBLE PRECISION, aka DOUBLE
+            columnEditor.type("DOUBLE");
+        }
         else {
             columnEditor.type(dataTypeName);
         }

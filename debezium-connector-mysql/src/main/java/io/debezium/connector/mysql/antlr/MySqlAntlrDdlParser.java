@@ -157,7 +157,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.INT8)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL)
+                new DataTypeEntry(Types.DOUBLE, MySqlParser.REAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE)
                         .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
