@@ -48,13 +48,13 @@ public class ZonedTimestamp {
     /**
      * Returns a {@link DateTimeFormatter} that ensures that exactly fractionalWidth number of digits are present
      * in the nanosecond part of the datetime. If fractionWidth is null, then
-     * {@link DateTimeFormatter.ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere from 0-9 digits in the
+     * {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere from 0-9 digits in the
      * nanosecond part.
      *
      * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
      *                        formatted string.
      * @return {@link DateTimeFormatter} containing exactly fractionalWidth number of digits in nanosecond part of the
-     * datetime. If null, {@link DateTimeFormatter.ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere
+     * datetime. If null, {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere
      * from 0-9 digits in the nanosecond part.
      */
     private static DateTimeFormatter getDateTimeFormatter(Integer fractionalWidth) {
