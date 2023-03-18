@@ -255,6 +255,11 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             columnEditor.type("BIGINT UNSIGNED");
             serialColumn();
         }
+        else if (dataTypeName.equalsIgnoreCase("BOOLEAN")) {
+            // BOOLEAN is an alias for TINYINT(1)
+            columnEditor.type("TINYINT");
+            columnEditor.length(1);
+        }
         else {
             columnEditor.type(dataTypeName);
         }

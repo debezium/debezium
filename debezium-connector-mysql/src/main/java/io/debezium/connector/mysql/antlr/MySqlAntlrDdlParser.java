@@ -192,8 +192,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BLOB, MySqlParser.TINYBLOB),
                 new DataTypeEntry(Types.BLOB, MySqlParser.MEDIUMBLOB),
                 new DataTypeEntry(Types.BLOB, MySqlParser.LONGBLOB),
-                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOL),
-                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOLEAN),
+                new DataTypeEntry(Types.SMALLINT, MySqlParser.BOOL),
+                new DataTypeEntry(Types.SMALLINT, MySqlParser.BOOLEAN),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.SERIAL)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.CHAR, MySqlParser.ENUM).setSuffixTokens(MySqlParser.BINARY),
