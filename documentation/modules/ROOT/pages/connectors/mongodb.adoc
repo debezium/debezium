@@ -62,6 +62,7 @@ This new server becomes a secondary (and able to handle queries) when it catches
 // Type: concept
 // Title: Description of how the MongoDB connector uses change streams to capture event records
 // ModuleID: description-of-how-the-mongodb-connector-uses-change streams-to-capture-event-records
+[id="change-streams"]
 === Change streams
 
 Although the {prodname} MongoDB connector does not become part of a replica set, it uses a similar replication mechanism to obtain oplog data.
