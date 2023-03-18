@@ -249,7 +249,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-4497")
+    @FixFor({ "DBZ-4497", "DBZ-6185" })
     public void shouldProcessMultipleSignedUnsignedForTable() {
         String ddl = "create table if not exists tbl_signed_unsigned(\n"
                 + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
@@ -257,6 +257,8 @@ public class MySqlAntlrDdlParserTest {
                 + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
                 + "c3 float SIGNED ZEROFILL,\n"
                 + "c4 double precision(18, 4) UNSIGNED SIGNED ZEROFILL,\n"
+                + "c5 smallint zerofill null,\n"
+                + "c6 tinyint unsigned zerofill null,\n"
                 + "PRIMARY KEY (`id`)\n"
                 + ")";
         parser.parse(ddl, tables);
@@ -273,12 +275,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(c2.length()).isEqualTo(10);
         assertThat(c2.scale().get()).isEqualTo(2);
 
-        assertThat(table.columnWithName("c3").typeName()).isEqualTo("FLOAT SIGNED ZEROFILL");
+        assertThat(table.columnWithName("c3").typeName()).isEqualTo("FLOAT UNSIGNED ZEROFILL");
 
         Column c4 = table.columnWithName("c4");
         assertThat(c4.typeName()).isEqualTo("DOUBLE PRECISION UNSIGNED ZEROFILL");
         assertThat(c4.length()).isEqualTo(18);
         assertThat(c4.scale().get()).isEqualTo(4);
+
+        assertThat(table.columnWithName("c5").typeName()).isEqualTo("SMALLINT UNSIGNED ZEROFILL");
+        assertThat(table.columnWithName("c6").typeName()).isEqualTo("TINYINT UNSIGNED ZEROFILL");
     }
 
     @Test
