@@ -59,25 +59,30 @@ MongoDB replication works by having the primary record the changes in its _oplog
 When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[snapshot] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the snapshot.
 This new server becomes a secondary (and able to handle queries) when it catches up to the tail of the primary's oplog.
 
-=== Change Stream
+// Type: concept
+// Title: Description of how the MongoDB connector uses change streams to capture event records
+// ModuleID: description-of-how-the-mongodb-connector-uses-change streams-to-capture-event-records
+=== Change streams
 
-The {prodname} MongoDB connector uses a similar replication mechanism to the one described above, though it does not actually become a member of the replica set.
-The main difference is that the connector does not read the oplog directly, but delegates capturing and decoding the oplog to MongoDB's https://docs.mongodb.com/manual/changeStreams/[Change Streams] feature.
-With change streams, the MongoDB server exposes changes to collections as an event stream.
-The {prodname} connector watches the stream and delivers the changes downstream.
-And, when the connector sees a replica set for the first time, it looks at the oplog to get the last recorded transaction and then performs a snapshot of the primary's databases and collections.
-When all the data is copied, the connector then creates a change stream from the position it read earlier from the oplog.
+Although the {prodname} MongoDB connector does not become part of a replica set, it uses a similar replication mechanism to obtain oplog data.
+The main difference is that the connector does not read the oplog directly.
+Instead, it delegates the capture and decoding of oplog data to the MongoDB https://docs.mongodb.com/manual/changeStreams/[change streams] feature.
+With change streams, the MongoDB server exposes the changes that occur in a collection as an event stream.
+The {prodname} connector monitors the stream and then delivers the changes downstream.
+The first time that the connector detects a replica set, it examines the oplog to obtain the last recorded transaction, and then performs a snapshot of the primary's databases and collections.
+After the connector finishes copying the data, it creates a change stream beginning from the oplog position that it read earlier.
 
-As the MongoDB connector processes changes, it periodically records the position in the oplog/stream where the event originated.
-When the connector stops, it records the last oplog/stream position that it processed, so that upon restart it simply begins streaming from that position.
-In other words, the connector can be stopped, upgraded or maintained, and restarted some time later, and it will pick up exactly where it left off without losing a single event.
-Of course, MongoDB's oplogs are usually capped at a maximum size, which means that the connector should not be stopped for too long, or else some of the operations in the oplog might be purged before the connector has a chance to read them.
-In this case, upon restart the connector will detect the missing oplog operations, perform a snapshot, and then proceed with streaming the changes.
+As the MongoDB connector processes changes, it periodically records the position at which the event originated in the oplog stream.
+When the connector stops, it records the last oplog stream position that it processed, so that after a restart it can resume streaming from that position.
+In other words, the connector can be stopped, upgraded or maintained, and restarted some time later, and always pick up exactly where it left off without losing a single event.
+Of course, MongoDB oplogs are usually capped at a maximum size, so if the connector is stopped for long periods, operations in the oplog might be purged before the connector has a chance to read them.
+In this case, after a restart the connector detects the missing oplog operations, performs a snapshot, and then proceeds to stream changes.
 
 The MongoDB connector is also quite tolerant of changes in membership and leadership of the replica sets, of additions or removals of shards within a sharded cluster, and network problems that might cause communication failures.
 The connector always uses the replica set's primary node to stream changes, so when the replica set undergoes an election and a different node becomes primary, the connector will immediately stop streaming changes, connect to the new primary, and start streaming changes using the new primary node.
-Likewise, if connector experiences any problems communicating with the replica set primary, it will try to reconnect (using exponential backoff so as to not overwhelm the network or replica set) and continue streaming changes from where it last left off.
-In this way the connector is able to dynamically adjust to changes in replica set membership and to automatically handle communication failures.
+Similarly, if connector is unable to communicate with the replica set primary, it attempts to reconnect (using exponential backoff so as to not overwhelm the network or replica set).
+After connection is reestablished, the connector continues to stream changes from the last event that it captured.
+In this way the connector dynamically adjusts to changes in replica set membership, and automatically handles communication disruptions.
 
 .Additional resources
 
