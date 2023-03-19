@@ -255,8 +255,23 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             columnEditor.type("BIGINT UNSIGNED");
             serialColumn();
         }
+        else if (dataTypeName.equalsIgnoreCase("CHAR") && isNationalizedCharacterSet(charsetName)) {
+            // Treat the CHAR as nationalized character data types due to multibyte character support.
+            // This aligns the snapshot parsing behavior with the streaming parsing behavior.
+            columnEditor.type("NCHAR");
+        }
+        else if (dataTypeName.equalsIgnoreCase("VARCHAR") && isNationalizedCharacterSet(charsetName)) {
+            // Treat the VARCHAR as nationalized character data types due to multibyte character support.
+            // This aligns the snapshot parsing behavior with the streaming parsing behavior.
+            columnEditor.type("NVARCHAR");
+        }
         else {
             columnEditor.type(dataTypeName);
+        }
+
+        if (isOfAnyType(columnEditor, "CHAR", "NCHAR") && columnEditor.length() == Column.UNSET_INT_VALUE) {
+            // The length wasn't provided in the DDL for the CHAR/NCHAR columns, default to 1 for consistency
+            columnEditor.length(1);
         }
 
         int jdbcDataType = dataType.jdbcType();
@@ -295,4 +310,26 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         columnEditor.autoIncremented(true);
         columnEditor.generated(true);
     }
+
+    private boolean isNationalizedCharacterSet(String characterSetName) {
+        if (characterSetName != null) {
+            characterSetName = characterSetName.toLowerCase();
+            if (characterSetName.startsWith("utf8mb3") || characterSetName.startsWith("utf8mb4")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isOfAnyType(ColumnEditor editor, String... typeNames) {
+        if (editor.typeName() != null) {
+            for (String typeName : typeNames) {
+                if (editor.typeName().equalsIgnoreCase(typeName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }
