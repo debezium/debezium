@@ -290,10 +290,10 @@ public class MySqlDefaultValueTest {
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "BOOLEAN_TABLE"));
-        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(false);
-        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(true);
-        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(true);
-        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((short) 0);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((short) 1);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo((short) 9);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo((short) 1);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(null);
     }
 
@@ -491,7 +491,7 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Short) getColumnSchema(table, "bval").defaultValue()).isEqualTo((short) 1);
         assertThat((Short) getColumnSchema(table, "tival1").defaultValue()).isZero();
         assertThat((Short) getColumnSchema(table, "tival2").defaultValue()).isEqualTo((short) 3);
         assertThat((Short) getColumnSchema(table, "tival3").defaultValue()).isEqualTo((short) 1);
@@ -513,7 +513,7 @@ public class MySqlDefaultValueTest {
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Short) getColumnSchema(table, "bval").defaultValue()).isEqualTo((short) 1);
         assertThat((Integer) getColumnSchema(table, "ival1").defaultValue()).isZero();
         assertThat((Integer) getColumnSchema(table, "ival2").defaultValue()).isEqualTo(3);
         assertThat((Integer) getColumnSchema(table, "ival3").defaultValue()).isEqualTo(1);
