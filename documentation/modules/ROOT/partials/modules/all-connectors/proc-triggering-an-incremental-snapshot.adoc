@@ -59,8 +59,8 @@ INSERT INTO myschema.debezium_signal (id, type, data) // <1>
 values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
-    "type":"incremental"}, // <5>
-    "additional-condition":"color=blue"}, // <6>
+    "type":"incremental", // <5>
+    "additional-condition":"color=blue", // <6>
     "surrogate-key":"tenant-id"}'); // <7>
 ----
 end::sql-based-snapshot[]
