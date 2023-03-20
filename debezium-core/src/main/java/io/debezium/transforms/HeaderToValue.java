@@ -26,6 +26,8 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -33,6 +35,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
 
 public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(HeaderToValue.class);
     public static final String FIELDS_CONF = "fields";
     public static final String HEADERS_CONF = "headers";
     public static final String OPERATION_CONF = "operation";
@@ -72,7 +75,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withDisplayName("Header names list")
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Header names in the record whose values are to be copied or moved to value.")
+            .withDescription("Header names in the record whose values are to be copied or moved to record value.")
             .required();
 
     public static final Field FIELDS_FIELD = Field.create(FIELDS_CONF)
@@ -118,7 +121,9 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
         fields = config.getList(FIELDS_FIELD);
         headers = config.getList(HEADERS_FIELD);
+
         if (headers.size() != fields.size()) {
+            LOGGER.error("Error while configuring SMT");
             throw new ConfigException(format("'%s' config must have the same number of elements as '%s' config.",
                     FIELDS_FIELD, HEADERS_FIELD));
         }
@@ -134,9 +139,15 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
 
+        LOGGER.trace("Header to be processed: " + print(headerToProcess));
+
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> makeNewSchema(valueSchema, headerToProcess));
 
+        LOGGER.trace("Updated schema: " + updatedSchema);
+
         Struct updatedValue = makeUpdatedValue(value, headerToProcess, updatedSchema);
+
+        LOGGER.trace("Updated value: " + updatedValue);
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {
@@ -263,6 +274,12 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
     private static boolean isRootField(String fieldName, String[] nestedNames) {
         return nestedNames.length == 1 && fieldName.equals(ROOT_FIELD_NAME);
+    }
+
+    private String print(Map<?, ?> map) {
+        return map.keySet().stream()
+                .map(key -> key + "=" + map.get(key))
+                .collect(Collectors.joining(", ", "{", "}"));
     }
 
     @Override
