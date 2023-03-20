@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,7 +41,6 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.logwriter.RacCommitLogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.logwriter.ReadOnlyLogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
@@ -86,6 +86,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn endScn;
     private Scn snapshotScn;
     private List<LogFile> currentLogFiles;
+    private List<LogFile> currentRedoLogFiles;
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
@@ -360,7 +361,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (!isContinuousMining) {
                 currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                if (!archiveLogOnlyMode) {
+                    currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                }
             }
         }
         else {
@@ -370,7 +373,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                if (!archiveLogOnlyMode) {
+                    currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
+                }
             }
         }
 
@@ -393,16 +398,17 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     /**
      * Get the maximum archive log SCN
      *
-     * @param logFiles the current logs that are part of the mining session
+     * @param archiveLogFiles the current logs that are part of the mining session
+     * @param currentRedoLogFiles the current online redo logs
      * @return the maximum system change number from the archive logs
      * @throws DebeziumException if no logs are provided or if the provided logs has no archive log types
      */
-    private Scn getMaxArchiveLogScn(List<LogFile> logFiles) {
-        if (logFiles == null || logFiles.isEmpty()) {
+    private Scn getMaxArchiveLogScn(List<LogFile> archiveLogFiles, List<LogFile> currentRedoLogFiles) {
+        if (archiveLogFiles == null || archiveLogFiles.isEmpty()) {
             throw new DebeziumException("Cannot get maximum archive log SCN as no logs were available.");
         }
 
-        final List<LogFile> archiveLogs = logFiles.stream()
+        final List<LogFile> archiveLogs = archiveLogFiles.stream()
                 .filter(log -> log.getType().equals(LogFile.Type.ARCHIVE))
                 .collect(Collectors.toList());
 
@@ -416,6 +422,23 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (nextScn.compareTo(maxScn) > 0) {
                 maxScn = nextScn;
             }
+        }
+
+        if (currentRedoLogFiles.isEmpty()) {
+            throw new DebeziumException("Cannot get current redo log SCN as no redo logs are present.");
+        }
+
+        Scn minRedoScn = currentRedoLogFiles.get(0).getFirstScn();
+        for (int i = 0; i < currentRedoLogFiles.size(); i++) {
+            Scn firstScn = currentRedoLogFiles.get(i).getFirstScn();
+            if (firstScn.compareTo(minRedoScn) < 0) {
+                minRedoScn = firstScn;
+            }
+        }
+
+        if (maxScn.compareTo(minRedoScn) > 0) {
+            LOGGER.debug("Max archive log scn is bigger than min redo log scn, use min redo log scn as max archive log scn");
+            maxScn = minRedoScn;
         }
 
         LOGGER.debug("Maximum archive log SCN resolved as {}", maxScn);
@@ -642,7 +665,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
         Scn currentScn = archiveLogOnlyMode
-                ? getMaxArchiveLogScn(currentLogFiles)
+                ? getMaxArchiveLogScn(currentLogFiles, currentRedoLogFiles)
                 : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
@@ -851,9 +874,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @return the strategy to be used to flush Oracle's LGWR process, never {@code null}.
      */
     private LogWriterFlushStrategy resolveFlushStrategy() {
-        if (connectorConfig.isLogMiningReadOnly()) {
-            return new ReadOnlyLogWriterFlushStrategy();
-        }
         if (connectorConfig.isRacSystem()) {
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }
@@ -875,8 +895,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (showStartScnNotInArchiveLogs) {
                 LOGGER.warn("Starting SCN {} is not yet in archive logs, waiting for archive log switch.", startScn);
                 showStartScnNotInArchiveLogs = false;
-                Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), clock).pause();
             }
+            Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), clock).pause();
         }
 
         if (!context.isRunning()) {
@@ -897,9 +917,31 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private boolean isStartScnInArchiveLogs(Scn startScn) throws SQLException {
-        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(jdbcConnection, startScn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName);
-        return logs.stream()
-                .anyMatch(l -> l.getFirstScn().compareTo(startScn) <= 0 && l.getNextScn().compareTo(startScn) > 0 && l.getType().equals(LogFile.Type.ARCHIVE));
+        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(jdbcConnection, startScn, archiveLogRetention, false, archiveDestinationName);
+        boolean isStartScnInArchiveLogs = false;
+        boolean isStartScnInOnlineLogs = false;
+
+        if (Objects.isNull(currentRedoLogFiles)) {
+            currentRedoLogFiles = new ArrayList<>();
+        }
+        currentRedoLogFiles.clear();
+        for (LogFile file : logs) {
+
+            if (file.getType().equals(LogFile.Type.ARCHIVE)
+                    && file.getFirstScn().compareTo(startScn) <= 0 && file.getNextScn().compareTo(startScn) > 0) {
+                LOGGER.info("startScn {} in archive log {} with range {},{}", startScn, file.getFileName(), file.getFirstScn(), file.getNextScn());
+                isStartScnInArchiveLogs = true;
+            }
+            if (file.getType().equals(LogFile.Type.REDO)) {
+                currentRedoLogFiles.add(file);
+                if (file.getFirstScn().compareTo(startScn) <= 0) {
+                    LOGGER.info("startScn {} in online log {} with range {},{}", startScn, file.getFileName(), file.getFirstScn(), file.getNextScn());
+                    isStartScnInOnlineLogs = true;
+                }
+            }
+        }
+
+        return isStartScnInArchiveLogs && !isStartScnInOnlineLogs;
     }
 
     @Override
