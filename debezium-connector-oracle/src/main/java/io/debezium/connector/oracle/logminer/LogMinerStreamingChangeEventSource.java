@@ -14,7 +14,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -353,7 +361,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (!isContinuousMining) {
                 currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                if(!archiveLogOnlyMode) {
+                if (!archiveLogOnlyMode) {
                     currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
                 }
             }
@@ -365,7 +373,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 currentLogFiles = setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode,
                         archiveDestinationName, logFileQueryMaxRetries, initialDelay, maxDelay);
-                if(!archiveLogOnlyMode) {
+                if (!archiveLogOnlyMode) {
                     currentRedoLogSequences = getCurrentLogFileSequences(currentLogFiles);
                 }
             }
@@ -395,7 +403,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @return the maximum system change number from the archive logs
      * @throws DebeziumException if no logs are provided or if the provided logs has no archive log types
      */
-    private Scn getMaxArchiveLogScn(List<LogFile> archiveLogFiles,List<LogFile> currentRedoLogFiles) {
+    private Scn getMaxArchiveLogScn(List<LogFile> archiveLogFiles, List<LogFile> currentRedoLogFiles) {
         if (archiveLogFiles == null || archiveLogFiles.isEmpty()) {
             throw new DebeziumException("Cannot get maximum archive log SCN as no logs were available.");
         }
@@ -416,19 +424,19 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
 
-        if(currentRedoLogFiles.isEmpty()){
+        if (currentRedoLogFiles.isEmpty()) {
             throw new DebeziumException("Cannot get current redo log SCN as no redo logs are present.");
         }
 
         Scn minRedoScn = currentRedoLogFiles.get(0).getFirstScn();
-        for(int i = 0; i < currentRedoLogFiles.size(); i ++){
+        for (int i = 0; i < currentRedoLogFiles.size(); i++) {
             Scn firstScn = currentRedoLogFiles.get(i).getFirstScn();
-            if(firstScn.compareTo(minRedoScn) < 0){
+            if (firstScn.compareTo(minRedoScn) < 0) {
                 minRedoScn = firstScn;
             }
         }
 
-        if(maxScn.compareTo(minRedoScn) > 0){
+        if (maxScn.compareTo(minRedoScn) > 0) {
             LOGGER.debug("Max archive log scn is bigger than min redo log scn, use min redo log scn as max archive log scn");
             maxScn = minRedoScn;
         }
@@ -657,7 +665,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private Scn calculateEndScn(OracleConnection connection, Scn startScn, Scn prevEndScn) throws SQLException {
         Scn currentScn = archiveLogOnlyMode
-                ? getMaxArchiveLogScn(currentLogFiles,currentRedoLogFiles)
+                ? getMaxArchiveLogScn(currentLogFiles, currentRedoLogFiles)
                 : connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
@@ -913,20 +921,20 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         boolean isStartScnInArchiveLogs = false;
         boolean isStartScnInOnlineLogs = false;
 
-        if(Objects.isNull(currentRedoLogFiles)){
+        if (Objects.isNull(currentRedoLogFiles)) {
             currentRedoLogFiles = new ArrayList<>();
         }
         currentRedoLogFiles.clear();
-        for(LogFile file : logs){
+        for (LogFile file : logs) {
 
-            if(file.getType().equals(LogFile.Type.ARCHIVE)
-                    && file.getFirstScn().compareTo(startScn) <= 0 && file.getNextScn().compareTo(startScn) > 0 ){
-                LOGGER.info("startScn {} in archive log {} with range {},{}",startScn,file.getFileName(),file.getFirstScn(),file.getNextScn());
+            if (file.getType().equals(LogFile.Type.ARCHIVE)
+                    && file.getFirstScn().compareTo(startScn) <= 0 && file.getNextScn().compareTo(startScn) > 0) {
+                LOGGER.info("startScn {} in archive log {} with range {},{}", startScn, file.getFileName(), file.getFirstScn(), file.getNextScn());
                 isStartScnInArchiveLogs = true;
             }
-            if(file.getType().equals(LogFile.Type.REDO)){
+            if (file.getType().equals(LogFile.Type.REDO)) {
                 currentRedoLogFiles.add(file);
-                if(file.getFirstScn().compareTo(startScn) <= 0) {
+                if (file.getFirstScn().compareTo(startScn) <= 0) {
                     LOGGER.info("startScn {} in online log {} with range {},{}", startScn, file.getFileName(), file.getFirstScn(), file.getNextScn());
                     isStartScnInOnlineLogs = true;
                 }
