@@ -599,7 +599,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 if (tableId != null && !connectorConfig.getSkippedOperations().contains(Operation.TRUNCATE)
                         && schemaChangeEvent.getType().equals(SchemaChangeEventType.TRUNCATE)) {
                     eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                            new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.TRUNCATE, null, null));
+                            new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.TRUNCATE, null, null, connectorConfig.skipMessagesWithoutChange()));
                 }
                 eventDispatcher.dispatchSchemaChangeEvent(partition, tableId, (receiver) -> {
                     try {
@@ -749,7 +749,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         handleChange(partition, offsetContext, event, Operation.CREATE, WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row)));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.CREATE, null, row, connectorConfig.skipMessagesWithoutChange())));
     }
 
     /**
@@ -763,7 +763,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         handleChange(partition, offsetContext, event, Operation.UPDATE, UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 UpdateRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue())));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue(),
+                                connectorConfig.skipMessagesWithoutChange())));
     }
 
     /**
@@ -777,7 +778,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         handleChange(partition, offsetContext, event, Operation.DELETE, DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()),
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null)));
+                        new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.DELETE, row, null, connectorConfig.skipMessagesWithoutChange())));
     }
 
     private <T extends EventData, U> void handleChange(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Operation operation,

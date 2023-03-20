@@ -106,6 +106,17 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
             LOGGER.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
+
+        /*
+         * If skip.messages.without.change is configured true,
+         * Skip Publishing the message in case there is no change in monitored columns
+         * (Postgres) Only works if REPLICA IDENTITY is set to FULL - as oldValues won't be available
+         */
+        if (skipMessagesWithoutChange() && Objects.nonNull(newValue) && newValue.equals(oldValue)) {
+            LOGGER.warn("No new values found for table '{}' in whitelisted columns from update message at '{}'; skipping record", tableSchema,
+                    getOffset().getSourceInfo());
+            return;
+        }
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
@@ -154,6 +165,10 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
      * Typical use case are PostgreSQL changes without FULL replica identity.
      */
     protected boolean skipEmptyMessages() {
+        return false;
+    }
+
+    protected boolean skipMessagesWithoutChange() {
         return false;
     }
 

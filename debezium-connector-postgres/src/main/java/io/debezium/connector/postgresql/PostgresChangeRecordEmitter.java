@@ -377,4 +377,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     protected boolean skipEmptyMessages() {
         return true;
     }
+
+    @Override
+    protected boolean skipMessagesWithoutChange() {
+        return connectorConfig.skipMessagesWithoutChange();
+    }
 }
