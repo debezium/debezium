@@ -188,7 +188,7 @@ docker run -it --rm --name connect \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_AUTO-REGISTER=true \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_FIND-LATEST=true \
     -e CONNECT_SCHEMA_NAME_ADJUSTMENT_MODE=avro \
-    -p 8083:8083 debezium/connect:{debezium-docker-label}
+    -p 8083:8083 quay.io/debezium/connect:{debezium-docker-label}
 ----
 endif::community[]
 
@@ -429,7 +429,7 @@ docker run -it --rm --name connect \
     -e VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter \
     -e CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
     -e CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081 \
-    -p 8083:8083 debezium/connect:{debezium-docker-label}
+    -p 8083:8083 quay.io/debezium/connect:{debezium-docker-label}
 ----
 
 . Run a console consumer that reads new Avro messages from the `db.myschema.mytable` topic and decodes to JSON:
@@ -441,7 +441,7 @@ docker run -it --rm --name avro-consumer \
     --link kafka:kafka \
     --link mysql:mysql \
     --link schema-registry:schema-registry \
-    debezium/connect:{debezium-docker-label} \
+    quay.io/debezium/connect:{debezium-docker-label} \
     /kafka/bin/kafka-console-consumer.sh \
       --bootstrap-server kafka:9092 \
       --property print.key=true \

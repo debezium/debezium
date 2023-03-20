@@ -201,7 +201,7 @@ and maps the Docker host's port 9010 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 debezium/zookeeper:latest
+$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 quay.io/debezium/zookeeper:latest
 ----
 ====
 
@@ -243,7 +243,7 @@ and maps the Docker host's port 9011 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper debezium/kafka:latest
+$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper quay.io/debezium/kafka:latest
 ----
 ====
 
@@ -295,7 +295,7 @@ $ docker run -it --rm --name connect \
   --link zookeeper:zookeeper \
   --link kafka:kafka \
   --link mysql:mysql \
-  debezium/connect:latest
+  quay.io/debezium/connect:latest
 ----
 ====
 

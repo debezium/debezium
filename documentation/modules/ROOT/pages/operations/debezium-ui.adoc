@@ -58,7 +58,7 @@ For example, in some environments it might not be possible to reach the underlyi
 The Debezium UI https://quay.io/repository/debezium/debezium-ui[container image] is available for running the UI.  To start the UI and connect to an existing Kafka Connect instance via Docker (where KAFKA_CONNECT_URIS supplies the comma-separated list of available URI(s)):
 
 ----
-$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URIS=http://connect:8083 debezium/debezium-ui:{debezium-version}
+$ docker run -it --rm --name debezium-ui -p 8080:8080 -e KAFKA_CONNECT_URIS=http://connect:8083 quay.io/debezium/debezium-ui:{debezium-version}
 ----
 
 The UI connects to Kafka Connect via REST, so you need to make sure that the latter is reachable, e.g. by running both components on the same Docker network.
