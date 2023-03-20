@@ -27,14 +27,16 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
     private final OffsetContext offset;
     private final Object[] before;
     private final Object[] after;
+    private final boolean skipMessagesWithoutChange;
 
-    public MySqlChangeRecordEmitter(MySqlPartition partition, OffsetContext offset, Clock clock, Envelope.Operation operation, Serializable[] before,
-                                    Serializable[] after) {
+    public MySqlChangeRecordEmitter(MySqlPartition partition, OffsetContext offset, Clock clock, Operation operation, Serializable[] before,
+                                    Serializable[] after, boolean skipMessagesWithoutChange) {
         super(partition, offset, clock);
         this.offset = offset;
         this.operation = operation;
         this.before = before;
         this.after = after;
+        this.skipMessagesWithoutChange = skipMessagesWithoutChange;
     }
 
     @Override
@@ -61,5 +63,10 @@ public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter<MySq
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+    }
+
+    @Override
+    public boolean skipMessagesWithoutChange() {
+        return skipMessagesWithoutChange;
     }
 }

@@ -2735,6 +2735,13 @@ To match the name of a column, {prodname} applies the regular expression that yo
 That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.include.list` property.
 
+|[[postgresql-property-skip-messages-without-change]]<<postgresql-property-skip-messages-without-change, `+skip.messages.without.change+`>>
+|`false`
+| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties. 
+
+Note: Only works when REPLICA IDENTITY of the table to is FULL
+
+
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
 |Time, date, and timestamps can be represented with different kinds of precision: +

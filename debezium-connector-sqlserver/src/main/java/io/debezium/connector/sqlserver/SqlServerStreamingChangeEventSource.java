@@ -316,7 +316,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                                     operation,
                                                     data,
                                                     dataNext,
-                                                    clock));
+                                                    clock,
+                                                    connectorConfig.skipMessagesWithoutChange()));
                             tableWithSmallestLsn.next();
                         }
                     });
