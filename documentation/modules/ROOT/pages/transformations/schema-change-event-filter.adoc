@@ -1,0 +1,145 @@
+:page-aliases: configuration/schema-change-event-filter.adoc
+
+
+[id="schema-change-event-filter"]
+= SchemaChangeEventFilter
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `schemaChangeEventFilter` is mainly used to filter table schema change events, allowing us to selectively synchronize ddl.
+For more information about configuring the SMT, see the following xref:example-schema-change-event-filter[example].
+
+
+[[example-schema-change-event-filter]]
+== Example
+
+If you want to filter the captured ddl, please configure the following options when creating the connector.
+For example, to filter out `DROP` and `TRUNCATE` from captured DDL event messages, add the following line to the connector configuration:
+[source]
+----
+transforms=filterTableDropAndTruncateEvent
+transforms.filterTableDropAndTruncateEvent.type=io.debezium.transforms.SchemaChangeEventFilter
+transforms.filterTableDropAndTruncateEvent.schema.change.event.include.list=DROP,TRUNCATE
+----
+
+The following example shows the changes in the values of event records before and after being filtered by the SchemaChangeEventFilter
+.Effect of applying the `SchemaChangeEventFilter` SMT
+====
+Schema change event record before it is processed by the `SchemaChangeEventFilter` transformation::
+
+Schema change event record before the SMT processes the event record:::
++
+[source]
+----
+{
+    "schema":{
+        "type":"struct",
+        "fields":[
+            {
+                "type":"int64",
+                "optional":false,
+                "field":"ts_ms"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"databaseName"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"schemaName"
+            },
+            {
+                "type":"string",
+                "optional":true,
+                "field":"ddl"
+            },
+            {
+                "type":"array",
+                "items":{
+                    "type":"struct",
+                    "fields":[
+                        {
+                            "type":"string",
+                            "optional":false,
+                            "field":"type"
+                        },
+                        {
+                            "type":"string",
+                            "optional":false,
+                            "field":"id"
+                        }
+                    ],
+                    "optional":false,
+                    "name":"io.debezium.connector.schema.Change"
+                },
+                "optional":false,
+                "field":"tableChanges"
+            }
+        ],
+        "optional":false,
+        "name":"filter.SchemaChangeValue"
+    },
+    "payload":{
+        "ts_ms":1691035505397,
+        "databaseName":"test",
+        "schemaName":"test_schema",
+        "ddl":"",
+        "tableChanges":[
+            {
+                "type":"DROP",
+                "id":"test.table"
+            }
+        ]
+    }
+}
+----
+
+The record of the schema change event will return null after being processed by the `SchemaChangeEventFilter` transformation, and null values will not be sent::
+
+Schema change event record after the SMT processes the event record:::
+
++
+[source]
+----
+null
+----
+====
+
+
+[[schema-change-event-filter-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `SchemaChangeEventFilter` SMT.
+
+.SchemaChangeEventFilter SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[schema-change-event-filter-include-list]]<<schema-change-event-filter-include-list, `schema.change.event.include.list`>>
+|A comma-separated list of schema change events that need to be filtered, Set one or more of the following options.
+----
+CREATE
+ALTER
+DROP
+TRUNCATE
+DATABASE
+----
+|String
+|No default value
+|non-empty string
+|high
+|===

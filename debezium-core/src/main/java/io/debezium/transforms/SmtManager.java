@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * A class used by all Debezium supplied SMTs to centralize common logic.
@@ -46,6 +47,16 @@ public class SmtManager<R extends ConnectRecord<R>> {
                 record.valueSchema().name() == null ||
                 !Envelope.isEnvelopeSchema(record.valueSchema())) {
             LOGGER.debug("Expected Envelope for transformation, passing it unchanged");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isValidSchemaChange(final R record) {
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !SchemaFactory.get().isSchemaChangeSchema(record.valueSchema())) {
+            LOGGER.debug("Expected schema change schema for transformation, passing it unchanged");
             return false;
         }
         return true;

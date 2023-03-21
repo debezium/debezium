@@ -92,6 +92,14 @@ public class SchemaFactory {
         return schemaFactoryObject;
     }
 
+    public boolean isSchemaChangeSchema(Schema schema) {
+        if (schema != null && schema.name() != null) {
+            return schema.name().endsWith(SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX) ||
+                    schema.name().endsWith(SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX);
+        }
+        return false;
+    }
+
     public Schema heartbeatKeySchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(HEARTBEAT_KEY_SCHEMA_NAME))
