@@ -18,7 +18,7 @@ on:
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
       - '.github/workflows/oracle-workflow-test.yml'
-  pull_request_target:
+  pull_request:
     branches:
       - main
       - 1.*
@@ -51,13 +51,20 @@ jobs:
           QUAY_IO_USERNAME: ${{ secrets.QUAY_IO_USERNAME }}
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: |
-          if [[ $QUAY_IO_USERNAME == '' && $QUAY_IO_PASSWORD == '' ]]; then
-           echo "SKIP_CHECK=true" >> $GITHUB_OUTPUT
+          if [[ $QUAY_IO_USERNAME == '' ]] && [[ $QUAY_IO_PASSWORD == '' ]]; then
+            echo "SKIP_CHECK=true" >> $GITHUB_OUTPUT
           fi
+      - name: Check failure
+        if: ${{ steps.skip.outputs.SKIP_CHECK == 'true' }}
+        uses: actions/github-script@v6
+        continue-on-error: false
+        with:
+          script: |
+            throw new Error("Author @${{ github.event.pull_request.user.login }} doesn't have credentials to run the workflow. Denied access.")
 
   build:
     runs-on: ubuntu-latest
-    if: ${{ needs.check.outputs.SKIP_CHECK != 'true' || contains(fromJSON('["push", "pull_request"]'), github.event_name) }}
+    needs: [check]
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
