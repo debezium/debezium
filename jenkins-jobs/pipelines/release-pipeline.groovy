@@ -554,7 +554,6 @@ node('Slave') {
             dir(IMAGES_DIR) {
                 script {
                     env.DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME='localhost:5500/debezium'
-                    env.DEBEZIUM_DOCKER_REGISTRY_SECONDARY_NAME='localhost:5500/debeziumquay'
                 }
                 sh """
                     docker run --privileged --rm tonistiigi/binfmt --install all
@@ -691,14 +690,14 @@ node('Slave') {
                         sh "cp -r $image/$IMAGE_TAG $image/$nextTag && git add $image/$nextTag"
                     }
                     modifyFile('connect/snapshot/Dockerfile') {
-                        it.replaceFirst('FROM \\S+', "FROM debezium/connect-base:$nextTag")
+                        it.replaceFirst('FROM \\S+', "FROM quay.io/debezium/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile") {
                         it.replaceFirst('FROM \\S+', "FROM \$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile.local") {
                         it
-                                .replaceFirst('FROM \\S+', "FROM debezium/connect-base:$nextTag")
+                                .replaceFirst('FROM \\S+', "FROM quay.io/debezium/connect-base:$nextTag")
                                 .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=${DEVELOPMENT_VERSION - '-SNAPSHOT'}")
                     }
                     modifyFile("connect-base/$nextTag/Dockerfile") {
