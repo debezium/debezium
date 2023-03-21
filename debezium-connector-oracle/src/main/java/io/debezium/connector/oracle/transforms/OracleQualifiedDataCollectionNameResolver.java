@@ -7,9 +7,9 @@ package io.debezium.connector.oracle.transforms;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
-import io.debezium.transforms.spi.QualifiedTableNameResolver;
+import io.debezium.transforms.spi.QualifiedDataCollectionNameResolver;
 
-public class OracleQualifiedTableNameResolver extends OracleAbstractRecordParserProvider implements QualifiedTableNameResolver {
+public class OracleQualifiedDataCollectionNameResolver extends OracleAbstractRecordParserProvider implements QualifiedDataCollectionNameResolver {
     public static final String FULLY_QUALIFIED_NAME_FORMAT = "%s.%s";
 
     @Override

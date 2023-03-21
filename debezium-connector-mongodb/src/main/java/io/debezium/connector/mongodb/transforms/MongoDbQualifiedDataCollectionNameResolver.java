@@ -8,9 +8,9 @@ package io.debezium.connector.mongodb.transforms;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.converters.MongoDbRecordParser;
 import io.debezium.converters.spi.RecordParser;
-import io.debezium.transforms.spi.QualifiedTableNameResolver;
+import io.debezium.transforms.spi.QualifiedDataCollectionNameResolver;
 
-public class MongoDbQualifiedTableNameResolver extends MongoDbAbstractRecordParserProvider implements QualifiedTableNameResolver {
+public class MongoDbQualifiedDataCollectionNameResolver extends MongoDbAbstractRecordParserProvider implements QualifiedDataCollectionNameResolver {
     public static final String FULLY_QUALIFIED_NAME_FORMAT = "%s.%s";
 
     @Override

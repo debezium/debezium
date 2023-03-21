@@ -1,1 +1,0 @@
-io.debezium.connector.sqlserver.transforms.SqlServerQualifiedTableNameResolver

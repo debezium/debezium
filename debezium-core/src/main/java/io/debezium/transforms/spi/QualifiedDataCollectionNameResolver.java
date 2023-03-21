@@ -12,7 +12,7 @@ import io.debezium.converters.spi.RecordParser;
  *
  * @author Mario Fiore Vitale
  */
-public interface QualifiedTableNameResolver extends RecordParserProvider {
+public interface QualifiedDataCollectionNameResolver extends RecordParserProvider {
 
     /**
      * Resolve the fully qualified table name.

@@ -15,7 +15,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.data.Envelope;
 
-public class SMTTestFramework {
+public class SmtTestFramework {
 
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("server-1.inventory.products.Value")

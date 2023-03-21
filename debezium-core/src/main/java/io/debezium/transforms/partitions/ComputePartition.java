@@ -35,7 +35,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.converters.spi.RecordParser;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
-import io.debezium.transforms.spi.QualifiedTableNameResolver;
+import io.debezium.transforms.spi.QualifiedDataCollectionNameResolver;
 
 /**
  * This SMT allow to use a specific table column to calculate the destination partition.
@@ -51,7 +51,8 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     private SmtManager<R> smtManager;
     private Map<String, Integer> numberOfPartitionsByTable;
     private Map<String, String> fieldNameByTable;
-    private final ServiceLoader<QualifiedTableNameResolver> qualifiedTableNameResolverServiceLoader = ServiceLoader.load(QualifiedTableNameResolver.class);
+    private final ServiceLoader<QualifiedDataCollectionNameResolver> qualifiedTableNameResolverServiceLoader = ServiceLoader
+            .load(QualifiedDataCollectionNameResolver.class);
 
     @Override
     public ConfigDef config() {
@@ -111,12 +112,12 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
         final Struct envelope = (Struct) record.value();
         final Schema envelopeSchema = record.valueSchema();
 
-        QualifiedTableNameResolver qualifiedTableNameResolver = lookupQualifiedTableNameResolver(envelope);
+        QualifiedDataCollectionNameResolver qualifiedDataCollectionNameResolver = lookupQualifiedTableNameResolver(envelope);
 
-        RecordParser recordParser = qualifiedTableNameResolver.createParser(envelopeSchema, envelope);
+        RecordParser recordParser = qualifiedDataCollectionNameResolver.createParser(envelopeSchema, envelope);
 
         try {
-            final String qualifiedTableName = qualifiedTableNameResolver.resolve(recordParser);
+            final String qualifiedTableName = qualifiedDataCollectionNameResolver.resolve(recordParser);
 
             if (skipRecord(qualifiedTableName)) {
                 return record;
@@ -147,7 +148,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
         }
     }
 
-    private QualifiedTableNameResolver lookupQualifiedTableNameResolver(Struct envelope) {
+    private QualifiedDataCollectionNameResolver lookupQualifiedTableNameResolver(Struct envelope) {
 
         String connectorType = envelope.getStruct(Envelope.FieldName.SOURCE).getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         return qualifiedTableNameResolverServiceLoader.findFirst()

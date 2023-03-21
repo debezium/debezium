@@ -8,7 +8,7 @@ package io.debezium.connector.mysql.transforms;
 import static io.debezium.data.Envelope.Operation.CREATE;
 import static io.debezium.data.Envelope.Operation.DELETE;
 import static io.debezium.data.Envelope.Operation.TRUNCATE;
-import static io.debezium.transforms.SMTTestFramework.VALUE_SCHEMA;
+import static io.debezium.transforms.SmtTestFramework.VALUE_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -18,7 +18,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
-import io.debezium.transforms.SMTTestFramework;
+import io.debezium.transforms.SmtTestFramework;
 import io.debezium.transforms.partitions.ComputePartition;
 import io.debezium.transforms.partitions.ComputePartitionException;
 
@@ -31,7 +31,7 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:2");
 
-        final SourceRecord eventRecord = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
 
@@ -43,7 +43,7 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:2");
 
-        final SourceRecord eventRecord = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), DELETE);
+        final SourceRecord eventRecord = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), DELETE);
 
         SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
 
@@ -55,7 +55,7 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:2");
 
-        final SourceRecord eventRecord = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), TRUNCATE);
+        final SourceRecord eventRecord = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), TRUNCATE);
 
         SourceRecord transformed = computePartitionTransformation.apply(eventRecord);
 
@@ -67,11 +67,11 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:2");
 
-        final SourceRecord eventRecord1 = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord1 = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
-        final SourceRecord eventRecord2 = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(2L, 2.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord2 = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(2L, 2.0F, "APPLE"), CREATE);
 
         SourceRecord transformed2 = computePartitionTransformation.apply(eventRecord2);
 
@@ -84,11 +84,11 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:2");
 
-        final SourceRecord eventRecord1 = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
+        final SourceRecord eventRecord1 = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
         SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
-        final SourceRecord eventRecord2 = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(3L, 0.95F, "BANANA"), CREATE);
+        final SourceRecord eventRecord2 = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(3L, 0.95F, "BANANA"), CREATE);
 
         SourceRecord transformed2 = computePartitionTransformation.apply(eventRecord2);
 
@@ -119,7 +119,7 @@ public class ComputePartitionTest {
 
         configureTransformation("inventory.products:product", "inventory.products:3");
 
-        final SourceRecord eventRecord1 = SMTTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "orange"), CREATE);
+        final SourceRecord eventRecord1 = SmtTestFramework.buildProductsSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "orange"), CREATE);
 
         SourceRecord transformed1 = computePartitionTransformation.apply(eventRecord1);
 
