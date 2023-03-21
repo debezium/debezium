@@ -139,17 +139,11 @@ MongoDB replica set::
 The {prodname} MongoDB connector can capture changes from a single https://docs.mongodb.com/manual/replication/[MongoDB replica set].
 Production replica sets require a minimum of https://docs.mongodb.com/manual/core/replica-set-architecture-three-members/[at least three members].
 +
-To use the MongoDB connector with a replica set, provide the addresses of one or more replica set servers as _seed addresses_ through the connector's `mongodb.hosts` property.
-The connector will use these seeds to connect to the replica set, and then once connected will get from the replica set the complete set of members and which member is primary.
-The connector will start a task to connect to the primary and capture the changes from the primary's oplog.
-When the replica set elects a new primary, the task will automatically switch over to the new primary.
-+
-[NOTE]
-====
-When MongoDB is fronted by a proxy (such as with Docker on OS X or Windows), then when a client connects to the replica set and discovers the members, the MongoDB client will exclude the proxy as a valid member and will attempt and fail to connect directly to the members rather than go through the proxy.
+To use the MongoDB connector with a replica set, provide the https://www.mongodb.com/docs/manual/reference/connection-string/[replica set connection string] through the connector's `mongodb.connection.string` property. The connector will start a task to connect to the replica set and capture the changes from change stream.
 
-In such a case, set the connector's optional `mongodb.members.auto.discover` configuration property to `false` to instruct the connector to forgo membership discovery and instead simply use the first seed address (specified via the `mongodb.hosts` property) as the primary node.
-This may work, but still make cause issues when election occurs.
+[WARNING]
+====
+Previous version of Debezium allowed the connector to forgo membership discovery by setting the  `mongodb.members.auto.discover` property to false. However, this option always had limitations, and it was only possible due to how older versions of the connector managed database connection. For this reason current versions of the connector no longer support this property.
 ====
 
 [[mongodb-sharded-cluster]]
@@ -159,7 +153,17 @@ A https://docs.mongodb.com/manual/sharding/[MongoDB sharded cluster] consists of
 * A separate replica set that acts as the cluster's _configuration server_
 * One or more _routers_ (also called `mongos`) to which clients connect and that routes requests to the appropriate shards
 +
-To use the MongoDB connector with a sharded cluster, configure the connector with the host addresses of the _configuration server_ replica set. When the connector connects to this replica set, it discovers that it is acting as the configuration server for a sharded cluster, discovers the information about each replica set used as a shard in the cluster, and will then start up a separate task to capture the changes from each replica set. If new shards are added to the cluster or existing shards removed, the connector will automatically adjust its tasks accordingly.
+To use the MongoDB connector with a sharded cluster, provide the https://www.mongodb.com/docs/manual/reference/connection-string/[sharded cluster connection string] through the connector's `mongodb.connection.string` property.
+
+[WARNING]
+====
+Previous versions of MongoDB connector required the connector to be configured with the host addresses of the _configuration server_ replica set via the `mongodb.hosts` property. Connection string used by the newer connector versions should include the addresses of Mongo routes (also called `mongos`).
+====
+
+[NOTE]
+====
+When the connector connects to sharded cluster, it discovers the information about each replica set used as a shard in the cluster, and will then start up a separate task to capture the changes from each shard. If new shards are added to the cluster or existing shards removed, the connector will automatically adjust its tasks accordingly.
+====
 
 [[mongodb-standalone-server]]
 MongoDB standalone server::
@@ -1224,7 +1228,7 @@ apiVersion: {KafkaConnectApiVersion}
   spec:
     class: io.debezium.connector.mongodb.MongoDbConnector // <2>
     config:
-     mongodb.hosts: rs0/192.168.99.100:27017 // <3>
+     mongodb.connection.string: mongodb://192.168.99.100:27017/?replicaSet=rs0 // <3>
      topic.prefix: fulfillment // <4>
      collection.include.list: inventory[.]* // <5>
 ----
@@ -1261,7 +1265,7 @@ Optionally, you can filter out collections that are not needed.
   "name": "inventory-connector", // <1>
   "config": {
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector", // <2>
-    "mongodb.hosts": "rs0/192.168.99.100:27017", // <3>
+    "mongodb.connection.string": "mongodb://192.168.99.100:27017/?replicaSet=rs0", // <3>
     "topic.prefix": "fullfillment", // <4>
     "collection.include.list": "inventory[.]*" // <5>
   }
@@ -1269,7 +1273,7 @@ Optionally, you can filter out collections that are not needed.
 ----
 <1> The name of our connector when we register it with a Kafka Connect service.
 <2> The name of the MongoDB connector class.
-<3> The host addresses to use to connect to the MongoDB replica set.
+<3> The connection string to use to connect to the MongoDB replica set.
 <4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
 
@@ -1348,30 +1352,14 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.mongodb.MongoDbConnector` for the MongoDB connector.
 
-|[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
-|No default
-|The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`). +
- +
-[NOTE]
-====
-It is mandatory to provide the current primary address.
-This limitation will be removed in the next {prodname} release.
-====
-
 |[[mongodb-property-mongodb-connection-string]]<<mongodb-property-mongodb-connection-string, `+mongodb.connection.string+`>>
 |No default
-|Specifies a connection string that the connector uses during the initial discovery of a MongoDB replica set.
-To use this option, you must set the value of `mongodb.members.auto.discover` to `true`.
-Do not set this property and the `mongodb.hosts` property at the same time. +
+|Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[connection string] that the connector uses to connect to a MongoDB replica set.
+This property replaces  `mongodb.hosts` property available in previous versions of MongoDB connector. +
  +
 [NOTE]
 ====
-The connector uses this connection string only during the initial replica set discovery process.
-During this discovery process, the connector ignores connection values that are specified in other properties (`mongodb.user`, `mongodb.password`, `mongodb.authsource`, SSL configuration properties, and so forth).
-After the discovery process completes, when the connector attempts to establish a direct connection to a primary replica set member, the connector then returns to using the standard connection properties,
-and it ignores values in `mongodb.connection.string`.
-However, if credential information is not present elsewhere in the configuration, the connector can extract credential information from the value of the connection string.
-For example, if the `mongodb.user` property is not set, but the connection string includes the MongoDB username, the connector reads the information from the string.
+In case of sharded MongoDB cluster, the connector uses this connection string only during the initial shard discovery process. After the initial discovery process finishes a connection string is gennerated for each shard individually.
 ====
 
 |[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
@@ -1556,6 +1544,15 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
 See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
+|[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
+|No default
+|The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. +
+ +
+[NOTE]
+====
+This property is deprecated and should be replaced by xref:mongodb-property-mongodb-connection-string[`+mongodb.connection.string`].
+====
 |===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
@@ -1604,10 +1601,6 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
-
-|[[mongodb-property-mongodb-members-auto-discover]]<<mongodb-property-mongodb-members-auto-discover, `+mongodb.members.auto.discover+`>>
-|`true`
-|Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is xref:{link-mongodb-connector}#mongodb-replicaset[fronted by a proxy].
 
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
