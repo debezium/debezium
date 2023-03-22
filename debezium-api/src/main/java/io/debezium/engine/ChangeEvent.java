@@ -8,15 +8,12 @@ package io.debezium.engine;
 import java.util.Collections;
 import java.util.List;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * A data change event with key, value, and headers.
  *
  * @param <K>
  * @param <V>
  */
-@Incubating
 public interface ChangeEvent<K, V> {
 
     K key();
