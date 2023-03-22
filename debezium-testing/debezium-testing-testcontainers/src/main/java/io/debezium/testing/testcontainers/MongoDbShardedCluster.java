@@ -33,7 +33,7 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 /**
  * A MongoDB sharded cluster.
  */
-public class MongoDbShardedCluster implements Startable {
+public class MongoDbShardedCluster implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedCluster.class);
 
@@ -139,6 +139,10 @@ public class MongoDbShardedCluster implements Startable {
         LOGGER.info("Stopping {} shard cluster...", shards.size());
         MoreStartables.deepStopSync(stream());
         network.close();
+    }
+
+    public int size() {
+        return shards.size();
     }
 
     /**

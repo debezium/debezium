@@ -114,8 +114,12 @@
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <!-- Mongo test containers -->
-        <mongodb.docker.desktop.ports>27017,27018,27019</mongodb.docker.desktop.ports>
+        <!-- port range used to allocate ports -->
+        <mongodb.docker.desktop.ports>27017:27117</mongodb.docker.desktop.ports>
         <mongodb.replica.size>1</mongodb.replica.size>
+        <mongodb.shard.size>2</mongodb.shard.size>
+        <mongodb.shard.replica.size>${mongodb.replica.size}</mongodb.shard.replica.size>
+
     </properties>
     <build>
         <plugins>
@@ -200,6 +204,8 @@
                         <version.mongo.server>${version.mongo.server}</version.mongo.server>
                         <mongodb.docker.desktop.ports>${mongodb.docker.desktop.ports}</mongodb.docker.desktop.ports>
                         <mongodb.replica.size>${mongodb.replica.size}</mongodb.replica.size>
+                        <mongodb.shard.size>${mongodb.shard.size}</mongodb.shard.size>
+                        <mongodb.shard.replica.size>${mongodb.shard.replica.size}</mongodb.shard.replica.size>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
