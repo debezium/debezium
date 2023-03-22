@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
@@ -52,6 +53,11 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public DebeziumContainer(final DockerImageName containerImage) {
         super(containerImage);
+        defaultConfig();
+    }
+
+    public DebeziumContainer(final Future<String> image) {
+        super(image);
         defaultConfig();
     }
 
