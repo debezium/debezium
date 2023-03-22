@@ -982,7 +982,7 @@ lockClause
 
 singleDeleteStatement
     : DELETE priority=LOW_PRIORITY? QUICK? IGNORE?
-    FROM tableName
+    FROM tableName (AS? uid)?
       (PARTITION '(' uidList ')' )?
       (WHERE expression)?
       orderByClause? (LIMIT limitClauseAtom)?

@@ -15,3 +15,8 @@ DELETE t1 FROM t1 LEFT JOIN t2 ON t1.id=t2.id WHERE t2.id IS NULL;
 DELETE a1, a2 FROM t1 AS a1 INNER JOIN t2 AS a2 WHERE a1.id=a2.id;
 DELETE FROM a1, a2 USING t1 AS a1 INNER JOIN t2 AS a2 WHERE a1.id=a2.id;
 #end
+#begin
+-- delete with table alias
+DELETE FROM t1 alias_t1 WHERE alias_t1.col1 > 0;
+DELETE FROM t1 as alias_t1 WHERE alias_t1.col1 > 0;
+#end
