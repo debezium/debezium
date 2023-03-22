@@ -8,7 +8,6 @@ package io.debezium.engine.spi;
 import java.time.Duration;
 import java.util.Properties;
 
-import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.DebeziumEngine;
 
 /**
@@ -16,7 +15,6 @@ import io.debezium.engine.DebeziumEngine;
  *
  * @author Randall Hauch
  */
-@Incubating
 @FunctionalInterface
 public interface OffsetCommitPolicy {
 
@@ -35,7 +33,7 @@ public interface OffsetCommitPolicy {
     /**
      * An {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period. If the specified
      * time is less than {@code 0} then the policy will behave as {@link AlwaysCommitOffsetPolicy}.
-     * @see io.debezium.engine.DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS
+     * @see io.debezium.engine.DebeziumEngine#OFFSET_FLUSH_INTERVAL_MS_PROP
      */
     class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 

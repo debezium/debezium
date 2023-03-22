@@ -19,7 +19,6 @@ import java.util.function.Consumer;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
@@ -43,7 +42,6 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
  *
  * @author Randall Hauch
  */
-@Incubating
 public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";

@@ -5,12 +5,9 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.common.annotation.Incubating;
-
 /**
  * Describes a change event output format comprising a key, value, and a header.
  */
-@Incubating
 public interface KeyValueHeaderChangeEventFormat<K extends SerializationFormat<?>, V extends SerializationFormat<?>, H extends SerializationFormat<?>>
         extends KeyValueChangeEventFormat<K, V> {
     static <K extends SerializationFormat<?>, V extends SerializationFormat<?>, H extends SerializationFormat<?>> KeyValueHeaderChangeEventFormat<K, V, H> of(
