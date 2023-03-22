@@ -161,7 +161,9 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
 
-        LOGGER.trace("Header to be processed: {}", print(headerToProcess));
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Header to be processed: {}", headersToString(headerToProcess));
+        }
 
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> makeNewSchema(valueSchema, headerToProcess));
 
@@ -298,7 +300,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         return nestedNames.length == 1 && fieldName.equals(ROOT_FIELD_NAME);
     }
 
-    private String print(Map<?, ?> map) {
+    private String headersToString(Map<?, ?> map) {
         return map.keySet().stream()
                 .map(key -> key + "=" + map.get(key))
                 .collect(Collectors.joining(", ", "{", "}"));
