@@ -44,6 +44,8 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private static final int CACHE_SIZE = 64;
     public static final String NESTING_SEPARATOR = ".";
     public static final String ROOT_FIELD_NAME = "payload";
+    public static final String EMPTY_STRING = "";
+    public static final String SPACE = " ";
 
     enum Operation {
         MOVE(MOVE_OPERATION),
@@ -122,12 +124,32 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         fields = config.getList(FIELDS_FIELD);
         headers = config.getList(HEADERS_FIELD);
 
+        validateConfiguration();
+
+        operation = Operation.fromName(config.getString(OPERATION_FIELD));
+    }
+
+    private void validateConfiguration() {
+
         if (headers.size() != fields.size()) {
-            LOGGER.error("Error while configuring SMT");
             throw new ConfigException(format("'%s' config must have the same number of elements as '%s' config.",
                     FIELDS_FIELD, HEADERS_FIELD));
         }
-        operation = Operation.fromName(config.getString(OPERATION_FIELD));
+
+        if (headers.contains(EMPTY_STRING) || fields.contains(EMPTY_STRING)) {
+            throw new ConfigException(format("'%s' and/or '%s' config contains a not valid empty string.",
+                    FIELDS_FIELD, HEADERS_FIELD));
+        }
+
+        if (headers.stream().anyMatch(h -> h.contains(SPACE))) {
+            throw new ConfigException(format("'%s' config contains a field with a not valid space.",
+                    HEADERS_FIELD));
+        }
+
+        if (fields.stream().anyMatch(f -> f.contains(SPACE))) {
+            throw new ConfigException(format("'%s' config contains a field with a not valid space.",
+                    FIELDS_CONF));
+        }
     }
 
     @Override
@@ -139,19 +161,19 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
 
-        LOGGER.trace("Header to be processed: " + print(headerToProcess));
+        LOGGER.trace("Header to be processed: {}", print(headerToProcess));
 
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> makeNewSchema(valueSchema, headerToProcess));
 
-        LOGGER.trace("Updated schema: " + updatedSchema);
+        LOGGER.trace("Updated schema: {}", updatedSchema);
 
         Struct updatedValue = makeUpdatedValue(value, headerToProcess, updatedSchema);
 
-        LOGGER.trace("Updated value: " + updatedValue);
+        LOGGER.trace("Updated value: {}", updatedValue);
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {
-            updatedHeaders = headersUpdateCache.computeIfAbsent(record.headers(), this::makeNewHeaders);
+            updatedHeaders = headersUpdateCache.computeIfAbsent(record.headers(), this::removeHeaders);
         }
 
         return record.newRecord(
@@ -165,7 +187,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
                 updatedHeaders);
     }
 
-    private Headers makeNewHeaders(Headers originalHeaders) {
+    private Headers removeHeaders(Headers originalHeaders) {
 
         Headers updatedHeaders = originalHeaders.duplicate();
         headers.forEach(updatedHeaders::remove);
@@ -284,6 +306,5 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
     @Override
     public void close() {
-
     }
 }
