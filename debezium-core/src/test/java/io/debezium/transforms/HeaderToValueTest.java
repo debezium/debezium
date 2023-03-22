@@ -120,6 +120,86 @@ public class HeaderToValueTest {
     }
 
     @Test
+    public void whenFieldsOrHeadersContainsAnEmptyValueAConfigExceptionIsThrew() {
+
+        assertThatThrownBy(() -> headerToValue.configure(Map.of(
+                "headers", "h1,h2",
+                "fields", ",f2",
+                "operation", "copy")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining(
+                        "'fields' and/or 'headers' config contains a not valid empty string.");
+    }
+
+    @Test
+    public void whenFieldsOrHeadersContainsASpaceAConfigExceptionIsThrew() {
+
+        assertThatThrownBy(() -> headerToValue.configure(Map.of(
+                "headers", "header one",
+                "fields", "f1",
+                "operation", "copy")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining(
+                        "'headers' config contains a field with a not valid space.");
+    }
+
+    @Test
+    public void whenNestedFieldContainsASpaceInNestedAddressAConfigExceptionIsThrew() {
+
+        assertThatThrownBy(() -> headerToValue.configure(Map.of(
+                "headers", "headerOne",
+                "fields", "after.field one",
+                "operation", "copy")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining(
+                        "'fields' config contains a field with a not valid space.");
+    }
+
+    @Test
+    public void whenNestedFieldIsSeparatedWithADotAndASpaceAConfigExceptionIsThrew() {
+
+        assertThatThrownBy(() -> headerToValue.configure(Map.of(
+                "headers", "headerOne",
+                "fields", "after. fieldOne",
+                "operation", "copy")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining(
+                        "'fields' config contains a field with a not valid space.");
+    }
+
+    @Test
+    public void leadingAndTrailingSpacesInFieldsAndHeadersConfigurationAreCorrectlyTrimmed() {
+
+        Schema headerSchema = SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().name("h1").build();
+        headerToValue.configure(Map.of(
+                "headers", " h1 , h2",
+                "fields", " f1, f2 ",
+                "operation", "copy"));
+
+        Struct row = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "a product");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+        Struct payload = createEnvelope.create(row, null, Instant.now());
+        SourceRecord sourceRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+        sourceRecord.headers().add("h1", List.of("v1", "v2"), headerSchema);
+        sourceRecord.headers().add("h2", List.of("v1", "v2"), headerSchema);
+
+        SourceRecord transformedRecord = headerToValue.apply(sourceRecord);
+
+        Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
+        assertThat(payloadStruct.getArray("f1")).contains("v1", "v2");
+        assertThat(payloadStruct.getArray("f2")).contains("v1", "v2");
+
+    }
+
+    @Test
     public void whenARecordThatContainsADefinedStructHeaderItWillBeCopiedInTheDefinedField() {
 
         Schema headerSchema = SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().name("h1").build();
