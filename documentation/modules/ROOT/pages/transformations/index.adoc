@@ -33,6 +33,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/partition-routing.adoc[Partition Routing]
 |Re-routes records to specific partition based on configured table column.
 
+|xref:transformations/header-to-value.adoc[HeaderToValue]
+|Moves or copies headers into the record value.
+
 |===
 
 By means of xref:transformations/applying-transformations-selectively.adoc[SMT Predicates] you can apply any of the transformations selectively, so that it modifies only that subset of change event messages that share a common characteristic.
