@@ -36,7 +36,7 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 /**
  * A MongoDB replica set.
  */
-public class MongoDbReplicaSet implements Startable {
+public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSet.class);
 

@@ -30,7 +30,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
 
 /**
  * A common test configuration options
@@ -59,7 +59,7 @@ public class TestHelper {
         return getConfiguration("mongodb://dummy:27017");
     }
 
-    public static Configuration getConfiguration(MongoDbReplicaSet mongo) {
+    public static Configuration getConfiguration(MongoDbDeployment mongo) {
         return getConfiguration(mongo.getConnectionString());
     }
 
@@ -80,11 +80,11 @@ public class TestHelper {
         };
     }
 
-    public static MongoClient connect(MongoDbReplicaSet mongo) {
+    public static MongoClient connect(MongoDbDeployment mongo) {
         return MongoClients.create(mongo.getConnectionString());
     }
 
-    public static void cleanDatabase(MongoDbReplicaSet mongo, String dbName) {
+    public static void cleanDatabase(MongoDbDeployment mongo, String dbName) {
         try (var client = connect(mongo)) {
             MongoDatabase db1 = client.getDatabase(dbName);
             db1.listCollectionNames().forEach((String x) -> {
