@@ -110,6 +110,9 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+          <systemPropertyVariables>
+            <version.mongo.server>${version.mongo.server}</version.mongo.server>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
     </plugins>

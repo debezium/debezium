@@ -290,7 +290,8 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     }
 
     private static boolean isLegacy() {
-        return IMAGE_VERSION.equals("4.0") || IMAGE_VERSION.equals("4.4");
+        var major = Integer.parseInt(IMAGE_VERSION.substring(0, 1));
+        return major <= 4;
     }
 
     public static class Address {
