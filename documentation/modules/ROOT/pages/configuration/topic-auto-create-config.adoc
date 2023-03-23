@@ -460,7 +460,7 @@ ifdef::community[]
     "topic.creation.default.replication.factor": 3,
     "topic.creation.default.partitions": 10,
     "topic.creation.default.cleanup.policy": "compact",
-    "topic.creation.default.compression.type": "lz4"
+    "topic.creation.default.compression.type": "lz4",
     "topic.creation.groups": "inventory,applicationlogs",
     "topic.creation.inventory.include": "dbserver1\\.inventory\\.*",
     "topic.creation.inventory.partitions": 20,
