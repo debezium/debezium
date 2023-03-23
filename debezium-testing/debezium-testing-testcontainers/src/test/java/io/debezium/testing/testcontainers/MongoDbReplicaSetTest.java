@@ -10,7 +10,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
@@ -136,7 +138,11 @@ public class MongoDbReplicaSetTest {
                             .orElse(false));
 
             // Ensure it's invalid
-            if (!MongoDbContainer.IMAGE_VERSION.equals("4.0")) {
+            var mongoVersions = Arrays.stream(MongoDbContainer.IMAGE_VERSION.split("\\."))
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+
+            if (mongoVersions.get(0) > 4 || (mongoVersions.get(0) == 4 && mongoVersions.get(1) >= 4)) {
                 assertThat(isSelectedReadPreference(client, collection, cursor)).isFalse();
             }
 
