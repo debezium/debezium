@@ -39,6 +39,7 @@ alter table add_test drop column if exists col99;
 alter table add_test drop column if exists col5;
 alter table add_test add column optional bool default 0 null;
 alter table add_test add column empty varchar(255);
+alter table add_test add column geometry int;
 alter table add_test drop foreign key fk;
 alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
