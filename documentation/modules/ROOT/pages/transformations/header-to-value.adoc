@@ -1,8 +1,8 @@
 :page-aliases: configuration/header-to-value.adoc
 // Category: debezium-using
 // Type: assembly
-// ModuleID: header-to-value
-// Title: Moves or copies headers into the record value
+// ModuleID: converting-message-headers-to-event-record-values
+// Title: Converting message headers into event record values
 [id="header-to-value"]
 = HeaderToValue
 
@@ -17,12 +17,16 @@ toc::[]
 This SMT permits to copy or move headers to record value. Supports multiple headers and also nesting on the value through dot notation.
 
 // Type: concept
-// Title: Example: Basic configuration of the {prodname} partition routing SMT
-// ModuleID: basic-configuration-of-the-debezium-partition-routing-smt
+// Title: Example: Basic configuration of the {prodname} `HeaderToValue` SMT
+// ModuleID: basic-configuration-of-the-debezium-header-to-value-smt
 [[example-header-to-value]]
 == Example
 
-This configuration snippet shows how to use `HeaderToValue` to move the header `event_timestamp` and `key` in the record’s header into the record value. The transform removes the fields from the record header. If you want to keep the fields in the record header, use the operation copy instead of move.
+To extract message headers in an event record into the record value, configure the `HeaderToValue` SMT in the Kafka Connect configuration for a connector. 
+You can configure the transformation to either remove the original headers or to copy them. 
+To remove header fields from the record, configure the SMT to use the `move` operations.
+To retain the header fields in the original record, configure the SMT to use the `copy` operation.
+For example, to remove the headers `event_timestamp` and `key` from an event message, add the following lines to your connector configuration:
 
 [source]
 ----
@@ -33,9 +37,14 @@ transforms.moveHeadersToValue.fields=timestamp,source.id
 transforms.moveHeadersToValue.operation=move
 ----
 
-Before:
+The following example shows the headers and values of an event record before and after the transformation is applied.
 
-* Record header
+.Effect of applying the `HeaderToValue` SMT
+====
+Event record before it is processed by the `HeaderToValue` transformation::
+
+Header before the SMT processes the event record:::
++
 [source]
 ----
 {
@@ -44,7 +53,9 @@ Before:
     "key": 100,
 }
 ----
-* Record value
+
+Value before the SMT processes the event record:::
++
 [source]
 ----
 {
@@ -74,16 +85,18 @@ Before:
     }
 ----
 
-After:
+Event record after it is processed by the `HeaderToValue` transformation::
 
-* Record header
+Header after the SMT removes the specified field:::
++
 [source, json]
 ----
 {
     "header_x": 0
 }
 ----
-* Record value
+Value after the SMT moves header fields into the value:::
++
 [source, json]
 ----
 {
@@ -114,10 +127,11 @@ After:
         "event_timestamp": 1626102708861
     }
 ----
+====
 
 // Type: reference
 // ModuleID: options-for-configuring-the-header-to-value-transformation
-// Title: Options for configuring the HeaderToValue transformation
+// Title: Options for configuring the `HeaderToValue` transformation
 [[header-to-value-configuration-options]]
 == Configuration options
 
@@ -134,21 +148,23 @@ The following table lists the configuration options that you can use with the `H
 |Importance
 
 |[[header-to-value-headers]]<<header-to-value-headers, `headers`>>
-|A comma-separated list of header names in the record whose values are to be copied or moved to record value.
+|A comma-separated list of header names in the record whose values are to be copied or moved to the record value.
 |list
-|
+|No default value
 |non-empty list
 |high
 |[[header-to-value-fields]]<<header-to-value-fields, `fields`>>
 |A comma-separated list of field names, in the same order as the header names listed in the headers configuration property. Supports nesting using dot notation.
 |list
-|
+|No default value
 |non-empty list
 |high
 |[[header-to-value-operation]]<<header-to-value-operation, `operation`>>
-|Either `move` if the fields are to be moved to the value (removed from the headers), or `copy` if the fields are to be copied to the value (retained in the headers).
+|Specifies one of the following options:
+`move`:: The SMT moves header fields to values in the event record, and removes the fields from the header.
+`copy`:: The SMT copies header field to values in the event record, and retains the original header fields.
 |string
-|
+|No default value
 |move or copy
 |high
 |===
