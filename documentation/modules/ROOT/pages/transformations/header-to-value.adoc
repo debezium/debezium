@@ -14,7 +14,11 @@
 
 toc::[]
 
-This SMT permits to copy or move headers to record value. Supports multiple headers and also nesting on the value through dot notation.
+The `HeaderToValue` SMT extracts specified header fields from event records, and then copies or moves the header fields to values in the event record. 
+The `move` options removes the fields from the header entirely before adding them as values in the payload. 
+You can configure the SMT to manipulate multiple headers in the original message. 
+You can use dot notation to specify a node within the payload in which you want to nest the header field. 
+For more information about configuring the SMT, see the following xref:example-header-to-value[example]. 
 
 // Type: concept
 // Title: Example: Basic configuration of the {prodname} `HeaderToValue` SMT
@@ -154,7 +158,9 @@ The following table lists the configuration options that you can use with the `H
 |non-empty list
 |high
 |[[header-to-value-fields]]<<header-to-value-fields, `fields`>>
-|A comma-separated list of field names, in the same order as the header names listed in the headers configuration property. Supports nesting using dot notation.
+|A comma-separated list of field names, in the same order as the header names listed in the `headers` configuration property. 
+Use dot notation to instruct the SMT to nest fields within specific nodes of the message payload. 
+For information about how to configure the SMT to use dot notation, see the xref:example-header-to-value[example] that appears earlier in this topic. 
 |list
 |No default value
 |non-empty list
