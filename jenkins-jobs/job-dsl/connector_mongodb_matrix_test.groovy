@@ -7,7 +7,7 @@ matrixJob('connector-debezium-mongodb-matrix-test') {
     label('Slave')
 
     axes {
-        text('MONGODB_VERSION', '4.0', '4.2', '4.4', '5.0')
+        text('MONGODB_VERSION', '4.2', '4.4', '5.0', '6.0')
         label("Node", "Slave")
 
     }
