@@ -7,12 +7,14 @@ package io.debezium.connector.jdbc;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
@@ -39,7 +41,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private final ReentrantLock stateLock = new ReentrantLock();
 
     private ChangeEventSink changeEventSink;
-    private Map<TopicPartition, OffsetAndMetadata> processedOffsets = new HashMap<>();
+    private Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+    private Throwable previousPutException;
 
     @Override
     public String version() {
@@ -56,6 +59,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 return;
             }
 
+            // be sure to reset this state
+            previousPutException = null;
+
             final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
             config.validate();
 
@@ -68,20 +74,39 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void put(Collection<SinkRecord> records) {
-        for (SinkRecord record : records) {
-            LOGGER.debug("Applying {}", record);
-            changeEventSink.execute(record);
-            updateProcessedOffsets(record);
+        if (previousPutException != null) {
+            throw new ConnectException("JDBC sink connector failure", previousPutException);
+        }
+
+        LOGGER.debug("Received {} changes.", records.size());
+
+        for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
+            final SinkRecord record = iterator.next();
+            LOGGER.debug("Received {}", record);
+            try {
+                changeEventSink.execute(record);
+                markProcessed(record);
+            }
+            catch (Throwable throwable) {
+                // Stash currently failed record
+                markNotProcessed(record);
+
+                // Capture failure
+                LOGGER.error("Failed to process record: {}", throwable.getMessage());
+                previousPutException = throwable;
+
+                // Stash any remaining records
+                markNotProcessed(iterator);
+            }
         }
     }
 
     @Override
     public Map<TopicPartition, OffsetAndMetadata> preCommit(Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
         // Flush only up to the records processed by this sink
-        // todo: need to check whether this allows resuming in the middle of a collection after an error
-        LOGGER.debug("Flushing offsets: {}", processedOffsets);
-        flush(processedOffsets);
-        return processedOffsets;
+        LOGGER.debug("Flushing offsets: {}", offsets);
+        flush(offsets);
+        return offsets;
     }
 
     @Override
@@ -96,15 +121,54 @@ public class JdbcSinkConnectorTask extends SinkTask {
         }
     }
 
-    private void updateProcessedOffsets(SinkRecord record) {
-        final TopicPartition key = new TopicPartition(record.topic(), record.kafkaPartition());
-        final OffsetAndMetadata value = new OffsetAndMetadata(record.kafkaOffset());
-        final OffsetAndMetadata existing = processedOffsets.put(key, value);
-        if (existing != null) {
-            LOGGER.debug("Updated topic '{}' offset from {} to {}", record.topic(), existing.offset(), value.offset());
+    /**
+     * Marks a sink record as processed.
+     *
+     * @param record sink record, should not be {@code null}
+     */
+    private void markProcessed(SinkRecord record) {
+        final TopicPartition topicPartition = new TopicPartition(record.topic(), record.kafkaPartition());
+        final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset() + 1L);
+
+        final OffsetAndMetadata existing = offsets.put(topicPartition, offsetAndMetadata);
+        if (existing == null) {
+            LOGGER.debug("Advanced topic {} to offset {}.", record.topic(), record.kafkaOffset());
         }
         else {
-            LOGGER.debug("Set topic '{}' offset to {}", record.topic(), record.kafkaOffset());
+            LOGGER.debug("Updated topic {} from offset {} to {}.", record.topic(), existing.offset(), record.kafkaOffset());
         }
     }
+
+    /**
+     * Marks all remaining elements in the collection as not processed.
+     *
+     * @param records collection of sink records, should not be {@code null}
+     */
+    private void markNotProcessed(Iterator<SinkRecord> records) {
+        while (records.hasNext()) {
+            markNotProcessed(records.next());
+        }
+        context.requestCommit();
+    }
+
+    /**
+     * Marks a single record as not processed.
+     *
+     * @param record sink record, should not be {@code null}
+     */
+    private void markNotProcessed(SinkRecord record) {
+        // Sink connectors operate on batches and a batch could technically include a stream of records
+        // where the same topic/partition tuple exists in the batch at various points, before and after
+        // other topic/partition tuples. When marking a record as not processed, we are only interested
+        // in doing this if this tuple is not already in the map as a previous entry could have been
+        // added because an earlier record was either processed or marked as not processed since any
+        // remaining entries in the batch call this method on failures.
+        final TopicPartition topicPartition = new TopicPartition(record.topic(), record.kafkaPartition());
+        if (!offsets.containsKey(topicPartition)) {
+            LOGGER.debug("Rewinding topic {} offset to {}.", record.topic(), record.kafkaOffset());
+            final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset());
+            offsets.put(topicPartition, offsetAndMetadata);
+        }
+    }
+
 }
