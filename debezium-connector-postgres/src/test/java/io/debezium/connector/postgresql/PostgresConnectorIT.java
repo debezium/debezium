@@ -14,6 +14,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -34,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
@@ -3185,6 +3187,33 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     });
             assertEquals(Collections.singletonList("aborted"), snapshotCompleteState);
         }
+    }
+
+    @Test
+    @FixFor("DBZ-6249")
+    public void shouldThrowRightExceptionWhenNoCustomSnapshotClassProvided() {
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        AtomicReference<String> message = new AtomicReference<>();
+        AtomicReference<Boolean> status = new AtomicReference<>();
+
+        AtomicBoolean finished = new AtomicBoolean(false);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .build();
+        start(PostgresConnector.class, config, (success, msg, err) -> {
+            error.set(err);
+            message.set(msg);
+            status.set(success);
+            finished.set(true);
+        });
+        Awaitility.await()
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .until(() -> finished.get());
+        assertThat(status.get()).isFalse();
+        assertNull(error.get());
+        assertThat(message.get()).contains("snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
     }
 
     @FixFor("DBZ-5917")

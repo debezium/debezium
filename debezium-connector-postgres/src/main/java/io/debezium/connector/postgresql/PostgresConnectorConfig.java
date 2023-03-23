@@ -711,7 +711,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withValidation((config, field, output) -> {
-                if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
+                if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field, "").isEmpty()) {
                     output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
                     return 1;
                 }
