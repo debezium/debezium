@@ -318,12 +318,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private void writeDelete(String sql, SinkRecordDescriptor record) throws SQLException {
         if (!config.isDeleteEnabled()) {
-            LOGGER.info("Deletes are not enabled, skipping delete for topic '{}'", record.getTopicName());
+            LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.getTopicName());
             return;
         }
         final Transaction transaction = session.beginTransaction();
         try {
-            LOGGER.info("SQL: {}", sql);
+            LOGGER.trace("SQL: {}", sql);
             final NativeQuery<?> query = session.createNativeQuery(sql, Object.class);
             bindKeyValuesToQuery(record, query, 1);
 
