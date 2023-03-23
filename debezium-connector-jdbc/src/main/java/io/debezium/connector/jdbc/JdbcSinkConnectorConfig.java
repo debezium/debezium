@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.c3p0.internal.C3P0ConnectionProvider;
 import org.hibernate.cfg.AvailableSettings;
@@ -64,7 +65,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_URL_FIELD = Field.create(CONNECTION_URL)
             .withDisplayName("Hostname")
-            .withType(ConfigDef.Type.STRING)
+            .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.HIGH)
@@ -73,7 +74,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_USER_FIELD = Field.create(CONNECTION_USER)
             .withDisplayName("User")
-            .withType(ConfigDef.Type.STRING)
+            .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
@@ -82,7 +83,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_PASSWORD_FIELD = Field.create(CONNECTION_PASSWORD)
             .withDisplayName("Password")
-            .withType(ConfigDef.Type.PASSWORD)
+            .withType(Type.PASSWORD)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
@@ -91,7 +92,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_POOL_MIN_SIZE_FIELD = Field.create(CONNECTION_POOL_MIN_SIZE)
             .withDisplayName("Connection pool minimum size")
-            .withType(ConfigDef.Type.INT)
+            .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -100,7 +101,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_POOL_MAX_SIZE_FIELD = Field.create(CONNECTION_POOL_MAX_SIZE)
             .withDisplayName("Connection pool maximum size")
-            .withType(ConfigDef.Type.INT)
+            .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -109,7 +110,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD = Field.create(CONNECTION_POOL_ACQUIRE_INCREMENT)
             .withDisplayName("Connection pool acquire increment")
-            .withType(ConfigDef.Type.INT)
+            .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -118,7 +119,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field CONNECTION_POOL_TIMEOUT_FIELD = Field.create(CONNECTION_POOL_TIMEOUT)
             .withDisplayName("Connection pool timeout")
-            .withType(ConfigDef.Type.LONG)
+            .withType(Type.LONG)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -139,7 +140,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field DELETE_ENABLED_FIELD = Field.create(DELETE_ENABLED)
             .withDisplayName("Controls whether records can be deleted by the connector")
-            .withType(ConfigDef.Type.BOOLEAN)
+            .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 2))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -149,7 +150,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field TABLE_NAME_FORMAT_FIELD = Field.create(TABLE_NAME_FORMAT)
             .withDisplayName("A format string for the table")
-            .withType(ConfigDef.Type.STRING)
+            .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
@@ -166,7 +167,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field PRIMARY_KEY_FIELDS_FIELD = Field.create(PRIMARY_KEY_FIELDS)
             .withDisplayName("Comma-separated list of primary key field names")
-            .withType(ConfigDef.Type.STRING)
+            .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 5))
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
@@ -191,6 +192,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field QUOTE_IDENTIFIERS_FIELD = Field.create(QUOTE_IDENTIFIERS)
             .withDisplayName("Controls whether table, column, or other identifiers are quoted")
+            .withType(Type.BOOLEAN)
             .withDefault(false)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 8))
             .withWidth(ConfigDef.Width.SHORT)
@@ -213,7 +215,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field TABLE_NAMING_STRATEGY_FIELD = Field.create(TABLE_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the TablingNamingStrategy interface")
-            .withType(ConfigDef.Type.CLASS)
+            .withType(Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
@@ -222,7 +224,7 @@ public class JdbcSinkConnectorConfig {
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
-            .withType(ConfigDef.Type.CLASS)
+            .withType(Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
