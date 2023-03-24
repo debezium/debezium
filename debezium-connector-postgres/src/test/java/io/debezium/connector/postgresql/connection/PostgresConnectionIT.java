@@ -231,20 +231,24 @@ public class PostgresConnectionIT {
 
     }
 
-    @Test(timeout = 60000)
+    @Test
     public void shouldSupportFallbackToRestartLsn() throws Exception {
         String slotName = "emptyconfirmed";
         try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
             replConnection.initConnection();
             assertTrue(replConnection.isConnected());
         }
-        try (PostgresConnection conn = buildConnectionWithEmptyConfirmedFlushLSN(slotName)) {
-            ServerInfo.ReplicationSlot slotInfo = conn.readReplicationSlotInfo(slotName, TestHelper.decoderPlugin().getPostgresPluginName());
+        try (PostgresConnection withIdleTransaction = new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()),
+                PostgresConnection.CONNECTION_GENERAL);
+                PostgresConnection withEmptyConfirmedFlushLSN = buildConnectionWithEmptyConfirmedFlushLSN(slotName)) {
+            withIdleTransaction.setAutoCommit(false);
+            withIdleTransaction.query("select 1", connection -> {
+            });
+            ServerInfo.ReplicationSlot slotInfo = withEmptyConfirmedFlushLSN.readReplicationSlotInfo(slotName, TestHelper.decoderPlugin().getPostgresPluginName());
             assertNotNull(slotInfo);
             assertNotEquals(ServerInfo.ReplicationSlot.INVALID, slotInfo);
-            conn.dropReplicationSlot(slotName);
+            withEmptyConfirmedFlushLSN.dropReplicationSlot(slotName);
         }
-
     }
 
     // "fake" a pg95 response by not returning confirmed_flushed_lsn

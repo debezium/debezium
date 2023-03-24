@@ -16,7 +16,6 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
@@ -296,14 +295,7 @@ public class PostgresConnection extends JdbcConnection {
             confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "confirmed_flush_lsn");
             if (confirmedFlushedLsn == null) {
                 LOGGER.info("Failed to obtain valid replication slot, confirmed flush lsn is null");
-                AtomicBoolean hasConcurrentTransaction = new AtomicBoolean(false);
-                int connectionPID = ((PgConnection) connection()).getBackendPID();
-                query("select * from pg_stat_activity where state like 'idle in transaction' AND pid <> " + connectionPID, rset -> {
-                    if (rset.next()) {
-                        hasConcurrentTransaction.set(true);
-                    }
-                });
-                if (!hasConcurrentTransaction.get()) {
+                if (!hasIdleTransactions()) {
                     confirmedFlushedLsn = tryFallbackToRestartLsn(slotName, pluginName, database, rs);
                 }
             }
@@ -313,6 +305,20 @@ public class PostgresConnection extends JdbcConnection {
         }
 
         return confirmedFlushedLsn;
+    }
+
+    private boolean hasIdleTransactions() throws SQLException {
+        return queryAndMap(
+                "select * from pg_stat_activity where state like 'idle in transaction' AND application_name != '" + CONNECTION_GENERAL + "' AND pid <> pg_backend_pid()",
+                rs -> {
+                    if (rs.next()) {
+                        LOGGER.debug("Found at least one idle transaction with pid " + rs.getInt("pid") + " for application" + rs.getString("application_name"));
+                        return true;
+                    }
+                    else {
+                        return false;
+                    }
+                });
     }
 
     private Lsn tryFallbackToRestartLsn(String slotName, String pluginName, String database, ResultSet rs) {
