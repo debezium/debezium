@@ -129,7 +129,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
             "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64), '101', '111011010001000110000001000000001')";
-    protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba) VALUES (E'\\\\001\\\\002\\\\003'::bytea)";
+    protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba, bytea_array) VALUES (E'\\\\001\\\\002\\\\003'::bytea, array[E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea])";
     protected static final String INSERT_CIRCLE_STMT = "INSERT INTO circle_table (ccircle) VALUES ('((10, 20),10)'::circle)";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
@@ -410,7 +410,10 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBytes() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
+                        List.of(ByteBuffer.wrap(new byte[]{ 0, 1, 2 }), ByteBuffer.wrap(new byte[]{ 3, 4, 5 }))));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaHex() {
