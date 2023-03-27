@@ -10,15 +10,19 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_P
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.sql.SQLException;
 
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.assertions.KafkaAssertions;
+import io.debezium.testing.system.resources.ConnectorFactories;
 import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.tools.databases.mysql.MySqlReplicaController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -145,4 +149,28 @@ public abstract class MySqlTests extends ConnectorTest {
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
     }
+
+    @Test
+    @Order(100)
+    public void shouldStreamAfterConnectingToReplica(MySqlReplicaController replicaController, SqlDatabaseController masterController)
+            throws SQLException, IOException, InterruptedException {
+        // TODO remove master
+        connectController.undeployConnector(connectorConfig.getConnectorName());
+
+        connectorConfig = new ConnectorFactories(kafkaController).mysql(replicaController, "inventory-connector-mysql" + TestUtils.getUniqueId());
+        connectController.deployConnector(connectorConfig);
+
+        String prefix = connectorConfig.getDbServerName();
+
+        assertions.assertTopicsExist(
+                prefix + ".inventory.addresses", prefix + ".inventory.customers", prefix + ".inventory.geom",
+                prefix + ".inventory.orders", prefix + ".inventory.products", prefix + ".inventory.products_on_hand");
+        insertCustomer(masterController, "Tom2", "Tester2", "tom2@test.com");
+
+        String topic = connectorConfig.getDbServerName() + ".inventory.customers";
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "tom@test.com"));
+    }
+
+    // TODO start master, changes stream to slave
 }

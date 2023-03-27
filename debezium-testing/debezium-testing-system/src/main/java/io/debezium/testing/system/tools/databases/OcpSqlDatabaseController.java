@@ -10,6 +10,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.databases.mysql.MySqlReplicaController;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -20,7 +21,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  */
 public class OcpSqlDatabaseController
         extends AbstractOcpDatabaseController<SqlDatabaseClient>
-        implements SqlDatabaseController {
+        implements SqlDatabaseController, MySqlReplicaController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpSqlDatabaseController.class);
 
     protected final String dbType;
