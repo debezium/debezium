@@ -2059,7 +2059,7 @@ All up-to-date differences are tracked in a test suite link:https://github.com/d
 
 If you are using a xref:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-in] other than pgoutput, after installing it, configure the PostgreSQL server as follows:
 
-. To load the plug-in at startup, add the following to the `postgresql.conf` file::
+. To load the plug-in at startup, add the following line to the `postgresql.conf` file:
 +
 [source,properties]
 ----
@@ -2255,6 +2255,94 @@ For users on AWS RDS with PostgreSQL, a situation similar to the high traffic/lo
 Again, regularly emitting events solves the problem.
 ====
 endif::community[]
+
+
+// Type: procedure
+// ModuleID: upgrading-postgresql-in-a-way-that-preserves-debezium-data-and-operations
+// Title: Upgrading PostgreSQL in a way that preserves {prodname} data and operations
+[id="upgrading-postgresql"]
+=== Upgrading PostgreSQL
+
+When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and ensure that {prodname} continues to operate.
+
+In general, {prodname} is resilient to interruptions caused by network failures and other outages.
+For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
+The connector obtains the information about the last recorded offset from the write-ahead log (WAL) at the configured PostgreSQL replication slot.
+
+However, during a PostgreSQL upgrade, all replication slots are removed, and these slots are not recreated automatically.
+As a result, when the connector attempts to read the last offset from the WAL files, it cannot find the information, and the connector fails with an error.
+To avoid connector failures, and to ensure that no data is lost, you must follow specific steps before and after the upgrade.
+
+The following procedure lists the steps for performing a PostgreSQL database upgrade so that {prodname} continues to capture events, and no data loss occurs:
+
+.Procedure
+
+1. Ensure that no data changes can occur during the upgrade process by temporarily stopping applications that write to the database, or putting them into a read-only mode.
+
+2. Back up the database.
+
+3. Temporarily disable write access to the database.
+
+4. Verify that any changes that occured in the database before you blocked write operations are saved to the WAL on the replication slot.
+
+5. Provide the connector with enough time to capture all event records that are written to the replication slot. +
+This step ensures that all change events that occured before the downtime are accounted for, and that they are saved to Kafka.
+
+6. Verify that the connector has finished consuming entries from the replication slot by checking the value of the flushed LSN.
+
+7. Shut down the connector gracefully by stopping Kafka Connect. +
+Kafka Connect stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector.
+//   Do we need to delete the connector and its offset topic?
+
+8. As a PostgreSQL administrator, drop the replication slot on the primary database server.
+//   Can this be done via setting xref:postgresql-property-slot-drop-on-stop[`slot.drop.on.stop`] to `true`?
+
+9. Stop the database.
+
+10. Perform the upgrade using an approved PostgreSQL upgrade procedure, such as `pg_upgrade` or `pg_dump/restore`.
+
+11. (Optional) Use a standard Kafka tool to remove the connector offsets from the offset storage topic. +
+For an example of how to remove connector offsets, see https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[how to remove connector offsets] in the {prodname} community FAQ.
+
+12. Restart the database.
+
+13. As a PostgreSQL administrator, create a {prodname} logical replication slot on the database.
+You must create the slot before enabling writes to the database.
+Otherwise, {prodname} cannot capture the changes, resulting in data loss.
+
+14. As a PostgreSQL administrator, create a publication that defines the tables to be captured.
+//   Can this step be skipped, assuming that a publication was previously configured, and it's preserved during upgrade?
+ifdef::product[]
++
+For information about setting up a replication slot, see xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[].
+endif::product[]
+
+15. In the {prodname} connector configuration, set the xref:postgresql-property-publication-name[`publication.name`] property to the name of the publication.
+//   Is this necessary? Is the previous configured publication name still valid? Should automatic creation be disabled? (i.e., `publication.autocreate.mode` set to `disabled`)]
+
+16. In the connector configuration, rename the connector.
+
+17. In the connector configuration, set xref:postgresql-property-slot-name[`slot.name`] to the name of the {prodname} replication slot.
+
+18. Verify that the new replication slot is available.
+
+19. Restore write access to the database and restart any applications that write to the database.
+
+20. In the connector configuration, set the xref:postgresql-property-snapshot-mode[`snapshot.mode`] property to `never`, and then restart the connector.
++
+[NOTE]
+====
+If you were unable to verify that {prodname} finished reading all database changes in Step 6, you can configure the connector to perform a new snapshot by setting `snapshot.mode=initial`.
+If necessary, you can confirm whether the connector read all changes from the replication slot by checking the contents of a database backup that was taken immediately before the upgrade.
+====
+
+.Additional resources
+ifdef::community[]
+* xref:postgresql-server-configuration[Configuring replication slots for {prodname}]
+endif::community[]
+ifdef::product[]
+* xref::configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configuring replication slots for {prodname}].
+endif::product[]
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-postgresql-connectors
