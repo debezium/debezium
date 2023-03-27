@@ -1364,8 +1364,27 @@ This property replaces the `mongodb.hosts` property that was available in previo
  +
 [NOTE]
 ====
-Connectors that capture changes from a sharded MongoDB cluster use this connection string only during the initial shard discovery process. 
+Connectors that capture changes from a sharded MongoDB cluster use this connection string only during the initial shard discovery process when xref:mmongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
 After the initial discovery process, connection strings are generated for each individual shard.
+====
+
+|[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
+|`replica_set`
+|Specifies the strategy used by the connector when connecting to `sharded` MongoDB cluster.
+Set this property to one of the following values:
+
+`replica_set`:: individually connect to each replica set / shard .
+
+`sharded`:: connect via single connection obtained from connection string.+
+
+[NOTE]
+====
+The `replica_set` options allows the connector to  distribute shard processing across multiple connector tasks. However, in this configuration the connector is bypassing MongoDB router when connecting to individual shards which is not recommended by MongoDB.
+====
+
+[WARNING]
+====
+Switching between connection modes will effectively invalidate stored offsets resulting in execution on new snapshot.
 ====
 
 |[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
@@ -1506,7 +1525,13 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 
 |[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set, so the default is acceptable when using the connector with a single MongoDB replica set. When using the connector with a MongoDB sharded cluster, we recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
+|The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set. We recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
+
+[NOTE]
+====
+This property has an effect only when the connector is connected to a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`.
+When xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded` or the connector is connected to a replica set deployment of MongoDB then only a single task will be   used.
+====
 
 |[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
