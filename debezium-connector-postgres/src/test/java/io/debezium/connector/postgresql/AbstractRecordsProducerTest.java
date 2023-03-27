@@ -417,15 +417,24 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaHex() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "010203"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "010203"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("000102", "030405")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBase64() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("AAEC", "AwQF")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBase64UrlSafe() {
-        return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+        return Arrays.asList(
+                new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"),
+                new SchemaAndValueField("bytea_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        List.of("AAEC", "AwQF")));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
