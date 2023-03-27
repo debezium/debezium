@@ -290,7 +290,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIMESTAMPTZ_ARRAY:
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
-                return SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA);
+                return SchemaBuilder.array(binaryMode.getSchema().optional().build());
             case PgOid.MONEY_ARRAY:
             case PgOid.NAME_ARRAY:
             case PgOid.INTERVAL_ARRAY:
