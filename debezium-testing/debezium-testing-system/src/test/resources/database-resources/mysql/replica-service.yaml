@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql-master
+  name: mysql-replica
 spec:
   selector:
-    role: master
+    role: replica
     app: mysql
-    deployment: mysql-master
+    deployment: mysql-replica
   ports:
   - name: db
     port: 3306

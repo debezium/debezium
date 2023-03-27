@@ -28,4 +28,8 @@ public class MySqlConnector extends ConnectorFixture<SqlDatabaseController> {
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
         return new ConnectorFactories(kafkaController).mysql(dbController, connectorName);
     }
+
+    public void switchDatabase(SqlDatabaseController controller) {
+
+    }
 }

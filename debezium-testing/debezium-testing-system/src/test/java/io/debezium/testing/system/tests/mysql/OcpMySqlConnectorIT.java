@@ -14,6 +14,7 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMySql;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMySqlReplica;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -31,6 +32,7 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpMySql.class)
+@Fixture(OcpMySqlReplica.class)
 @Fixture(MySqlConnector.class)
 @ExtendWith(FixtureExtension.class)
 public class OcpMySqlConnectorIT extends MySqlTests {
