@@ -31,6 +31,7 @@
 ** xref:transformations/content-based-routing.adoc[Content-Based Routing]
 ** xref:transformations/applying-transformations-selectively.adoc[Using SMT Predicates to Selectively Apply Transformations]
 ** xref:transformations/partition-routing.adoc[Partition Routing]
+** xref:transformations/header-to-value.adoc[HeaderToValue]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
