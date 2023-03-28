@@ -19,6 +19,16 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 
+/**
+ * ComputePartitionConfigDefinition.
+ *
+ * @deprecated
+ * This Configuration will be soon removed.
+ * <p> Use {@link PartitionRouting} instead.
+ *
+ * @author Mario Fiore Vitale
+ */
+@Deprecated
 public class ComputePartitionConfigDefinition {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ComputePartitionConfigDefinition.class);

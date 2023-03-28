@@ -36,10 +36,14 @@ import io.debezium.transforms.SmtManager;
 /**
  * This SMT allow to use a specific table column to calculate the destination partition.
  *
+ * @deprecated
+ * This SMT will be soon removed.
+ * <p> Use {@link PartitionRouting} instead.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Mario Fiore Vitale
  */
+@Deprecated
 public class ComputePartition<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ComputePartition.class);
