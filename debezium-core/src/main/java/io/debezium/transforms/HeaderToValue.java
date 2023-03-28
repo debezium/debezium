@@ -29,6 +29,7 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -44,8 +45,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private static final int CACHE_SIZE = 64;
     public static final String NESTING_SEPARATOR = ".";
     public static final String ROOT_FIELD_NAME = "payload";
-    public static final String EMPTY_STRING = "";
-    public static final String SPACE = " ";
 
     enum Operation {
         MOVE(MOVE_OPERATION),
@@ -77,6 +76,9 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withDisplayName("Header names list")
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
+            .withValidation(
+                    CommonConnectorConfig::notContainSpaceInAnyElements,
+                    CommonConnectorConfig::notContainEmptyElements)
             .withDescription("Header names in the record whose values are to be copied or moved to record value.")
             .required();
 
@@ -84,6 +86,9 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withDisplayName("Field names list")
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
+            .withValidation(
+                    CommonConnectorConfig::notContainSpaceInAnyElements,
+                    CommonConnectorConfig::notContainEmptyElements)
             .withDescription(
                     "Field names, in the same order as the header names listed in the headers configuration property. Supports Struct nesting using dot notation.")
             .required();
@@ -134,21 +139,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         if (headers.size() != fields.size()) {
             throw new ConfigException(format("'%s' config must have the same number of elements as '%s' config.",
                     FIELDS_FIELD, HEADERS_FIELD));
-        }
-
-        if (headers.contains(EMPTY_STRING) || fields.contains(EMPTY_STRING)) {
-            throw new ConfigException(format("'%s' and/or '%s' config contains a not valid empty string.",
-                    FIELDS_FIELD, HEADERS_FIELD));
-        }
-
-        if (headers.stream().anyMatch(h -> h.contains(SPACE))) {
-            throw new ConfigException(format("'%s' config contains a field with a not valid space.",
-                    HEADERS_FIELD));
-        }
-
-        if (fields.stream().anyMatch(f -> f.contains(SPACE))) {
-            throw new ConfigException(format("'%s' config contains a field with a not valid space.",
-                    FIELDS_CONF));
         }
     }
 
