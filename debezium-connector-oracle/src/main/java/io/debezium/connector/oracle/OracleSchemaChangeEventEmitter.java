@@ -90,9 +90,6 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 streamingMetrics.incrementUnparsableDdlCount();
             }
             else {
-                if (e instanceof MultipleParsingExceptions) {
-                    ((MultipleParsingExceptions) e).forEachError(ParsingException::printStackTrace);
-                }
                 throw e;
             }
         }
