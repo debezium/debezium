@@ -1373,7 +1373,7 @@ After the initial discovery process, connection strings are generated for each i
 |Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
 Set this property to one of the following values:
 
-`replica_set`:: individually connect to each replica set / shard .
+`replica_set`:: The connector establishes individual connections to the replica set for each shard.
 
 `sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb-connection-string`].+
 
@@ -1526,7 +1526,10 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 
 |[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set. We recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
+|Specifies the maximum number of tasks that the connector uses to connect to a sharded cluster.
+When you use the connector with a single MongoDB replica set, the default value is acceptable.  
+But when a cluster contains multiple shards, to enable Kafka Connect to distribute the work for each replica set, specify a value that is equal to or greater than the number of shards in the cluster.
+The MongoDB connector can then use a separate task to connect to the replica set for each shard in the cluster.
 
 [NOTE]
 ====
