@@ -233,7 +233,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .sorted();
     }
 
-    private Set<TableId> sort(Set<TableId> capturedTables) throws Exception {
+    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) throws Exception {
         String tableIncludeList = connectorConfig.tableIncludeList();
         String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
         List<Pattern> captureTablePatterns = new ArrayList<>();
@@ -279,7 +279,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             }
         }
 
-        ctx.capturedTables = sort(capturedTables);
+        ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
         ctx.capturedSchemaTables = capturedSchemaTables
                 .stream()
                 .sorted()
