@@ -37,7 +37,7 @@ public class ComputePartitionTest {
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnCreateAndUpdateMySqlEvents() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -49,7 +49,7 @@ public class ComputePartitionTest {
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnCreateAndUpdatePostgreSQLEvents() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord = buildSourceRecord("postgres", "postgres", "inventory", "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -61,7 +61,7 @@ public class ComputePartitionTest {
     @Test
     public void correctComputeKafkaPartitionBasedOnConfiguredFieldOnDeleteEvents() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), DELETE);
 
@@ -73,7 +73,7 @@ public class ComputePartitionTest {
     @Test
     public void partitionNotComputedOnTruncateEvent() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), TRUNCATE);
 
@@ -85,7 +85,7 @@ public class ComputePartitionTest {
     @Test
     public void rowWithSameConfiguredFieldValueWillHaveTheSamePartition() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord1 = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -102,7 +102,7 @@ public class ComputePartitionTest {
     @Test
     public void rowWithDifferentConfiguredFieldValueWillHaveDifferentPartition() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:2");
+        configureTransformation("inventory.products:product", "inventory.products:2");
 
         final SourceRecord eventRecord1 = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "APPLE"), CREATE);
 
@@ -118,7 +118,7 @@ public class ComputePartitionTest {
     @Test
     public void notConsistentConfigurationSizeWillThrowConnectionException() {
 
-        assertThatThrownBy(() -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:product", "purchaser:2"))
+        assertThatThrownBy(() -> configureTransformation("inventory.orders:purchaser,inventory.products:product", "purchaser:2"))
                 .isInstanceOf(ComputePartitionException.class)
                 .hasMessageContaining(
                         "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different number of table defined");
@@ -128,7 +128,7 @@ public class ComputePartitionTest {
     public void notConsistentConfigurationWillThrowConnectionException() {
 
         assertThatThrownBy(
-                () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:product", "prod:2,purchaser:2"))
+                () -> configureTransformation("inventory.orders:purchaser,inventory.products:product", "prod:2,purchaser:2"))
                 .isInstanceOf(ComputePartitionException.class)
                 .hasMessageContaining(
                         "Unable to validate config. partition.data-collections.partition.num.mappings and partition.data-collections.field.mappings has different tables defined");
@@ -137,7 +137,7 @@ public class ComputePartitionTest {
     @Test
     public void negativeHashCodeValueWillBeCorrectlyManaged() {
 
-        configureTransformation("inventory.products", "inventory.products:product", "inventory.products:3");
+        configureTransformation("inventory.products:product", "inventory.products:3");
 
         final SourceRecord eventRecord1 = buildSourceRecord("mysql", "inventory", null, "products", productRow(1L, 1.0F, "orange"), CREATE);
 
@@ -149,7 +149,7 @@ public class ComputePartitionTest {
     @Test
     public void zeroAsPartitionNumberWillThrowConnectionException() {
         assertThatThrownBy(
-                () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
+                () -> configureTransformation("inventory.orders:purchaser,inventory.products:products",
                         "inventory.products:0,inventory.orders:2"))
                 .isInstanceOf(ComputePartitionException.class)
                 .hasMessageContaining(
@@ -159,7 +159,7 @@ public class ComputePartitionTest {
     @Test
     public void negativeAsPartitionNumberWillThrowConnectionException() {
         assertThatThrownBy(
-                () -> configureTransformation("inventory.orders,inventory.products", "inventory.orders:purchaser,inventory.products:products",
+                () -> configureTransformation("inventory.orders:purchaser,inventory.products:products",
                         "inventory.products:-3,inventory.orders:2"))
                 .isInstanceOf(ComputePartitionException.class)
                 .hasMessageContaining(
@@ -219,7 +219,7 @@ public class ComputePartitionTest {
                 createEnvelope.schema(), payload);
     }
 
-    private void configureTransformation(String tables, String tableFieldMapping, String tablePartitionNumMapping) {
+    private void configureTransformation(String tableFieldMapping, String tablePartitionNumMapping) {
         computePartitionTransformation.configure(Map.of(
                 "partition.data-collections.field.mappings", tableFieldMapping,
                 "partition.data-collections.partition.num.mappings", tablePartitionNumMapping));
