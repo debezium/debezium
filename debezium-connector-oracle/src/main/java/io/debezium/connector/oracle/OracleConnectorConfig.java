@@ -119,9 +119,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "Select one of the following snapshot options: "
+                    + "'always': The connector runs a snapshot every time that it starts. After the snapshot completes, the connector begins to stream changes from the redo logs.; "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the redo logs. "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the redo logs.; "
+                    + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the redo logs.; "
+                    + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions to streaming from the redo logs. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.");
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")

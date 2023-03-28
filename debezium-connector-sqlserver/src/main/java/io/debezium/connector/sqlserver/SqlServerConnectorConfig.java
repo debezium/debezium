@@ -276,10 +276,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
-
+                    + "Select one of the following snapshot options: "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the transaction log.; "
+                    + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the transaction log.");
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
