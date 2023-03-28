@@ -55,7 +55,8 @@ public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
-
+    private static final String EMPTY_STRING = "";
+    private static final CharSequence SPACE = " ";
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
     /**
@@ -1045,6 +1046,34 @@ public abstract class CommonConnectorConfig {
                 problems.accept(field, name, name + " has invalid format (only the underscore, hyphen, dot and alphanumeric characters are allowed)");
                 return 1;
             }
+        }
+        return 0;
+    }
+
+    public static int notContainEmptyElements(Configuration config, Field field, Field.ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.contains(EMPTY_STRING)) {
+            problems.accept(field, values, "not permitted empty string");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int notContainSpaceInAnyElements(Configuration config, Field field, Field.ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.stream().anyMatch(h -> h.contains(SPACE))) {
+            problems.accept(field, values, "some elements with not permitted space");
+            return 1;
         }
         return 0;
     }

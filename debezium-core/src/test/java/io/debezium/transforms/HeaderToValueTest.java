@@ -128,7 +128,7 @@ public class HeaderToValueTest {
                 "operation", "copy")))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "'fields' and/or 'headers' config contains a not valid empty string.");
+                        "Invalid value ,f2 for configuration fields: The 'fields' value is invalid: not permitted empty string");
     }
 
     @Test
@@ -140,7 +140,7 @@ public class HeaderToValueTest {
                 "operation", "copy")))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "'headers' config contains a field with a not valid space.");
+                        "Invalid value header one for configuration headers: The 'headers' value is invalid: some elements with not permitted space");
     }
 
     @Test
@@ -152,7 +152,7 @@ public class HeaderToValueTest {
                 "operation", "copy")))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "'fields' config contains a field with a not valid space.");
+                        "Invalid value after.field one for configuration fields: The 'fields' value is invalid: some elements with not permitted space");
     }
 
     @Test
@@ -164,7 +164,7 @@ public class HeaderToValueTest {
                 "operation", "copy")))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "'fields' config contains a field with a not valid space.");
+                        "Invalid value after. fieldOne for configuration fields: The 'fields' value is invalid: some elements with not permitted space");
     }
 
     @Test
