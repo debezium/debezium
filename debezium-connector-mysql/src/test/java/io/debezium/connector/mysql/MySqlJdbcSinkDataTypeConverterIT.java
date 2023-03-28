@@ -210,7 +210,7 @@ public class MySqlJdbcSinkDataTypeConverterIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
                 .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "jdbc-sink")
                 .with("jdbc-sink.type", JdbcSinkDataTypesConverter.class.getName())
-                .with("jdbc-sink.selector.char", ".*NC_TEST.nc.*|.*NC_TEST2.nc.*")
+                .with("jdbc-sink.selector.string", ".*NC_TEST.nc.*|.*NC_TEST2.nc.*")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -232,17 +232,17 @@ public class MySqlJdbcSinkDataTypeConverterIT extends AbstractConnectorTest {
         // Assert how the BOOLEAN data type is mapped during the snapshot phase.
         assertThat(afterSchema.field("nc1").schema().type()).isEqualTo(Schema.Type.STRING);
         assertThat(after.get("nc1")).isEqualTo("a");
-        assertThat(afterSchema.field("nc1").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8mb3");
+        assertThat(afterSchema.field("nc1").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8");
         assertThat(afterSchema.field("nc1").schema().parameters().get("__debezium.source.column.type")).isEqualTo("CHAR");
         assertThat(afterSchema.field("nc1").schema().parameters().get("__debezium.source.column.length")).isEqualTo("1");
         assertThat(afterSchema.field("nc2").schema().type()).isEqualTo(Schema.Type.STRING);
         assertThat(after.get("nc2")).isEqualTo("123");
-        assertThat(afterSchema.field("nc2").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8mb3");
+        assertThat(afterSchema.field("nc2").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8");
         assertThat(afterSchema.field("nc2").schema().parameters().get("__debezium.source.column.type")).isEqualTo("CHAR");
         assertThat(afterSchema.field("nc2").schema().parameters().get("__debezium.source.column.length")).isEqualTo("5");
         assertThat(afterSchema.field("nc3").schema().type()).isEqualTo(Schema.Type.STRING);
         assertThat(after.get("nc3")).isEqualTo("hello");
-        assertThat(afterSchema.field("nc3").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8mb3");
+        assertThat(afterSchema.field("nc3").schema().parameters().get("__debezium.source.column.character_set")).isEqualTo("utf8");
         assertThat(afterSchema.field("nc3").schema().parameters().get("__debezium.source.column.type")).isEqualTo("VARCHAR");
         assertThat(afterSchema.field("nc3").schema().parameters().get("__debezium.source.column.length")).isEqualTo("25");
 
