@@ -116,6 +116,7 @@ public class ComputePartition<R extends ConnectRecord<R>> implements Transformat
     public R apply(R r) {
 
         LOGGER.trace("Starting ComputePartition SMT with conf: {} {} {}", tableNames, fieldNameByTable, numberOfPartitionsByTable);
+        LOGGER.warn("This SMT is deprecated. It will be removed in next releases. Please use PartitionRouting.");
 
         if (r.value() == null || !smtManager.isValidEnvelope(r)) {
             LOGGER.trace("Skipping tombstone or message without envelope");
