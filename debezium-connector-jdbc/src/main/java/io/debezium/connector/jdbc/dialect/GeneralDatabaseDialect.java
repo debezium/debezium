@@ -333,6 +333,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         if (!Objects.isNull(schema.name())) {
             final Type type = typeRegistry.get(schema.name());
             if (!Objects.isNull(type)) {
+                LOGGER.trace("Schema '{}' resolved by name from registry to type '{}'", schema.name(), type);
                 return type;
             }
         }
@@ -349,6 +350,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
                 // schema type provided by Kafka Connect, this will not use that type and will fallback to
                 // the lookup below based on the schema type's name, which in this case is also INT8.
                 if (!Objects.isNull(type) && !(type instanceof AbstractConnectSchemaType)) {
+                    LOGGER.trace("Schema '{}' resolved by name from registry to type '{}' using parameter '{}'",
+                            schema, type, columnType);
                     return type;
                 }
             }
@@ -356,6 +359,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
         final Type type = typeRegistry.get(schema.type().name());
         if (!Objects.isNull(type)) {
+            LOGGER.trace("Schema type '{}' resolved by name from registry to type '{}'", schema.type().name(), type);
             return type;
         }
 
