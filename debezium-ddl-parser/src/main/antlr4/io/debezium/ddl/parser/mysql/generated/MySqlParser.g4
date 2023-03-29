@@ -2299,6 +2299,7 @@ dataType
       (charSet charsetName)?
       (COLLATE collationName)?                                      #longVarcharDataType    // LONG VARCHAR is the same as LONG
     | LONG VARBINARY                                                #longVarbinaryDataType
+    | UUID                                                          #uuidDataType // MariaDB-specific only
     ;
 
 collectionOptions
