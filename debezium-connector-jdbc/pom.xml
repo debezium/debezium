@@ -22,27 +22,12 @@
     </scm>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
-        <maven.compiler.release>11</maven.compiler.release>
-        <maven.compiler.testRelease>11</maven.compiler.testRelease>
-
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
 
         <!-- Other artifact versions -->
         <version.hibernate>6.1.7.Final</version.hibernate>
-        <version.kafka>3.3.1</version.kafka>
-        <version.kafka.scala>2.13</version.kafka.scala>
         <version.assertjdb>2.0.2</version.assertjdb>
-
-        <!-- Driver versions -->
-        <version.mysql.driver>8.0.27</version.mysql.driver>
-        <version.postgres.driver>42.5.4</version.postgres.driver>
-        <version.mssql.driver>10.2.1.jre8</version.mssql.driver>
-        <version.db2.driver>11.5.0.0</version.db2.driver>
-        <version.oracle.driver>21.6.0.0</version.oracle.driver>
 
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
@@ -56,8 +41,7 @@
             e2e - runs all end to end tests
             all - runs all integration and end to end tests
         -->
-        <tagss>it-mysql,it-postgresql,it-sqlserver</tagss>
-
+        <tags>it-mysql,it-postgresql,it-sqlserver</tags>
     </properties>
 
     <repositories>
@@ -264,31 +248,25 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>${version.mysql.driver}</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${version.postgres.driver}</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
-            <version>${version.mssql.driver}</version>
         </dependency>
         <dependency>
             <groupId>com.ibm.db2</groupId>
             <artifactId>jcc</artifactId>
-            <version>${version.db2.driver}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
-            <version>${version.oracle.driver}</version>
             <scope>provided</scope>
         </dependency>
-
     </dependencies>
 
     <build>
