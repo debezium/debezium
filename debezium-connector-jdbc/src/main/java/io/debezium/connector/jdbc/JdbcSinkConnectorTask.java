@@ -82,7 +82,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         for (Iterator<SinkRecord> iterator = records.iterator(); iterator.hasNext();) {
             final SinkRecord record = iterator.next();
-            LOGGER.debug("Received {}", record);
+            LOGGER.trace("Received {}", record);
             try {
                 changeEventSink.execute(record);
                 markProcessed(record);
@@ -132,10 +132,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         final OffsetAndMetadata existing = offsets.put(topicPartition, offsetAndMetadata);
         if (existing == null) {
-            LOGGER.debug("Advanced topic {} to offset {}.", record.topic(), record.kafkaOffset());
+            LOGGER.trace("Advanced topic {} to offset {}.", record.topic(), record.kafkaOffset());
         }
         else {
-            LOGGER.debug("Updated topic {} from offset {} to {}.", record.topic(), existing.offset(), record.kafkaOffset());
+            LOGGER.trace("Updated topic {} from offset {} to {}.", record.topic(), existing.offset(), record.kafkaOffset());
         }
     }
 

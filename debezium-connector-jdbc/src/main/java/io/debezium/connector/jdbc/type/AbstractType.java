@@ -84,4 +84,9 @@ public abstract class AbstractType implements Type {
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value.toString(), value.getClass().getName()));
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }
