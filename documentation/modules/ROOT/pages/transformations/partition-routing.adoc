@@ -1,8 +1,8 @@
 :page-aliases: configuration/partition-routing.adoc
 // Category: debezium-using
 // Type: assembly
-// ModuleID: routing-records-to-partitions-based-on-column-values
-// Title: Routing records to partitions based on column values
+// ModuleID: routing-records-to-partitions-based-on-payload-fields
+// Title: Routing records to partitions based on payload fields
 [id="partition-routing"]
 = Partition Routing
 
@@ -14,12 +14,11 @@
 
 toc::[]
 
-
 By default, when {prodname} detects a change in a data collection, the change event that it emits is sent to a topic that uses a single Apache Kafka partition.
 As described in {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[Customization of Kafka Connect automatic topic creation], you can customize the default configuration to route events to multiple partitions, based on a hash of the primary key.
 
-However, in some cases, you might want {prodname} to  route events to a specific partition.
-The partition routing SMT enables you to route events to specific destination partitions based on a specified column name value. {prodname} uses the hash of the specified value to determine the destination partition.
+However, in some cases, you might want {prodname} to route events to a specific partition.
+The partition routing SMT enables you to route events to specific destination partitions based on a specified payload field value. {prodname} uses the hash of the specified values to determine the destination partition.
 
 // Type: concept
 // Title: Example: Basic configuration of the {prodname} partition routing SMT
@@ -30,12 +29,12 @@ The partition routing SMT enables you to route events to specific destination pa
 You configure the partition routing transformation in the {prodname} connector's Kafka Connect configuration.
 The configuration specifies the following parameters:
 
-* The data collection column to use to calculate the destination partition.
-* The maximum number of partitions permitted for the data collection.
+* The payload fields to use to calculate the destination partition. You can use dot notation to specify nested field from payload
+* The number of configured partitions for the topic.
 
-Only events that come from configured data collections will be processed. The others will be simply leaved as is.
+In a standard scenario, records from a configured data collection is sent to its specific topic (i.e. {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[Topic Names]).
 
-To configure a {prodname} connector to route events to a specific partition, configure the `ComputePartition` SMT in the Kafka Connect configuration for the {prodname} connector.
+To configure a {prodname} connector to route events to a specific partition, configure the `PartitionRouting` SMT in the Kafka Connect configuration for the {prodname} connector.
 
 For example, you might add the following configuration in your connector configuration.
 
@@ -45,15 +44,22 @@ For example, you might add the following configuration in your connector configu
 topic.creation.default.partitions=2
 topic.creation.default.replication.factor=1
 ...
-transforms=ComputePartition
-transforms.ComputePartition.type=io.debezium.transforms.partitions.ComputePartition
-transforms.ComputePartition.partition.data-collections.field.mappings=inventory.products:name,inventory.orders:purchaser
-transforms.ComputePartition.partition.data-collections.partition.num.mappings=inventory.products:2,inventory.orders:2
+
+topic.prefix=fulfillment
+transforms=PartitionRouting
+transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
+transforms.PartitionRouting.partition.payload.field=change.name
+transforms.PartitionRouting.partition.topic.num=2
+transforms.PartitionRouting.predicate=allTopic
+predicates=allTopic
+predicates.allTopic.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.allTopic.pattern=fulfillment.*
 ...
 ----
 
-The preceding example specifies to enable partition routing computation for `products` and `orders` tables.
-It specifies that `name` column will be used to compute the partition for the `products` data-collections and that the number of partition for this data-collections is `2`.
+The preceding example specifies to enable partition routing computation for all the topic with prefix `fulfillment`, in this case all topic, and then use `name` field from payload to compute the partition.
+The `change` prefix is a special keyword that permits to automatically refer to change part of the payload (after or before) based on the operation.
+If a field not exists for an event it will be not used. If none of the fields exists no transformation will be applied.
 Note that the number of partitions must be the number that you have configured for the topic. As you can see in the example we have defined that every topic will have `2` partitions.
 
 Given this `Products` table
@@ -108,6 +114,119 @@ Given this `Products` table
 Based on the configuration, the SMT routes change events for the records that have the field name `hammer` to the same partition.
 That is, the items with `id` values `104`, `105`, and `106` are routed to the same partition.
 
+// Type: concept
+// Title: Example: Advanced configuration of the {prodname} partition routing SMT
+// ModuleID: advanced-configuration-of-the-debezium-partition-routing-smt
+[[example-advanced-partition-routing-configuration-example]]
+== Example: Advanced configuration
+
+Suppose you have different data collections (t1, t2) routed to same topic (my_topic), and you want to partition events from data collection t1 using field f1
+and events from data collection t2 using field f2.
+
+This will be the configuration
+
+[source]
+----
+transforms=PartitionRouting
+transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
+transforms.PartitionRouting.partition.payload.field=change.f1,change.f2
+transforms.PartitionRouting.partition.topic.num=2
+transforms.PartitionRouting.predicate=myTopic
+
+predicates=myTopic
+predicates.myTopic.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.myTopic.pattern=my_topic
+----
+
+Note that in this configuration we omitted the part to configure the re-routes of events from different topic to a specific one. See {link-prefix}:{link-topic-routing}[Topic Routing SMT].
+
+// Type: concept
+// Title: Migrating from the {prodname} ComputePartition SMT
+// ModuleID: migrate-debezium-compute-partition-smt
+[[migrate-debezium-compute-partition-smt]]
+== Migrating from the {prodname} ComputePartition SMT
+
+Since the {prodname} ComputePartition SMT will be dropped in next releases, this section explain how migrate to this new SMT.
+
+In case you have defined same number of partitions for al topics, this configuration
+
+[source]
+----
+...
+topic.creation.default.partitions=2
+topic.creation.default.replication.factor=1
+...
+topic.prefix=fulfillment
+transforms=ComputePartition
+transforms.ComputePartition.type=io.debezium.transforms.partitions.ComputePartition
+transforms.ComputePartition.partition.data-collections.field.mappings=inventory.products:name,inventory.orders:purchaser
+transforms.ComputePartition.partition.data-collections.partition.num.mappings=inventory.products:2,inventory.orders:2
+...
+----
+
+must be replaced with this
+
+[source]
+----
+...
+topic.creation.default.partitions=2
+topic.creation.default.replication.factor=1
+...
+
+topic.prefix=fulfillment
+transforms=PartitionRouting
+transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
+transforms.PartitionRouting.partition.payload.field=change.name,change.purchaser
+transforms.PartitionRouting.partition.topic.num=2
+transforms.PartitionRouting.predicate=allTopic
+predicates=allTopic
+predicates.allTopic.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.allTopic.pattern=fulfillment.*
+...
+----
+
+In case you have different partition number for topics, for example, the relative topic for data collection `products` has been configured with 3 partitions and
+for the data collection `orders` has been configured with 2 partitions.
+
+The following old configuration
+
+[source]
+----
+...
+topic.prefix=fulfillment
+transforms=ComputePartition
+transforms.ComputePartition.type=io.debezium.transforms.partitions.ComputePartition
+transforms.ComputePartition.partition.data-collections.field.mappings=inventory.products:name,inventory.orders:purchaser
+transforms.ComputePartition.partition.data-collections.partition.num.mappings=inventory.products:3,inventory.orders:2
+...
+----
+
+must be replaced with this new configuration
+
+[source]
+----
+...
+topic.prefix=fulfillment
+
+transforms=ProductsPartitionRouting,OrdersPartitionRouting
+transforms.ProductsPartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
+transforms.ProductsPartitionRouting.partition.payload.field=change.name
+transforms.ProductsPartitionRouting.partition.topic.num=3
+transforms.ProductsPartitionRouting.predicate=products
+
+transforms.OrdersPartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
+transforms.OrdersPartitionRouting.partition.payload.field=change.purchaser
+transforms.OrdersPartitionRouting.partition.topic.num=2
+transforms.OrdersPartitionRouting.predicate=products
+
+predicates=products,orders
+predicates.products.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.products.pattern=fulfillment.inventory.products
+predicates.orders.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.orders.pattern=fulfillment.inventory.orders
+...
+----
+
 // Type: reference
 // ModuleID: options-for-configuring-the-partition-routing-transformation
 // Title: Options for configuring the partition routing transformation
@@ -116,20 +235,22 @@ That is, the items with `id` values `104`, `105`, and `106` are routed to the sa
 
 The following table lists the configuration options that you can use with the partition routing SMT.
 
-.Partition routing SMT (`ComputePartition`) configuration options
+.Partition routing SMT (`PartitionRouting`) configuration options
 [cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default
 |Description
 
-|[[partition-routing-data-collections-field-mappings]]<<partition-routing-data-collections-field-mappings, `partition.data-collections.field.mappings`>>
+|[[partition-routing-payload-fields]]<<partition-routing-payload-fields, `partition.payload.field`>>
 |
-|A comma-separated list of colon-delimited pairs that specify the columns to use for a specific data-collection, for example, `inventory.products:name,inventory.orders:purchaser`.
+|Payload fields to use to calculate the partition. Supports Struct nesting using dot notation. To access fields related to data collections, you can use: after, before or change,
+where 'change' is a special field that will automatically choose, based on operation, the 'after' or 'before'. If a field not exist for the current record it will simply not used.
+For example, `after.name,source.table,change.name`
 
-|[[partition-routing-data-collections-partition-num-mappings]]<<partition-routing-data-collections-partition-num-mappings, `partition.data-collections.partition.num.mappings`>>
+|[[partition-routing-partition-topic-num]]<<partition-routing-partition-topic-num, `partition.topic.num`>>
 |
-|A comma-separated list of colon-delimited pairs that specify the number of partitions to use for a specific data-collection, for example, `inventory.products:2,inventory.orders:3`.
+|Number of partition for the topic on which this SMT act. Use TopicNameMatches predicate to filter records by topic.
 |
 
 |===

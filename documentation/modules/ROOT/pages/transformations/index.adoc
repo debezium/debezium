@@ -30,11 +30,14 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/filtering.adoc[Message Filtering]
 |Applies a filter to the change events emitted by the connectors, based on their content. This lets you propagate only those records that are relevant to you.
 
-|xref:transformations/partition-routing.adoc[Partition Routing]
+|xref:transformations/compute-partition.adoc[Compute Partition]
 |Re-routes records to specific partition based on configured table column.
 
 |xref:transformations/header-to-value.adoc[HeaderToValue]
 |Moves or copies headers into the record value.
+
+|xref:transformations/partition-routing.adoc[Partition Routing]
+|Re-routes records to specific partition based on configured payload fields.
 
 |===
 
