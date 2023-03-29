@@ -553,7 +553,8 @@ node('Slave') {
             }
             dir(IMAGES_DIR) {
                 script {
-                    env.DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME='localhost:5500/debezium'
+                    env.DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME='localhost:5500/debeziumquay'
+                    env.DEBEZIUM_DOCKER_REGISTRY_SECONDARY_NAME='localhost:5500/debezium'
                 }
                 sh """
                     docker run --privileged --rm tonistiigi/binfmt --install all
