@@ -9,3 +9,5 @@ docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 docker login -u ${QUAYIO_CREDENTIALS%:*} -p ${QUAYIO_CREDENTIALS#*:} quay.io
 docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/connect:nightly connect/snapshot
 docker push quay.io/debezium/connect:nightly
+docker tag quay.io/debezium/connect:nightly debezium/connect:nightly
+docker push debezium/connect:nightly
