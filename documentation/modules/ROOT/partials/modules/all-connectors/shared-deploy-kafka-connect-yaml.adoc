@@ -57,7 +57,7 @@ spec:
 |Specifies the name and image name for the image output.
 Valid values for `output.type` are `docker` to push into a container registry such as Docker Hub or Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
 To use an ImageStream, an ImageStream resource must be deployed to the cluster.
-For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference documentation].
+For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkConfiguringStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference] in {NameConfiguringStreamsOpenShift}.
 
 |5
 |The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
