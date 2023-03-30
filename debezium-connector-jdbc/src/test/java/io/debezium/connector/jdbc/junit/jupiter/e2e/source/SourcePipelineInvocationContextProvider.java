@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,6 +48,8 @@ import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.connector.jdbc.junit.PostgresExtensionUtils;
+import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSourceNoMatrix;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipColumnTypePropagation;
@@ -140,6 +143,9 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         final ForSource forSource = method.getAnnotation(ForSource.class);
         final ForSourceNoMatrix forSourceNoMatrix = method.getAnnotation(ForSourceNoMatrix.class);
 
+        final WithPostgresExtension postgresExtensionAnn = method.getAnnotation(WithPostgresExtension.class);
+        final String postgresExtension = Objects.isNull(postgresExtensionAnn) ? null : postgresExtensionAnn.value();
+
         boolean streamEmpty = true;
         final Stream.Builder<TestTemplateInvocationContext> builder = Stream.builder();
         for (SourceType sourceType : sourceContainers.keySet()) {
@@ -159,7 +165,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             for (Boolean flatten : getExtractNewRecordStateValues(method)) {
                 for (Boolean propagateColumnTypes : getPropagateColumnTypeValues(method)) {
                     for (TemporalPrecisionMode temporalPrecisionMode : getTemporalPrecisionModes(method, sourceType)) {
-                        builder.add(createInvocationContext(sourceType, flatten, propagateColumnTypes, temporalPrecisionMode));
+                        builder.add(createInvocationContext(sourceType, flatten, propagateColumnTypes, temporalPrecisionMode, postgresExtension));
                         streamEmpty = false;
                     }
                 }
@@ -246,7 +252,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     }
 
     private TestTemplateInvocationContext createInvocationContext(SourceType sourceType, boolean flatten, boolean propagateTypes,
-                                                                  TemporalPrecisionMode temporalPrecisionMode) {
+                                                                  TemporalPrecisionMode temporalPrecisionMode, String postgresExtension) {
         final SourceConnectorOptions sourceOptions = new SourceConnectorOptions() {
             @Override
             public boolean useSnapshot() {
@@ -291,10 +297,20 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                             if (!sourceContainer.isRunning()) {
                                 sourceContainer.start();
                             }
+                            // create the postgres extension if specified
+                            if (sourceType.is(SourceType.POSTGRES)) {
+                                PostgresExtensionUtils.createExtension(source, postgresExtension);
+                            }
                         },
                         (AfterEachCallback) context -> {
                             connectContainer.deleteAllConnectors();
                             source.waitUntilDeleted();
+
+                            // drop the postgres extension if specified
+                            if (sourceType.is(SourceType.POSTGRES)) {
+                                PostgresExtensionUtils.dropExtension(source, postgresExtension);
+                            }
+
                             source.close();
                         },
                         new ParameterResolver() {

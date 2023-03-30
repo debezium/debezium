@@ -39,6 +39,9 @@ public class ConnectBytesType extends AbstractConnectSchemaType {
         if (columnSize > 0) {
             return dialect.getTypeName(Types.VARBINARY, Size.length(columnSize));
         }
+        else if (key) {
+            return dialect.getTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
+        }
         return dialect.getTypeName(Types.VARBINARY);
     }
 

@@ -54,6 +54,7 @@ import io.debezium.connector.jdbc.type.connect.ConnectInt16Type;
 import io.debezium.connector.jdbc.type.connect.ConnectInt32Type;
 import io.debezium.connector.jdbc.type.connect.ConnectInt64Type;
 import io.debezium.connector.jdbc.type.connect.ConnectInt8Type;
+import io.debezium.connector.jdbc.type.connect.ConnectMapToConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimestampType;
@@ -329,6 +330,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public int getMaxVarbinaryLength() {
+        return dialect.getMaxVarbinaryLength();
+    }
+
+    @Override
     public Type getSchemaType(Schema schema) {
         if (!Objects.isNull(schema.name())) {
             final Type type = typeRegistry.get(schema.name());
@@ -485,6 +491,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectStringType.INSTANCE);
         registerType(ConnectTimestampType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
+        registerType(ConnectMapToConnectStringType.INSTANCE);
     }
 
     protected void registerType(Type type) {
