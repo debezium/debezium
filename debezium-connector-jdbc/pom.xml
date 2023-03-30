@@ -45,7 +45,7 @@
             e2e - runs all end to end tests
             all - runs all integration and end to end tests
         -->
-        <tags>it-mysql,it-postgresql,it-sqlserver</tags>
+        <test.tags>it-mysql,it-postgresql,it-sqlserver</test.tags>
     </properties>
 
     <repositories>
@@ -294,7 +294,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <groups>${tags}</groups>
+                    <groups>${test.tags}</groups>
                 </configuration>
             </plugin>
             <!-- Override maven-checkstyle-plugin configuration to ignore target/generated-sources -->
