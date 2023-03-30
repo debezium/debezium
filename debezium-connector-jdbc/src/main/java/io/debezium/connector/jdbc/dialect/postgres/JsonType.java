@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import org.apache.kafka.connect.data.Schema;
+import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
@@ -18,6 +19,7 @@ import io.debezium.data.Json;
  * @author Chris Cranford
  */
 class JsonType extends AbstractType {
+
     public static final JsonType INSTANCE = new JsonType();
 
     @Override
@@ -27,12 +29,28 @@ class JsonType extends AbstractType {
 
     @Override
     public String getQueryBinding(Schema schema) {
+        if (isHstore(schema)) {
+            return "cast(? as hstore)";
+            // return super.getQueryBinding(schema);
+        }
         return String.format("cast(? as %s)", isJsonb(schema) ? "jsonb" : "json");
     }
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return isJsonb(schema) ? "jsonb" : "json";
+        return resolveType(schema);
+    }
+
+    @Override
+    public void bind(Query<?> query, int index, Schema schema, Object value) {
+        if (isHstore(schema)) {
+            value = HstoreConverter.jsonToString((String) value);
+        }
+        super.bind(query, index, schema, value);
+    }
+
+    private String resolveType(Schema schema) {
+        return isHstore(schema) ? "hstore" : isJsonb(schema) ? "jsonb" : "json";
     }
 
     private boolean isJsonb(Schema schema) {
@@ -41,4 +59,10 @@ class JsonType extends AbstractType {
         // was JSONB; therefore column type propagation must be enabled for this to be possible.
         return "JSONB".equals(getSourceColumnType(schema).orElse("JSON"));
     }
+
+    private boolean isHstore(Schema schema) {
+        // Debezium emits HSTORE data as Json logical types.
+        return "HSTORE".equals(getSourceColumnType(schema).orElse("JSON"));
+    }
+
 }

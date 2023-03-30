@@ -75,4 +75,8 @@ public abstract class AbstractSinkDatabaseContextProvider implements BeforeAllCa
         }
         return ConditionEvaluationResult.enabled("Not annotated with SkipWhenSink for " + sinkType);
     }
+
+    protected Sink getSink() {
+        return sink;
+    }
 }
