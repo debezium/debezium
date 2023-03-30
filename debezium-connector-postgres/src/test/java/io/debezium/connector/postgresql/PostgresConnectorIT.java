@@ -265,6 +265,19 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldSkipWalLevelCheckIfNoCdc() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresConnector.class);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
+                .build();
+        PostgresConnector connector = new PostgresConnector();
+        connector.validate(config.asMap());
+
+        assertThat(logInterceptor.containsMessage("Skipped WAL_LEVEL check as CDC was not requested")).isTrue();
+    }
+
+    @Test
     public void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
