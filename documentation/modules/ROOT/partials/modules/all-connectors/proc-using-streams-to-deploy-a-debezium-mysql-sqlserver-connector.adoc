@@ -69,8 +69,9 @@ For example, create the following `KafkaConnector` CR, and save it as `{context}
         database.port: {database-port}   // <6>
         database.user: debezium  // <7>
         database.password: dbz  // <8>
-        topic.prefix: inventory-connector-{context} // <9>
-        table.include.list: {include-list-example}  // <10>
+        database.server.id: 184054 // <9>
+        topic.prefix: inventory-connector-{context} // <10>
+        table.include.list: {include-list-example}  // <11>
 ----
 =====================================================================
 +
@@ -104,12 +105,15 @@ For example, create the following `KafkaConnector` CR, and save it as `{context}
 |The password that {prodname} uses to connect to the database user account.
 
 |9
+|Unique numeric ID of the connector.
+
+|10
 |The topic prefix for the database instance or cluster. +
 The specified name must be formed only from alphanumeric characters or underscores. +
 Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster. +
 This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the xref:{link-avro-serialization}#avro-serialization[Avro connector].
 
-|10
+|11
 |The list of tables from which the connector captures change events.
 
 |===
