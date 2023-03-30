@@ -25,6 +25,7 @@ import com.mchange.v2.c3p0.DataSources;
 
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
@@ -121,6 +122,9 @@ public abstract class AbstractJdbcSinkTest {
         sinkConnector.start(properties);
         try {
             sinkTask = (SinkTask) sinkConnector.taskClass().getConstructor().newInstance();
+
+            // Initialize sink task with a mock context
+            sinkTask.initialize(new JdbcSinkTaskTestContext(properties));
             sinkTask.start(properties);
         }
         catch (Exception e) {
