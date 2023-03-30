@@ -28,7 +28,7 @@ class JsonType extends AbstractType {
 
     @Override
     public String getQueryBinding(Schema schema) {
-        return String.format("cast(? as json)");
+        return "cast(? as json)";
     }
 
     @Override

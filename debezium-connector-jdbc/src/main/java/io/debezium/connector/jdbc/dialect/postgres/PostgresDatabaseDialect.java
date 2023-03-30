@@ -134,6 +134,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(MoneyType.INSTANCE);
         registerType(XmlType.INSTANCE);
         registerType(LtreeType.INSTANCE);
+        registerType(MapToHstoreType.INSTANCE);
 
         // Allows binding string-based types if column type propagation is enabled
         registerType(RangeType.INSTANCE);
@@ -141,6 +142,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(MacAddressType.INSTANCE);
         registerType(InetType.INSTANCE);
         registerType(CaseInsensitiveTextType.INSTANCE);
+        registerType(OidType.INSTANCE);
     }
 
     @Override

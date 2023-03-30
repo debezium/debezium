@@ -184,6 +184,15 @@ public class Sink implements AutoCloseable {
         }
     }
 
+    public void execute(String statement) throws Exception {
+        try (Statement st = getConnection().createStatement()) {
+            st.execute(statement);
+        }
+        if (!getConnection().getAutoCommit()) {
+            getConnection().commit();
+        }
+    }
+
     private Connection getConnection() throws SQLException {
         if (connection == null) {
             connection = database.createConnection("");
