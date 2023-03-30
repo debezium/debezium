@@ -10,7 +10,7 @@
 :connector-file: {context}
 :connector-class: MySql
 :connector-name: MySQL
-:include-list-example: inventory
+:include-list-example: inventory.*
 ifdef::community[]
 :toc:
 :toc-placement: macro
