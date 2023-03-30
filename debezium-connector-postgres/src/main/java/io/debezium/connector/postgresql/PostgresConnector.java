@@ -88,51 +88,9 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
             try {
                 // Prepare connection without initial statement execution
                 connection.connection(false);
-                // check connection
-                connection.execute("SELECT version()");
-                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
-                        connection.username());
-                // check server wal_level
-                final String walLevel = connection.queryAndMap(
-                        "SHOW wal_level",
-                        connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
-                if (!"logical".equals(walLevel)) {
-                    final String errorMessage = "Postgres server wal_level property must be \"logical\" but is: " + walLevel;
-                    LOGGER.error(errorMessage);
-                    hostnameValue.addErrorMessage(errorMessage);
-                }
-                // check user for LOGIN and REPLICATION roles
-                if (!connection.queryAndMap(
-                        "SELECT r.rolcanlogin AS rolcanlogin, r.rolreplication AS rolreplication," +
-                        // for AWS the user might not have directly the rolreplication rights, but can be assigned
-                        // to one of those role groups: rds_superuser, rdsadmin or rdsrepladmin
-                                " CAST(array_position(ARRAY(SELECT b.rolname" +
-                                " FROM pg_catalog.pg_auth_members m" +
-                                " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
-                                " WHERE m.member = r.oid), 'rds_superuser') AS BOOL) IS TRUE AS aws_superuser" +
-                                ", CAST(array_position(ARRAY(SELECT b.rolname" +
-                                " FROM pg_catalog.pg_auth_members m" +
-                                " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
-                                " WHERE m.member = r.oid), 'rdsadmin') AS BOOL) IS TRUE AS aws_admin" +
-                                ", CAST(array_position(ARRAY(SELECT b.rolname" +
-                                " FROM pg_catalog.pg_auth_members m" +
-                                " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
-                                " WHERE m.member = r.oid), 'rdsrepladmin') AS BOOL) IS TRUE AS aws_repladmin" +
-                                ", CAST(array_position(ARRAY(SELECT b.rolname" +
-                                " FROM pg_catalog.pg_auth_members m" +
-                                " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
-                                " WHERE m.member = r.oid), 'rds_replication') AS BOOL) IS TRUE AS aws_replication" +
-                                " FROM pg_roles r WHERE r.rolname = current_user",
-                        connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin")
-                                && (rs.getBoolean("rolreplication")
-                                        || rs.getBoolean("aws_superuser")
-                                        || rs.getBoolean("aws_admin")
-                                        || rs.getBoolean("aws_repladmin")
-                                        || rs.getBoolean("aws_replication")),
-                                "Could not fetch roles"))) {
-                    final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
-                    LOGGER.error(errorMessage);
-                }
+                testConnection(connection);
+                checkWalLevel(hostnameValue, connection, postgresConfig);
+                checkLoginReplicationRoles(connection);
             }
             catch (SQLException e) {
                 LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
@@ -140,6 +98,63 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
             }
         }
+    }
+
+    private static void checkLoginReplicationRoles(PostgresConnection connection) throws SQLException {
+        if (!connection.queryAndMap(
+                "SELECT r.rolcanlogin AS rolcanlogin, r.rolreplication AS rolreplication," +
+                // for AWS the user might not have directly the rolreplication rights, but can be assigned
+                // to one of those role groups: rds_superuser, rdsadmin or rdsrepladmin
+                        " CAST(array_position(ARRAY(SELECT b.rolname" +
+                        " FROM pg_catalog.pg_auth_members m" +
+                        " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                        " WHERE m.member = r.oid), 'rds_superuser') AS BOOL) IS TRUE AS aws_superuser" +
+                        ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                        " FROM pg_catalog.pg_auth_members m" +
+                        " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                        " WHERE m.member = r.oid), 'rdsadmin') AS BOOL) IS TRUE AS aws_admin" +
+                        ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                        " FROM pg_catalog.pg_auth_members m" +
+                        " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                        " WHERE m.member = r.oid), 'rdsrepladmin') AS BOOL) IS TRUE AS aws_repladmin" +
+                        ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                        " FROM pg_catalog.pg_auth_members m" +
+                        " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                        " WHERE m.member = r.oid), 'rds_replication') AS BOOL) IS TRUE AS aws_replication" +
+                        " FROM pg_roles r WHERE r.rolname = current_user",
+                connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin")
+                        && (rs.getBoolean("rolreplication")
+                                || rs.getBoolean("aws_superuser")
+                                || rs.getBoolean("aws_admin")
+                                || rs.getBoolean("aws_repladmin")
+                                || rs.getBoolean("aws_replication")),
+                        "Could not fetch roles"))) {
+            final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
+            LOGGER.error(errorMessage);
+        }
+    }
+
+    private static void checkWalLevel(ConfigValue hostnameValue, PostgresConnection connection, PostgresConnectorConfig config) throws SQLException {
+        // Logical WAL_LEVEL is only necessary for CDC snapshotting
+        if (config.getSnapshotter() != null && config.getSnapshotter().shouldStream()) {
+            final String walLevel = connection.queryAndMap(
+                    "SHOW wal_level",
+                    connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
+            if (!"logical".equals(walLevel)) {
+                final String errorMessage = "Postgres server wal_level property must be \"logical\" but is: " + walLevel;
+                LOGGER.error(errorMessage);
+                hostnameValue.addErrorMessage(errorMessage);
+            }
+        }
+        else {
+            LOGGER.info("Skipped WAL_LEVEL check as CDC was not requested");
+        }
+    }
+
+    private static void testConnection(PostgresConnection connection) throws SQLException {
+        connection.execute("SELECT version()");
+        LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                connection.username());
     }
 
     @Override
