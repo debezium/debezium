@@ -79,7 +79,7 @@ jobs:
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
-        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtags=it-db2,e2e-db2 -Dsource.connectors=mysql,postgres,sqlserver
+        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-db2,e2e-db2 -Dsource.connectors=mysql,postgres,sqlserver
 
   # Build step that checks out the source, builds, and includes the integration and the
   # end to end tests for MySQL as part of the build step.
@@ -111,7 +111,7 @@ jobs:
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
-        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtags=it-mysql,e2e-mysql -Dsource.connectors=mysql,postgres,sqlserver
+        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-mysql,e2e-mysql -Dsource.connectors=mysql,postgres,sqlserver
 
   # Build step that checks out the source, builds, and includes the integration and the
   # end to end tests for Oracle as part of the build step.
@@ -143,7 +143,7 @@ jobs:
 #      - name: Build core
 #        run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
 #      - name: Build sink
-#        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtags=it-oracle,e2e-oracle -Dsource.connectors=mysql,postgres,sqlserver
+#        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-oracle,e2e-oracle -Dsource.connectors=mysql,postgres,sqlserver
 
   # Build step that checks out the source, builds, and includes the integration and the
   # end to end tests for PostgreSQL as part of the build step.
@@ -175,7 +175,7 @@ jobs:
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
-        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtags=it-postgresql,e2e-postgresql -Dsource.connectors=mysql,postgres,sqlserver
+        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-postgresql,e2e-postgresql -Dsource.connectors=mysql,postgres,sqlserver
 
   # Build step that checks out the source, builds, and includes the integration and the
   # end to end tests for SQL Server as part of the build step.
@@ -207,4 +207,4 @@ jobs:
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
-        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtags=it-sqlserver,e2e-sqlserver -Dsource.connectors=mysql,postgres,sqlserver
+        run: mvn clean install -f jdbc/pom.xml -B -Passembly -Dtest.tags=it-sqlserver,e2e-sqlserver -Dsource.connectors=mysql,postgres,sqlserver
