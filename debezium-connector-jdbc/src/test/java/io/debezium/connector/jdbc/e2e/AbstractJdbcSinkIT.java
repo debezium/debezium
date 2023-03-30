@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorTask;
+import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 
@@ -79,6 +80,9 @@ public abstract class AbstractJdbcSinkIT {
         sinkProperties.forEach((k, v) -> configMap.put((String) k, (String) v));
 
         currentSinkConfig = new JdbcSinkConnectorConfig(configMap);
+
+        // Initialize sink task with a mock context
+        sinkTask.initialize(new JdbcSinkTaskTestContext(configMap));
         sinkTask.start(configMap);
 
         // Consumer properties
