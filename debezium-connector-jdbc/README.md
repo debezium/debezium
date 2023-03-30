@@ -115,26 +115,26 @@ There are three types of types in the test suite:
 By default all unit tests are executed as a part of the build.
 The sink-based integration tests are only executed for MySQL, PostgreSQL, and SQL Server by default, while none of the end-to-end matrix-based tests are executed.
 
-In order to execute the sink-based integration tests for Oracle and DB2, the `-Dtags` argument must be provided to include these in the build.
+In order to execute the sink-based integration tests for Oracle and DB2, the `-Dtest.tags` argument must be provided to include these in the build.
 In order to do this, add all the integration tests to be executed, as shown below for all databases:
 
-    $ ./mvnw clean install -Dtags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2
+    $ ./mvnw clean install -Dtest.tags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2
 
 In order to run all sink-based integration tests for all databases, a short-cut tag is provided:
 
-    $ ./mvnw clean install -Dtags=it
+    $ ./mvnw clean install -Dtest.tags=it
 
-Similarly, in order to enable specific end to end tests, the `-Dtags` argument can also be supplied with the necessary tags for each sink database type:
+Similarly, in order to enable specific end to end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
 
-    $ ./mvnw clean install -Dtags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2
+    $ ./mvnw clean install -Dtest.tags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2
 
 In order to run all end to end integration tests, a short-cut tag is provided as well:
 
-    $ ./mvnw clean install -Dtags=e2e
+    $ ./mvnw clean install -Dtest.tags=e2e
 
 In order to run all tests for all source/sink combinations:
 
-    $ ./mvnw clean install -Dtags=all
+    $ ./mvnw clean install -Dtest.tags=all
 
 ## Contributing
 
