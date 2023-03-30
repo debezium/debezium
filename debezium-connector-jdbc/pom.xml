@@ -10,14 +10,14 @@
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>debezium-jdbc-sink</artifactId>
+    <artifactId>debezium-connector-jdbc</artifactId>
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
     <scm>
-        <connection>scm:git:git@github.com:debezium/debezium-jdbc-sink.git</connection>
-        <developerConnection>scm:git:git@github.com:debezium/debezium-jdbc-sink.git</developerConnection>
-        <url>https://github.com/debezium/debezium-jdbc-sink</url>
+        <connection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</connection>
+        <developerConnection>scm:git:git@github.com:debezium/debezium-connector-jdbc.git</developerConnection>
+        <url>https://github.com/debezium/debezium-connector-jdbc</url>
         <tag>HEAD</tag>
     </scm>
 

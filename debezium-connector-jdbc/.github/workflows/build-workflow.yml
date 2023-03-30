@@ -43,8 +43,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
       - name: Download dependencies
         run: >
           mvn -B -ntp clean install -Dformat.skip=true -Dcheckstyle.skip=true -DskipTests=true -DskipITs=true
@@ -74,8 +74,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
@@ -106,8 +106,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
@@ -138,8 +138,8 @@ jobs:
 #        uses: actions/cache@v3
 #        with:
 #          path: ~/.m2/repository
-#          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-#          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+#          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+#          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
 #      - name: Build core
 #        run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
 #      - name: Build sink
@@ -170,8 +170,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
@@ -202,8 +202,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
-          key: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-jdbc-sink-build-${{ hashFiles('**/pom.xml') }}
+          key: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-connector-jdbc-build-${{ hashFiles('**/pom.xml') }}
       - name: Build core
         run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check
       - name: Build sink
