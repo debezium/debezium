@@ -20,7 +20,7 @@ import org.testcontainers.containers.output.WaitingConsumer;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import com.github.dockerjava.api.command.LogContainerCmd;
-
+import io.debezium.connector.jdbc.junit.jupiter.JdbcConnectionProvider;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
@@ -31,7 +31,7 @@ import io.debezium.testing.testcontainers.DebeziumContainer;
  *
  * @author Chris Cranford
  */
-public class Source implements AutoCloseable {
+public class Source extends JdbcConnectionProvider {
 
     private static final AtomicInteger sourceId = new AtomicInteger();
 
@@ -41,20 +41,16 @@ public class Source implements AutoCloseable {
 
     private final Integer id;
     private final SourceType type;
-    private final JdbcDatabaseContainer<?> database;
     private final KafkaContainer kafka;
     private final DebeziumContainer connect;
     private final SourceConnectorOptions options;
     private final RandomTableNameGenerator tableNameGenerator;
 
-    // Lazily opened and closed
-    private Connection connection;
-
     public Source(SourceType type, JdbcDatabaseContainer<?> database, KafkaContainer kafka, DebeziumContainer connect,
                   SourceConnectorOptions options, RandomTableNameGenerator tableGenerator) {
+        super(database, new SourceConnectionInitializer(type));
         this.type = type;
         this.id = sourceId.getAndIncrement();
-        this.database = database;
         this.kafka = kafka;
         this.connect = connect;
         this.options = options;
@@ -69,17 +65,9 @@ public class Source implements AutoCloseable {
         return kafka;
     }
 
-    public String getUsername() {
-        return database.getUsername();
-    }
-
-    public String getPassword() {
-        return database.getPassword();
-    }
-
     @SuppressWarnings("unused")
     public int getPort() {
-        return database.getFirstMappedPort();
+        return getContainer().getFirstMappedPort();
     }
 
     public SourceConnectorOptions getOptions() {
@@ -148,19 +136,6 @@ public class Source implements AutoCloseable {
         }
     }
 
-    public void execute(String statement) throws Exception {
-        try (Statement st = getConnection().createStatement()) {
-            System.out.println("SQL: " + statement);
-            st.execute(statement);
-        }
-        catch (SQLException e) {
-            throw new SQLException("Failed to execute SQL statement: " + statement, e);
-        }
-        if (!getConnection().getAutoCommit()) {
-            getConnection().commit();
-        }
-    }
-
     public void streamTable(String tableName) throws Exception {
         if (SourceType.SQLSERVER == type) {
             execute(ENABLE_TABLE_CDC.replace("#", tableName).replace("%", "dbo"));
@@ -170,23 +145,22 @@ public class Source implements AutoCloseable {
         }
     }
 
-    private Connection getConnection() throws SQLException {
-        if (connection == null) {
-            connection = database.createConnection("");
-            if (SourceType.SQLSERVER == type) {
+    private static class SourceConnectionInitializer implements ConnectionInitializer {
+        
+        private final SourceType type;
+        
+        public SourceConnectionInitializer(SourceType type) {
+            this.type = type;
+        }
+
+        @Override
+        public void initialize(Connection connection) throws SQLException {
+            if (SourceType.SQLSERVER.is(type)) {
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("USE testDB");
                 }
             }
         }
-        return connection;
     }
 
-    @Override
-    public void close() throws Exception {
-        if (connection != null) {
-            connection.close();
-            connection = null;
-        }
-    }
 }

@@ -25,31 +25,13 @@ import org.testcontainers.utility.ThrowingFunction;
  *
  * @author Chris Cranford
  */
-public class Sink implements AutoCloseable {
+public class Sink extends JdbcConnectionProvider {
 
     private final SinkType type;
-    private final JdbcDatabaseContainer<?> database;
-
-    // Lazily opened and closed
-    private Connection connection;
 
     public Sink(SinkType sinkType, JdbcDatabaseContainer<?> database) {
+        super(database, new SinkConnectionInitializer(sinkType));
         this.type = sinkType;
-        this.database = database;
-    }
-
-    @Override
-    public void close() throws Exception {
-        if (connection != null && !connection.isClosed()) {
-            try {
-                // todo: Oracle apparently throws an error, catch to allow tests to pass for now.
-                connection.close();
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
-            connection = null;
-        }
     }
 
     public SinkType getType() {
@@ -58,17 +40,9 @@ public class Sink implements AutoCloseable {
 
     public String getJdbcUrl() {
         if (SinkType.SQLSERVER == type) {
-            return database.getJdbcUrl() + ";databaseName=testDB";
+            return getContainer().getJdbcUrl() + ";databaseName=testDB";
         }
-        return database.getJdbcUrl();
-    }
-
-    public String getUsername() {
-        return database.getUsername();
-    }
-
-    public String getPassword() {
-        return database.getPassword();
+        return getContainer().getJdbcUrl();
     }
 
     public String formatTableName(String tableName) {
@@ -184,30 +158,27 @@ public class Sink implements AutoCloseable {
         }
     }
 
-    public void execute(String statement) throws Exception {
-        try (Statement st = getConnection().createStatement()) {
-            st.execute(statement);
-        }
-        if (!getConnection().getAutoCommit()) {
-            getConnection().commit();
-        }
+    @SafeVarargs
+    private <T> boolean isAnyValueNull(T... values) {
+        return Arrays.stream(values).anyMatch(Objects::isNull);
     }
 
-    private Connection getConnection() throws SQLException {
-        if (connection == null) {
-            connection = database.createConnection("");
-            if (SinkType.SQLSERVER == type) {
+    private static class SinkConnectionInitializer implements ConnectionInitializer {
+
+        private final SinkType type;
+
+        public SinkConnectionInitializer(SinkType type) {
+            this.type = type;
+        }
+
+        @Override
+        public void initialize(Connection connection) throws SQLException {
+            if (SinkType.SQLSERVER.is(type)) {
                 try (Statement statement = connection.createStatement()) {
                     statement.execute("USE testDB");
                 }
             }
         }
-        return connection;
-    }
-
-    @SafeVarargs
-    private <T> boolean isAnyValueNull(T... values) {
-        return Arrays.stream(values).anyMatch(Objects::isNull);
     }
 
 }
