@@ -8,9 +8,9 @@ package io.debezium.connector.jdbc;
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Set;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -22,14 +22,10 @@ import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.data.Envelope;
-import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.sink.spi.ChangeEventSink;
 
 /**
@@ -208,56 +204,24 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private void write(TableDescriptor table, SinkRecordDescriptor record) throws SQLException {
-        if (!record.isDebeziumSinkRecord()) {
-            final Struct value = (Struct) record.getRawRecord().value();
-            if (value != null) {
-                if (InsertMode.INSERT.equals(config.getInsertMode())) {
-                    final String sql = dialect.getInsertStatement(table, record);
-                    writeInsert(sql, record);
-                }
-                else if (InsertMode.UPSERT.equals(config.getInsertMode())) {
+        if (!record.isDelete()) {
+            switch (config.getInsertMode()) {
+                case INSERT:
+                    writeInsert(dialect.getInsertStatement(table, record), record);
+                    break;
+                case UPSERT:
                     if (record.getKeyFieldNames().isEmpty()) {
                         throw new ConnectException("Cannot write to table " + table.getId().getTableName() + " with no key fields defined.");
                     }
-                    final String sql = dialect.getUpsertStatement(table, record);
-                    writeUpsert(sql, record);
-                }
-                else if (InsertMode.UPDATE.equals(config.getInsertMode())) {
-                    final String sql = dialect.getUpdateStatement(table, record);
-                    writeUpdate(sql, record);
-                }
-            }
-            else {
-                final String sql = dialect.getDeleteStatement(table, record);
-                writeDelete(sql, record);
+                    writeUpsert(dialect.getUpsertStatement(table, record), record);
+                    break;
+                case UPDATE:
+                    writeUpdate(dialect.getUpdateStatement(table, record), record);
+                    break;
             }
         }
         else {
-            // Complex Debezium data structure
-            final Struct value = (Struct) record.getRawRecord().value();
-            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
-
-            if (!Operation.DELETE.equals(operation)) {
-                if (InsertMode.INSERT.equals(config.getInsertMode())) {
-                    final String sql = dialect.getInsertStatement(table, record);
-                    writeInsert(sql, record);
-                }
-                else if (InsertMode.UPSERT.equals(config.getInsertMode())) {
-                    if (record.getKeyFieldNames().isEmpty()) {
-                        throw new ConnectException("Cannot write to table " + table.getId().getTableName() + " with no key fields defined.");
-                    }
-                    final String sql = dialect.getUpsertStatement(table, record);
-                    writeUpsert(sql, record);
-                }
-                else if (InsertMode.UPDATE.equals(config.getInsertMode())) {
-                    final String sql = dialect.getUpdateStatement(table, record);
-                    writeUpdate(sql, record);
-                }
-            }
-            else {
-                final String sql = dialect.getDeleteStatement(table, record);
-                writeDelete(sql, record);
-            }
+            writeDelete(dialect.getDeleteStatement(table, record), record);
         }
     }
 
@@ -336,70 +300,33 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private int bindFieldValue(NativeQuery<?> query, FieldDescriptor field, Object value, int index) {
-        return index + dialect.bindValue(field, query, index, value);
-    }
-
     private int bindKeyValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index) {
-        if (PrimaryKeyMode.KAFKA.equals(config.getPrimaryKeyMode())) {
-            query.setParameter(index++, record.getTopicName());
-            query.setParameter(index++, record.getRawRecord().kafkaPartition());
-            query.setParameter(index++, record.getRawRecord().kafkaOffset());
-        }
-        else if (!record.getKeyFieldNames().isEmpty()) {
-            // There are key fields, either mapped to RECORD_KEY or RECORD_VALUE potentially
-            if (PrimaryKeyMode.RECORD_KEY.equals(config.getPrimaryKeyMode())) {
-                final Schema keySchema = record.getRawRecord().keySchema();
-                if (keySchema != null && Schema.Type.STRUCT.equals(keySchema.type())) {
-                    for (String fieldName : record.getKeyFieldNames()) {
-                        final FieldDescriptor field = record.getFields().get(fieldName);
-                        final Object fieldValue = ((Struct) record.getRawRecord().key()).get(fieldName);
-                        index = bindFieldValue(query, field, fieldValue, index);
-                    }
+        switch (config.getPrimaryKeyMode()) {
+            case KAFKA:
+                query.setParameter(index++, record.getTopicName());
+                query.setParameter(index++, record.getPartition());
+                query.setParameter(index++, record.getOffset());
+                break;
+            case RECORD_KEY:
+            case RECORD_VALUE:
+                final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
+                if (keySource != null) {
+                    index = bindFieldValuesToQuery(record, query, index, keySource, record.getKeyFieldNames());
                 }
-                else {
-                    throw new ConnectException("Cannot bind primary key with no struct-based key");
-                }
-            }
-            else if (PrimaryKeyMode.RECORD_VALUE.equals(config.getPrimaryKeyMode())) {
-                final Schema valueSchema = record.getRawRecord().valueSchema();
-                if (valueSchema != null && Schema.Type.STRUCT.equals(valueSchema.type())) {
-                    final Struct source;
-                    if (record.isDebeziumSinkRecord()) {
-                        source = ((Struct) record.getRawRecord().value()).getStruct(Envelope.FieldName.AFTER);
-                    }
-                    else {
-                        source = ((Struct) record.getRawRecord().value());
-                    }
-
-                    for (String fieldName : record.getKeyFieldNames()) {
-                        final FieldDescriptor field = record.getFields().get(fieldName);
-                        final Object fieldValue = source.get(fieldName);
-                        index = bindFieldValue(query, field, fieldValue, index);
-                    }
-                }
-                else {
-                    throw new ConnectException("Cannot bind primary key with a non-struct value");
-                }
-            }
+                break;
         }
         return index;
     }
 
     private int bindNonKeyValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index) {
-        final Struct struct;
-        if (record.isDebeziumSinkRecord()) {
-            struct = ((Struct) record.getRawRecord().value()).getStruct(Envelope.FieldName.AFTER);
-        }
-        else {
-            struct = ((Struct) record.getRawRecord().value());
-        }
+        return bindFieldValuesToQuery(record, query, index, record.getAfterStruct(), record.getNonKeyFieldNames());
+    }
 
-        for (String fieldName : record.getNonKeyFieldNames()) {
+    private int bindFieldValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index, Struct source, List<String> fields) {
+        for (String fieldName : fields) {
             final FieldDescriptor field = record.getFields().get(fieldName);
-            index += dialect.bindValue(field, query, index, struct.get(fieldName));
+            index += dialect.bindValue(field, query, index, source.get(fieldName));
         }
-
         return index;
     }
 

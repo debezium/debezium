@@ -148,7 +148,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
         while (records.hasNext()) {
             markNotProcessed(records.next());
         }
-        context.requestCommit();
+        if (context != null) {
+            context.requestCommit();
+        }
     }
 
     /**
