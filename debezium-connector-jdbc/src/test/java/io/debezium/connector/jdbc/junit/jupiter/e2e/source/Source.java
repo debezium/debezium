@@ -20,6 +20,7 @@ import org.testcontainers.containers.output.WaitingConsumer;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import com.github.dockerjava.api.command.LogContainerCmd;
+
 import io.debezium.connector.jdbc.junit.jupiter.JdbcConnectionProvider;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.testing.testcontainers.Connector;
@@ -146,10 +147,10 @@ public class Source extends JdbcConnectionProvider {
     }
 
     private static class SourceConnectionInitializer implements ConnectionInitializer {
-        
+
         private final SourceType type;
-        
-        public SourceConnectionInitializer(SourceType type) {
+
+        SourceConnectionInitializer(SourceType type) {
             this.type = type;
         }
 
