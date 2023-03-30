@@ -19,13 +19,13 @@ public class ByteArrayUtils {
     }
 
     public static byte[] getByteArrayFromValue(Object value) {
-        final byte[] byteArray;
+        byte[] byteArray = null;
         if (value instanceof ByteBuffer) {
             final ByteBuffer buffer = ((ByteBuffer) value).slice();
             byteArray = new byte[buffer.remaining()];
             buffer.get(byteArray);
         }
-        else {
+        else if (value instanceof byte[]) {
             byteArray = (byte[]) value;
         }
         return byteArray;
