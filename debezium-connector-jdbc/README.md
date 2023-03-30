@@ -143,8 +143,8 @@ See [this document](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md
 
 A big thank you to all the Debezium JDBC sink contributors!
 
-<a href="https://github.com/debezium/debezium-jdbc-sink/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=debezium/debezium-jdbc-sink" />
+<a href="https://github.com/debezium/debezium-connector-jdbc/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=debezium/debezium-connector-jdbc" />
 </a>
 
 ## License
