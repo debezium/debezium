@@ -44,6 +44,8 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkType;
+import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipExtractNewRecordState;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSink;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSource;
@@ -2212,6 +2214,322 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 ResultSet::getString);
     }
 
+    @TestTemplate
+    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BYTEA data type support")
+    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.ORACLE, SinkType.DB2 }, reason = "These data types are not allowed in the primary keys")
+    public void testByteaDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "bytea",
+                List.of("'hello'"),
+                List.of("hello".getBytes(StandardCharsets.UTF_8)),
+                (record) -> {
+                    assertColumn(sink, record, "id", getBinaryType(source, "bytea"));
+                    assertColumn(sink, record, "data", getBinaryType(source, "bytea"));
+                },
+                ResultSet::getBytes);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The OID data type only applies to PostgreSQL")
+    public void testOidDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "oid",
+                List.of(3802),
+                (record) -> {
+                    assertColumn(sink, record, "id", getInt64Type());
+                    if (source.getOptions().isColumnTypePropagated() && sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "OID");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getInt64Type());
+                    }
+                },
+                ResultSet::getInt);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The LTREE data type only applies to PostgreSQL")
+    @WithPostgresExtension("ltree")
+    public void testLtreeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "ltree",
+                List.of("'abc.xyz'"),
+                List.of("abc.xyz"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "id", "LTREE");
+                        assertColumn(sink, record, "data", "LTREE");
+                    }
+                    else {
+                        assertColumn(sink, record, "id", getStringType(source, true, false));
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The CITEXT data type only applies to PostgreSQL")
+    @WithPostgresExtension("citext")
+    public void testCaseInsensitiveDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "citext",
+                List.of("'AbCd'"),
+                List.of("AbCd"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "CITEXT");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The INET data type only applies to PostgreSQL")
+    public void testInetDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "inet",
+                List.of("'192.168.1.0'"),
+                List.of("192.168.1.0"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "INET");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The INT4RANGE data type only applies to PostgreSQL")
+    public void testInt4RangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "int4range",
+                List.of("'[1000,6000)'"),
+                List.of("[1000,6000)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "INT4RANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The INT8RANGE data type only applies to PostgreSQL")
+    public void testInt8RangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "int8range",
+                List.of("'[1000000,6000000)'"),
+                List.of("[1000000,6000000)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "INT8RANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The NUMRANGE data type only applies to PostgreSQL")
+    public void testNumrangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "numrange",
+                List.of("'[5.3,6.3)'"),
+                List.of("[5.3,6.3)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "NUMRANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The TSRANGE data type only applies to PostgreSQL")
+    public void testTsrangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "tsrange",
+                List.of("'[2019-03-31 15:30:00,infinity)'"),
+                List.of("[\"2019-03-31 15:30:00\",infinity)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "TSRANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The TSTZRANGE data type only applies to PostgreSQL")
+    public void testTstzrangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "tstzrange",
+                List.of("'[2017-06-05 11:29:12.549426+00,)'"),
+                List.of("[\"2017-06-05 11:29:12.549426+00\",)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "TSTZRANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The DATERANGE data type only applies to PostgreSQL")
+    public void testDaterangeDataType(Source source, Sink sink) throws Exception {
+        assertDataType(source,
+                sink,
+                "daterange",
+                List.of("'[2019-03-31, infinity)'"),
+                List.of("[2019-03-31,infinity)"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "DATERANGE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getStringType(source, false, false, true));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The HSTORE data type only applies to PostgreSQL")
+    @WithPostgresExtension("hstore")
+    public void testHstoreDataType(Source source, Sink sink) throws Exception {
+        String expectedValue = "{\"key\":\"val\"}";
+        if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+            // when sinking to PostgreSQL, it will be returned in HSTORE format rather than JSON
+            expectedValue = "\"key\"=>\"val\"";
+        }
+        else if (sink.getType().is(SinkType.MYSQL)) {
+            expectedValue = "{\"key\": \"val\"}";
+        }
+
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "hstore",
+                List.of("'\"key\" => \"val\"'::hstore"),
+                List.of(expectedValue),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    // Debezium emits HSTORE data as io.debezium.data.Json logical types.
+                    // This is why when column propagation isn't enabled, the field is created as JSON.
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                        assertColumn(sink, record, "data", "HSTORE");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getJsonbType(source));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The HSTORE data type only applies to PostgreSQL")
+    @WithPostgresExtension("hstore")
+    public void testHstoreWithMapModeDataType(Source source, Sink sink) throws Exception {
+        // NOTE:
+        // PostgreSQL supports the notion of storing key/value tuples in a data type called HSTORE,
+        // and this data type can be emitted as JSON, which can be seen in #testHstoreDataType, but
+        // the column can be emitted using map-mode where it uses the Kafka Connect MAP schema type
+        // to hold a string-based map of key/value tuples.
+        //
+        // Not all sink databases support JSON or HSTORE column types, so the following rules have
+        // been put in place to support emitting map-mode HSTORE column values across all sinks:
+        //
+        // 1. Sink is PostgreSQL, create sink column as HSTORE and serialize the map as key/value tuples.
+        // 2. Sink is MySQL, cerate sink column as JSON and serialize the map as json data.
+        // 3. All other sinks, create sink column as text-based type and serialize the map as json string.
+        //
+        // see io.debezium.connector.dialect.postgres.MapToHstoreType (option 1)
+        // see io.debezium.connector.dialect.mysql.MapToJsonType (option 2)
+        // see io.debezium.connector.jdbc.type.connect.ConnectMapToConnectStringType (option 3)
+        //
+        String expectedValue = "{\"key\":\"val\"}";
+        if (sink.getType().is(SinkType.POSTGRES)) {
+            // when sinking to PostgreSQL, it will be returned in HSTORE format rather than JSON
+            expectedValue = "\"key\"=>\"val\"";
+        }
+        else if (sink.getType().is(SinkType.MYSQL)) {
+            // when sinking to MySQL, it will be returned in JSON format
+            expectedValue = "{\"key\": \"val\"}";
+        }
+
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "hstore",
+                List.of("'\"key\" => \"val\"'::hstore"),
+                List.of(expectedValue),
+                (config) -> {
+                    config.with("include.unknown.datatypes", true);
+                    config.with("hstore.handling.mode", "map");
+                },
+                (record) -> {
+                    // Debezium emits HSTORE data as MAP schema types.
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "HSTORE");
+                    }
+                    else if (sink.getType().is(SinkType.MYSQL)) {
+                        // MySQL will map the MAP schema types to JSON
+                        assertColumn(sink, record, "data", getJsonType(source));
+                    }
+                    else {
+                        // Other sink connectors will serialize the MAP as JSON into TEXT types
+                        assertColumn(sink, record, "data", getTextType());
+                    }
+                },
+                ResultSet::getString);
+    }
+
     // todo: remaining data types need tests and/or type system mapping support
     // GEOMETRY (MySql/PostgreSQL)
     // LINESTRING (MySQL)
@@ -2221,19 +2539,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     // MULTIPOLYGON (MySQL)
     // GEOMETRYCOLLECTION (MySQL)
     // POINT (PostgreSQL)
-    // BYTEA (PostgreSQL)
-    // LTREE (PostgreSQL)
-    // CITEXT (PostgreSQL)
-    // INEt (PostgreSQL)
-    // INT4RANGE (PostgreSQL)
-    // INT8RANGE (PostgreSQL)
-    // NUMRANGE (PostgreSQL)
-    // TSRANGE (PostgreSQL)
-    // TSTZRANGE (PostgreSQL)
-    // DATERANGE (PostgreSQL)
-    // HSTORE (PostgreSQL)
     // ROWID (Oracle)
-    // OID (PostgreSQL)
 
     protected int getMaxDecimalPrecision() {
         return 38;
@@ -2266,10 +2572,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     protected abstract String getStringType(Source source, boolean key, boolean nationalized, boolean maxLength);
-
-    // protected String getStringType(boolean key, boolean nationalized, Source source) {
-    // return getStringType(key, nationalized, source.getOptions());
-    // }
 
     protected abstract String getTextType(boolean nationalized);
 
@@ -2376,6 +2678,22 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             return String.format("TO_DATE('%04d-%02d-%02d', 'YYYY-MM-DD')", year, month, day);
         }
         return String.format("'%04d-%02d-%02d'", year, month, day);
+    }
+
+    protected String pointValue(ResultSet rs, int index) throws SQLException {
+        String result = rs.getString(index);
+        if (!Strings.isNullOrEmpty(result)) {
+            if (result.startsWith("(") && result.endsWith(")")) {
+                result = result.substring(1, result.length() - 1);
+                String[] parts = result.split(",");
+                if (parts.length == 2) {
+                    result = String.format("(%.6f,%.6f)",
+                            Float.parseFloat(parts[0]),
+                            Float.parseFloat(parts[1]));
+                }
+            }
+        }
+        return result;
     }
 
     protected void registerSourceConnector(Source source, String tableName) {

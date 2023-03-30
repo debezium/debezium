@@ -137,6 +137,13 @@ public interface DatabaseDialect {
     int getMaxNVarcharLengthInKey();
 
     /**
+     * Gets the maximum length of a variable binary field in a primary key column.
+     *
+     * @return maximum field length when participating in the primary key
+     */
+    int getMaxVarbinaryLength();
+
+    /**
      * Gets the maximum precision allowed for a dialect's time data type.
      *
      * @return maximum time precision

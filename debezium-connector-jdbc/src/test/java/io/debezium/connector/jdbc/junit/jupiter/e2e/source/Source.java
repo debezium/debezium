@@ -150,7 +150,11 @@ public class Source implements AutoCloseable {
 
     public void execute(String statement) throws Exception {
         try (Statement st = getConnection().createStatement()) {
+            System.out.println("SQL: " + statement);
             st.execute(statement);
+        }
+        catch (SQLException e) {
+            throw new SQLException("Failed to execute SQL statement: " + statement, e);
         }
         if (!getConnection().getAutoCommit()) {
             getConnection().commit();
@@ -182,6 +186,7 @@ public class Source implements AutoCloseable {
     public void close() throws Exception {
         if (connection != null) {
             connection.close();
+            connection = null;
         }
     }
 }
