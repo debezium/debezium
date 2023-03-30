@@ -26,6 +26,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.Operation;
 
 /**
  * An immutable representation of a {@link SinkRecord}.
@@ -52,12 +53,16 @@ public class SinkRecordDescriptor {
         this.flattened = flattened;
     }
 
-    public SinkRecord getRawRecord() {
-        return record;
-    }
-
     public String getTopicName() {
         return topicName;
+    }
+
+    public Integer getPartition() {
+        return record.kafkaPartition();
+    }
+
+    public long getOffset() {
+        return record.kafkaOffset();
     }
 
     public List<String> getKeyFieldNames() {
@@ -74,6 +79,50 @@ public class SinkRecordDescriptor {
 
     public boolean isDebeziumSinkRecord() {
         return !flattened;
+    }
+
+    public boolean isDelete() {
+        if (!isDebeziumSinkRecord()) {
+            return record.value() == null;
+        }
+        else if (record.value() != null) {
+            final Struct value = (Struct) record.value();
+            return Operation.DELETE.equals(Operation.forCode(value.getString(Envelope.FieldName.OPERATION)));
+        }
+        return false;
+    }
+
+    public Struct getKeyStruct(PrimaryKeyMode primaryKeyMode) {
+        if (!getKeyFieldNames().isEmpty()) {
+            switch (primaryKeyMode) {
+                case RECORD_KEY:
+                    final Schema keySchema = record.keySchema();
+                    if (keySchema != null && Schema.Type.STRUCT.equals(keySchema.type())) {
+                        return (Struct) record.key();
+                    }
+                    else {
+                        throw new ConnectException("No struct-based primary key defined for record key.");
+                    }
+                case RECORD_VALUE:
+                    final Schema valueSchema = record.valueSchema();
+                    if (valueSchema != null && Schema.Type.STRUCT.equals(valueSchema.type())) {
+                        return getAfterStruct();
+                    }
+                    else {
+                        throw new ConnectException("No struct-based primary key defined for record value.");
+                    }
+            }
+        }
+        return null;
+    }
+
+    public Struct getAfterStruct() {
+        if (isDebeziumSinkRecord()) {
+            return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        }
+        else {
+            return ((Struct) record.value());
+        }
     }
 
     public static Builder builder() {
