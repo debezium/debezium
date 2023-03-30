@@ -167,7 +167,7 @@ public class Sink extends JdbcConnectionProvider {
 
         private final SinkType type;
 
-        public SinkConnectionInitializer(SinkType type) {
+        SinkConnectionInitializer(SinkType type) {
             this.type = type;
         }
 
