@@ -16,7 +16,7 @@ metadata:
   annotations:
     strimzi.io/use-connector-resources: "true" // <1>
 spec:
-  version: 3.00
+  version: {debezium-kafka-version}
   build: // <2>
     output: // <3>
       type: imagestream  // <4>
