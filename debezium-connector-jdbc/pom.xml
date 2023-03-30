@@ -26,6 +26,9 @@
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
 
+        <!-- Parent overrides -->
+        <version.assembly.plugin>3.5.0</version.assembly.plugin>
+
         <!-- Other artifact versions -->
         <version.hibernate>6.1.7.Final</version.hibernate>
         <version.assertjdb>2.0.2</version.assertjdb>
@@ -347,6 +350,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${version.assembly.plugin}</version>
                         <dependencies>
                             <dependency>
                                 <groupId>io.debezium</groupId>
