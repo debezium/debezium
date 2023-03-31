@@ -2,6 +2,75 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.Beta1
+March 31st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12404187)
+
+### New features since 2.2.0.Alpha3
+
+* Debezium JDBC Sink Connector [DBZ-3647](https://issues.redhat.com/browse/DBZ-3647)
+* Create an endpoint to update a connector [DBZ-5314](https://issues.redhat.com/browse/DBZ-5314)
+* Refactor snapshotting to use change streams instead of oplog [DBZ-5987](https://issues.redhat.com/browse/DBZ-5987)
+* Update the design for Debezium based connectors Filter step [DBZ-6060](https://issues.redhat.com/browse/DBZ-6060)
+* Connect and stream from sharded clusters through mongos instances [DBZ-6170](https://issues.redhat.com/browse/DBZ-6170)
+* Support Postgres dialect for Spanner Kafka Connector [DBZ-6178](https://issues.redhat.com/browse/DBZ-6178)
+* Support Azure blob storage as Debezium history storage [DBZ-6180](https://issues.redhat.com/browse/DBZ-6180)
+* Support Database role in Connector Config. [DBZ-6192](https://issues.redhat.com/browse/DBZ-6192)
+* Remove duplicated createDdlFilter method from historized connector config [DBZ-6197](https://issues.redhat.com/browse/DBZ-6197)
+* Create new SMT to copy/move header to record value [DBZ-6201](https://issues.redhat.com/browse/DBZ-6201)
+* Add support for columns of type "bytea[]" - array of bytea (byte array) [DBZ-6232](https://issues.redhat.com/browse/DBZ-6232)
+* Support ImageFromDockerfile with Debezium's testcontainers suite [DBZ-6244](https://issues.redhat.com/browse/DBZ-6244)
+* Expose EmbeddedEngine configurations [DBZ-6248](https://issues.redhat.com/browse/DBZ-6248)
+* RabbitMQ Sink [DBZ-6260](https://issues.redhat.com/browse/DBZ-6260)
+
+
+### Breaking changes since 2.2.0.Alpha3
+
+None
+
+
+### Fixes since 2.2.0.Alpha3
+
+* NPE when setting schema.history.internal.store.only.captured.tables.ddl=true [DBZ-6072](https://issues.redhat.com/browse/DBZ-6072)
+* Postgres connector stuck when replication slot does not have confirmed_flush_lsn [DBZ-6092](https://issues.redhat.com/browse/DBZ-6092)
+* java.lang.NullPointerException in MySQL connector with max.queue.size.in.bytes [DBZ-6104](https://issues.redhat.com/browse/DBZ-6104)
+* debezium-connector-mysql failed to parse serveral DDLs of 'CREATE TABLE' [DBZ-6124](https://issues.redhat.com/browse/DBZ-6124)
+* Zerofill property failed for different int types [DBZ-6185](https://issues.redhat.com/browse/DBZ-6185)
+* GRANT DELETE HISTORY couldn't be parsed in mariadb [DBZ-6186](https://issues.redhat.com/browse/DBZ-6186)
+* ddl parse failed for key partition table [DBZ-6188](https://issues.redhat.com/browse/DBZ-6188)
+* Config options internal.schema.history.internal.ddl.filter not working [DBZ-6190](https://issues.redhat.com/browse/DBZ-6190)
+* Use CHARSET for alterByConvertCharset clause [DBZ-6194](https://issues.redhat.com/browse/DBZ-6194)
+* Data loss upon connector restart [DBZ-6204](https://issues.redhat.com/browse/DBZ-6204)
+* ParsingException: DDL statement couldn't be parsed [DBZ-6217](https://issues.redhat.com/browse/DBZ-6217)
+* The CHARACTER/CHARACTER(p)/CHARACTER VARYING(p) data types not recognized as JDBC type CHAR [DBZ-6221](https://issues.redhat.com/browse/DBZ-6221)
+* MySQL treats the BOOLEAN synonym differently when processed in snapshot vs streaming phases. [DBZ-6225](https://issues.redhat.com/browse/DBZ-6225)
+* MySQL treats REAL synonym differently when processed in snapshot vs streaming phases. [DBZ-6226](https://issues.redhat.com/browse/DBZ-6226)
+* Spanner Connector - Deadlock in BufferedPublisher when publish gives exception [DBZ-6227](https://issues.redhat.com/browse/DBZ-6227)
+* Publish of sync event fails when message becomes very large.  [DBZ-6228](https://issues.redhat.com/browse/DBZ-6228)
+* MySQL treats NCHAR/NVARCHAR differently when processed in snapshot vs streaming phases. [DBZ-6231](https://issues.redhat.com/browse/DBZ-6231)
+* MySQL singleDeleteStatement parser does not support table alias [DBZ-6243](https://issues.redhat.com/browse/DBZ-6243)
+* Testcontainers MongoDbReplicaSetTest failing with MongoDB 4.2 [DBZ-6247](https://issues.redhat.com/browse/DBZ-6247)
+* Wrong error thrown when snapshot.custom_class=custom and no snapshot.custom.class [DBZ-6249](https://issues.redhat.com/browse/DBZ-6249)
+* Missing GEOMETRY keyword which can be used as column name [DBZ-6250](https://issues.redhat.com/browse/DBZ-6250)
+* Postgres connector stuck trying to fallback to restart_lsn when replication slot confirmed_flush_lsn is null. [DBZ-6251](https://issues.redhat.com/browse/DBZ-6251)
+* MariaDB's UUID column type cannot be parsed when scheme is loaded [DBZ-6255](https://issues.redhat.com/browse/DBZ-6255)
+
+
+### Other changes since 2.2.0.Alpha3
+
+* Document message.key.columns and tombstone events limitations for default REPLICA IDENTITY [DBZ-5490](https://issues.redhat.com/browse/DBZ-5490)
+* Reflect configuration changes for MongoDB connector in documentation [DBZ-6090](https://issues.redhat.com/browse/DBZ-6090)
+* Create Oracle CI workflow [DBZ-6115](https://issues.redhat.com/browse/DBZ-6115)
+* Provide instructions for upgrading from Debezium 1.x to 2.x  [DBZ-6128](https://issues.redhat.com/browse/DBZ-6128)
+* Update connector configuration examples in deployment instructions  [DBZ-6153](https://issues.redhat.com/browse/DBZ-6153)
+* Insert missing Nebel annotations for Oracle connector FAQ topic [DBZ-6215](https://issues.redhat.com/browse/DBZ-6215)
+* Add metadata for MongoDB change streams topic [DBZ-6223](https://issues.redhat.com/browse/DBZ-6223)
+* Remove incubation notice from Debezium Server page [DBZ-6235](https://issues.redhat.com/browse/DBZ-6235)
+* Ensure correct build for Oracle CI in case of pull request [DBZ-6239](https://issues.redhat.com/browse/DBZ-6239)
+* Fix broken link to Streams documentation in shared deployment files [DBZ-6263](https://issues.redhat.com/browse/DBZ-6263)
+* Update config example in Installing Debezium on OpenShift [DBZ-6267](https://issues.redhat.com/browse/DBZ-6267)
+
+
+
 ## 2.2.0.Alpha3
 March 8th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12402444)
 
