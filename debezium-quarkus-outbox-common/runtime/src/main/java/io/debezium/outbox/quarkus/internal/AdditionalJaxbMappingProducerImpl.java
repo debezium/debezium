@@ -5,6 +5,7 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
+import static io.debezium.outbox.quarkus.internal.OutboxConstants.CONTRIBUTOR;
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_HBMXML;
 
 import java.io.BufferedInputStream;
@@ -83,7 +84,7 @@ public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingP
                         logOutboxMapping(mapping);
 
                         LOGGER.info("Contributed XML mapping for entity: {}", mapping.getClazz().get(0).getEntityName());
-                        return Collections.singletonList(new MappingDocument(mapping, origin, buildingContext));
+                        return Collections.singletonList(new MappingDocument(CONTRIBUTOR, mapping, origin, buildingContext));
                     }
                 }
             }
