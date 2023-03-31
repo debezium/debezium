@@ -5,13 +5,11 @@
  */
 package io.debezium.transforms.tracing;
 
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,47 +24,42 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.context.propagation.TextMapSetter;
 
-public class ActivateTracingSpanDelegate {
+public class TracingSpanUtil {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpanDelegate.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TracingSpanUtil.class);
 
     private static final String DB_FIELDS_PREFIX = "db.";
     private static final String TX_LOG_WRITE_OPERATION_NAME = "db-log-write";
-    public static final String ARG_OTEL_JAVAAGENT_ENABLED = "otel.javaagent.enabled";
-    public static final String ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED = "otel.instrumentation.opentelemetry-api.enabled";
-
-    private static final String TRACING_COMPONENT = ActivateTracingSpanDelegate.class.getName();
+    private static final String ARG_OTEL_JAVAAGENT_ENABLED = "otel.javaagent.enabled";
+    private static final String ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED = "otel.instrumentation.opentelemetry-api.enabled";
+    private static final boolean OPEN_TELEMETRY_JAVAAGENT_ENABLE = isOpenTelemetryJavaagentEnable();
+    private static final boolean OPEN_TELEMETRY_API_ENABLE = isOpenTelemetryApiEnable();
+    private static final String TRACING_COMPONENT = TracingSpanUtil.class.getName();
     private static final OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
     private static final Tracer tracer = openTelemetry.getTracer(TRACING_COMPONENT);
-    private static final TextMapPropagator TEXT_MAP_PROPAGATOR = openTelemetry.getPropagators().getTextMapPropagator();
-    private static final TextMapSetter<Headers> SETTER = KafkaConnectHeadersSetter.INSTANCE;
-    private static final TextMapGetter<Properties> GETTER = PropertiesGetter.INSTANCE;
 
-    private ActivateTracingSpanDelegate() {
+    private TracingSpanUtil() {
 
     }
 
-    public <R extends ConnectRecord<R>> R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext, String operationName) {
-        if (!is0penTelemetryJavaagentEnable()) {
-            LOGGER.debug(
-                    "OpenTelemetry javaagent is disabled. To enable, run your JVM with -D{}=true\"",
+    public static <R extends ConnectRecord<R>> R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext, String operationName) {
+        if (!OPEN_TELEMETRY_JAVAAGENT_ENABLE && LOGGER.isDebugEnabled()) {
+            LOGGER.debug("OpenTelemetry javaagent is disabled. To enable, run your JVM with -D{}=true\"",
                     ARG_OTEL_JAVAAGENT_ENABLED);
         }
-        if (!isOpenTelemetryApiEnable()) {
-            LOGGER.debug(
-                    "OpenTelemetry API is disabled. To enable, run your JVM with -D{}=true\"",
+        if (!OPEN_TELEMETRY_API_ENABLE && LOGGER.isDebugEnabled()) {
+            LOGGER.debug("OpenTelemetry API is disabled. To enable, run your JVM with -D{}=true\"",
                     ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED);
         }
+
         if (propagatedSpanContext != null) {
 
             Properties props = PropertiesGetter.extract(propagatedSpanContext);
 
             Context parentSpanContext = openTelemetry.getPropagators().getTextMapPropagator()
-                    .extract(Context.current(), props, GETTER);
+                    .extract(Context.current(), props, PropertiesGetter.INSTANCE);
 
             SpanBuilder txLogSpanBuilder = tracer.spanBuilder(TX_LOG_WRITE_OPERATION_NAME)
                     .setSpanKind(SpanKind.INTERNAL)
@@ -74,7 +67,7 @@ public class ActivateTracingSpanDelegate {
 
             if (source != null) {
                 Long eventTimestamp = source.getInt64(AbstractSourceInfo.TIMESTAMP_KEY);
-                if (Objects.nonNull(eventTimestamp)) {
+                if (eventTimestamp != null) {
                     txLogSpanBuilder.setStartTimestamp(eventTimestamp, TimeUnit.MILLISECONDS);
                 }
             }
@@ -89,7 +82,8 @@ public class ActivateTracingSpanDelegate {
                 }
                 debeziumSpan(envelope, operationName);
 
-                TEXT_MAP_PROPAGATOR.inject(Context.current(), connectRecord.headers(), SETTER);
+                TextMapPropagator textMapPropagator = openTelemetry.getPropagators().getTextMapPropagator();
+                textMapPropagator.inject(Context.current(), connectRecord.headers(), KafkaConnectHeadersSetter.INSTANCE);
             }
             finally {
                 txLogSpan.end();
@@ -99,9 +93,9 @@ public class ActivateTracingSpanDelegate {
         return connectRecord;
     }
 
-    private void debeziumSpan(Struct envelope, String operationName) {
+    private static void debeziumSpan(Struct envelope, String operationName) {
         final Long processingTimestamp = envelope.getInt64(Envelope.FieldName.TIMESTAMP);
-        Span debeziumSpan = ActivateTracingSpanDelegate.tracer.spanBuilder(operationName)
+        Span debeziumSpan = tracer.spanBuilder(operationName)
                 .setStartTimestamp(processingTimestamp, TimeUnit.MILLISECONDS)
                 .startSpan();
 
@@ -114,7 +108,7 @@ public class ActivateTracingSpanDelegate {
         }
     }
 
-    private void addFieldToSpan(Span span, Struct struct, String field, String prefix) {
+    private static void addFieldToSpan(Span span, Struct struct, String field, String prefix) {
         final Object fieldValue = struct.get(field);
         if (fieldValue != null) {
             String targetFieldName = prefix + field;
@@ -133,18 +127,7 @@ public class ActivateTracingSpanDelegate {
         }
     }
 
-    public static class Builder {
-
-        private Builder() {
-
-        }
-
-        public static ActivateTracingSpanDelegate build() {
-            return new ActivateTracingSpanDelegate();
-        }
-    }
-
-    private static boolean is0penTelemetryJavaagentEnable() {
+    private static boolean isOpenTelemetryJavaagentEnable() {
         return Boolean.parseBoolean(ConfigUtil.getString(ARG_OTEL_JAVAAGENT_ENABLED, "true"));
     }
 
