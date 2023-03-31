@@ -282,7 +282,7 @@
                 <version>${version.graalvm.js}</version>
             </dependency>
 
-            <!-- OpenTelemetry Integration, Strimzi version is not aligned with Quarkus -->
+            <!-- OpenTelemetry Integration -->
             <dependency>
                 <groupId>io.opentelemetry.instrumentation</groupId>
                 <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
