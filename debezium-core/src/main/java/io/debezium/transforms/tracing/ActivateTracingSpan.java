@@ -114,16 +114,20 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             propagatedSpanContext = after.getString(spanContextField);
         }
 
-        if (propagatedSpanContext == null && requireContextField) {
-            return connectRecord;
+        if (propagatedSpanContext == null) {
+            if (requireContextField) {
+                return connectRecord;
+            }
         }
-
-        try {
-            return ActivateTracingSpanDelegate.Builder.build().traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
+        else {
+            try {
+                return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
+            }
+            catch (NoClassDefFoundError e) {
+                throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
+            }
         }
-        catch (NoClassDefFoundError e) {
-            throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
-        }
+        return connectRecord;
     }
 
     @Override
