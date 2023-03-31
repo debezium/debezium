@@ -29,7 +29,7 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentelemetry.alpha>1.23.0-alpha</version.opentelemetry.alpha>
+        <version.opentelemetry>1.23.0-alpha</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -286,7 +286,7 @@
             <dependency>
                 <groupId>io.opentelemetry.instrumentation</groupId>
                 <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
-                <version>${version.opentelemetry.alpha}</version>
+                <version>${version.opentelemetry}</version>
             </dependency>
 
             <!-- Kafka runtime libs -->
