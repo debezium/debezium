@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -20,6 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -27,6 +29,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -94,6 +97,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
+        SignalProcessor<OraclePartition, OracleOffsetContext> signalProcessor = new SignalProcessor<>(
+                OracleConnector.class, connectorConfig, Map.of(),
+                getAvailableSignalChannels(),
+                DocumentReader.defaultReader(),
+                previousOffsets);
+
         EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -110,10 +119,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
-                schemaNameAdjuster);
+                schemaNameAdjuster,
+                signalProcessor);
 
         final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
                 connectorConfig);
+
+        dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
         ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
@@ -124,7 +136,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                         streamingMetrics),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
-                schema);
+                schema, signalProcessor);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 

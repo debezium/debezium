@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,6 +27,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -43,7 +48,8 @@ import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.StopSnapshot;
+import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
@@ -53,6 +59,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
+    private static final int PARTITION_NO = 0;
+    private static final String SERVER_NAME = "test_server";
+
+    protected static KafkaCluster kafka;
 
     protected abstract Class<T> connectorClass();
 
@@ -313,6 +323,35 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal(tableDataCollectionId());
     }
 
+    protected void sendAdHocKafkaSnapshotSignal() throws ExecutionException, InterruptedException {
+        sendExecuteSnapshotKafkaSignal(tableDataCollectionId());
+    }
+
+    protected void sendExecuteSnapshotKafkaSignal(String fullTableNames) throws ExecutionException, InterruptedException {
+        String signalValue = String.format(
+                "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
+                fullTableNames);
+        sendKafkaSignal(signalValue);
+    }
+
+    protected String getSignalsTopic() {
+        return "signals_topic";
+    }
+
+    protected void sendKafkaSignal(String signalValue) throws ExecutionException, InterruptedException {
+        final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(getSignalsTopic(), PARTITION_NO, SERVER_NAME, signalValue);
+
+        final Configuration signalProducerConfig = Configuration.create()
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "signals")
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .build();
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(signalProducerConfig.asProperties())) {
+            producer.send(executeSnapshotSignal).get();
+        }
+    }
+
     protected void sendPauseSignal() {
         try (JdbcConnection connection = databaseConnection()) {
             String query = String.format("INSERT INTO %s VALUES('test-pause', 'pause-snapshot', '')", signalTableName());
@@ -402,6 +441,34 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void inserts() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
+                        tableName(),
+                        connection.quotedColumnIdString(pkFieldName()),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void insertsWithKafkaSnapshotSignal() throws Exception {
         // Testing.Print.enable();
 
         populateTable();
@@ -624,6 +691,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithoutCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop
@@ -676,6 +746,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     @FixFor("DBZ-4271")
     public void stopCurrentIncrementalSnapshotWithAllCollectionsAndTakeNewNewIncrementalSnapshotAfterRestart() throws Exception {
+
+        // Testing.Print.enable();
+
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
         // We will use chunk size of 1 to have very small batches to guarantee that when we stop

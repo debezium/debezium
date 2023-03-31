@@ -10,6 +10,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -17,18 +18,25 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Collect;
+import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
@@ -51,11 +59,35 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         TestHelper.execute(SETUP_TABLES_STMT);
     }
 
+    @BeforeClass
+    public static void startKafka() throws Exception {
+        File dataDir = Testing.Files.createTestingDirectory("signal_cluster");
+        Testing.Files.delete(dataDir);
+        kafka = new KafkaCluster().usingDirectory(dataDir)
+                .deleteDataPriorToStartup(true)
+                .deleteDataUponShutdown(true)
+                .addBrokers(1)
+                .withKafkaConfiguration(Collect.propertiesOf(
+                        "auto.create.topics.enable", "false",
+                        "zookeeper.session.timeout.ms", "20000"))
+                .startup();
+
+        kafka.createTopic("signals_topic", 1, 1);
+    }
+
+    @AfterClass
+    public static void stopKafka() {
+        if (kafka != null) {
+            kafka.shutdown();
+        }
+    }
+
     @After
     public void after() {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
+
     }
 
     protected Configuration.Builder config() {
@@ -65,6 +97,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
                 // DBZ-4272 required to allow dropping columns just before an incremental snapshot
                 .with("database.autosave", "conservative");
@@ -83,6 +119,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
@@ -140,6 +177,48 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         startConnector();
 
         sendAdHocSnapshotSignal("s1.a4");
+
+        Thread.sleep(5000);
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                final int id = i + ROW_COUNT + 1;
+                final int pk1 = id / 1000;
+                final int pk2 = (id / 100) % 10;
+                final int pk3 = (id / 10) % 10;
+                final int pk4 = id % 10;
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
+                        "s1.a4",
+                        pk1,
+                        pk2,
+                        pk3,
+                        pk4,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.a4",
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void inserts4PksWithKafkaSignal() throws Exception {
+        // Testing.Print.enable();
+
+        populate4PkTable();
+        startConnector();
+
+        sendExecuteSnapshotKafkaSignal("s1.a4");
 
         Thread.sleep(5000);
         try (JdbcConnection connection = databaseConnection()) {

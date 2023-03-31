@@ -8,14 +8,11 @@ package io.debezium.connector.mysql;
 import static io.debezium.connector.mysql.GtidSet.GTID_DELIMITER;
 
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mysql.signal.KafkaSignal;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -29,7 +26,6 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
     private GtidSet lowWatermark;
     private GtidSet highWatermark;
     private Long signalOffset;
-    private final Queue<KafkaSignal> kafkaSignals = new ConcurrentLinkedQueue<>();
     public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
 
     public MySqlReadOnlyIncrementalSnapshotContext() {
@@ -139,18 +135,6 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends AbstractIncremen
         Map<String, Object> snapshotOffset = super.store(offset);
         snapshotOffset.put(SIGNAL_OFFSET, signalOffset);
         return snapshotOffset;
-    }
-
-    public void enqueueKafkaSignal(KafkaSignal signal) {
-        kafkaSignals.add(signal);
-    }
-
-    public KafkaSignal getKafkaSignals() {
-        return kafkaSignals.poll();
-    }
-
-    public boolean hasKafkaSignals() {
-        return !kafkaSignals.isEmpty();
     }
 
     public boolean watermarksChanged() {

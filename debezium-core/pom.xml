@@ -123,6 +123,11 @@
             <artifactId>apicurio-registry-utils-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <resources>
@@ -132,6 +137,7 @@
                 <directory>src/main/resources</directory>
                 <includes>
                     <include>**/build.properties</include>
+                    <include>**/*</include>
                 </includes>
             </resource>
         </resources>

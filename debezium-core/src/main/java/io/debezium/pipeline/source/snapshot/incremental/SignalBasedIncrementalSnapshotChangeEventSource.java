@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
+import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;

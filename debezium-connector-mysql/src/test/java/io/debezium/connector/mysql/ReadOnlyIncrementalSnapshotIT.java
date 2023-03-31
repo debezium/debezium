@@ -37,11 +37,11 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.junit.SkipTestDependingOnGtidModeRule;
 import io.debezium.connector.mysql.junit.SkipWhenGtidModeIs;
-import io.debezium.connector.mysql.signal.KafkaSignalThread;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
@@ -87,13 +87,14 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         return super.config()
                 .with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(MySqlConnectorConfig.READ_ONLY_CONNECTION, true)
-                .with(KafkaSignalThread.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalThread.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
     }
 
-    private String getSignalsTopic() {
+    protected String getSignalsTopic() {
         return DATABASE.getDatabaseName() + "signals_topic";
     }
 

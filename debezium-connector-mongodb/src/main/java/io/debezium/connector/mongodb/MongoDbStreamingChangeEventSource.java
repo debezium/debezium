@@ -50,6 +50,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
+    private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
@@ -66,13 +67,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
+    public void init(MongoDbOffsetContext offsetContext) {
+
+        this.effectiveOffset = offsetContext == null ? emptyOffsets(connectorConfig) : offsetContext;
+    }
+
+    @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
             throws InterruptedException {
         final List<ReplicaSet> validReplicaSets = replicaSets.all();
-
-        if (offsetContext == null) {
-            offsetContext = emptyOffsets(connectorConfig);
-        }
 
         if (validReplicaSets.size() == 1) {
             // Streams the replica-set changes in the current thread
@@ -82,6 +85,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             // Starts a thread for each replica-set and executes the streaming process
             streamChangesForReplicaSets(context, partition, validReplicaSets, offsetContext);
         }
+    }
+
+    @Override
+    public MongoDbOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     private void streamChangesForReplicaSet(ChangeEventSourceContext context, MongoDbPartition partition,
@@ -129,8 +137,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private void readChangeStream(MongoClient client, ReplicaSet replicaSet, ChangeEventSourceContext context,
                                   MongoDbOffsetContext offsetContext) {
-        final ReplicaSetPartition rsPartition = offsetContext.getReplicaSetPartition(replicaSet);
-        final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
+        final ReplicaSetPartition rsPartition = effectiveOffset.getReplicaSetPartition(replicaSet);
+        final ReplicaSetOffsetContext rsOffsetContext = effectiveOffset.getReplicaSetOffsetContext(replicaSet);
 
         LOGGER.info("Reading change stream for '{}'", replicaSet);
 

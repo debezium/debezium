@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.signal;
+package io.debezium.pipeline.signal.actions.snapshotting;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -39,7 +41,7 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
     }
 
     @Override
-    public boolean arrived(Signal.Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         final List<String> dataCollections = getDataCollections(signalPayload.data);
         final SnapshotType type = getSnapshotType(signalPayload.data);
 
@@ -47,7 +49,7 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource()
-                        .stopSnapshot(signalPayload.partition, dataCollections, signalPayload.offsetContext);
+                        .stopSnapshot(signalPayload.partition, signalPayload.offsetContext, signalPayload.additionalData, dataCollections);
                 break;
         }
 

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.pipeline.signal;
+package io.debezium.pipeline.signal.actions.snapshotting;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +15,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.signal.Signal.Payload;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
@@ -41,7 +42,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     }
 
     @Override
-    public boolean arrived(Payload<P> signalPayload) throws InterruptedException {
+    public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
         final List<String> dataCollections = getDataCollections(signalPayload.data);
         if (dataCollections == null) {
             return false;
@@ -54,7 +55,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload.partition, dataCollections, additionalCondition, surrogateKey, signalPayload.offsetContext);
+                        signalPayload.partition, signalPayload.offsetContext, signalPayload.additionalData, dataCollections, additionalCondition, surrogateKey);
                 break;
         }
         return true;

@@ -62,7 +62,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
-    private final RelationalDatabaseConnectorConfig connectorConfig;
+    protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
@@ -98,6 +98,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Closing Window {}", context.toString());
         if (!context.closeWindow(id)) {
             return;
         }
@@ -461,8 +462,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(P partition, List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey,
-                                                 OffsetContext offsetContext)
+    public void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
+                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
@@ -483,8 +484,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(P partition, List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        LOGGER.trace("Stopping incremental snapshot with context {}", context);
         if (context.snapshotRunning()) {
             if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
                 LOGGER.info("Stopping incremental snapshot.");

@@ -94,6 +94,16 @@ public class ReplicaSets {
     }
 
     /**
+     * Get the ReplicaSet for the incremental snapshot
+     *
+     * @return in case of a ReplicaSet deployments return the only ReplicaSet available.
+     * In case of a Sharded Cluster, for incremental snapshot, only the connection.mode=sharded is supported. In this case only one ReplicaSet is present.
+     */
+    public ReplicaSet getIncrementalSnapshotReplicaSet() {
+        return all().get(0);
+    }
+
+    /**
      * Determine if one or more replica sets has been added or removed since the prior state.
      *
      * @param priorState the prior state of the replica sets; may be null

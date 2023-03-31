@@ -120,6 +120,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
+    private MySqlOffsetContext effectiveOffsetContext;
 
     public static class BinlogPosition {
         final String filename;
@@ -871,6 +872,14 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     @Override
+    public void init(MySqlOffsetContext offsetContext) {
+
+        this.effectiveOffsetContext = offsetContext != null
+                ? offsetContext
+                : MySqlOffsetContext.initial(connectorConfig);
+    }
+
+    @Override
     public void execute(ChangeEventSourceContext context, MySqlPartition partition, MySqlOffsetContext offsetContext) throws InterruptedException {
         if (!connectorConfig.getSnapshotMode().shouldStream()) {
             LOGGER.info("Streaming is disabled for snapshot mode {}", connectorConfig.getSnapshotMode());
@@ -880,10 +889,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             taskContext.getSchema().assureNonEmptySchema();
         }
         final Set<Operation> skippedOperations = connectorConfig.getSkippedOperations();
-
-        final MySqlOffsetContext effectiveOffsetContext = offsetContext != null
-                ? offsetContext
-                : MySqlOffsetContext.initial(connectorConfig);
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, (event) -> handleServerStop(effectiveOffsetContext, event));
@@ -1043,6 +1048,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 LOGGER.info("Exception while stopping binary log client", e);
             }
         }
+    }
+
+    @Override
+    public MySqlOffsetContext getOffsetContext() {
+        return effectiveOffsetContext;
     }
 
     private SSLSocketFactory getBinlogSslSocketFactory(MySqlConnectorConfig connectorConfig, MySqlConnection connection) {
