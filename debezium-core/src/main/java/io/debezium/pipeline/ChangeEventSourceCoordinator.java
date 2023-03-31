@@ -24,6 +24,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -63,6 +64,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ExecutorService executor;
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
+    protected final SignalProcessor<P, O> signalProcessor;
 
     private volatile boolean running;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
@@ -75,7 +77,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
-                                        DatabaseSchema<?> schema) {
+                                        DatabaseSchema<?> schema,
+                                        SignalProcessor<P, O> signalProcessor) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -83,6 +86,15 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
+        this.signalProcessor = signalProcessor;
+    }
+
+    public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
+                                        CommonConnectorConfig connectorConfig,
+                                        ChangeEventSourceFactory<P, O> changeEventSourceFactory,
+                                        ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
+                                        DatabaseSchema<?> schema) {
+        this(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory, changeEventSourceMetricsFactory, eventDispatcher, schema, null);
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -119,12 +131,18 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     streamingConnected(false);
                 }
             });
+
+            getSignalProcessor(previousOffsets).ifPresent(SignalProcessor::start); // this will run on a separate thread
         }
         finally {
             if (previousLogContext.get() != null) {
                 previousLogContext.get().restore();
             }
         }
+    }
+
+    public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) { // Signal processing only work with one partition
+        return previousOffset == null || previousOffset.getOffsets().size() == 1 ? Optional.ofNullable(signalProcessor) : Optional.empty();
     }
 
     protected void executeChangeEventSources(CdcSourceTaskContext taskContext, SnapshotChangeEventSource<P, O> snapshotSource, Offsets<P, O> previousOffsets,
@@ -135,6 +153,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
+
+        getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(snapshotResult.getOffset()));
+
+        LOGGER.debug("Snapshot result {}", snapshotResult);
 
         if (running && snapshotResult.isCompletedOrSkipped()) {
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
@@ -179,7 +201,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
-        streamingSource.init();
+        streamingSource.init(offsetContext);
+        getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));
 
         final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);
@@ -212,6 +235,11 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 Thread.interrupted();
                 executor.shutdownNow();
                 executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            }
+
+            Optional<SignalProcessor<P, O>> processor = getSignalProcessor(previousOffsets);
+            if (processor.isPresent()) {
+                processor.get().stop();
             }
 
             eventDispatcher.close();

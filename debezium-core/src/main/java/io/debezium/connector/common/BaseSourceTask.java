@@ -14,10 +14,12 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -32,6 +34,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -57,7 +60,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         RESTARTING,
         RUNNING,
         INITIAL,
-        STOPPED
+        STOPPED;
     }
 
     private final AtomicReference<State> state = new AtomicReference<>(State.INITIAL);
@@ -85,13 +88,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private Duration retriableRestartWait;
 
     private final ElapsedTimeStrategy pollOutputDelay;
-    private final Clock clock = Clock.system();
 
+    private final Clock clock = Clock.system();
     @SingleThreadAccess("polling thread")
     private Instant previousOutputInstant;
 
     @SingleThreadAccess("polling thread")
     private int previousOutputBatchSize;
+
+    private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
@@ -130,6 +135,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         finally {
             stateLock.unlock();
         }
+    }
+
+    public List<SignalChannelReader> getAvailableSignalChannels() {
+        return availableSignalChannels.stream().map(ServiceLoader.Provider::get).collect(Collectors.toList());
     }
 
     protected Configuration withMaskedSensitiveOptions(Configuration config) {

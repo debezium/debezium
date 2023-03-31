@@ -79,6 +79,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      */
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
     private Lsn lastCompletelyProcessedLsn;
+    private PostgresOffsetContext effectiveOffset;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -98,8 +99,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void init() {
+    public void init(PostgresOffsetContext offsetContext) {
+
+        this.effectiveOffset = offsetContext == null ? PostgresOffsetContext.initialContext(connectorConfig, connection, clock) : offsetContext;
         // refresh the schema so we have a latest view of the DB tables
+        initSchema();
+    }
+
+    private void initSchema() {
         try {
             taskContext.refreshSchema(connection, true);
         }
@@ -122,19 +129,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // instead of the last position in the database
         boolean hasStartLsnStoredInContext = offsetContext != null;
 
-        if (!hasStartLsnStoredInContext) {
-            offsetContext = PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
-        }
-
         try {
             final WalPositionLocator walPosition;
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
-                final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
-                final Operation lastProcessedMessageType = offsetContext.lastProcessedMessageType();
+                final Lsn lsn = this.effectiveOffset.lastCompletelyProcessedLsn() != null ? this.effectiveOffset.lastCompletelyProcessedLsn()
+                        : this.effectiveOffset.lsn();
+                final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn, lastProcessedMessageType);
+                walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -148,11 +152,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
-            init();
+            initSchema();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
-            if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+            if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                 connection.commit();
             }
 
@@ -161,7 +165,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (walPosition.searchingEnabled()) {
                 searchWalPosition(context, stream, walPosition);
                 try {
-                    if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
+                    if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
                         connection.commit();
                     }
                 }
@@ -175,7 +179,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
-            processMessages(context, partition, offsetContext, stream);
+            processMessages(context, partition, this.effectiveOffset, stream);
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
@@ -426,6 +430,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         catch (SQLException e) {
             throw new ConnectException(e);
         }
+    }
+
+    @Override
+    public PostgresOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     /**

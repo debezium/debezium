@@ -23,7 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.ConnectionMode;
 import io.debezium.data.Envelope;
 
-public class ShardedMongoConnectorIT extends AbstractShardedMongoConnectorIT {
+public class ShardedMongoDbConnectorIT extends AbstractShardedMongoConnectorIT {
 
     public static final String TOPIC_PREFIX = "mongo";
     private static final int INIT_DOCUMENT_COUNT = 1000;

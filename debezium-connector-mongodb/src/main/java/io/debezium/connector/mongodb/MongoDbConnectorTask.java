@@ -24,10 +24,12 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
+import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
@@ -97,6 +99,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
+            SignalProcessor<MongoDbPartition, MongoDbOffsetContext> signalProcessor = new SignalProcessor<>(
+                    MongoDbConnector.class, connectorConfig, Map.of(),
+                    getAvailableSignalChannels(),
+                    DocumentReader.defaultReader(),
+                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)));
+
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     taskContext.topicNamingStrategy(),
@@ -105,7 +113,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     taskContext.filters().collectionFilter()::test,
                     DataChangeEvent::new,
                     metadataProvider,
-                    schemaNameAdjuster);
+                    schemaNameAdjuster,
+                    signalProcessor);
+
+            dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     // TODO pass offsets from all the partitions
@@ -123,7 +134,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             schema),
                     new MongoDbChangeEventSourceMetricsFactory(),
                     dispatcher,
-                    schema);
+                    schema,
+                    signalProcessor);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

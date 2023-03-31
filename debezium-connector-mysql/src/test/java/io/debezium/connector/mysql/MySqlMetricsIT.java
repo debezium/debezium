@@ -152,6 +152,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, String.format("%s", TABLE_NAME))
                         .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                        .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                         .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_TABLE_NAME)
                         .build());
 

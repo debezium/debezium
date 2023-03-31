@@ -21,6 +21,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -51,9 +52,10 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  ChangeEventSourceMetricsFactory<SqlServerPartition> changeEventSourceMetricsFactory,
                                                  EventDispatcher<SqlServerPartition, ?> eventDispatcher,
                                                  DatabaseSchema<?> schema,
-                                                 Clock clock) {
+                                                 Clock clock,
+                                                 SignalProcessor<SqlServerPartition, SqlServerOffsetContext> signalProcessor) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor);
         this.clock = clock;
         this.pollInterval = connectorConfig.getPollInterval();
     }
@@ -79,6 +81,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
 
             if (snapshotResult.isCompletedOrSkipped()) {
                 streamingOffsets.getOffsets().put(partition, snapshotResult.getOffset());
+                if (previousOffsets.getOffsets().size() == 1) {
+                    signalProcessor.setContext(snapshotResult.getOffset());
+                }
             }
         }
 

@@ -124,6 +124,13 @@
             <artifactId>apicurio-registry-utils-converter</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Used for unit testing with Kafka -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_${version.kafka.scala}</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
