@@ -3293,8 +3293,10 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 [[mysql-streaming-metrics]]
 === Streaming metrics
 
-Transaction-related attributes are available only if binlog event buffering is enabled. See xref:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
-
+Transaction-related attributes are available only if binlog event buffering is enabled. 
+ifdef::community[]
+See xref:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
+endif::community[]
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
