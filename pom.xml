@@ -177,7 +177,6 @@
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
-
     </modules>
 
     <distributionManagement>
