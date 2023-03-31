@@ -7,6 +7,7 @@ package io.debezium.outbox.quarkus.deployment;
 
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmBasicAttributeType;
@@ -172,7 +173,9 @@ public class OutboxEventHbmWriter {
             attribute.setTypeAttribute("converted::" + config.timestamp.converter.get());
         }
         else {
-            attribute.setTypeAttribute("Instant");
+            // Hibernate 6.x expects full qualified class names for this whereas Hibernate 5.x had
+            // a registered type for "Instant" that did the direct mapping without package names.
+            attribute.setTypeAttribute(Instant.class.getName());
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
