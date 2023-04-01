@@ -62,7 +62,7 @@ oc create -n __<namespace>__ -f __<kafkaConnector>__.yaml
 +
 For example,
 +
-[source,shell,options="nowrap"]
+[source,shell,options="nowrap",subs="+attributes"]
 ----
 oc create -n debezium -f {context}-inventory-connector.yaml
 ----
