@@ -540,13 +540,14 @@ public class TestHelper {
         final String result = new org.infinispan.configuration.cache.ConfigurationBuilder()
                 .persistence()
                 .passivation(false)
-                .addSingleFileStore()
-                .segmented(false)
+                .addSoftIndexFileStore()
+                .segmented(true)
                 .preload(true)
                 .shared(false)
                 .fetchPersistentState(true)
                 .ignoreModifications(false)
-                .location("./target/data")
+                .dataLocation("./target/data")
+                .indexLocation("./target/data")
                 .build()
                 .toXMLString(cacheName);
         return result;
