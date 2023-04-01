@@ -343,15 +343,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
-        final AbstractTransaction transaction = getTransactionCache().get(transactionId);
+        final T transaction = getTransactionCache().get(transactionId);
         if (transaction == null && !isRecentlyProcessed(transactionId)) {
             getTransactionCache().put(transactionId, createTransaction(row));
             metrics.setActiveTransactions(getTransactionCache().size());
         }
         else if (transaction != null && !isRecentlyProcessed(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-            transaction.start();
+            resetTransactionToStart(transaction);
         }
+    }
+
+    protected void resetTransactionToStart(T transaction) {
+        transaction.start();
     }
 
     /**

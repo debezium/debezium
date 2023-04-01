@@ -235,6 +235,13 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     }
 
     @Override
+    protected void resetTransactionToStart(InfinispanTransaction transaction) {
+        super.resetTransactionToStart(transaction);
+        // Flush the change created by the super class to the transaction cache
+        getTransactionCache().put(transaction.getTransactionId(), transaction);
+    }
+
+    @Override
     protected void handleSchemaChange(LogMinerEventRow row) throws InterruptedException {
         super.handleSchemaChange(row);
         if (row.getTableName() != null) {
