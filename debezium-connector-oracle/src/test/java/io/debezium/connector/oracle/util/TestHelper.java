@@ -561,7 +561,7 @@ public class TestHelper {
         return "<distributed-cache name=\"" + cacheName + "\" statistics=\"true\">\n" +
                 "\t<encoding media-type=\"application/x-protostream\"/>\n" +
                 "\t<persistence passivation=\"false\">\n" +
-                "\t\t<file-store fetch-state=\"true\" read-only=\"false\" preload=\"true\" shared=\"false\" segmented=\"false\"/>\n" +
+                "\t\t<file-store read-only=\"false\" preload=\"true\" shared=\"false\" segmented=\"true\"/>\n" +
                 "\t</persistence>\n" +
                 "</distributed-cache>";
     }
