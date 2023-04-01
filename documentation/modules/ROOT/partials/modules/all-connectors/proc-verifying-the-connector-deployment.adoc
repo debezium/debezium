@@ -111,7 +111,7 @@ connect-cluster-configs                                                 debezium
 connect-cluster-offsets                                                 debezium-kafka-cluster   25           1                    True
 connect-cluster-status                                                  debezium-kafka-cluster   5            1                    True
 consumer-offsets---84e7a678d08f4bd226872e5cdd4eb527fadc1c6a             debezium-kafka-cluster   50           1                    True
-inventory-connector-{context}.inventory--a96f69b23d6118ff415f772679da623fbbb99421                    debezium-kafka-cluster   1            1                    True
+inventory-connector-{context}--a96f69b23d6118ff415f772679da623fbbb99421                               debezium-kafka-cluster   1            1                    True
 inventory-connector-{context}.inventory.addresses---1b6beaf7b2eb57d177d92be90ca2b210c9a56480          debezium-kafka-cluster   1            1                    True
 inventory-connector-{context}.inventory.customers---9931e04ec92ecc0924f4406af3fdace7545c483b          debezium-kafka-cluster   1            1                    True
 inventory-connector-{context}.inventory.geom---9f7e136091f071bf49ca59bf99e86c713ee58dd5               debezium-kafka-cluster   1            1                    True
