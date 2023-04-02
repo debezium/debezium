@@ -270,7 +270,17 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
         final MySqlOffsetContext offsetContext = MySqlOffsetContext.initial(connectorConfig);
         ctx.offset = offsetContext;
-        LOGGER.info("Read binlog position of MySQL primary server");
+        if (connectorConfig.getSnapshotMode().shouldStream()) {
+            LOGGER.info("Read binlog position of MySQL primary server");
+            setBinlogPosition(offsetContext);
+        }
+        else {
+            LOGGER.info("Skipped retrieving bin log as streaming CDC wasn't requested");
+        }
+        tryStartingSnapshot(ctx);
+    }
+
+    private void setBinlogPosition(MySqlOffsetContext offsetContext) throws SQLException {
         final String showMasterStmt = "SHOW MASTER STATUS";
         connection.query(showMasterStmt, rs -> {
             if (rs.next()) {
@@ -293,7 +303,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                         + "'. Make sure your server is correctly configured");
             }
         });
-        tryStartingSnapshot(ctx);
     }
 
     private void addSchemaEvent(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
