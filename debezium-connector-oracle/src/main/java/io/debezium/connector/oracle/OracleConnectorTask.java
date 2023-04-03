@@ -61,7 +61,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 () -> new OracleConnection(jdbcConfig));
         jdbcConnection = connectionFactory.mainConnection();
 
-        validateRedoLogConfiguration();
+        validateRedoLogConfiguration(connectorConfig);
 
         OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
@@ -171,14 +171,25 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return OracleConnectorConfig.ALL_FIELDS;
     }
 
-    private void validateRedoLogConfiguration() {
+    private void validateRedoLogConfiguration(OracleConnectorConfig config) {
         // Check whether the archive log is enabled.
         final boolean archivelogMode = jdbcConnection.isArchiveLogMode();
         if (!archivelogMode) {
-            throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
-                    + "required for this connector to work properly. Change the Oracle configuration to use a "
-                    + "LOG_MODE=ARCHIVELOG and restart the connector.");
+            if (redoLogRequired(config)) {
+                throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
+                        + "required for this connector to work properly. Change the Oracle configuration to use a "
+                        + "LOG_MODE=ARCHIVELOG and restart the connector.");
+            }
+            else {
+                LOGGER.warn("Failed the archive log check but continuing as redo log isn't strictly required");
+            }
         }
+    }
+
+    private static boolean redoLogRequired(OracleConnectorConfig config) {
+        // Check whether our connector configuration relies on the redo log and should fail fast if it isn't configured
+        return config.getSnapshotMode().shouldStream() ||
+                config.getLogMiningTransactionSnapshotBoundaryMode() == OracleConnectorConfig.TransactionSnapshotBoundaryMode.ALL;
     }
 
     private void validateAndLoadSchemaHistory(OracleConnectorConfig config, OraclePartition partition, OracleOffsetContext offset, OracleDatabaseSchema schema) {

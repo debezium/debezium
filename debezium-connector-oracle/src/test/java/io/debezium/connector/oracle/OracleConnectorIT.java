@@ -309,6 +309,23 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldSkipCheckingArchiveLogIfNoCdc() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.SKIP)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        LogInterceptor logInterceptor = new LogInterceptor(OracleConnectorTask.class);
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        stopConnector();
+
+        assertThat(logInterceptor.containsWarnMessage("Failed the archive log check but continuing as redo log isn't strictly required")).isTrue();
+    }
+
+    @Test
     public void shouldContinueWithStreamingAfterSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
