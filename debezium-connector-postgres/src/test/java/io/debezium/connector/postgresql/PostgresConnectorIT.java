@@ -274,7 +274,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         PostgresConnector connector = new PostgresConnector();
         connector.validate(config.asMap());
 
-        assertThat(logInterceptor.containsMessage("Skipped WAL_LEVEL check as CDC was not requested")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Skipped WAL_LEVEL check as CDC was not requested")).isTrue();
     }
 
     @Test
