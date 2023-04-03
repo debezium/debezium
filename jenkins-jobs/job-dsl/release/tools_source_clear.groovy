@@ -1,6 +1,10 @@
 // Job definition to test PostgreSQL connector against different PostgreSQL versions
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
 
-freeStyleJob('tools-debezium-source-clear') {
+freeStyleJob('release/tools-debezium-source-clear') {
 
     displayName('Vulnerability scan')
     description('Executes SourceClear vulnerability scan of Debezium sources and binaries')

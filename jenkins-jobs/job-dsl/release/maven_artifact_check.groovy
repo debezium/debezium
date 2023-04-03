@@ -1,4 +1,9 @@
-freeStyleJob('prepare-maven-artifact-check') {
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
+
+freeStyleJob('release/prepare-maven-artifact-check') {
     displayName('Maven artifact check')
     description('Verify integrity of maven artifact')
     label('Slave')

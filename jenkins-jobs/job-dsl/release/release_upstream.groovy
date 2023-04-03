@@ -1,4 +1,9 @@
-pipelineJob('release-debezium-upstream') {
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
+
+pipelineJob('release/release-debezium-upstream') {
     displayName('Debezium Release')
     description('Builds Debezium and deploys into Maven Central and Docker Hub')
 
@@ -38,7 +43,7 @@ pipelineJob('release-debezium-upstream') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/release-pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/release/release-pipeline.groovy'))
         }
     }
 }

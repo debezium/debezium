@@ -1,4 +1,9 @@
-pipelineJob('release-deploy-container-images') {
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
+
+pipelineJob('release/release-deploy-container-images') {
     displayName('Debezium Deploy Container Images')
     description('Build and deploy Container images to the registry')
 
@@ -28,7 +33,7 @@ pipelineJob('release-deploy-container-images') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/build_debezium_images_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/release/build_debezium_images_pipeline.groovy'))
         }
     }
 }
