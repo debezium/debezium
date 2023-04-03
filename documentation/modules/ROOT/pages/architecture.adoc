@@ -30,13 +30,13 @@ As shown in the image, the {prodname} connectors for MySQL and PostgresSQL are d
 Kafka Connect operates as a separate service besides the Kafka broker.
 
 By default, changes from one database table are written to a Kafka topic whose name corresponds to the table name.
-If needed, you can adjust the destination topic name by configuring {prodname}'s xref:{link-topic-routing}#topic-routing[topic routing transformation]. For example, you can:
+If needed, you can adjust the destination topic name by configuring {prodname}'s {link-prefix}:{link-topic-routing}#topic-routing[topic routing transformation]. For example, you can:
 
 * Route records to a topic whose name is different from the table's name
 * Stream change event records for multiple tables into a single topic
 
 After change event records are in Apache Kafka, different connectors in the Kafka Connect eco-system can stream the records to other systems and databases such as Elasticsearch, data warehouses and analytics systems, or caches such as Infinispan.
-Depending on the chosen sink connector, you might need to configure {prodname}'s xref:{link-event-flattening}#new-record-state-extraction[new record state extraction] transformation. This Kafka Connect SMT propagates the `after` structure from {prodname}'s change event to the sink connector. This is in place of the verbose change event record that is propagated by default.
+Depending on the chosen sink connector, you might need to configure {prodname}'s {link-prefix}:{link-event-flattening}#new-record-state-extraction[new record state extraction] transformation. This Kafka Connect SMT propagates the `after` structure from {prodname}'s change event to the sink connector. This is in place of the verbose change event record that is propagated by default.
 
 ifdef::community[]
 == {prodname} Server
