@@ -1,6 +1,10 @@
 // Job definition to test PostgreSQL connector against different PostgreSQL versions
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
 
-freeStyleJob('release-debezium-nightly-image') {
+freeStyleJob('release/release-debezium-nightly-image') {
 
     displayName('Debezium Nightly Image')
     description('Build and deploy nightly image to the registry')

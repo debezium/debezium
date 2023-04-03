@@ -1,4 +1,9 @@
-pipelineJob('release-debezium-stage-prod') {
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
+
+pipelineJob('release/release-debezium-stage-prod') {
     displayName('Debezium Build Product Artifacts')
     description('Builds and uploads product artifacts into a stage location')
 
@@ -28,7 +33,7 @@ pipelineJob('release-debezium-stage-prod') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/prod-release-pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/release/prod-release-pipeline.groovy'))
         }
     }
 }

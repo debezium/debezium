@@ -1,4 +1,9 @@
-pipelineJob('release-deploy_snapshots_pipeline') {
+folder("release") {
+    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
+    displayName("Release")
+}
+
+pipelineJob('release/release-deploy_snapshots_pipeline') {
     displayName('Debezium Deploy Snapshots')
     description('Deploy -SNAPSHOT versions to Maven Central')
 
@@ -29,7 +34,7 @@ pipelineJob('release-deploy_snapshots_pipeline') {
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/deploy_snapshots_pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/pipelines/release/deploy_snapshots_pipeline.groovy'))
         }
     }
 }
