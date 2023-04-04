@@ -141,7 +141,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                     "SHOW wal_level",
                     connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
             if (!"logical".equals(walLevel)) {
-                throw new SQLException("Postgres server wal_level property must be \\\"logical\\\" but is: \" + walLevel");
+                throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
             }
         }
         else {
