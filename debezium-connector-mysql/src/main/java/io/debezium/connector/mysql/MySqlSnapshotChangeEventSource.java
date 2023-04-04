@@ -289,7 +289,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 }
             }
             else if (!connectorConfig.getSnapshotMode().shouldStream()) {
-                LOGGER.info("Failed retrieving binlog position, continuing as streaming CDC wasn't requested");
+                LOGGER.warn("Failed retrieving binlog position, continuing as streaming CDC wasn't requested");
             }
             else {
                 throw new DebeziumException("Cannot read the binlog filename and position via '" + showMasterStmt
