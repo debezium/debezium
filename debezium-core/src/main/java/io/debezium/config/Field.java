@@ -51,6 +51,8 @@ import io.debezium.util.Strings;
 public final class Field {
 
     public static final String INTERNAL_PREFIX = "internal.";
+    private static final String EMPTY_STRING = "";
+    private static final CharSequence SPACE = " ";
 
     /**
      * Create a set of fields.
@@ -1352,6 +1354,34 @@ public final class Field {
         }
         catch (DateTimeException e) {
             problems.accept(field, value, "A zone offset string representation is expected");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int notContainEmptyElements(Configuration config, Field field, ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.contains(EMPTY_STRING)) {
+            problems.accept(field, values, "not permitted empty string");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int notContainSpaceInAnyElements(Configuration config, Field field, ValidationOutput problems) {
+
+        if (!config.hasKey(field)) {
+            return 0;
+        }
+
+        List<String> values = config.getList(field);
+        if (values.stream().anyMatch(h -> h.contains(SPACE))) {
+            problems.accept(field, values, "some elements with not permitted space");
             return 1;
         }
         return 0;

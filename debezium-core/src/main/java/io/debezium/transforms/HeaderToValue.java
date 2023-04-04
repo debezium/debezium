@@ -29,7 +29,6 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -77,8 +76,8 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(
-                    CommonConnectorConfig::notContainSpaceInAnyElements,
-                    CommonConnectorConfig::notContainEmptyElements)
+                    Field::notContainSpaceInAnyElements,
+                    Field::notContainEmptyElements)
             .withDescription("Header names in the record whose values are to be copied or moved to record value.")
             .required();
 
@@ -87,8 +86,8 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(
-                    CommonConnectorConfig::notContainSpaceInAnyElements,
-                    CommonConnectorConfig::notContainEmptyElements)
+                    Field::notContainSpaceInAnyElements,
+                    Field::notContainEmptyElements)
             .withDescription(
                     "Field names, in the same order as the header names listed in the headers configuration property. Supports Struct nesting using dot notation.")
             .required();
