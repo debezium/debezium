@@ -68,14 +68,17 @@ public class PartitionRoutingTest {
     }
 
     @Test
-    public void whenPartitionPayloadFieldContainsElementWithASpaceAConfigExceptionIsThrew() {
+    public void spaceBetweenNestedFiledSeparatedWillBeCorrectManaged() {
 
-        assertThatThrownBy(() -> partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "source .table",
-                "partition.topic.num", 2)))
-                .isInstanceOf(ConfigException.class)
-                .hasMessageContaining(
-                        "Invalid value source .table for configuration partition.payload.field: The 'partition.payload.field' value is invalid: some elements with not permitted space");
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.field", "change . product",
+                "partition.topic.num", 2));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isZero();
     }
 
     @Test

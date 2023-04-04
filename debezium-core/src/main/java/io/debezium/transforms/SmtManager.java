@@ -5,11 +5,15 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.data.Envelope.Operation.MESSAGE;
+import static io.debezium.data.Envelope.Operation.TRUNCATE;
+
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +34,11 @@ public class SmtManager<R extends ConnectRecord<R>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SmtManager.class);
 
     public SmtManager(Configuration config) {
+    }
+
+    public static boolean isGenericOrTruncateMessage(SourceRecord originalRecord) {
+        return TRUNCATE.equals(Envelope.operationFor(originalRecord)) ||
+                MESSAGE.equals(Envelope.operationFor(originalRecord));
     }
 
     public boolean isValidEnvelope(final R record) {

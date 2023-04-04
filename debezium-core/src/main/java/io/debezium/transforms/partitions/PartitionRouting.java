@@ -8,9 +8,8 @@ package io.debezium.transforms.partitions;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
-import static io.debezium.data.Envelope.Operation.MESSAGE;
-import static io.debezium.data.Envelope.Operation.TRUNCATE;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,14 +18,13 @@ import java.util.stream.Collectors;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -51,8 +49,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(
-                    CommonConnectorConfig::notContainEmptyElements,
-                    CommonConnectorConfig::notContainSpaceInAnyElements)
+                    Field::notContainEmptyElements)
             .withDescription("Payload fields to use to calculate the partition. Supports Struct nesting using dot notation." +
                     "To access fields related to data collections, you can use: after, before or change, " +
                     "where 'change' is a special field that will automatically choose, based on operation, the 'after' or 'before'. " +
@@ -106,7 +103,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
         final Struct envelope = (Struct) originalRecord.value();
         try {
 
-            if (isToSkip((SourceRecord) originalRecord)) {
+            if (SmtManager.isGenericOrTruncateMessage((SourceRecord) originalRecord)) {
                 return originalRecord;
             }
 
@@ -128,19 +125,14 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
         }
         catch (Exception e) {
             LOGGER.error("Error occurred while processing message {}. Skipping SMT", envelope);
-            throw new ConnectException(String.format("Unprocessable message %s", envelope), e);
+            throw new DebeziumException(String.format("Unprocessable message %s", envelope), e);
         }
-    }
-
-    private static boolean isToSkip(SourceRecord originalRecord) {
-        return TRUNCATE.equals(Envelope.operationFor(originalRecord)) ||
-                MESSAGE.equals(Envelope.operationFor(originalRecord));
     }
 
     private Optional<Object> toValue(String fieldName, Struct envelope) {
 
         try {
-            String[] subFields = fieldName.split(NESTING_SEPARATOR);
+            String[] subFields = Arrays.stream(fieldName.split(NESTING_SEPARATOR)).map(String::trim).toArray(String[]::new);
 
             if (subFields.length == 1) {
                 return Optional.of(envelope.get(subFields[0]));
