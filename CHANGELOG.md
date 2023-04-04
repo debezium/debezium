@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.1.4.Final
+April 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12404213)
+
+### New features since 2.1.3.Final
+
+None
+
+
+### Breaking changes since 2.1.3.Final
+
+None
+
+
+### Fixes since 2.1.3.Final
+
+* java.lang.NullPointerException in MySQL connector with max.queue.size.in.bytes [DBZ-6104](https://issues.redhat.com/browse/DBZ-6104)
+* debezium-connector-mysql failed to parse serveral DDLs of 'CREATE TABLE' [DBZ-6124](https://issues.redhat.com/browse/DBZ-6124)
+* Zerofill property failed for different int types [DBZ-6185](https://issues.redhat.com/browse/DBZ-6185)
+* GRANT DELETE HISTORY couldn't be parsed in mariadb [DBZ-6186](https://issues.redhat.com/browse/DBZ-6186)
+* ddl parse failed for key partition table [DBZ-6188](https://issues.redhat.com/browse/DBZ-6188)
+* Use CHARSET for alterByConvertCharset clause [DBZ-6194](https://issues.redhat.com/browse/DBZ-6194)
+* Data loss upon connector restart [DBZ-6204](https://issues.redhat.com/browse/DBZ-6204)
+* DDL statement couldn't be parsed: no viable alternative at input 'GRANT APPLICATION_PASSWORD_ADMIN' [DBZ-6211](https://issues.redhat.com/browse/DBZ-6211)
+* ParsingException: DDL statement couldn't be parsed [DBZ-6217](https://issues.redhat.com/browse/DBZ-6217)
+* The CHARACTER/CHARACTER(p)/CHARACTER VARYING(p) data types not recognized as JDBC type CHAR [DBZ-6221](https://issues.redhat.com/browse/DBZ-6221)
+* MySQL singleDeleteStatement parser does not support table alias [DBZ-6243](https://issues.redhat.com/browse/DBZ-6243)
+* Missing GEOMETRY keyword which can be used as column name [DBZ-6250](https://issues.redhat.com/browse/DBZ-6250)
+* MariaDB's UUID column type cannot be parsed when scheme is loaded [DBZ-6255](https://issues.redhat.com/browse/DBZ-6255)
+* Multiplatform build of example-postres fails [DBZ-6258](https://issues.redhat.com/browse/DBZ-6258)
+* Add protoc version property to postgres connector pom.xml [DBZ-6261](https://issues.redhat.com/browse/DBZ-6261)
+* Table names with spaces are not correctly deserialized when using an Infinispan cache as the transaction buffer [DBZ-6273](https://issues.redhat.com/browse/DBZ-6273)
+* Transaction buffer state can become corrupted when using Infinispan cache with LOBs [DBZ-6275](https://issues.redhat.com/browse/DBZ-6275)
+
+
+### Other changes since 2.1.3.Final
+
+* Update connector configuration examples in deployment instructions  [DBZ-6153](https://issues.redhat.com/browse/DBZ-6153)
+* Insert missing Nebel annotations for Oracle connector FAQ topic [DBZ-6215](https://issues.redhat.com/browse/DBZ-6215)
+* Add metadata for MongoDB change streams topic [DBZ-6223](https://issues.redhat.com/browse/DBZ-6223)
+* Deprecate MongoDb 4.0 [DBZ-6246](https://issues.redhat.com/browse/DBZ-6246)
+* Fix broken link to Streams documentation in shared deployment files [DBZ-6263](https://issues.redhat.com/browse/DBZ-6263)
+* Update config example in Installing Debezium on OpenShift [DBZ-6267](https://issues.redhat.com/browse/DBZ-6267)
+* Address review feedback in downstream RHEL and OCP installation guides [DBZ-6272](https://issues.redhat.com/browse/DBZ-6272)
+* Infinispan cache configuration used by Oracle tests are not compatible with Infinispan 14.0.2 [DBZ-6274](https://issues.redhat.com/browse/DBZ-6274)
+* Upgrade MySQL JDBC driver to 8.0.32 [DBZ-6304](https://issues.redhat.com/browse/DBZ-6304)
+
+
+
 ## 2.1.3.Final
 March 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12400843)
 
