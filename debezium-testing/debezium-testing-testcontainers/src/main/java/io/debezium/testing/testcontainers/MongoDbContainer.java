@@ -65,12 +65,18 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
     public static final class Builder {
 
+        private DockerImageName imageName = IMAGE_NAME;
         private String name;
         private int port = 27017;
         private PortResolver portResolver = new RandomPortResolver();
         private String replicaSet;
         private Network network = Network.SHARED;
         private boolean skipDockerDesktopLogWarning = false;
+
+        public Builder imageName(DockerImageName imageName) {
+            this.imageName = imageName;
+            return this;
+        }
 
         public Builder name(String name) {
             this.name = name;
@@ -109,7 +115,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     }
 
     private MongoDbContainer(Builder builder) {
-        super(IMAGE_NAME);
+        super(builder.imageName);
         this.name = builder.name;
         this.replicaSet = builder.replicaSet;
         this.portResolver = builder.portResolver;
