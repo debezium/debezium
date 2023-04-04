@@ -388,6 +388,7 @@ Sebastian Bruckner
 Seo Jae-kwon
 Sergei Morozov
 Shane Paul
+Shantanu Sharma
 Sherafudheen PM
 Sheldon Fuchs
 Shichao An
@@ -424,6 +425,7 @@ Tom Billiet
 Tim Patterson
 Tomaz Lemos Fernandes
 Tommy Karlsson
+Tony Joseph
 Tony Rizko
 tooptoop4
 Tova Cohen
