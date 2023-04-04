@@ -177,8 +177,8 @@
 
             <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
             <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
                 <version>${version.mysql.driver}</version>
             </dependency>
             <dependency>
