@@ -1958,6 +1958,9 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL; <22>
   GRANT SELECT ON V_$TRANSACTION TO c##dbzuser CONTAINER=ALL; <23>
 
+  GRANT SELECT ON V_$MYSTAT TO c##dbzuser CONTAINER=ALL; <24>
+  GRANT SELECT ON V_$STATNAME TO c##dbzuser CONTAINER=ALL; <25>
+
   exit;
 ----
 
@@ -2031,7 +2034,7 @@ On newer versions of Oracle this is granted via the `LOGMINING` role but on olde
 This is required to interact with Oracle LogMiner.
 On newer versions of Oracle this is granted via the `LOGMINING` role but on older versions, this must be explicitly granted.
 
-|15 to 23
+|15 to 25
 |SELECT ON V_$....
 |Enables the connector to read these tables.
 The connector must be able to read information about the Oracle redo and archive logs, and the current transaction state, to prepare the Oracle LogMiner session.
