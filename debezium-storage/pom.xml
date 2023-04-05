@@ -24,5 +24,6 @@
         <module>debezium-storage-tests</module>
         <module>debezium-storage-rocketmq</module>
         <module>debezium-storage-azure-blob</module>
+        <module>debezium-storage-jdbc</module>
     </modules>
 </project>
