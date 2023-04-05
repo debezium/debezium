@@ -37,7 +37,7 @@ The following SMTs are provided by {prodname}:
 |Moves or copies headers into the record value.
 
 |xref:transformations/partition-routing.adoc[Partition Routing]
-|Re-routes records to specific partition based on configured payload fields.
+|Re-routes records to specific partitions based on configured payload fields.
 
 |===
 
