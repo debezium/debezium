@@ -8,7 +8,6 @@ on:
       - 2.*
     paths:
       - 'support/checkstyle/**'
-      - 'debezium-api/**'
       - 'debezium-ddl-parser/**'
       - 'debezium-assembly-descriptors/**'
       - 'debezium-core/**'
