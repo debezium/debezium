@@ -1209,6 +1209,10 @@ FEDERATED_ADMIN:                     'FEDERATED_ADMIN';
 READ_ONLY_ADMIN:                     'READ_ONLY_ADMIN';
 REPLICA:                             'REPLICA';
 REPLICATION_MASTER_ADMIN:            'REPLICATION_MASTER_ADMIN';
+MONITOR:                             'MONITOR';
+READ_ONLY:                           'READ_ONLY';
+REPLAY:                              'REPLAY';
+
 
 // Operators
 // Operators. Assigns
