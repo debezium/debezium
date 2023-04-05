@@ -9,7 +9,7 @@ import org.testcontainers.utility.DockerImageName;
 
 public final class ImageNames {
 
-    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
+    private static final String POSTGRES_IMAGE = "quay.io/debezium/postgres:15";
 
     public static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
             .asCompatibleSubstituteFor("postgres");

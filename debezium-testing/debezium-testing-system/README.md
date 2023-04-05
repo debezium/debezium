@@ -35,7 +35,7 @@ The following properties can be set to further configure image build
 | -----| ------------- | ----------- |
 | image.push.skip | true | Skips push to remote registry |
 | image.push.registry | quay.io | remote registry base |
-| image.name | debezium/kafka:${project.version}-${image.version.strimzi}-kafka-${version.kafka} | Name of built image |
+| image.name | quay.io/debezium/kafka:${project.version}-${image.version.strimzi}-kafka-${version.kafka} | Name of built image |
 | image.fullname | ${image.push.registry}/${image.name} | Full name of the built image |
 | image.base.name | strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka} | Base for built image |
 | image.version.strimzi | latest | Version of Strimzi Kafka image | 

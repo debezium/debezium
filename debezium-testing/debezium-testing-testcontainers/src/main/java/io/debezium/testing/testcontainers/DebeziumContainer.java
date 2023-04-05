@@ -40,8 +40,8 @@ import okhttp3.ResponseBody;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
-    private static final String DEBEZIUM_CONTAINER = "debezium/connect";
-    private static final String DEBEZIUM_STABLE_TAG = ContainerImageVersions.getStableVersion("debezium/connect");
+    private static final String DEBEZIUM_CONTAINER = "quay.io/debezium/connect";
+    private static final String DEBEZIUM_STABLE_TAG = ContainerImageVersions.getStableVersion("quay.io/debezium/connect");
     private static final String DEBEZIUM_NIGHTLY_TAG = "nightly";
 
     private static final int KAFKA_CONNECT_PORT = 8083;

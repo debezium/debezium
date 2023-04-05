@@ -78,13 +78,13 @@ public class DebeziumContainerTest {
 
     public static PostgreSQLContainer<?> postgresContainer =
             new PostgreSQLContainer<>(
-                    DockerImageName.parse("debezium/postgres:11")
+                    DockerImageName.parse("quay.io/debezium/postgres:15")
                         .asCompatibleSubstituteFor("postgres"))
                 .withNetwork(network)
                 .withNetworkAliases("postgres"); // <3>
 
     public static DebeziumContainer debeziumContainer =
-            new DebeziumContainer("debezium/connect:{debezium-version}")
+            new DebeziumContainer("quay.io/debezium/connect:{debezium-version}")
                 .withNetwork(network)
                 .withKafka(kafkaContainer)
                 .dependsOn(kafkaContainer); // <4>
@@ -99,7 +99,7 @@ public class DebeziumContainerTest {
 ----
 <1> Define a Docker network to be used by all the services
 <2> Set up a container for Apache Kafka
-<3> Set up a container for Postgres 11 (using {prodname}'s Postgres container image)
+<3> Set up a container for Postgres 15 (using {prodname}'s Postgres container image)
 <4> Set up a container for Kafka Connect with {prodname} {debezium-version}
 <5> Start all three containers
 
