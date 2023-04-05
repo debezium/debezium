@@ -49,7 +49,7 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
     @Before
     public void beforeEach() {
-        String mysqlImage = ContainerImageVersions.getStableImage("debezium/example-mysql");
+        String mysqlImage = ContainerImageVersions.getStableImage("quay.io/debezium/example-mysql");
         DockerImageName mysqlDockerImageName = DockerImageName.parse(mysqlImage).asCompatibleSubstituteFor("mysql");
         mySQLContainer = new MySQLContainer<>(mysqlDockerImageName)
                 .withDatabaseName("mysql")

@@ -43,7 +43,7 @@ public class TestHelper {
     }
 
     public static void setupDebeziumContainer(String debeziumContainerImageVersion) {
-        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse("debezium/connect:" + debeziumContainerImageVersion))
+        DEBEZIUM_CONTAINER = new DebeziumContainer(DockerImageName.parse("quay.io/debezium/connect:" + debeziumContainerImageVersion))
                 .withEnv("ENABLE_DEBEZIUM_SCRIPTING", "true")
                 .withEnv("CONNECT_REST_EXTENSION_CLASSES", "io.debezium.kcrestextension.DebeziumConnectRestExtension")
                 .withNetwork(NETWORK)

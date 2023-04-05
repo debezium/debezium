@@ -20,7 +20,7 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  */
 public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager {
 
-    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
+    private static final String POSTGRES_IMAGE = "quay.io/debezium/postgres:15";
 
     private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
             .asCompatibleSubstituteFor("postgres");

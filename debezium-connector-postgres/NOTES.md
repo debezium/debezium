@@ -2,7 +2,7 @@ This module uses the [quay.io/debezium/postgres:10.0](https://github.com/debeziu
 
 ## Using the PostgreSQL Server
 
-As mentioned in the [README.md]() file, our Maven build can be used to start a container using either one of these images. The `debezium/postgres:10.0` image is used:
+As mentioned in the [README.md]() file, our Maven build can be used to start a container using either one of these images. The `quay.io/debezium/postgres:10` image is used:
 
     $ mvn docker:start
 
@@ -16,6 +16,6 @@ To stop and remove the container, simply use the following commands:
 
 Although using the Maven command is far simpler, the Maven command really just runs a Docker command to start the container, so it's equivalent to:
 
-    $ docker run -it -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres quay.io/debezium/postgres:10.0 postgres
+    $ docker run -it -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres quay.io/debezium/postgres:10 postgres
 
-This will use the `quay.io/debezium/postgres:10.0` image to start a new container where the PostgreSQL instance uses the settings from [the container image](https://github.com/debezium/container-images/tree/main/postgres/10/postgresql.conf.sample) 
+This will use the `quay.io/debezium/postgres:10` image to start a new container where the PostgreSQL instance uses the settings from [the container image](https://github.com/debezium/container-images/tree/main/postgres/10/postgresql.conf.sample) 
