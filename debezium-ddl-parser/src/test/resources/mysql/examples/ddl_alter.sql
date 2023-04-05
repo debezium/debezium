@@ -45,6 +45,7 @@ alter table add_test drop foreign key if exists fk;
 alter table add_test drop constraint if exists cons;
 alter table add_test wait 100 add column col1 int not null;
 alter table default.task add column xxxx varchar(200) comment 'cdc test';
+alter table `some_table` add unique if not exists `id_unique` (`id`);
 ALTER TABLE `hcore`.comments COLLATE='utf8mb4_general_ci', CONVERT TO CHARSET UTF8MB4;
 ALTER TABLE T1 ADD FOREIGN KEY ( I )  REFERENCES TT ( I ) ON DELETE SET DEFAULT;
 ALTER TABLE T1 ADD FOREIGN KEY ( I ) REFERENCES TT ( I ) ON UPDATE SET DEFAULT;
@@ -101,7 +102,7 @@ alter tablespace tblsp_2 drop datafile 'deletedfilename' wait engine ndb;
 alter view my_view1 as select 1 union select 2 limit 0,5;
 alter algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;
 alter definer = 'ivan'@'%' view my_view3 as select count(*) from t3;
-alter definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2) 
+alter definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2)
 	as select * from  (t1 as tt1, t2 as tt2) inner join t1 on t1.col1 = tt1.col1;
 #end
 #begin
