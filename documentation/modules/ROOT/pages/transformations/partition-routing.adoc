@@ -51,7 +51,7 @@ topic.creation.default.replication.factor=1
 topic.prefix=fulfillment
 transforms=PartitionRouting
 transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
-transforms.PartitionRouting.partition.payload.field=change.name
+transforms.PartitionRouting.partition.payload.fields=change.name
 transforms.PartitionRouting.partition.topic.num=2
 transforms.PartitionRouting.predicate=allTopic
 predicates=allTopic
@@ -137,7 +137,7 @@ This will be the configuration
 ----
 transforms=PartitionRouting
 transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
-transforms.PartitionRouting.partition.payload.field=change.f1,change.f2
+transforms.PartitionRouting.partition.payload.fields=change.f1,change.f2
 transforms.PartitionRouting.partition.topic.num=2
 transforms.PartitionRouting.predicate=myTopic
 
@@ -187,7 +187,7 @@ topic.creation.default.replication.factor=1
 topic.prefix=fulfillment
 transforms=PartitionRouting
 transforms.PartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
-transforms.PartitionRouting.partition.payload.field=change.name,change.purchaser
+transforms.PartitionRouting.partition.payload.fields=change.name,change.purchaser
 transforms.PartitionRouting.partition.topic.num=2
 transforms.PartitionRouting.predicate=allTopic
 predicates=allTopic
@@ -221,12 +221,12 @@ topic.prefix=fulfillment
 
 transforms=ProductsPartitionRouting,OrdersPartitionRouting
 transforms.ProductsPartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
-transforms.ProductsPartitionRouting.partition.payload.field=change.name
+transforms.ProductsPartitionRouting.partition.payload.fields=change.name
 transforms.ProductsPartitionRouting.partition.topic.num=3
 transforms.ProductsPartitionRouting.predicate=products
 
 transforms.OrdersPartitionRouting.type=io.debezium.transforms.partitions.PartitionRouting
-transforms.OrdersPartitionRouting.partition.payload.field=change.purchaser
+transforms.OrdersPartitionRouting.partition.payload.fields=change.purchaser
 transforms.OrdersPartitionRouting.partition.topic.num=2
 transforms.OrdersPartitionRouting.predicate=products
 
@@ -253,7 +253,7 @@ The following table lists the configuration options that you can set for the par
 |Default
 |Description
 
-|[[partition-routing-payload-fields]]<<partition-routing-payload-fields, `partition.payload.field`>>
+|[[partition-routing-payload-fields]]<<partition-routing-payload-fields, `partition.payload.fields`>>
 |
 |Specifies the fields in the event payload that the SMT uses to calculate the target partition.
 Use dot notation if you want the SMT to add fields from the original payload to specific levels in the output data structure. 
