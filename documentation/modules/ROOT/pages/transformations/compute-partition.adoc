@@ -20,11 +20,12 @@ This page describes an SMT that will be removed in future releases.
 Please use the new SMT xref:transformations/partition-routing.adoc[Partition Routing].
 ====
 
-By default, when {prodname} detects a change in a data collection, the change event that it emits is sent to a topic that uses a single Apache Kafka partition.
+By default, when {prodname} detects a change in a data collection, it emits a change event to an Apache Kafka topic with a single  partition.
 As described in {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[Customization of Kafka Connect automatic topic creation], you can customize the default configuration to route events to multiple partitions, based on a hash of the primary key.
 
-However, in some cases, you might want {prodname} to  route events to a specific partition.
-The compute partition SMT enables you to route events to specific destination partitions based on a specified column name value. {prodname} uses the hash of the specified value to determine the destination partition.
+However, in some cases, you might want {prodname} to route events to a specific partition.
+The compute partition SMT enables you to route events to destination partitions based on a specified column name value. 
+{prodname} uses the hash of the specified value to determine the destination partition.
 
 // Type: concept
 // Title: Example: Basic configuration of the {prodname} compute partition SMT
@@ -38,7 +39,8 @@ The configuration specifies the following parameters:
 * The data collection column to use to calculate the destination partition.
 * The maximum number of partitions permitted for the data collection.
 
-Only events that come from configured data collections will be processed. The others will be simply leaved as is.
+The SMT only processes events that originate in specified data collections. 
+Events from other data collections are ignored.
 
 To configure a {prodname} connector to route events to a specific partition, configure the `ComputePartition` SMT in the Kafka Connect configuration for the {prodname} connector.
 
@@ -57,11 +59,13 @@ transforms.ComputePartition.partition.data-collections.partition.num.mappings=in
 ...
 ----
 
-The preceding example specifies to enable compute partition computation for `products` and `orders` tables.
-It specifies that `name` column will be used to compute the partition for the `products` data-collections and that the number of partition for this data-collections is `2`.
-Note that the number of partitions must be the number that you have configured for the topic. As you can see in the example we have defined that every topic will have `2` partitions.
+The configuration in the preceding example enables partition computation for the `products` and `orders` data collections.
+The configuration specifies that the SMT uses the `name` column to compute the partition for the `products` data collection.
+The number of partitions is set to `2`.
+The number of partitions that you specify must match the number of partitions that are specified in the Kafka topic configuration. 
 
-Given this `Products` table
+Based on the configuration in the example, for the following `Products` table,  the SMT routes change events for all records that have the field name `hammer` to the same partition.
+That is, the items with `id` values `104`, `105`, and `106` are routed to the same partition.
 
 .Products table
 [cols="25%a,25%a,25%a,25%a"]
@@ -102,16 +106,13 @@ Given this `Products` table
 |   5.3
 |108
 |jacket
-|water resistent black wind breaker
+|water-resistant black windbreaker
 |   0.1
 |109
 |spare tire
-|24 inch spare tire
+|24-inch spare tire
 |  22.2
 |===
-
-Based on the configuration, the SMT routes change events for the records that have the field name `hammer` to the same partition.
-That is, the items with `id` values `104`, `105`, and `106` are routed to the same partition.
 
 // Type: reference
 // ModuleID: options-for-configuring-the-compute-partition-transformation
@@ -130,11 +131,11 @@ The following table lists the configuration options that you can use with the co
 
 |[[compute-partition-data-collections-field-mappings]]<<compute-partition-data-collections-field-mappings, `partition.data-collections.field.mappings`>>
 |
-|A comma-separated list of colon-delimited pairs that specify the columns to use for a specific data-collection, for example, `inventory.products:name,inventory.orders:purchaser`.
+|A comma-separated list of colon-delimited pairs that specify the columns to use for a specific data collection, for example, `inventory.products:name,inventory.orders:purchaser`.
 
 |[[compute-partition-data-collections-partition-num-mappings]]<<compute-partition-data-collections-partition-num-mappings, `partition.data-collections.partition.num.mappings`>>
 |
-|A comma-separated list of colon-delimited pairs that specify the number of partitions to use for a specific data-collection, for example, `inventory.products:2,inventory.orders:3`.
+|A comma-separated list of colon-delimited pairs that specify the number of partitions to use for a specific data collection, for example, `inventory.products:2,inventory.orders:3`.
 |
 
 |===
