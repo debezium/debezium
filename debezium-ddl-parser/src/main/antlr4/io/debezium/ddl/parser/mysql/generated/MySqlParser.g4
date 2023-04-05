@@ -676,7 +676,7 @@ alterSequence
 
 alterSpecification
     : tableOption (','? tableOption)*                               #alterByTableOption
-    | ADD COLUMN? ifNotExists? uid columnDefinition (FIRST | AFTER uid)?         #alterByAddColumn // ifNotExists is MariaDB-specific only 
+    | ADD COLUMN? ifNotExists? uid columnDefinition (FIRST | AFTER uid)?         #alterByAddColumn // ifNotExists is MariaDB-specific only
     | ADD COLUMN? ifNotExists?                                      // ifNotExists is MariaDB-specific only
         '('
           uid columnDefinition ( ',' uid columnDefinition)*
@@ -1771,9 +1771,9 @@ privilege
     | DELETE (HISTORY)? | DROP (ROLE)? | EVENT | EXECUTE | FILE | GRANT OPTION    // HISTORY is MariaDB-specific
     | INDEX | INSERT | LOCK TABLES | PROCESS | PROXY
     | REFERENCES | RELOAD
-    | REPLICATION (CLIENT | SLAVE | REPLICA)     // REPLICA is MariaDB-specific
+    | REPLICATION (CLIENT | SLAVE | REPLICA | MASTER) ADMIN?     // REPLICA is MariaDB-specific
     | SELECT
-    | SHOW (VIEW | DATABASES)
+    | SHOW (VIEW | DATABASES | SCHEMAS)
     | SHUTDOWN | SUPER | TRIGGER | UPDATE | USAGE
     | APPLICATION_PASSWORD_ADMIN | AUDIT_ABORT_EXEMPT | AUDIT_ADMIN | BACKUP_ADMIN | BINLOG_ADMIN | BINLOG_ENCRYPTION_ADMIN | CLONE_ADMIN
     | CONNECTION_ADMIN | ENCRYPTION_KEY_ADMIN | FIREWALL_ADMIN | FIREWALL_EXEMPT | FIREWALL_USER | FLUSH_OPTIMIZER_COSTS
@@ -1785,6 +1785,14 @@ privilege
     | TABLE_ENCRYPTION_ADMIN | TP_CONNECTION_ADMIN | VERSION_TOKEN_ADMIN | XA_RECOVER_ADMIN
     // MariaDB
     | BINLOG_MONITOR | BINLOG_REPLAY | FEDERATED_ADMIN | READ_ONLY_ADMIN | REPLICATION_MASTER_ADMIN
+    | BINLOG (ADMIN | MONITOR | REPLAY) | FEDERATED ADMIN | (READ ONLY | READ_ONLY) ADMIN
+    | ADMIN OPTION
+    | CONNECTION ADMIN
+    | DELETE HISTORY | REPLICA MONITOR
+    | GRANT OPTION
+    | SET USER
+    | SLAVE MONITOR
+
     // MySQL on Amazon RDS
     | LOAD FROM S3 | SELECT INTO S3 | INVOKE LAMBDA
     ;
@@ -2789,7 +2797,7 @@ keywordsCanBeId
     | BINLOG_MONITOR | BINLOG_REPLAY | CURRENT_ROLE | CYCLE | ENCRYPTED | ENCRYPTION_KEY_ID | FEDERATED_ADMIN
     | INCREMENT | LASTVAL | LOCKED | MAXVALUE | MINVALUE | NEXTVAL | NOCACHE | NOCYCLE | NOMAXVALUE | NOMINVALUE
     | PERSISTENT | PREVIOUS | READ_ONLY_ADMIN | REPLICA | REPLICATION_MASTER_ADMIN | RESTART | SEQUENCE | SETVAL
-    | SKIP_ | STATEMENT | UUID | VIA
+    | SKIP_ | STATEMENT | UUID | VIA | MONITOR | READ_ONLY| REPLAY
     ;
 
 functionNameBase
