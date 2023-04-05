@@ -43,14 +43,14 @@ public class PartitionRoutingTest {
                 "partition.topic.num", 2)))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "Invalid value null for configuration partition.payload.field: The 'partition.payload.field' value is invalid: A value is required");
+                        "Invalid value null for configuration partition.payload.fields: The 'partition.payload.fields' value is invalid: A value is required");
     }
 
     @Test
     public void whenNoPartitionTopicNumFieldDeclaredAConfigExceptionIsThrew() {
 
         assertThatThrownBy(() -> partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", 2)))
+                "partition.payload.fields", 2)))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
                         "Invalid value null for configuration partition.topic.num: The 'partition.topic.num' value is invalid: A value is required");
@@ -60,18 +60,18 @@ public class PartitionRoutingTest {
     public void whenPartitionPayloadFieldContainsEmptyElementAConfigExceptionIsThrew() {
 
         assertThatThrownBy(() -> partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", ",source.table",
+                "partition.payload.fields", ",source.table",
                 "partition.topic.num", 2)))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "Invalid value ,source.table for configuration partition.payload.field: The 'partition.payload.field' value is invalid: not permitted empty string");
+                        "Invalid value ,source.table for configuration partition.payload.fields: The 'partition.payload.fields' value is invalid: not permitted empty string");
     }
 
     @Test
     public void spaceBetweenNestedFiledSeparatedWillBeCorrectManaged() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "change . product",
+                "partition.payload.fields", "change . product",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
@@ -85,7 +85,7 @@ public class PartitionRoutingTest {
     public void correctComputeKafkaPartitionBasedOnNewConfiguredFieldOnCreateAndUpdateEvents() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "after.product",
+                "partition.payload.fields", "after.product",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
@@ -99,7 +99,7 @@ public class PartitionRoutingTest {
     public void correctComputeKafkaPartitionBasedOnSpecialChangeNestedFieldOnCreateEvent() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "change.product",
+                "partition.payload.fields", "change.product",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
@@ -113,7 +113,7 @@ public class PartitionRoutingTest {
     public void whenASpecifiedFieldIsNotFoundOnPayloadItWillBeIgnored() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "after.not_existing",
+                "partition.payload.fields", "after.not_existing",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
@@ -127,7 +127,7 @@ public class PartitionRoutingTest {
     public void onlyFieldThatExistForCurrentEventWillBeUsedForPartitionComputation() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "after.not_existing,change.product",
+                "partition.payload.fields", "after.not_existing,change.product",
                 "partition.topic.num", 3));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "orange"), CREATE);
@@ -141,7 +141,7 @@ public class PartitionRoutingTest {
     public void correctComputeKafkaPartitionBasedOnSpecialChangeNestedFieldOnCreateDelete() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "change.product",
+                "partition.payload.fields", "change.product",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), DELETE);
@@ -155,7 +155,7 @@ public class PartitionRoutingTest {
     public void truncateOperationRecordWillBeSkipped() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "change.product",
+                "partition.payload.fields", "change.product",
                 "partition.topic.num", 2));
 
         final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), TRUNCATE);
@@ -169,7 +169,7 @@ public class PartitionRoutingTest {
     public void correctComputeKafkaPartitionBasedOnNotNestedField() {
 
         partitionRoutingTransformation.configure(Map.of(
-                "partition.payload.field", "op",
+                "partition.payload.fields", "op",
                 "partition.topic.num", 2));
 
         final SourceRecord createRecord1 = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);

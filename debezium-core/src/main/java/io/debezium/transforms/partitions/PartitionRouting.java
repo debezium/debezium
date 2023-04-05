@@ -41,7 +41,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRouting.class);
     public static final String NESTING_SEPARATOR = "\\.";
     public static final String CHANGE_SPECIAL_FIELD = "change";
-    public static final String FIELD_PAYLOAD_FIELD_CONF = "partition.payload.field";
+    public static final String FIELD_PAYLOAD_FIELD_CONF = "partition.payload.fields";
     public static final String FIELD_TOPIC_PARTITION_NUM_CONF = "partition.topic.num";
 
     static final Field PARTITION_PAYLOAD_FIELDS_FIELD = Field.create(FIELD_PAYLOAD_FIELD_CONF)
