@@ -37,6 +37,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
@@ -1023,6 +1024,11 @@ public abstract class CommonConnectorConfig {
 
     public Optional<String> customRetriableException() {
         return Optional.ofNullable(config.getString(CUSTOM_RETRIABLE_EXCEPTION));
+    }
+
+    public int getMaxRetriesOnError() {
+        // Limited retries currently supported by SQL Server connector only
+        return ErrorHandler.RETRIES_UNLIMITED;
     }
 
     public String getTaskId() {

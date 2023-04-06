@@ -21,26 +21,36 @@ import io.debezium.connector.base.ChangeEventQueue;
 
 public class ErrorHandler {
 
+    public static final int RETRIES_UNLIMITED = -1;
+    public static final int RETRIES_DISABLED = 0;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ErrorHandler.class);
 
-    private ChangeEventQueue<?> queue;
-    private AtomicReference<Throwable> producerThrowable;
-    private CommonConnectorConfig connectorConfig;
+    private final ChangeEventQueue<?> queue;
+    private final AtomicReference<Throwable> producerThrowable;
+    private final CommonConnectorConfig connectorConfig;
     private int maxRetries;
     private int retries;
 
     public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
-                        ChangeEventQueue<?> queue) {
-        this(connectorType, connectorConfig, queue, -1);
+                        ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
+        this.connectorConfig = connectorConfig;
+        this.queue = queue;
+        this.producerThrowable = new AtomicReference<>();
+        if (connectorConfig != null) {
+            this.maxRetries = connectorConfig.getMaxRetriesOnError();
+        }
+        else {
+            this.maxRetries = RETRIES_UNLIMITED;
+        }
+        if (replacedErrorHandler != null) {
+            this.retries = replacedErrorHandler.getRetries();
+        }
     }
 
-    /**
-     * Allows a connector that supports setting maximum retries to set the current retries attempts and the maximum retries
-     */
     public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
-                        ChangeEventQueue<?> queue, int maxRetries) {
-        this.initialize(connectorConfig, queue, maxRetries);
-        this.retries = 0;
+                        ChangeEventQueue<?> queue) {
+        this(connectorType, connectorConfig, queue, null);
     }
 
     public void setProducerThrowable(Throwable producerThrowable) {
@@ -62,13 +72,6 @@ public class ErrorHandler {
                 queue.producerException(new ConnectException("An exception occurred in the change event producer. This connector will be stopped.", producerThrowable));
             }
         }
-    }
-
-    public void initialize(CommonConnectorConfig connectorConfig, ChangeEventQueue<?> queue, int maxRetries) {
-        this.connectorConfig = connectorConfig;
-        this.queue = queue;
-        this.producerThrowable = new AtomicReference<>();
-        this.maxRetries = maxRetries;
     }
 
     public Throwable getProducerThrowable() {
@@ -135,7 +138,7 @@ public class ErrorHandler {
     }
 
     private boolean unlimitedRetries() {
-        return maxRetries == -1;
+        return maxRetries == RETRIES_UNLIMITED;
     }
 
     public int getRetries() {
