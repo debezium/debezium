@@ -22,7 +22,7 @@ public class ContainerImageVersions {
     private static final String BASE_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
 
     public static String getStableImage(String image) {
-        return image + ":" + getStableVersion(image);
+        return "quay.io/" + image + ":" + getStableVersion(image);
     }
 
     public static String getStableVersion(String image) {
