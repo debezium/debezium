@@ -26,6 +26,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -47,7 +48,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
-    protected static final int DEFAULT_MAX_RETRIES = -1;
+    protected static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
 

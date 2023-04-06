@@ -23,7 +23,6 @@ import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
@@ -47,7 +46,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SqlServerConnection dataConnection;
     private volatile SqlServerConnection metadataConnection;
-    private volatile ErrorHandler errorHandler;
+    private volatile SqlServerErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
 
     @Override
@@ -100,10 +99,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .build();
 
         if (errorHandler == null) {
-            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, connectorConfig.getMaxRetriesOnError());
+            errorHandler = new SqlServerErrorHandler(connectorConfig, queue);
         }
         else {
-            errorHandler.initialize(connectorConfig, queue, connectorConfig.getMaxRetriesOnError());
+            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, errorHandler);
         }
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
