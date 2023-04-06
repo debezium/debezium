@@ -257,7 +257,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
-    public static final Field MAX_RETRIES = Field.create(ERRORS_MAX_RETRIES)
+    public static final Field MAX_RETRIES_ON_ERROR = Field.create(ERRORS_MAX_RETRIES)
             .withDisplayName("The maximum number of retries")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
@@ -325,7 +325,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    MAX_RETRIES)
+                    MAX_RETRIES_ON_ERROR)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST)
@@ -346,7 +346,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
-    private final int maxRetries;
+    private final int maxRetriesOnError;
     private final boolean optionRecompile;
 
     public SqlServerConnectorConfig(Configuration config) {
@@ -381,7 +381,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
-        this.maxRetries = config.getInteger(MAX_RETRIES);
+        this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
             LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
@@ -435,8 +435,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return maxTransactionsPerIteration;
     }
 
-    public int getMaxRetries() {
-        return maxRetries;
+    public int getMaxRetriesOnError() {
+        return maxRetriesOnError;
     }
 
     public boolean getOptionRecompile() {

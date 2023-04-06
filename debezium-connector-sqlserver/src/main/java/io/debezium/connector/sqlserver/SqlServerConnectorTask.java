@@ -100,10 +100,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .build();
 
         if (errorHandler == null) {
-            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, connectorConfig.getMaxRetries());
+            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, connectorConfig.getMaxRetriesOnError());
         }
         else {
-            errorHandler.initialize(connectorConfig, queue, connectorConfig.getMaxRetries());
+            errorHandler.initialize(connectorConfig, queue, connectorConfig.getMaxRetriesOnError());
         }
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
