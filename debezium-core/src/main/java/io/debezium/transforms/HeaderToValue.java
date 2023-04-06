@@ -76,7 +76,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(
-                    Field::notContainSpaceInAnyElements,
+                    Field::notContainSpaceInAnyElement,
                     Field::notContainEmptyElements)
             .withDescription("Header names in the record whose values are to be copied or moved to record value.")
             .required();
@@ -86,7 +86,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(
-                    Field::notContainSpaceInAnyElements,
+                    Field::notContainSpaceInAnyElement,
                     Field::notContainEmptyElements)
             .withDescription(
                     "Field names, in the same order as the header names listed in the headers configuration property. Supports Struct nesting using dot notation.")

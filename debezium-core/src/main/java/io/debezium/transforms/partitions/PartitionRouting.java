@@ -64,6 +64,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Number of partition for the topic on which this SMT act. Use TopicNameMatches predicate to filter records by topic")
             .required();
+
     private SmtManager<R> smtManager;
     private List<String> payloadFields;
     private int partitionNumber;
@@ -124,7 +125,6 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         }
         catch (Exception e) {
-            LOGGER.error("Error occurred while processing message {}. Skipping SMT", envelope);
             throw new DebeziumException(String.format("Unprocessable message %s", envelope), e);
         }
     }
