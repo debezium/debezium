@@ -64,7 +64,7 @@ public class PartitionRoutingTest {
                 "partition.topic.num", 2)))
                 .isInstanceOf(ConfigException.class)
                 .hasMessageContaining(
-                        "Invalid value ,source.table for configuration partition.payload.fields: The 'partition.payload.fields' value is invalid: not permitted empty string");
+                        "Invalid value ,source.table for configuration partition.payload.fields: The 'partition.payload.fields' value is invalid: Empty string element(s) not permitted");
     }
 
     @Test

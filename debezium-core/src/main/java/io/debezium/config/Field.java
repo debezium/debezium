@@ -1367,13 +1367,13 @@ public final class Field {
 
         List<String> values = config.getList(field);
         if (values.contains(EMPTY_STRING)) {
-            problems.accept(field, values, "not permitted empty string");
+            problems.accept(field, values, "Empty string element(s) not permitted");
             return 1;
         }
         return 0;
     }
 
-    public static int notContainSpaceInAnyElements(Configuration config, Field field, ValidationOutput problems) {
+    public static int notContainSpaceInAnyElement(Configuration config, Field field, ValidationOutput problems) {
 
         if (!config.hasKey(field)) {
             return 0;
@@ -1381,7 +1381,7 @@ public final class Field {
 
         List<String> values = config.getList(field);
         if (values.stream().anyMatch(h -> h.contains(SPACE))) {
-            problems.accept(field, values, "some elements with not permitted space");
+            problems.accept(field, values, "Element(s) containing space not permitted");
             return 1;
         }
         return 0;
