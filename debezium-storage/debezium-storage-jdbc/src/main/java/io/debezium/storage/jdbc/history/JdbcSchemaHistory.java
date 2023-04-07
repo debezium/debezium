@@ -66,6 +66,14 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     private static final String DATABASE_HISTORY_TABLE_NAME = "debezium_database_history";
 
+    /**
+     * Table that will store database history.
+     * id - Unique identifier(UUID)
+     * history_data - Schema history data.
+     * history_data_seq -
+     * record_insert_ts - Timestamp when the record was inserted
+     * record_insert_seq - Sequence number(Incremented for every record inserted)
+     */
     private static final String DATABASE_HISTORY_TABLE_DDL = "CREATE TABLE " + DATABASE_HISTORY_TABLE_NAME +
             "(" +
             "id VARCHAR(36) NOT NULL," +
@@ -201,32 +209,13 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 if (exists()) {
                     Statement stmt = conn.createStatement();
                     ResultSet rs = stmt.executeQuery(DATABASE_HISTORY_TABLE_SELECT);
-                    String prevHistoryId = "-1";
-                    // StringBuilder historyData = new StringBuilder();
 
                     while (rs.next()) {
-                        String historyId = rs.getString("id");
                         String historyData = rs.getString("history_data");
 
                         if (historyData.isEmpty() == false) {
                             records.accept(new HistoryRecord(reader.read(historyData)));
                         }
-                        // String historyId = rs.getString("id");
-                        // // System.out.println("HISTORY ID" + historyId);
-                        // if (!historyId.equals(prevHistoryId)) {
-                        // if (historyData.length() > 0) {
-                        // // System.out.println("RECORDS ACCEPT");
-                        // records.accept(new HistoryRecord(reader.read(historyData.toString())));
-                        // }
-                        // else {
-                        // // System.out.println("HISTORY DATA EMPTY");
-                        // }
-                        // prevHistoryId = historyId;
-                        // historyData = new StringBuilder();
-                        // }
-                        // historyData.append(rs.getString("history_data"));
-                        // // System.out.println("HISTORY DATA" + historyData);
-
                     }
                 }
                 else {

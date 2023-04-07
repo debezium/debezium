@@ -23,15 +23,15 @@ public class JdbcConfig extends WorkerConfig {
                 .define(OFFSET_STORAGE_JDBC_URI.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
-                        "Jdbc database uri")
+                        "JDBC database URI")
                 .define(OFFSET_STORAGE_JDBC_USER.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
-                        "Jdbc database username")
+                        "JDBC database username")
                 .define(OFFSET_STORAGE_JDBC_PASSWORD.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
-                        "Jdbc database password")
+                        "JDBC database password")
                 .define(OFFSET_STORAGE_TABLE_NAME.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
