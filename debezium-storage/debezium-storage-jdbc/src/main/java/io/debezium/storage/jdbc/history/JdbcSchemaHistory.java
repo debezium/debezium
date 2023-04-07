@@ -70,7 +70,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
      * Table that will store database history.
      * id - Unique identifier(UUID)
      * history_data - Schema history data.
-     * history_data_seq -
+     * history_data_seq - Schema history part sequence number.
      * record_insert_ts - Timestamp when the record was inserted
      * record_insert_seq - Sequence number(Incremented for every record inserted)
      */
