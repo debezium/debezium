@@ -124,7 +124,7 @@ The {prodname} JDBC sink connector can delete rows in the destination database w
 By default, the JDBC sink connector does not enable delete mode, therefore, it must be enabled explicitly in the connector configuration if you wish to support removing rows.
 
 Deletes can be enabled by setting `delete.enabled=true` in the connector configuration, but this mode requires that the `primary.key.mode` be set to a value that is not `none`.
-This is because deletes are executed based on the primary key mapping, and therefore is a destination table has no primary key mapping, rows cannot be deleted by the connector.
+This is because deletes are executed based on the primary key mapping, and therefore if a destination table has no primary key mapping, rows cannot be deleted by the connector.
 
 [[jdbc-idempotent-writes]]
 === Idempotent writes
@@ -434,7 +434,7 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Destiniation database is installed and configured to accept JDBC connections.
+* Destination database is installed and configured to accept JDBC connections.
 
 .Procedure
 
@@ -443,7 +443,8 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 . Optionally download the JDBC driver from Maven Central and extract the downloaded driver file to the directory that contains the JDBC sink connector JAR file.
 +
 NOTE: Drivers for Oracle and Db2 are not automatically shipped with the JDBC sink connector and must be manually installed.
-. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Add the driver JAR files to the path where the JDBC sink connector has been installed.
+. Make sure that the path where the JDBC sink connector is installed is part of {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
 [[jdbc-connector-configuration]]
@@ -632,7 +633,7 @@ The default behavior is to: +
 == Frequently asked questions
 
 * *Is the* `ExtractNewRecordState` *single message transformation required?* +
-No, that is actual one of the differentiating factors of the {prodname} JDBC connector from its competitors.
+No, that is actual one of the differentiating factors of the {prodname} JDBC connector from other implementations.
 While the connector is capable of ingesting flattened events like its competitors, it can also ingest Debezium's complex change event structure natively, without requiring any specific type of transformation.
 
 * *If a column's type is changed or a column is renamed or dropped, is this handled by schema evolution?* +
