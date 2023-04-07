@@ -59,6 +59,14 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             .withDescription("Name of the table to store offsets")
             .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
 
+    /**
+     * The JDBC table that will store offset information.
+     * id - UUID
+     * offset_key - Offset Key
+     * offset_val - Offset value
+     * record_insert_ts - Timestamp when the record was inserted
+     * record_insert_seq - Sequence number of record
+     */
     public static final String OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE %s(id VARCHAR(36) NOT NULL, offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL" +
