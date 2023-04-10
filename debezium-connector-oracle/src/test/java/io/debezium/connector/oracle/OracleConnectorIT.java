@@ -93,6 +93,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 /**
@@ -5072,6 +5073,44 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz6221");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5395")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner only")
+    public void testShouldAdvanceStartScnWhenNoActiveTransactionsBetweenIterationsWhenLobEnabled() throws Exception {
+        TestHelper.dropTable(connection, "dbz5395");
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ5395")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            connection.execute("CREATE TABLE dbz5395 (data0 character, data1 character(5), data2 character varying(5))");
+            TestHelper.streamTable(connection, "dbz5395");
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final AtomicReference<Scn> offsetScn = new AtomicReference<>(Scn.NULL);
+            Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> {
+                final String offsetScnStr = getStreamingMetric("OffsetScn");
+                if (!Strings.isNullOrBlank(offsetScnStr) && !"null".equals(offsetScnStr)) {
+                    offsetScn.set(Scn.valueOf(offsetScnStr));
+                    return true;
+                }
+                return false;
+            });
+
+            Awaitility.await().atMost(Duration.ofMinutes(5)).pollInterval(Duration.ofSeconds(2)).until(() -> {
+                return Scn.valueOf(getStreamingMetric("OffsetScn")).compareTo(offsetScn.get()) > 0;
+            });
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5395");
         }
     }
 

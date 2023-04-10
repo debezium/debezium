@@ -476,6 +476,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 }
             }
         }
+        else {
+            // When a COMMIT is received, regardless of the number of events it has, it still
+            // must be recorded in the commit scn for the node to guarantee updates to the
+            // offsets. This must be done prior to dispatching the transaction-commit or the
+            // heartbeat event that follows commit dispatch.
+            offsetContext.getCommitScn().recordCommit(row);
+        }
 
         offsetContext.setEventScn(commitScn);
         if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
