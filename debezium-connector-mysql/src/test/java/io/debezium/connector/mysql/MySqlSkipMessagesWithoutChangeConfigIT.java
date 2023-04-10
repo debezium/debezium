@@ -72,10 +72,11 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
                 connection.execute("insert into debezium_test(id, black, white) values(1, 1, 1)");
                 connection.execute("UPDATE debezium_test SET black=2 where id = 1");
                 connection.execute("UPDATE debezium_test SET white=2 where id = 1");
+                connection.execute("UPDATE debezium_test SET white=3, black=3 where id = 1");
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(6);
+        SourceRecords records = consumeRecordsByTopic(7);
 
         List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("debezium_test"));
         /*
@@ -86,10 +87,13 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
          * 1,1,1 (I)
          * 1,1,2 (U) (Skipped)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
-        assertThat(recordsForTopic).hasSize(3);
+        assertThat(recordsForTopic).hasSize(4);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("white")).isEqualTo(2);
+        Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(forthMessage.get("white")).isEqualTo(3);
     }
 
     @Test
@@ -109,10 +113,11 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
                 connection.execute("insert into debezium_test(id, black, white) values(1, 1, 1)");
                 connection.execute("UPDATE debezium_test SET black=2 where id = 1");
                 connection.execute("UPDATE debezium_test SET white=2 where id = 1");
+                connection.execute("UPDATE debezium_test SET white=3, black=3 where id = 1");
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(6);
+        SourceRecords records = consumeRecordsByTopic(7);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("debezium_test"));
         /*
          * Total Events:
@@ -122,10 +127,13 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
          * 1,1,1 (I)
          * 1,1,2 (U) (Skipped)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
-        assertThat(recordsForTopic).hasSize(3);
+        assertThat(recordsForTopic).hasSize(4);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("white")).isEqualTo(2);
+        Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(forthMessage.get("white")).isEqualTo(3);
     }
 
     @Test
@@ -145,10 +153,11 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
                 connection.execute("insert into debezium_test(id, black, white) values(1, 1, 1)");
                 connection.execute("UPDATE debezium_test SET black=2 where id = 1");
                 connection.execute("UPDATE debezium_test SET white=2 where id = 1");
+                connection.execute("UPDATE debezium_test SET white=3, black=3 where id = 1");
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(6);
+        SourceRecords records = consumeRecordsByTopic(7);
         /*
          * Total Events:
          * Create Database
@@ -157,11 +166,16 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
          * 1,1,1 (I)
          * 1,1,2 (U)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
         List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("debezium_test"));
-        assertThat(recordsForTopic).hasSize(4);
+        assertThat(recordsForTopic).hasSize(5);
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(thirdMessage.get("white")).isEqualTo(1);
+        Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(forthMessage.get("white")).isEqualTo(2);
+        Struct fifthMessage = ((Struct) recordsForTopic.get(4).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(fifthMessage.get("white")).isEqualTo(3);
     }
 
     String getQualifiedColumnName(String column) {
