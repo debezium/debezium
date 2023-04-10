@@ -5,14 +5,33 @@
  */
 package io.debezium.storage.jdbc;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnector;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlTestConnection;
+import io.debezium.connector.mysql.UniqueDatabase;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConfiguration;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
+import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
+import io.debezium.util.Testing;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,22 +42,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-
-import io.debezium.connector.mysql.MySqlTestConnection;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
-import org.junit.*;
-
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnector;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.UniqueDatabase;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.util.Testing;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 /**
  * @author Kanthi Subramanian
