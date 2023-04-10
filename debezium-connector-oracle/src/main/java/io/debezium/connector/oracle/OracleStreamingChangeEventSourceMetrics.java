@@ -479,20 +479,22 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     public void changeBatchSize(boolean increment, boolean lobEnabled) {
 
         int currentBatchSize = batchSize.get();
+        boolean incremented = false;
         if (increment && currentBatchSize < batchSizeMax) {
             currentBatchSize = batchSize.addAndGet(batchSizeMin);
+            incremented = true;
         }
-        else if (currentBatchSize > batchSizeMin) {
+        else if (!increment && currentBatchSize > batchSizeMin) {
             currentBatchSize = batchSize.addAndGet(-batchSizeMin);
         }
 
-        if (currentBatchSize == batchSizeMax) {
+        if (incremented && currentBatchSize == batchSizeMax) {
             if (!lobEnabled) {
                 LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view. This could be indicative of large SCN gaps",
                         currentBatchSize);
             }
             else {
-                LOGGER.debug("The connector is now using the maximum batch size {} when querying the LogMiner view.", currentBatchSize);
+                LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view.", currentBatchSize);
             }
         }
         else {
