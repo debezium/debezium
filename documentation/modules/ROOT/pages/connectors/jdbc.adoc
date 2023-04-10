@@ -12,21 +12,21 @@ toc::[]
 
 [NOTE]
 ====
-This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+This connector is currently in an incubating state. In future versions, we might change the exact semantics, configuration options, and so forth, depending on the feedback that we receive.
 Please let us know if you encounter any problems.
 ====
 
 [[jdbc-overview]]
 == Overview
 
-{prodname}'s JDBC connector is a Kafka Connect sink connector implementation that allows you to consume from any number of source topics and write the events from those topics to any relational database using a JDBC driver.
-This connector supports a wide variety of database dialects, including Db2, MySQL, PostgreSQL, Oracle, and SQL Server.
+The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
+This connector supports a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, and SQL Server.
 
 [[how-the-jdbc-connector-works]]
 == How the JDBC connector works
 
 The {prodname} JDBC connector is a Kafka Connect sink connector, and therefore requires the Kafka Connect runtime.
-The JDBC connector periodically polls the Kafka topics that it is subscribed, and consumes events from those topics and writes them to the configured relational database.
+The connector periodically polls the Kafka topics that it subscribes to, consumes events from those topics, and then writes the events to the configured relational database.
 The connector supports idempotent write operations by using upsert semantics and basic schema evolution.
 
 The following features are supported:
@@ -44,44 +44,46 @@ The following features are supported:
 [[jdbc-consume-complex-debezium-events]]
 === Consuming complex {prodname} change events
 
-The {prodname} source connectors produce complex, hierarchical change events by default.
-When working with other JDBC sink connector implementations, it is often necessary to use the `ExtractNewRecordState` single message transformation in order to flatten the payload of the change event so that it can be consumed by the sink implementation.
-The {prodname} JDBC sink connector does not have this requirement, so you can safely consume native {prodname} change events directly without a transformation.
+By default, {prodname} source connectors produce complex, hierarchical change events.
+When {prodname} connectors are used with other JDBC sink connector implementations, you might need to apply the `ExtractNewRecordState` single message transformation (SMT) to flatten the payload of change events, so that they can be consumed by the sink implementation.
+If you run the {prodname} JDBC sink connector, it's not necessary to deploy the SMT,  because the {prodname} sink connector can consume native {prodname} change events directly, without the use of a transformation.
 
-When the JDBC sink connector consumes {prodname}'s complex change events, the `after` section for insert or update events will be used as the basis for the event's values.
+When the JDBC sink connector consumes a complex change event from a {prodname} source connector, it extracts the values from the `after` section of the original `insert` or `update` event.
 When a delete event is consumed by the sink connector, no part of the event's payload is consulted.
 
 [[jdbc-at-least-once-delivery]]
-=== At least once delivery
+=== At-least-once delivery
 
-The {prodname} JDBC sink connector guarantees that events that are consumed from Kafka topics are processed at least once.
+The {prodname} JDBC sink connector guarantees that events that is consumes from Kafka topics are processed at least once.
 
 [[jdbc-multiple-tasks]]
 === Multiple tasks
 
-The {prodname} JDBC sink connector supports execution across multiple Kafka Connect tasks.
-In order to execute the connector across multiple tasks, you can specify the `tasks.max` configuration property and multiple tasks will be started by the Kafka Connect runtime.
+You can run the {prodname} JDBC sink connector across multiple Kafka Connect tasks.
+To run the connector across multiple tasks, set the `tasks.max` configuration property to the number of tasks that you want the connector to use.
+The Kafka Connect runtime starts the specified number of tasks, and runs one instance of the connector per task.
 Multiple tasks can improve performance by reading and processing changes from multiple source topics in parallel.
 
 [[jdbc-data-and-type-mappings]]
 === Data and column type mappings
 
-The {prodname} JDBC sink connector requires an understanding of the data types associated with a given field/column in the source event.
-Each database dialect supported by this connector has a wide range of column type mappings that it leverages to resolve the destination column type from the event field's type metadata.
-Resolution of a column's type can be enhanced by enabling the `column.propagate.source.type` or the `datatype.propagate.source.type` source connector configuration options.
-The extra parameter metadata that {prodname} includes when enabling these features can allow the JDBC sink connector to resolve the destination column's type more accurately.
+To enable the {prodname} JDBC sink connector to correctly map the data type from an inbound message field to an outbound message field, the connector requires information about the data type of each field that is present in the source event.
+The connector supports a wide range of column type mappings across different database dialects.
+To correctly convert the destination column type from the `type` metadata in an event field, the connector applies the data type mappings that are defined for the source database.
+You can enhance the way that the connector resolves data types for a column by setting the `column.propagate.source.type` or `datatype.propagate.source.type` options in the source connector configuration.
+When you enable these options, {prodname} includes extra parameter metadata, which assists the JDBC sink connector in more accurately resolving the data type of destination columns.
 
-The {prodname} JDBC sink connector expects that the Kafka topic message key, when present, either be a primitive data type or a `Struct`.
-The message payload must be a `Struct` that either adheres to a flattened structure where there are no nested `struct` types or that the nested `struct` layout conform to {prodname}'s complex, hierarchical structure.
+For the {prodname} JDBC sink connector to process events from a Kafka topic, the Kafka topic message key, when present, must be a primitive data type or a `Struct`.
+In addition, the payload of the source message must be a `Struct` that has either a flattened structure with no nested `struct` types, or a nested `struct` layout that conforms to {prodname}'s complex, hierarchical structure.
 
-If the structure of the events in the Kafka topic do not adhere to these rules, a custom `Transformation` will be required to adapt the source event structure accordingly.
+If the structure of the events in the Kafka topic do not adhere to these rules, you must implement a custom single message transformation to convert the structure of the source events into a usable format.
 
 [[jdbc-primary-key-handling]]
 === Primary key handling
 
-By default, the {prodname} JDBC sink connector does not associate any fields from the source event to a primary key.
-Unfortunately, this is not always a good choice depending on the business requirements and configuration of the sink connector, such as using upsert semantics.
-The connector can be configured with several different primary key modes:
+By default, the {prodname} JDBC sink connector does not transform any of the fields in the source event into the primary key for the event.
+Unfortunately, the lack of a stable primary key can complicate event processing, depending on your business requirements, or when the sink connector uses upsert semantics.
+To define a consistent primary key, you can configure the connector to use one of the primary key modes described in the following table:
 
 |===
 |Mode|Description
@@ -90,28 +92,34 @@ The connector can be configured with several different primary key modes:
 |No primary key fields are specified when creating the table.
 
 |`kafka`
-|The primary key will consist of three columns `\__connect_topic`, `__connect_partition`, and `__connect_offset`.
-The values for these columns will be sourced from the Kafka event's coordinates.
+a|The primary key consists of the following three columns:
+
+* `__connect_topic`
+* `__connect_partition`
+* `__connect_offset`
+
+The values for these columns are sourced from the coordinates of the Kafka event.
 
 |`record_key`
-|The primary key will be composed of the Kafka event's key. +
+|The primary key is composed of the Kafka event's key. +
  +
-If the primary key is a primitive type, the `primary.key.fields` property must be specified, which specifies the name of the column to be used.
-If the primary key is a struct type, the fields in the struct will be mapped as columns of the primary key.  The `primary.key.fields` property can be used to restrict the primary key to a subset of columns.
+If the primary key is a primitive type, specify the name of the column to be used by setting the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property.
+If the primary key is a struct type, the fields in the struct are mapped as columns of the primary key.
+You can use the `primary.key.fields` property to restrict the primary key to a subset of columns.
 
 |`record_value`
-|The primary key will be composed of the Kafka event's value. +
+|The primary key is composed of the Kafka event's value. +
  +
-Since the Kafka event's value must always be a `Struct`, all fields within the value will be used as primary key columns by default.
-In order to use a subset of fields, specify the `primary.key.fields` property with a comma-separated list of fields from the value to derive the primary key columns of.
+Because the value of a Kafka event is always a `Struct`, by default, all of the fields in the value become columns of the primary key.
+To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
 
 |===
 
 [IMPORTANT]
 ====
-Some dialects may throw an exception if you set the `primary.key.mode` to `kafka` and set `schema.evolution` to `basic`.
-This exception occurs because some dialects map a `STRING` data type mapping to a variable length string data type such as `TEXT` or `CLOB`, and these dialects do not allow unbounded length primary key columns.
-To avoid this problem, the following must be set:
+Some database dialects might throw an exception if you set the `primary.key.mode` to `kafka` and set `schema.evolution` to `basic`.
+This exception occurs when a dialect maps a `STRING` data type mapping to a variable length string data type such as `TEXT` or `CLOB`, and the dialect does not allow primary key columns to have unbounded lengths.
+To avoid this problem, apply the following settings in your environment:
 
 * Do not set `schema.evolution` to `basic`.
 * Create the database table and primary key mappings in advance.
@@ -121,20 +129,23 @@ To avoid this problem, the following must be set:
 === Delete mode
 
 The {prodname} JDBC sink connector can delete rows in the destination database when a `DELETE` or _tombstone_ event is consumed.
-By default, the JDBC sink connector does not enable delete mode, therefore, it must be enabled explicitly in the connector configuration if you wish to support removing rows.
+By default, the JDBC sink connector does not enable delete mode.
 
-Deletes can be enabled by setting `delete.enabled=true` in the connector configuration, but this mode requires that the `primary.key.mode` be set to a value that is not `none`.
-This is because deletes are executed based on the primary key mapping, and therefore if a destination table has no primary key mapping, rows cannot be deleted by the connector.
+If you want to support removal of rows, explicitly enable it in the connector configuration by setting `delete.enabled=true` in the connector configuration.
+However, to use this mode you must set xref:jdbc-property-primary-key-fields[`primary.key.fields`] to a value other than `none`.
+The preceding configuration is necessary, because deletes are executed based on the primary key mapping, so if a destination table has no primary key mapping, the connector is unable to delete rows.
 
 [[jdbc-idempotent-writes]]
 === Idempotent writes
 
-The {prodname} JDBC sink connector supports idempotent writes, allowing the same records to be replayed repeatedly and the final database state remains consistent.
+The {prodname} JDBC sink connector supports idempotent writes, allowing the same records to be replayed repeatedly and the final database state to remain consistent.
 In order to support idempotent writes, the JDBC sink connector must be explicitly configured with the `insert.mode` set to `upsert`.
-An _upsert_ operation is one where the operation performed is effectively an insert if the row does not already exist, otherwise an update of the row will be applied if the row does exist.
+An `upsert` operation is applied as either an `update` or an `insert`, depending on whether the specified primary key already exists.
+If the primary key value already exists, the operation updates values in the row.
+If the specified primary key value doesn't exist, an `insert` adds a new row.
 
-Each database dialect handles idempotent writes differently because there is no SQL standard for _upsert_ operations.
-The following illustrates the upsert database-specific DML syntax that is used by the support dialects:
+Each database dialect handles idempotent writes differently, because there is no SQL standard for _upsert_ operations.
+The following illustrates the upsert database-specific DML syntax that is used by the supported database  dialects:
 
 |===
 |Dialect |Upsert Syntax
@@ -168,54 +179,63 @@ The {prodname} JDBC sink connector supports the following schema evolution modes
 |The connector does not perform any DDL schema evolution.
 
 |`basic`
-|The connector automatically detects fields that are in the event payload but do exist in the destination table and alters the table, adding the new fields.
+|The connector automatically detects fields that are in the event payload but that do not exist in the destination table.
+The connector alters the destination table to add the new fields.
 
 |===
 
-When `schema.evolution` is set to `basic`, the connector will automatically create or alter the destination database table according to the structure of the incoming event.
+When `schema.evolution` is set to `basic`, the connector automatically creates or alters the destination database table according to the structure of the incoming event.
 
-When an event is received from a topic for the first time and the destination table does not yet exist, the {prodname} JDBC sink connector will use the event's key and/or record schema structure to resolve the column structure of the table.
-When schema evolution is enabled, a `CREATE TABLE` SQL statement will be prepared and executed by the connector before applying the DML event to the destination table.
+When an event is received from a topic for the first time, and the destination table does not yet exist, the {prodname} JDBC sink connector uses the event's key, or the schema structure of the record to resolve the column structure of the table.
+If schema evolution is enabled, the connector prepares and executes a `CREATE TABLE` SQL statement before it applies the DML event to the destination table.
 
-When an event is received from a topic and the record schema structure differs from the destination table , the {prodname} JDBC sink connector will use the event's key and/or record schema structure to resolve which columns are new that need to be added to the database table.
-When schema evolution is enabled, an `ALTER TABLE` SQL statement will be prepared and executed by the connector before applying the DML event to the destination table.
-The changing of column data types, dropping of columns, and adjustments to primary keys can be considered dangerous, and therefore none of these operations are performed by the connector.
+When the {prodname} JDBC connector receives an event from a topic, if the schema structure of the record differs from the schema structure of the destination table, the connector uses either the event's key or its schema structure  to identify which columns are new, and must be added to the database table.
+If schema evolution is enabled, the connector prepares and executes an `ALTER TABLE` SQL statement before it applies the DML event to the destination table.
+Because changing column data types, dropping columns, and adjusting primary keys can be considered dangerous operations, the connector is prohibited from performing these operations.
 
-Whether a column is `NULL` or `NOT NULL` is derived directly from the optionality defined in the field's schema, and default values are also resolved from the field schema as well.
-If the connector attempts to create a table with an undesired nullability setting or default value, the table will either need to be created manually ahead of time or the schema of the associated field adjusted prior to be processing by the sink connector.
-This can be accomplished by introducing a custom single message transformation that adjusts these in the pipeline or modifying the column state in the source database.
+The schema of each field determines whether a column is `NULL` or `NOT NULL`.
+The schema also defines the default values for each column.
+If the connector attempts to create a table with a nullability setting or a default value that don't want, you must either create the table manually, ahead of time, or adjust the schema of the associated field before the sink connector processes the event.
+To adjust nullability settings or default values, you can introduce a custom single message transformation that applies changes in the pipeline, or modifies the column state defined in the source database.
 
-A field's data type is resolved based on  a predefined set of mappings, which can be found in the xref:jdbc-field-types[] section.
+A field's data type is resolved based on a predefined set of mappings.
+For more information, see xref:jdbc-field-types[].
 
 [IMPORTANT]
 ====
-When introducing new fields to the event structure for tables that already exist in the destination database, the new fields must be defined as optional or have a default value specified in its schema.
-If a field needs to be removed from the destination table, it should be removed manually to either drop the column, assign it a default value, or make it nullable.
+When you introduce new fields to the event structure of tables that already exist in the destination database, you must define the new fields as optional, or the fields must have a default value specified in the database schema.
+If you want a field to be removed from the destination table, use one of the following options:
+
+* Remove the field manually.
+* Drop the column.
+* Assign a default value to the field.
+* Define the field a nullable.
 ====
 
 [[jdbc-quoting-case-sensitivity]]
 === Quoting and case sensitivity
 
 The {prodname} JDBC sink connector consumes Kafka messages by constructing either DDL (schema changes) or DML (data changes) SQL statements that are executed on the destination database.
-The default behavior is to use the topic and field names as the basis for the table and column names of the relational table.
-The constructed SQL does not automatically quote identifiers, and so by default the case of the table or column names is fully dependent on the destination database's behavior.
+By default, the connector uses the names of the source topic and the event fields as the basis for the table and column names in the destination table.
+The constructed SQL does not automatically delimit identifiers with quotes to preserve the case of the original strings.
+As a result, by default, the text case of table or column names in the destination database depends entirely on how the database handles name strings when the case is not specified.
 
 For example, if the destination database dialect is Oracle and the event's topic is `orders`, the destination table will be created as `ORDERS` because Oracle defaults to upper-case names when the name is not quoted.
 Similarly, if the destination database dialect is PostgreSQL and the event's topic is `ORDERS`, the destination table will be created as `orders` because PostgreSQL defaults to lower-case names when the name is not quoted.
 
-By setting `quote.identifiers` to `true` in the connector configuration, the case of the table and field names can be kept explicitly set to match the case present in the Kafka event.
-So if the incoming event is for a topic called `orders` and the destination database dialect is Oracle, when quoting is enabled the table will be created as `orders` since the constructed SQL will use `"orders"` as the name of the table.
-When quoting is enabled, the behavior for column names works identical.
+By setting `quote.identifiers` to `true` in the connector configuration, you can explicitly set the case of the table and field names to preserve the case that is present in the Kafka event.
+So if the incoming event is for a topic called `orders` and the destination database dialect is Oracle, if quoting is enabled -- that is, if `quote.identifiers` is set to `true` -- the connector creates a table with the name `orders`, because the constructed SQL defines the name of the table as `"orders"`.
+When quoting is enabled, the behavior for creating column names works in the same manner.
 
 [[jdbc-field-types]]
 == Data type mappings
 
-The {prodname} JDBC sink connector resolves a column's data type by using a logical or primitive type mapping system.
-Primitive types include values like integers, floating points, booleans, strings, and bytes.
-These are typically represented  with a specific Kafka Connect `Schema` type code only.
-Logical types are more often complex types, including values such as `Struct`-based types that have a fixed set of field names and schema or values that are represented with a specific encoding such as number of days since epoch.
+The {prodname} JDBC sink connector resolves a column's data type by using a logical or primitive type-mapping system.
+Primitive types include values such as integers, floating points, Booleans, strings, and bytes.
+Typically, these types are represented with a specific Kafka Connect `Schema` type code only.
+Logical data types are more often complex types, including values such as `Struct`-based types that have a fixed set of field names and schema, or values that are represented with a specific encoding, such as number of days since epoch.
 
-The following are examples of primitive and logical types:
+The following examples show representative structures of primitive and logical data types:
 
 .Primitive field schema
 [source.json]
@@ -239,20 +259,20 @@ The following are examples of primitive and logical types:
 ----
 
 Kafka Connect is not the only source for these complex, logical types.
-In fact, {prodname} source connectors also generate fields in change events that  have similar logical types to represent a variety of different data types, including but not limited to, timestamps, dates, and even JSON data.
+In fact, {prodname} source connectors generate change events that have fields with similar logical types to represent a variety of different data types, including but not limited to, timestamps, dates, and even JSON data.
 
 The {prodname} JDBC sink connector uses these primitive and logical types to resolve a column's type to a JDBC SQL code, which represents a column's type.
 These JDBC SQL codes are then used by the underlying Hibernate persistence framework to resolve the column's type to a logical data type for the dialect in use.
-The following tables illustrate the these primitive and logical mappings for both Kafka Connect and Debezium to the JDBC SQL types.
-The actual final column type then varies based on the database.
+The following tables illustrate the primitive and logical mappings between Kafka Connect and JDBC SQL types, and between {prodname} and JDBC SQL types.
+The actual final column type varies with for each database type.
 
-. xref:#jdbc-kafka-connect-primitive-mappings[]
-. xref:#jdbc-kafka-connect-logical-mappings[]
-. xref:#jdbc-debezium-logical-mappings[]
-. xref:#jdbc-debezium-logical-mappings-dialect-specific[]
+. xref:jdbc-kafka-connect-primitive-mappings[]
+. xref:jdbc-kafka-connect-logical-mappings[]
+. xref:jdbc-debezium-logical-mappings[]
+. xref:jdbc-debezium-logical-mappings-dialect-specific[]
 
 [[jdbc-kafka-connect-primitive-mappings]]
-.Kafka Connect Primitives to Column Data Type Mappings
+.Mappings between Kafka Connect Primitives and Column Data Types
 |===
 |Primitive Type |JDBC SQL Type
 
@@ -286,7 +306,7 @@ The actual final column type then varies based on the database.
 |===
 
 [[jdbc-kafka-connect-logical-mappings]]
-.Kafka Connect Logical Type to Column Data Type Mappings
+.Mappings between Kafka Connect Logical Types and Column Data Types
 |===
 |Logical Type |JDBC SQL Type
 
@@ -305,7 +325,7 @@ The actual final column type then varies based on the database.
 |===
 
 [[jdbc-debezium-logical-mappings]]
-.{prodname} Logical Type to Column Data Type Mappings
+.Mappings between {prodname} Logical Types and Column Data Types
 |===
 |Logical Type |JDBC SQL Type
 
@@ -343,11 +363,11 @@ The actual final column type then varies based on the database.
 
 [IMPORTANT]
 ====
-If the database does not support time or timestamps with time zones, the mapping will resolve to its equivalent without timezones.
+If the database does not support time or timestamps with time zones, the mapping resolves to its equivalent without timezones.
 ====
 
 [[jdbc-debezium-logical-mappings-dialect-specific]]
-.{prodname} dialect-specific Logical Type to Column Data Type Mappings
+.Mappings between {prodname} dialect-specific Logical Types and Column Data Types
 |===
 |Logical Type |MySQL SQL Type |PostgreSQL SQL Type |SQL Server SQL Type
 
@@ -398,12 +418,17 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |===
 
-In addition to the primitive and logical mappings above, if the source of the change events is a {prodname} source connector, the resolution of the column type, its length, precision, and scale can be further influenced by enabling column or data type propagation.
-This propagation requires that the source connector be configured with `column.propagate.source.type` or `datatype.propagate.source.type` and the {prodname} JDBC sink connector will use these values with higher precedence.
+In addition to the primitive and logical mappings above, if the source of the change events is a {prodname} source connector, the resolution of the column type, along with its length, precision, and scale, can be further influenced by enabling column or data type propagation.
+To enforce propagation, one of the following properties must be set in the source connector  configuration:
+
+*  `column.propagate.source.type`
+*  `datatype.propagate.source.type`
+
+The {prodname} JDBC sink connector applies the values with the higher precedence.
 
 For example, let's say the following field schema is included in a change event:
 
-.{prodname} change event field schema with column/data type propagation enabled
+.{prodname} change event field schema with column or data type propagation enabled
 [source,json]
 ----
 {
@@ -417,12 +442,14 @@ For example, let's say the following field schema is included in a change event:
 }
 ----
 
-In the above example, without the schema parameters, the {prodname} JDBC sink connector would map this field to a column type of `Types.SMALLINT`, which will have varying logical database types depending on the dialect but for MySQL this would be a `TINYINT` column type without any length.
-By enabling the column or data type propagation in the source connector, the {prodname} JDBC sink connector can use this information to refine the data type mapping process and will create the column as `TINYINT(1)`.
+In the preceding example, if no schema parameters are set, the {prodname} JDBC sink connector would map this field to a column type of `Types.SMALLINT`.
+`Types.SMALLINT` can have different logical database types, depending on the database dialect.
+For MySQL, the example would convert to a `TINYINT` column type with no specified length.
+If column or data type propagation is enabled for the source connector, the {prodname} JDBC sink connector uses the mapping information to refine the data type mapping process and create a column with the type `TINYINT(1)`.
 
 [NOTE]
 ====
-Typically, column / data type propagation will have a much larger influence when both the source and sink databases are the same.
+Typically, the effect of using column or data type propagation is much greater when the same type of database is used for both the source and sink database.
 We are continually looking at ways to improve this mapping across heterogeneous databases and the current type system allows us to continue to refine these mappings based on feedback.
 If you find a mapping could be improved, please let us know.
 ====
@@ -451,7 +478,7 @@ NOTE: Drivers for Oracle and Db2 are not automatically shipped with the JDBC sin
 === {prodname} JDBC connector configuration
 
 Typically, you register a {prodname} JDBC connector by submitting a JSON request that specifies the configuration properties for the connector.
-The following example shows a JSON request for registering an instance the {prodname} JDBC sink connector that consumes events from a topic called `orders` with the most common configuration settings:
+The following example shows a JSON request for registering an instance of the {prodname} JDBC sink connector that consumes events from a topic called `orders` with the most common configuration settings:
 
 .Example: {prodname} JDBC connector configuration
 [source,json,indent=0,subs="+quotes"]
@@ -475,28 +502,31 @@ The following example shows a JSON request for registering an instance the {prod
 <1> The name that is assigned to the connector when you register it with Kafka Connect service.
 <2> The name of the JDBC sink connector class.
 <3> The maximum number of tasks to create for this connector.
-<4> The JDBC URL used to connect to the database where events will be written by this connector.
+<4> The JDBC URL that the connector uses to connect to the sink database that it writes to.
 <5> The name of the database user used for authentication.
 <6> The password of the database user used for authentication.
-<7> The insert mode used by the connector, see the xref:#jdbc-property-insert-mode[insert.mode] configuration property.
-<8> Enables the ability to delete records in the database, see the xref:#jdbc-property-delete-enabled[delete.enabled] configuration property.
-<9> Specifies the method used to resolve primary key columns, see the xref:#jdbc-property-primary-key-mode[primary.key.mode] configuration property.
-<10> Enables the connector to evolve the destination database's schema, see the xref:#jdbc-property-schema-evolution[schema.evolution] configuration property.
+<7> The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
+<8> Enables the deletion of records in the database.
+For more information, see the xref:jdbc-property-delete-enabled[delete.enabled] configuration property.
+<9> Specifies the method used to resolve primary key columns.
+For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mode] configuration property.
+<10> Enables the connector to evolve the destination database's schema.
+For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
 <11> Specifies the timezone used when writing temporal field types.
 
-For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:#jdbc-connector-properties[JDBC connector properties].
+For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
 You can send this configuration with a `POST` command to a running Kafka Connect service.
 The service records the configuration and starts a sink connector task(s) that performs the following operations:
 
-* Connects to the database
-* Consumes events from subscribed Kafka topics
+* Connects to the database.
+* Consumes events from subscribed Kafka topics.
 * Writes the events to the configured database.
 
 [[jdbc-connector-properties]]
 == Connector properties
 
-The {prodname} JDBC sink connector has several configuration properties that you can use to achieve the right connector behavior for your needs.
+The {prodname} JDBC sink connector has several configuration properties that you can use to achieve the connector behavior that meets your needs.
 Many properties have default values.
 Information about the properties is organized as follows:
 
@@ -520,23 +550,23 @@ Information about the properties is organized as follows:
 
 |[[jdbc-property-connection-password]]<<jdbc-property-connection-password, `+connection.password+`>>
 |No default
-|Password to use when connecting to the database.
+|The password that the connector uses to connect to the database.
 
 |[[jdbc-property-connection-pool-min-size]]<<jdbc-property-connection-pool-min-size, `+connection.pool.min_size+`>>
 |`5`
-|Specifies the minimum number of connections the pool will maintain.
+|Specifies the minimum number of connections in the pool.
 
 |[[jdbc-property-connection-pool-max-size]]<<jdbc-property-connection-pool-max-size, `+connection.pool.min_size+`>>
 |`32`
-|Specifies the maximum number of connections the pool will maintain at any given time.
+|Specifies the maximum number of concurrent connections that the pool maintains.
 
 |[[jdbc-property-connection-pool-acquire-increment]]<<jdbc-property-connection-pool-acquire-increment, `+connection.pool.acquire_increment+`>>
 |`32`
-|Specifies the number of connections to try and acquire when out of available connections.
+|Specifies the number of connections that the connector attempts to acquire if the connection pool exceeds its maximum size.
 
 |[[jdbc-property-connection-pool-timeout]]<<jdbc-property-connection-pool-timeout, `+connection.pool.timeout+`>>
 |`1800`
-|Specifies the number of seconds that an unused connection is kept before discarded.
+|Specifies the number of seconds that an unused connection is kept before it is discarded.
 
 |===
 
@@ -552,58 +582,68 @@ Information about the properties is organized as follows:
 
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`
-|Specifies whether the connector will process `DELETE` or _tombstone_ events and remove the corresponding row from the database.  This requires that the `primary.key.mode` option be set to `record.key`.
+|Specifies whether the connector processes `DELETE` or _tombstone_ events and removes the corresponding row from the database.
+Use of this option requires that you set the xref:jdbc-property-primary-key-mode[`primary.key.mode`] to `record.key`.
 
 |[[jdbc-property-insert-mode]]<<jdbc-property-insert-mode, `+insert.mode+`>>
 |`insert`
 |Specifies the strategy used to insert events into the database.
+The following options are available:
 
 `insert`:: Specifies that all events should construct `INSERT`-based SQL statements.
-This should only be used when its guaranteed there will never be updates to previously inserted rows with the same primary key or when no primary key is used.
+Use this option only when no primary key is used, or when you can be certain that no updates can occur to rows with existing primary key values.
 `update`:: Specifies that all events should construct `UPDATE`-based SQL statements.
-This should only be used when its guaranteed there will only be events for already existing rows.
-`upsert`:: Specifies that events will be added to the table using upsert semantics, meaning that if the primary key does not exist, the connector will use an `INSERT` and if the key does exist, the connector will use an `UPDATE`.
-When idempotent writes are required, the connector should be configured with this insert mode.
+Use this option only when you can be certain that the connector receives only events that apply to existing rows.
+`upsert`:: Specifies that the connector adds events to the table using `upsert` semantics.
+That is, if the primary key does not exist, the connector performs an `INSERT` operation, and if the key does exist, the connector performs an `UPDATE` operation.
+When idempotent writes are required, the connector should be configured to use this option.
 
 |[[jdbc-property-primary-key-mode]]<<jdbc-property-primary-key-mode, `+primary.key.mode+`>>
 |`none`
-|Specifies how the primary key columns will be resolved from the event.
+|Specifies how the connector resolves the primary key columns from the event.
 
-`none`:: Specifies that no primary key columns will be created.
-`kafka`:: Specifies that the Kafka coordinates should be used as the primary key columns.
-The key coordinates are defined from the topic name, partition, and offset of the event and mapped to columns named `\__connect_topic`, `__connect_partition`, and `__connect_offset`.
-`record_key`:: Specifies that the primary key columns will be sourced from the event's record key.
-If the record key is a primitive type, the `primary.key.fields` property is required to specify the name of the primary key column.
-If the record key is a struct type, the `primary.key.fields` property is optional and can be used to specify a subset of columns from the event's key as the table's primary key.
-`record_value`:: Specifies that the primary key columns will be sourced from the event's value.
-The `primary.key.fields` property can be specified to set the primary key as a subset of fields from the event's value; otherwise all fields are used by default.
+`none`:: Specifies that no primary key columns are created.
+`kafka`:: Specifies that the connector uses Kafka coordinates as the primary key columns.
+The key coordinates are defined from the topic name, partition, and offset of the event, and are mapped to columns with the following names:
+
+* `__connect_topic`
+* `__connect_partition`
+* `__connect_offset`
+
+`record_key`:: Specifies that the primary key columns are sourced from the event's record key.
+If the record key is a primitive type, the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property is required to specify the name of the primary key column.
+If the record key is a struct type, the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property is optional, and can be used to specify a subset of columns from the event's key as the table's primary key.
+`record_value`:: Specifies that the primary key columns is sourced from the event's value.
+You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to define the primary key as a subset of fields from the event's value; otherwise all fields are used by default.
 
 |[[jdbc-property-primary-key-fields]]<<jdbc-property-primary-key-fields, `+primary.key.fields+`>>
 |No default
 |Either the name of the primary key column or a comma-separated list of fields to derive the primary key from. +
  +
-When `primary.key.mode` is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key. +
+When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key. +
  +
-When the `primary.key.mode` is either `record_key` with a non-primitive key or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
-If the `primary.key.mode` is either `record_key` with a non-primitive key or `record_value` and this property is not specifies, the connector will use all fields as the primary key either from the key or value depending on the mode.
+When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
+If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specifies, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
 
 |[[jdbc-property-quote-identifiers]]<<jdbc-property-quote-identifiers, `+quote.identifiers+`>>
 |`false`
-|Specifies whether table and column names will be quoted in generated SQL statements.
+|Specifies whether generated SQL statements use quotation marks to delimit table and column names.
 See the xref:jdbc-quoting-case-sensitivity[] section for more details.
 
 |[[jdbc-property-schema-evolution]]<<jdbc-property-schema-evolution, `+schema.evolution+`>>
 |`none`
-|Specifies how the connector will evolve the destination table schemas.
-See the xref:jdbc-schema-evolution[] section for more details.
+|Specifies how the connector evolves the destination table schemas.
+For more information, see xref:jdbc-schema-evolution[].
+The following options are available:
 
-`none`:: Specifies that the connector will not evolve the destination schema.
-`basic`:: Specifies that basic evolution will occur by adding any missing columns to the table by comparing the incoming event's record schema to the database table structure.
+`none`:: Specifies that the connector does not evolve the destination schema.
+`basic`:: Specifies that basic evolution occurs.
+The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
 |[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
 |`${topic}`
-|Specifies a string that controls how the destination table name will be formatted based on the event's topic name.
-The placeholder, `${topic}`, will be replaced by the topic name.
+|Specifies a string that determines how the destination table name is formatted, based on the topic name of the event.
+The placeholder, `${topic}`, is replaced by the topic name.
 
 |===
 
@@ -615,16 +655,16 @@ The placeholder, `${topic}`, will be replaced by the topic name.
 
 |[[jdbc-property-column-naming-strategy]]<<jdbc-property-column-naming-strategy, `+column.naming.strategy+`>>
 |`i.d.c.j.n.DefaultColumnNamingStrategy`
-|Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector will use to resolve column names from event field names. +
+|Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from event field names. +
  +
-The default behavior is to simply use the field name as the column name.
+By default, the connector uses the field name as the column name.
 |[[jdbc-property-table-naming-strategy]]<<jdbc-property-table-naming-strategy, `+table.naming.strategy+`>>
 |`i.d.c.j.n.DefaultTableNamingStrategy`
-|Specifies the fully-qualified class name of a `TableNamingStraetgy` implementation that the connector users to resolve table names from incoming event topic names. +
+|Specifies the fully-qualified class name of a `TableNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
  +
 The default behavior is to: +
 
-* Replace the `${topic}` placeholder in the `table.name.format` configuration property with the event's topic.
+* Replace the `${topic}` placeholder in the xref:jdbc-property-table-name-format[`table.name.format`] configuration property with the event's topic.
 * Sanitize the table name by replacing dots (`.`) with underscores (`_`).
 
 |===
@@ -632,30 +672,31 @@ The default behavior is to: +
 [[jdbc-faq]]
 == Frequently asked questions
 
-* *Is the* `ExtractNewRecordState` *single message transformation required?* +
-No, that is actual one of the differentiating factors of the {prodname} JDBC connector from other implementations.
-While the connector is capable of ingesting flattened events like its competitors, it can also ingest Debezium's complex change event structure natively, without requiring any specific type of transformation.
+*Is the* `ExtractNewRecordState` *single message transformation required?*::
+No, that is actually one of the differentiating factors of the {prodname} JDBC connector from other implementations.
+While the connector is capable of ingesting flattened events like its competitors, it can also ingest {prodname}'s complex change event structure natively, without requiring any specific type of transformation.
 
-* *If a column's type is changed or a column is renamed or dropped, is this handled by schema evolution?* +
+*If a column's type is changed, or if a column is renamed or dropped, is this handled by schema evolution?*::
 No, the {prodname} JDBC connector does not make any changes to existing columns.
-The schema evolution supported by the connector is quite basic, it simply compares the fields in the event structure to the table's column list and simply adds any fields that are not yet defined as columns in the table.
-If a column's type or default value change, this will not be adjusted by the connector in the destination database.
-If a column is renamed, the old column will be left as is and a new column will be appended to the table with the new name; however existing rows with data in the old column will remain unchanged.
+The schema evolution supported by the connector is quite basic.
+It simply compares the fields in the event structure to the table's column list, and then adds any fields that are not yet defined as columns in the table.
+If a column's type or default value change, the connector does not adjust them in the destination database.
+If a column is renamed, the old column is left as-is, and the connector appends a column with the new name to the table; however existing rows with data in the old column remain unchanged.
 These types of schema changes should be handled manually.
 
-* *A column's type is resolved to a type that is not desired, how can the type be resolved to a different data type?* +
+*If a column's type does not resolve to the type that I want, how can I enforce mapping to a different data type?*::
 The {prodname} JDBC connector uses a sophisticated type system to resolve a column's data type.
-You can refer to the xref:#jdbc-data-and-type-mappings[] section for details on how this type system resolves a specific field's schema definition to a JDBC type.
-If you desire a different data type mapping, you should define the table manually so you explicitly control the desired column type you need.
+For details about how this type system resolves a specific field's schema definition to a JDBC type, see the xref:jdbc-data-and-type-mappings[] section.
+If you want to apply a different data type mapping, define the table manually to explicitly obtain the preferred column type.
 
-* *How do you specify a prefix or a suffix to the table name without changing the Kafka topic name?* +
-In order to add a prefix or a suffix to the destination table  name, simply adjust the xref:#jdbc-property-table-name-format[table.name.format] connector configuration property and prepend or append the desired prefixed or suffix.
+*How do you specify a prefix or a suffix to the table name without changing the Kafka topic name?*::
+In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-table-name-format[table.name.format] connector configuration property to apply the prefix or suffix that you want.
 For example, to prefix all table names with `jdbc_`, specify the `table.name.format` configuration property with a value of `jdbc_${topic}`.
-If such a connector is subscribed to a topic called `orders`, the resulting table will be created as `jdbc_orders`.
+If the connector is subscribed to a topic called `orders`, the resulting table is created as `jdbc_orders`.
 
-* *Even when identifier quoting is not enabled, some columns are automatically quoted, why?* +
-There are situations where specific column or table names may still be explicitly quoted even when `quote.identifiers` is not enabled.
+*Why are some columns automatically quoted, even though identifier quoting is not enabled?*::
+In some situations, specific column or table names might be explicitly quoted, even when `quote.identifiers` is not enabled.
 This is often necessary when the column or table name starts with or uses a specific convention that would otherwise be considered illegal syntax.
-For example, when setting the xref:#jdbc-property-primary-key-mode[primary.key.mode] to `kafka`, certain databases will not allow a column's name to begin with an underscore unless the column's name is quoted.
-This behavior is dialect specific and varies depending on the database used.
+For example, when the xref:jdbc-property-primary-key-mode[primary.key.mode] is set to `kafka`, some databases only permit column names to begin with an underscore if the column's name is quoted.
+Quoting behavior is dialect-specific, and varies among different types of database.
 
