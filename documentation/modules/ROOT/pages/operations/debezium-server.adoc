@@ -736,6 +736,10 @@ Pulsar exposes a REST APIs and a native endpoint provides a (not-only) Java clie
 |
 |Must be set to `pulsar`.
 
+|[[pulsar-async]]<<pulsar-async, `debezium.sink.pulsar.async`>>
+|`false`
+|Enables asynchronous message producing. Setting this option to `true` will make Debezium Server use the https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/TypedMessageBuilder.html#sendAsync()[`sendAsync`] method instead of the synchronous https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/TypedMessageBuilder.html#send()[`send`] when producing to Pulsar. Enabling this option significantly increases message rate by not waiting for every single message to be acknowledged by pulsar before sending the next one. Order will still be guaranteed. Messages in the batch will be sent to the Broker without waiting for the previous ones and the batch will be marked complete once all of the messages were acknowledeged by Pulsar asynchronously. Make sure that https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#maxPendingMessages(int)[`maxPendingMessages`] and https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#blockIfQueueFull(boolean)[`blockIfQueueFull`] are configured properly on the producer before enabling this option to avoid any errors.
+
 |[[pulsar-client]]<<pulsar-client, `debezium.sink.pulsar.client.*`>>
 |
 |The Pulsar module supports pass-through configuration.
