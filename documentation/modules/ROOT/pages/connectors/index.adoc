@@ -13,7 +13,7 @@ We currently have the following connectors:
 * xref:connectors/cassandra.adoc[Cassandra] (Incubating)
 * xref:connectors/vitess.adoc[Vitess] (Incubating)
 * xref:connectors/spanner.adoc[Spanner] (Incubating)
-* xref:connectors/jdbc.adoc[JDBC] (Incuating)
+* xref:connectors/jdbc.adoc[JDBC] (Incubating)
 
 [NOTE]
 ====
