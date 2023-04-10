@@ -67,17 +67,21 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
-        final SourceRecords records = consumeRecordsByTopic(3);
+        connection.execute("UPDATE skip_messages_test SET white=3,black=3 where id=1");
+        final SourceRecords records = consumeRecordsByTopic(4);
         final List<SourceRecord> tableMessages = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
         /*
          * Total events:
          * 1,1,1 (I)
          * 1,1,2 (U) (Skipped)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
-        assertThat(tableMessages).hasSize(2);
-        final Struct secondRecord = (Struct) tableMessages.get(1).value();
-        assertThat(((Struct) secondRecord.get("after")).get("white")).isEqualTo(2);
+        assertThat(tableMessages).hasSize(3);
+        final Struct secondMessage = (Struct) tableMessages.get(1).value();
+        assertThat(((Struct) secondMessage.get("after")).get("white")).isEqualTo(2);
+        final Struct thirdMessage = (Struct) tableMessages.get(2).value();
+        assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(3);
         stopConnector();
     }
 
@@ -97,17 +101,21 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
-        final SourceRecords records = consumeRecordsByTopic(3);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
+        connection.execute("UPDATE skip_messages_test SET white=3,black=3 where id=1");
+        final SourceRecords records = consumeRecordsByTopic(4);
+        final List<SourceRecord> tableMessages = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
         /*
          * Total events:
          * 1,1,1 (I)
          * 1,1,2 (U) (Skipped)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
-        assertThat(tableA).hasSize(2);
-        final Struct valueA = (Struct) tableA.get(1).value();
-        assertThat(((Struct) valueA.get("after")).get("white")).isEqualTo(2);
+        assertThat(tableMessages).hasSize(3);
+        final Struct secondMessage = (Struct) tableMessages.get(1).value();
+        assertThat(((Struct) secondMessage.get("after")).get("white")).isEqualTo(2);
+        final Struct thirdMessage = (Struct) tableMessages.get(2).value();
+        assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(3);
         stopConnector();
     }
 
@@ -124,17 +132,23 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         connection.execute("INSERT INTO skip_messages_test VALUES (1, 1, 1);");
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
-        final SourceRecords records = consumeRecordsByTopic(3);
+        connection.execute("UPDATE skip_messages_test SET white=3,black=3 where id=1");
+        final SourceRecords records = consumeRecordsByTopic(5);
         final List<SourceRecord> tableMessages = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
         /*
          * Total events:
          * 1,1,1 (I)
          * 1,1,2 (U)
          * 1,2,2 (U)
+         * 1,3,3 (U)
          */
-        assertThat(tableMessages).hasSize(3);
+        assertThat(tableMessages).hasSize(4);
         final Struct secondMessage = (Struct) tableMessages.get(1).value();
         assertThat(((Struct) secondMessage.get("after")).get("white")).isEqualTo(1);
+        final Struct thirdMessage = (Struct) tableMessages.get(2).value();
+        assertThat(((Struct) thirdMessage.get("after")).get("white")).isEqualTo(2);
+        final Struct forthMessage = (Struct) tableMessages.get(3).value();
+        assertThat(((Struct) forthMessage.get("after")).get("white")).isEqualTo(3);
         stopConnector();
     }
 

@@ -64,12 +64,22 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
+        TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
 
-        final SourceRecords records = consumeRecordsByTopic(10);
+        final SourceRecords records = consumeRecordsByTopic(4);
+        /*
+         * Total Events
+         * 1,1,1 (I)
+         * 1,1,2 (U) (Skipped)
+         * 1,2,2 (U)
+         * 1,3,3 (U)
+         */
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
-        assertThat(recordsForTopic).hasSize(2);
-        Struct after = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("white")).isEqualTo(2);
+        assertThat(recordsForTopic).hasSize(3);
+        Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(secondMessage.get("white")).isEqualTo(2);
+        Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(thirdMessage.get("white")).isEqualTo(3);
     }
 
     @Test
@@ -94,12 +104,22 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
+        TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
 
-        final SourceRecords records = consumeRecordsByTopic(3);
+        final SourceRecords records = consumeRecordsByTopic(4);
+        /*
+         * Total Events
+         * 1,1,1 (I)
+         * 1,1,2 (U) (Skipped)
+         * 1,2,2 (U)
+         * 1,3,3 (U)
+         */
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
-        assertThat(recordsForTopic).hasSize(2);
-        Struct after = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("white")).isEqualTo(2);
+        assertThat(recordsForTopic).hasSize(3);
+        Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(secondMessage.get("white")).isEqualTo(2);
+        Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(thirdMessage.get("white")).isEqualTo(3);
     }
 
     @Test
@@ -122,11 +142,23 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
-        final SourceRecords records = consumeRecordsByTopic(3);
+        TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
+        final SourceRecords records = consumeRecordsByTopic(5);
+        /*
+         * Total Events
+         * 1,1,1 (I)
+         * 1,1,2 (U)
+         * 1,2,2 (U)
+         * 1,3,3 (U)
+         */
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
-        assertThat(recordsForTopic).hasSize(3);
-        Struct after = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("white")).isEqualTo(1);
+        assertThat(recordsForTopic).hasSize(4);
+        Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(secondMessage.get("white")).isEqualTo(1);
+        Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(thirdMessage.get("white")).isEqualTo(2);
+        Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(forthMessage.get("white")).isEqualTo(3);
     }
 
     @Test
@@ -151,12 +183,24 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("INSERT INTO updates_test.debezium_test (id,white,black) VALUES (1,1,1);");
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
-        final SourceRecords records = consumeRecordsByTopic(3);
+        TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
+        /*
+         * Total Events
+         * 1,1,1 (I)
+         * 1,1,2 (U)
+         * 1,2,2 (U)
+         * 1,3,3 (U)
+         */
+        final SourceRecords records = consumeRecordsByTopic(5);
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
 
-        assertThat(recordsForTopic).hasSize(3);
-        Struct after = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("white")).isEqualTo(1);
+        assertThat(recordsForTopic).hasSize(4);
+        Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(secondMessage.get("white")).isEqualTo(1);
+        Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(thirdMessage.get("white")).isEqualTo(2);
+        Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(forthMessage.get("white")).isEqualTo(3);
     }
 
 }
