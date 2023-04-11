@@ -139,13 +139,13 @@ MongoDB replica set::
 The {prodname} MongoDB connector can capture changes from a single https://docs.mongodb.com/manual/replication/[MongoDB replica set].
 Production replica sets require a minimum of https://docs.mongodb.com/manual/core/replica-set-architecture-three-members/[at least three members].
 +
-To use the MongoDB connector with a replica set, you must set the value of the `mongodb.connection.string` property in the connector configuration to the https://www.mongodb.com/docs/manual/reference/connection-string/[replica set connection string]. 
+To use the MongoDB connector with a replica set, you must set the value of the `mongodb.connection.string` property in the connector configuration to the https://www.mongodb.com/docs/manual/reference/connection-string/[replica set connection string].
 When the connector is ready to begin capturing changes from a MongoDB change stream, it starts a connection task.
 The connection task then uses the specified connection string to establish a connection to an available replica set member.
 
 [WARNING]
 ====
-Due to changes in the way that the connector manages database connections, this release of {prodname} no longer supports use of the `mongodb.members.auto.discover` property to prevent the connector from performing membership discovery. 
+Due to changes in the way that the connector manages database connections, this release of {prodname} no longer supports use of the `mongodb.members.auto.discover` property to prevent the connector from performing membership discovery.
 ====
 
 [[mongodb-sharded-cluster]]
@@ -159,7 +159,7 @@ To use the MongoDB connector with a sharded cluster, in the connector configurat
 
 [WARNING]
 ====
-The `mongodb.connection.string` property replaces the deprecated `mongodb.hosts` property that was used to provide earlier versions of the connector with the host address of the _configuration server_ replica.  
+The `mongodb.connection.string` property replaces the deprecated `mongodb.hosts` property that was used to provide earlier versions of the connector with the host address of the _configuration server_ replica.
 In the current release, use `mongodb.connection.string` to provide the connector with the addresses of MongoDB routers, also known as `mongos`.
 ====
 
@@ -269,13 +269,13 @@ endif::community[]
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!sql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+3]
 
 // Type: procedure
 [id="mongodb-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!sql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+3]
 
 // Type: concept
 // ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records
@@ -1379,7 +1379,7 @@ Set this property to one of the following values:
 
 [NOTE]
 ====
-The `replica_set` options allows the connector to distribute shard processing across multiple connector tasks. 
+The `replica_set` options allows the connector to distribute shard processing across multiple connector tasks.
 However, in this configuration, the connector bypasses the MongoDB router when it connects to individual shards, which is not recommended by MongoDB.
 ====
 
@@ -1527,14 +1527,14 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 |[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
 |`1`
 |Specifies the maximum number of tasks that the connector uses to connect to a sharded cluster.
-When you use the connector with a single MongoDB replica set, the default value is acceptable.  
+When you use the connector with a single MongoDB replica set, the default value is acceptable.
 But when a cluster contains multiple shards, to enable Kafka Connect to distribute the work for each replica set, specify a value that is equal to or greater than the number of shards in the cluster.
 The MongoDB connector can then use a separate task to connect to the replica set for each shard in the cluster.
 
 [NOTE]
 ====
 This property has an effect only when the connector is connected to a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`.
-When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded`, or if the connector is connected to an unsharded MongoDB replica set deployment, the connector ignores this setting, and defaults to using only a single task.  
+When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded`, or if the connector is connected to an unsharded MongoDB replica set deployment, the connector ignores this setting, and defaults to using only a single task.
 ====
 
 |[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
