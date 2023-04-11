@@ -159,13 +159,13 @@ The {prodname} connector for Db2 does not support schema changes while an increm
 [id="db2-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
 [id="db2-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: concept
 // Title: How {prodname} Db2 connectors read change-data tables
