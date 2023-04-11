@@ -473,13 +473,13 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 [id="mysql-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: procedure
 [id="mysql-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
-include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot.adoc[leveloffset=+3,tags=!nosql-based-snapshot]
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 ifdef::community[]
 [id="mysql-read-only-incremental-snapshots"]
@@ -3256,7 +3256,7 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 [[mysql-streaming-metrics]]
 === Streaming metrics
 
-Transaction-related attributes are available only if binlog event buffering is enabled. 
+Transaction-related attributes are available only if binlog event buffering is enabled.
 ifdef::community[]
 See xref:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 endif::community[]
