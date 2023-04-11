@@ -10,7 +10,7 @@ import org.testcontainers.containers.MySQLContainer;
 import io.debezium.testing.system.tools.databases.AbstractDockerSqlDatabaseController;
 import io.debezium.testing.system.tools.databases.docker.DBZMySQLContainer;
 
-public class DockerMysqlController extends AbstractDockerSqlDatabaseController<DBZMySQLContainer<?>> {
+public class DockerMysqlController extends AbstractDockerSqlDatabaseController<DBZMySQLContainer<?>> implements MySqlMasterController {
 
     DockerMysqlController(DBZMySQLContainer<?> container) {
         super(container);

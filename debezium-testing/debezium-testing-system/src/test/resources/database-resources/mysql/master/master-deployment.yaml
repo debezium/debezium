@@ -21,8 +21,9 @@ spec:
         deployment: mysql-master
     spec:
       volumes:
-      - name: mysql-volume-1
-        emptyDir: {}
+      - name: mysql-master-pv
+        persistentVolumeClaim:
+          claimName: "mysql-pv-claim"
       containers:
       - resources: {}
         name: mysql
@@ -38,9 +39,9 @@ spec:
           protocol: TCP
         - containerPort: 33060
           protocol: TCP
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
-        - name: mysql-volume-1
+        - name: mysql-master-pv
           mountPath: /var/lib/mysql
         livenessProbe:
           initialDelaySeconds: 30
