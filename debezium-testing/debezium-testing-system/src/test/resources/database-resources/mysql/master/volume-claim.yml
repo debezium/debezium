@@ -1,0 +1,13 @@
+# persistent volume claim is needed so that mysql data is preserved through pod restarts.
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mysql-pv-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard-csi
+  volumeMode: Filesystem

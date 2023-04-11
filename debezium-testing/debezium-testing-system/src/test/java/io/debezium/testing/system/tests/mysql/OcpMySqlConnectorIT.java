@@ -13,7 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
-import io.debezium.testing.system.fixtures.databases.ocp.OcpMySql;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMySqlMaster;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMySqlReplica;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
@@ -31,7 +31,7 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpClient.class)
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
-@Fixture(OcpMySql.class)
+@Fixture(OcpMySqlMaster.class)
 @Fixture(OcpMySqlReplica.class)
 @Fixture(MySqlConnector.class)
 @ExtendWith(FixtureExtension.class)

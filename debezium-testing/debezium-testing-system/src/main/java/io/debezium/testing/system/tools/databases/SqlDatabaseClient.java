@@ -10,10 +10,12 @@ import static org.awaitility.Awaitility.await;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +74,17 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
                 stmt.execute(command);
             }
         });
+    }
+
+    public <T> T executeQuery(String database, String command, Function<ResultSet, T> resultSetProcessor) throws SQLException {
+        LOGGER.info("Running SQL Query: " + command);
+        try (Connection con = connect()) {
+            con.setCatalog(database);
+            try (Statement stmt = con.createStatement()) {
+                ResultSet rs = stmt.executeQuery(command);
+                return resultSetProcessor.apply(rs);
+            }
+        }
     }
 
     public Connection connect() throws SQLException {

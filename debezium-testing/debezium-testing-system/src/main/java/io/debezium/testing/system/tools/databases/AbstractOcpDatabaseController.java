@@ -78,7 +78,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
-        // TODO fix wait
         await()
                 .atMost(scaled(30), SECONDS)
                 .pollDelay(5, SECONDS)
@@ -89,12 +88,15 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                             .list()
                             .getItems()
                             .stream()
-                            .filter(p -> p.getMetadata().getName().contains(name))
+                            .filter(p -> p.getMetadata().getLabels().containsValue(name))
                             .collect(Collectors.toList());
                     return pods.isEmpty();
                 });
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
     }
 
     @Override

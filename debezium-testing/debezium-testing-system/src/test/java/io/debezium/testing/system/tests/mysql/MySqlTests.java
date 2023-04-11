@@ -8,20 +8,24 @@ package io.debezium.testing.system.tests.mysql;
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
+import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.assertions.KafkaAssertions;
-import io.debezium.testing.system.resources.ConnectorFactories;
 import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.tools.databases.mysql.MySqlMasterController;
 import io.debezium.testing.system.tools.databases.mysql.MySqlReplicaController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
@@ -57,6 +61,20 @@ public abstract class MySqlTests extends ConnectorTest {
         client.execute("inventory", sql);
     }
 
+    public int getCustomerCount(SqlDatabaseController dbController) throws SQLException {
+        SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
+        String sql = "SELECT count(*) FROM customers";
+        return client.executeQuery("inventory", sql, rs -> {
+            try {
+                rs.next();
+                return rs.getInt(1);
+            }
+            catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     @Test
     @Order(10)
     public void shouldHaveRegisteredConnector() {
@@ -90,7 +108,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(40)
-    public void shouldStreamChanges(SqlDatabaseController dbController) throws SQLException {
+    public void shouldStreamChanges(MySqlMasterController dbController) throws SQLException {
         insertCustomer(dbController, "Tom", "Tester", "tom@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
@@ -100,7 +118,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(41)
-    public void shouldRerouteUpdates(SqlDatabaseController dbController) throws SQLException {
+    public void shouldRerouteUpdates(MySqlMasterController dbController) throws SQLException {
         renameCustomer(dbController, "Tom", "Thomas");
 
         String prefix = connectorConfig.getDbServerName();
@@ -112,7 +130,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(50)
-    public void shouldBeDown(SqlDatabaseController dbController) throws Exception {
+    public void shouldBeDown(MySqlMasterController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
         insertCustomer(dbController, "Jerry", "Tester", "jerry@test.com");
 
@@ -132,7 +150,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(70)
-    public void shouldBeDownAfterCrash(SqlDatabaseController dbController) throws SQLException {
+    public void shouldBeDownAfterCrash(MySqlMasterController dbController) throws SQLException {
         connectController.destroy();
         insertCustomer(dbController, "Nibbles", "Tester", "nibbles@test.com");
 
@@ -151,26 +169,25 @@ public abstract class MySqlTests extends ConnectorTest {
     }
 
     @Test
+    @Tag("openshift")
     @Order(100)
-    public void shouldStreamAfterConnectingToReplica(MySqlReplicaController replicaController, SqlDatabaseController masterController)
+    public void shouldStreamAfterConnectingToReplica(MySqlReplicaController replicaController, MySqlMasterController masterController)
             throws SQLException, IOException, InterruptedException {
-        // TODO remove master
-        connectController.undeployConnector(connectorConfig.getConnectorName());
+        // wait for replication to complete
+        await()
+                .atMost(scaled(5), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(20))
+                .until(() -> Integer.valueOf(7).equals(getCustomerCount(replicaController)));
 
-        connectorConfig = new ConnectorFactories(kafkaController).mysql(replicaController, "inventory-connector-mysql" + TestUtils.getUniqueId());
+        masterController.reload();
+
+        connectorConfig.put("database.hostname", replicaController.getDatabaseHostname());
         connectController.deployConnector(connectorConfig);
 
-        String prefix = connectorConfig.getDbServerName();
-
-        assertions.assertTopicsExist(
-                prefix + ".inventory.addresses", prefix + ".inventory.customers", prefix + ".inventory.geom",
-                prefix + ".inventory.orders", prefix + ".inventory.products", prefix + ".inventory.products_on_hand");
-        insertCustomer(masterController, "Tom2", "Tester2", "tom2@test.com");
-
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
-        awaitAssert(() -> assertions.assertRecordsContain(topic, "tom@test.com"));
-    }
 
-    // TODO start master, changes stream to slave
+        insertCustomer(masterController, "Arnold", "Test", "atest@test.com");
+        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "atest@test.com"));
+    }
 }

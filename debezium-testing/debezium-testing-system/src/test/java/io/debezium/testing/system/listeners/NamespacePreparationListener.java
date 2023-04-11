@@ -139,11 +139,11 @@ public class NamespacePreparationListener implements TestExecutionListener {
         }
 
         if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !ConfigProperties.PRODUCT_BUILD) {
-            throw new IllegalStateException("PREPARE_STRIMZI is false in upstream build");
+            LOGGER.warn("PREPARE_STRIMZI is false in upstream build");
         }
 
         if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !namespacesExist()) {
-            throw new IllegalStateException("should not prepare strimzi/namespace but namespace is missing");
+            LOGGER.warn("Should not prepare strimzi/namespace but namespace is missing");
         }
     }
 

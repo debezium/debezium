@@ -36,7 +36,7 @@ spec:
               protocol: TCP
             - containerPort: 33060
               protocol: TCP
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: mysql-volume-1
               mountPath: /var/lib/mysql
