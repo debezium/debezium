@@ -135,17 +135,17 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     }
 
     private static void checkWalLevel(PostgresConnection connection, PostgresConnectorConfig config) throws SQLException {
-        // Logical WAL_LEVEL is only necessary for CDC snapshotting
-        if (config.getSnapshotter() != null && config.getSnapshotter().shouldStream()) {
-            final String walLevel = connection.queryAndMap(
-                    "SHOW wal_level",
-                    connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
-            if (!"logical".equals(walLevel)) {
+        final String walLevel = connection.queryAndMap(
+                "SHOW wal_level",
+                connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
+        if (!"logical".equals(walLevel)) {
+            if (config.getSnapshotter() != null && config.getSnapshotter().shouldStream()) {
+                // Logical WAL_LEVEL is only necessary for CDC snapshotting
                 throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
             }
-        }
-        else {
-            LOGGER.warn("Skipped WAL_LEVEL check as CDC was not requested");
+            else {
+                LOGGER.warn("WAL_LEVEL check failed but this is ignored as CDC was not requested");
+            }
         }
     }
 
