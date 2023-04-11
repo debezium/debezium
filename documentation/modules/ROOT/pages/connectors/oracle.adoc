@@ -4132,12 +4132,6 @@ This mining strategy option should not be used if the tables being captured are 
 It's important that all data changes be lock-stepped with the schema change such that all changes have been captured from the logs for the table, stop the connector, apply the schema change, and restart the connector and resume data changes on the table.
 This option requires less Oracle database memory and Oracle LogMiner sessions generally start substantially faster since the data dictionary does not need to be loaded or primed by the LogMiner process.
 
-*Why are changes made by SYS or SYSTEM users not captured?*::
-The Oracle database uses the `SYS` and `SYSTEM` user accounts to perform a multitude of internal operations in the redo logs that are not important for change data capture.
-When the {prodname} Oracle connector reads changes from Oracle LogMiner, changes made by these two user accounts are filtered out automatically.
-So if you are using either of these two user accounts and not seeing change events, this is why changes made by those users are not captured.
-You should use a designated non-system user account to perform all changes you wish to be captured.
-
 *Why does the connector appear to stop capturing changes on AWS?*::
 Due to the https://aws.amazon.com/blogs/networking-and-content-delivery/best-practices-for-deploying-gateway-load-balancer[fixed idle timeout of 350 seconds on the AWS Gateway Load Balancer],
 JDBC calls that require more than 350 seconds to complete can hang indefinitely.
