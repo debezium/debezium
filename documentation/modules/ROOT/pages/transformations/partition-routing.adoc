@@ -128,10 +128,10 @@ That is, the items with `id` values `104`, `105`, and `106` are routed to the sa
 [[example-advanced-partition-routing-configuration-example]]
 == Example: Advanced configuration
 
-Suppose you have different data collections (t1, t2) routed to same topic (my_topic), and you want to partition events from data collection t1 using field f1
-and events from data collection t2 using field f2.
+Suppose that you want to route events from two data collections (t1, t2) to the same topic (for example, my_topic), and you want to partition events from data collection t1 by using field f1,
+and partition events from data collection t2 by using field f2.
 
-This will be the configuration
+You could apply the following configuration:
 
 [source]
 ----
@@ -146,7 +146,8 @@ predicates.myTopic.type=org.apache.kafka.connect.transforms.predicates.TopicName
 predicates.myTopic.pattern=my_topic
 ----
 
-Note that in this configuration we omitted the part to configure the re-routes of events from different topic to a specific one. See {link-prefix}:{link-topic-routing}[Topic Routing SMT].
+The preceding configuration does not specify how to re-route events so that they are sent to a specific destination topic. 
+For information about how to send events to topics other than their default destination topics, see the {link-prefix}:{link-topic-routing}[Topic Routing SMT]., see the {link-prefix}:{link-topic-routing}[Topic Routing SMT].
 
 // Type: concept
 // Title: Migrating from the {prodname} ComputePartition SMT
