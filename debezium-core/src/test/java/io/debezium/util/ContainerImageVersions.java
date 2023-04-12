@@ -19,6 +19,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class ContainerImageVersions {
 
+    private static final String QUAY_IO_REGISTRY = "quay.io/";
     private static final String BASE_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
 
     public static String getStableImage(String image) {
@@ -27,6 +28,9 @@ public class ContainerImageVersions {
 
     public static String getStableVersion(String image) {
         try {
+            if (image.startsWith(QUAY_IO_REGISTRY)) {
+                image = image.substring(QUAY_IO_REGISTRY.length());
+            }
             URL url = new URL(String.format(BASE_URL, image));
             HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
             httpsURLConnection.setRequestMethod("GET");
