@@ -26,7 +26,7 @@ public class ConditionalFail extends AnnotationBasedTestRule {
 
     private static final Logger FLAKY_LOGGER = LoggerFactory.getLogger(Flaky.class);
 
-    private static final String JIRA_BASE_URL = "https://issues.jboss.org/browse/";
+    private static final String JIRA_BASE_URL = "https://issues.redhat.com/browse/";
 
     @Override
     public Statement apply(final Statement base, final Description description) {
@@ -80,18 +80,24 @@ public class ConditionalFail extends AnnotationBasedTestRule {
         if (flakyFailuresProperty == null || !Boolean.valueOf(flakyFailuresProperty)) {
             return base;
         }
+        final String flakyAttemptsProperty = System.getProperty(Flaky.FLAKY_ATTEMPTS_FAILURES_PROPERTY, "1");
+        final int attempts = Integer.parseInt(flakyAttemptsProperty);
 
         return new Statement() {
+
             @Override
             public void evaluate() throws Throwable {
-                try {
-                    base.evaluate();
+                for (int i = 0; i < attempts; i++) {
+                    try {
+                        base.evaluate();
+                        return;
+                    }
+                    catch (final Throwable t) {
+                        FLAKY_LOGGER.error("Ignored failure for {}, tracked with {}", description, issueUrl(flakyClass.value()), t);
+                    }
                 }
-                catch (final Throwable t) {
-                    FLAKY_LOGGER.error("Ignored failure for {}, tracked with {}", description, issueUrl(flakyClass.value()), t);
-                    // Marks test as skipped
-                    Assume.assumeTrue(String.format("Flaky test %s#%s failed", description.getTestClass().getSimpleName(), description.getMethodName()), false);
-                }
+                // Marks test as skipped
+                Assume.assumeTrue(String.format("Flaky test %s#%s failed", description.getTestClass().getSimpleName(), description.getMethodName()), false);
             }
         };
     }
