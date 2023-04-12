@@ -1,4 +1,4 @@
-Currently, the only way to initiate an incremental snapshot is to send an xref:{link-signalling}#debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
+Currently, the only way to initiate an incremental snapshot is to send an {link-prefix}:{link-signalling}#debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
 
 You submit a signal to the signaling {data-collection} as SQL `INSERT` queries.
 
@@ -23,7 +23,7 @@ For example, to include a table that exists in the `*public*` schema and that ha
 
 .Prerequisites
 
-* xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
+* {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
@@ -48,7 +48,7 @@ values ('ad-hoc-1',   // <2>
     "additional-condition":"color=blue"}'); // <6>
 ----
 +
-The values of the `id`,`type`, and `data` parameters in the command correspond to the xref:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
+The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
 The following table describes the parameters in the example:
 +
