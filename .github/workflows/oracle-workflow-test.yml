@@ -40,7 +40,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      SKIP_CHECK: ${{ steps.skip.outputs.SKIP_CHECK }}
+      HAS_QUAY_IO: ${{ steps.skip.outputs.HAS_QUAY_IO }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
@@ -52,19 +52,16 @@ jobs:
           QUAY_IO_PASSWORD: ${{ secrets.QUAY_IO_PASSWORD }}
         run: |
           if [[ $QUAY_IO_USERNAME == '' ]] && [[ $QUAY_IO_PASSWORD == '' ]]; then
-            echo "SKIP_CHECK=true" >> $GITHUB_OUTPUT
+            echo "HAS_QUAY_IO=false" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_QUAY_IO=true" >> $GITHUB_OUTPUT
           fi
-      - name: Check failure
-        if: ${{ steps.skip.outputs.SKIP_CHECK == 'true' }}
-        uses: actions/github-script@v6
-        continue-on-error: false
-        with:
-          script: |
-            throw new Error("Author @${{ github.event.pull_request.user.login }} doesn't have credentials to run the workflow. Denied access.")
+
 
   build:
     runs-on: ubuntu-latest
     needs: [check]
+    if: ${{ needs.check.outputs.HAS_QUAY_IO == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v3
