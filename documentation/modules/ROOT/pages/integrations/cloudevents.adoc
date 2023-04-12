@@ -51,7 +51,7 @@ endif::product[]
 
 For information about using Avro, see:
 
-* xref:{link-avro-serialization}#avro-serialization[Avro serialization]
+* {link-prefix}:{link-avro-serialization}#avro-serialization[Avro serialization]
 
 * link:https://github.com/Apicurio/apicurio-registry[Apicurio Registry]
 

@@ -241,7 +241,7 @@ _topicPrefix_:: The logical name of the server, as specified by the xref:sqlserv
 _schemaName_:: The name of the database schema in which the change event occurred.
 _tableName_:: The name of the database table in which the change event occurred.
 
-For example, if `fulfillment` is the server name, and `dbo` is the schema name, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`,
+For example, if `fulfillment` is the logical server name, and `dbo` is the schema name, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`,
 the connector would stream change event records to the following Kafka topics:
 
 * `fulfillment.testDB.dbo.products`
@@ -253,7 +253,7 @@ The connector applies similar naming conventions to label its internal database 
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
-For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 
 // Type: concept
@@ -290,7 +290,7 @@ The format of the messages that a connector emits to its schema change topic is 
 
 * You enable CDC for a table.
 * You disable CDC for a table.
-* You alter the structure of a table for which CDC is enabled by following the xref:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure].
+* You alter the structure of a table for which CDC is enabled by following the xref:sqlserver-schema-evolution[schema evolution procedure].
 
 .Example: Message emitted to the SQL Server connector schema change topic
 The following example shows a message in the schema change topic.
@@ -517,7 +517,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
  +
-It is possible to override the table's primary key by setting the xref:{link-sqlserver-connector}#sqlserver-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+It is possible to override the table's primary key by setting the xref:sqlserver-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
 |`payload`
@@ -533,7 +533,8 @@ It is possible to override the table's primary key by setting the xref:{link-sql
 
 |===
 
-By default, the connector streams change event records to topics with names that are the same as the event's originating table. See xref:{link-sqlserver-connector}#sqlserver-topic-names[topic names].
+By default, the connector streams change event records to topics with names that are the same as the event's originating table.
+For more information, see xref:sqlserver-topic-names[topic names].
 
 [WARNING]
 ====
@@ -859,7 +860,7 @@ a|In the `schema` section, each `name` field specifies the schema for a field in
 `server1.dbo.testDB.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. +
  +
  Names of schemas for `before` and `after` fields are of the form `_logicalName_._database-schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database.
- This means that when using the xref:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+ This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
 |3
 |`name`
@@ -874,7 +875,7 @@ a|`server1.dbo.testDB.customers.Envelope` is the schema for the overall structur
 |The value's actual data. This is the information that the change event is providing. +
  +
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the xref:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
 |6
 |`before`
@@ -1005,7 +1006,7 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a _delete_ event and a xref:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by a _create_ event with the new key for the row.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a _delete_ event and a xref:sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by a _create_ event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
@@ -1304,7 +1305,7 @@ If present, a column's default value is propagated to the corresponding field's 
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
 ifdef::community[]
-Passing the default value helps though with satisfying the compatibility rules when xref:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
 endif::community[]
 
 [[sql-server-temporal-values]]
@@ -1426,7 +1427,7 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 [id="sql-server-decimal-values"]
 ==== Decimal values
 
-{prodname} connectors handle decimals according to the setting of the xref:{link-sqlserver-connector}#sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
+{prodname} connectors handle decimals according to the setting of the xref:sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
 
 decimal.handling.mode=precise::
 +
@@ -1750,13 +1751,13 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* SQL Server is installed, is xref:{link-sqlserver-connector}#setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
+* SQL Server is installed, is xref:setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
 
 .Procedure
 . Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server connector plug-in archive]
 . Extract the files into your Kafka Connect environment.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-. xref:{link-sqlserver-connector}#sqlserver-example-configuration[Configure the connector] and xref:{link-sqlserver-connector}#sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+. xref:sqlserver-example-configuration[Configure the connector] and xref:sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
@@ -1884,7 +1885,8 @@ docker push _<myregistry.io>_/debezium-container-for-sqlserver:latest
 ----
 
 .. Create a new {prodname} SQL Server KafkaConnect custom resource (CR).
-For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -1898,6 +1900,8 @@ metadata:
 spec:
   #...
   image: debezium-container-for-sqlserver  // <2>
+
+  ...
 ----
 =====================================================================
 +
@@ -1929,15 +1933,15 @@ You configure a {prodname} SQL Server connector in a `.yaml` file that specifies
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
 +
 The following example configures a {prodname} connector that connects to a SQL server host, `192.168.99.100`, on port `1433`.
-This host has a database named `testDB`, a table with the name `customers`, and `fulfillment` is the server's logical name.
+This host has a database named `testDB`, a table with the name `customers`, and `inventory-connector-{context}` is the server's logical name.
 +
-.SQL Server `fulfillment-connector.yaml`
+.SQL Server `inventory-connector.yaml`
 [source,yaml,subs="+attributes",options="nowrap"]
 ----
 apiVersion: {KafkaConnectorApiVersion}
 kind: KafkaConnector
 metadata:
-  name: fulfillment-connector // <1>
+  name: inventory-connector-{context} // <1>
   labels:
     strimzi.io/cluster: my-connect-cluster
   annotations:
@@ -1950,7 +1954,7 @@ spec:
     database.user: debezium // <5>
     database.password: dbz // <6>
     database.names: testDB1,testDB2 // <7>
-    topic.prefix: fullfullment // <8>
+    topic.prefix: inventory-connector-{context} // <8>
     table.include.list: dbo.customers // <9>
     schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
     schema.history.internal.kafka.topic: schemahistory.fullfillment // <11>
@@ -1985,7 +1989,7 @@ spec:
 |The name of the database to capture changes from.
 
 |8
-|The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
+|The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 
 |9
 |The connector captures changes from the `dbo.customers` table only.
@@ -2007,14 +2011,14 @@ This property is required unless database encryption is disabled (`database.encr
 |===
 
 . Create your connector instance with Kafka Connect.
-  For example, if you saved your `KafkaConnector` resource in the `fulfillment-connector.yaml` file, you would run the following command:
+  For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
 +
 [source,shell,options="nowrap"]
 ----
-oc apply -f fulfillment-connector.yaml
+oc apply -f inventory-connector.yaml
 ----
 +
-The preceding command registers `fulfillment-connector` and the connector starts to run against the `testDB` database as defined in the `KafkaConnector` CR.
+The preceding command registers `inventory-connector` and the connector starts to run against the `testDB` database as defined in the `KafkaConnector` CR.
 
 [id="verifying-that-the-debezium-sqlserver-connector-is-running"]
 === Verifying that the {prodname} SQL Server connector is running
@@ -2060,7 +2064,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the SQL Server user
 <6> The password for the SQL Server user
 <7> The name of the database to capture changes from.
-<8> The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro converter] is used.
+<8> The topic prefix for the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter] is used.
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
 <11> The name of the database schema history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
@@ -2070,7 +2074,7 @@ This property is required unless database encryption is disabled (`database.encr
 This property is required unless database encryption is disabled (`database.encrypt=false`).
 endif::community[]
 
-For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see xref:{link-sqlserver-connector}#sqlserver-connector-properties[SQL Server connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see xref:sqlserver-connector-properties[SQL Server connector properties].
 
 ifdef::community[]
 You can send this configuration with a `POST` command to a running Kafka Connect service.
@@ -2087,7 +2091,7 @@ To start running a {prodname} SQL Server connector, create a connector configura
 
 .Prerequisites
 
-* xref:{link-sqlserver-connector}#setting-up-sqlserver[CDC is enabled on SQL Server].
+* xref:setting-up-sqlserver[CDC is enabled on SQL Server].
 * The {prodname} SQL Server connector is installed.
 
 .Procedure
@@ -2099,7 +2103,7 @@ endif::community[]
 
 .Results
 
-When the connector starts, it xref:{link-sqlserver-connector}#sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for.
+When the connector starts, it xref:sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 // Type: reference
@@ -2271,7 +2275,8 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See xref:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
+For more information, see xref:sql-server-temporal-values[temporal values].
 
 |[[sqlserver-property-decimal-handling-mode]]<<sqlserver-property-decimal-handling-mode,`+decimal.handling.mode+`>>
 |`precise`
@@ -2408,7 +2413,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+For more information, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming].
 
 |===
 
@@ -2551,7 +2556,7 @@ Defaults to the JDBC driver's default fetch size.
 
 |[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see xref:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see xref:sqlserver-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
@@ -2609,7 +2614,7 @@ By default, truncate operations are skipped (not emitted by this connector).
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-| Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
 
@@ -2715,8 +2720,8 @@ As a {prodname} user, you must coordinate tasks with the SQL Server database ope
 
 You can use one of the following methods to update capture tables after a schema change:
 
-* xref:{link-sqlserver-connector}#offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
-* xref:{link-sqlserver-connector}#online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
+* xref:offline-schema-updates[Offline schema updates] require you to stop the {prodname} connector before you can update capture tables.
+* xref:online-schema-updates[Online schema updates] can update capture tables while the {prodname} connector is running.
 
 There are advantages and disadvantages to using each type of procedure.
 

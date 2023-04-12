@@ -41,6 +41,8 @@ spec:
             url: https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar
 
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
+
+  ...
 ----
 .Descriptions of Kafka Connect configuration settings
 [cols="1,7",options="header",subs="+attributes"]

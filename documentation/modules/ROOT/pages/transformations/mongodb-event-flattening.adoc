@@ -443,7 +443,7 @@ If you want the SMT to add metadata fields to `delete` events, set the value of 
 In addition to the change event messages that a {prodname} connector emits when a database change occurs, the connector also emits other types of messages, including heartbeat messages, and metadata messages about schema changes and transactions.
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 
-For more information about how to apply the SMT selectively, see xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+For more information about how to apply the SMT selectively, see {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 
 // Type: reference
 // ModuleID: configuration-options-for-the-debezium-mongodb-event-flattening-transformation

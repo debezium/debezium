@@ -11,7 +11,7 @@ The query that you submit specifies the snapshot operation of `incremental`, and
 
 .Prerequisites
 
-* xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
+* {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
@@ -57,7 +57,7 @@ db.debeziumSignal.insert({ // <1>
 ----
 end::nosql-based-snapshot[]
 +
-The values of the `id`, `type`, and `data` parameters in the signal command correspond to the xref:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
+The values of the `id`, `type`, and `data` parameters in the signal command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
 +
 The following table describes the parameters in the example:
 +

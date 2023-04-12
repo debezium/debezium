@@ -17,5 +17,7 @@ spec:
     database.dbname: mydatabase // <9>
     topic.prefix: inventory-connector-{context} // <10>
     table.include.list: {include-list-example}  // <11>
+
+    ...
 ----
 =====================================================================

@@ -188,7 +188,7 @@ In addition to the change event messages that a {prodname} connector emits when 
 Because the structure of these other messages differs from the structure of the change event messages that the SMT is designed to process, it's best to configure the connector to selectively apply the SMT, so that it processes only the intended data change messages.
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:content-based-router-topic-regex[topic.regex] configuration option for the SMT.
 
 // Type: reference
@@ -197,7 +197,7 @@ You can use one of the following methods to configure the connector to apply the
 == Language specifics
 
 The way that you express content-based routing conditions depends on the scripting language that you use.
-For example, as shown in the xref:{link-content-based-routing}#example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language,
+For example, as shown in the xref:example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language,
 the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]

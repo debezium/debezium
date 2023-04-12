@@ -200,7 +200,7 @@ We recommend logical names begin with an alphabetic or underscore character, and
 === Performing a snapshot
 
 When a task starts up using a replica set, it uses the connector's logical name and the replica set name to find an _offset_ that describes the position where the connector previously stopped reading changes.
-If an offset can be found and it still exists in the oplog, then the task immediately proceeds with xref:{link-mongodb-connector}#mongodb-streaming-changes[streaming changes], starting at the recorded offset position.
+If an offset can be found and it still exists in the oplog, then the task immediately proceeds with xref:mongodb-streaming-changes[streaming changes], starting at the recorded offset position.
 
 However, if no offset is found or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing a _snapshot_.
 This process starts by recording the current position of the oplog and recording that as the offset (along with a flag that denotes a snapshot has been started).
@@ -286,7 +286,7 @@ include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snaps
 
 After the connector task for a replica set records an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
 The task then (depending on the configuration) either connects to the replica set's primary node or connects to a replica-set-wide change stream and starts streaming changes from that position.
-It processes all of create, insert, and delete operations, and converts them into {prodname} xref:{link-mongodb-connector}#mongodb-events[change events].
+It processes all of create, insert, and delete operations, and converts them into {prodname} xref:mongodb-events[change events].
 Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset.
 The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property.
 
@@ -331,7 +331,7 @@ For information about how to avoid exceeding the change stream limit, see the ht
 === Topic names
 
 The MongoDB connector writes events for all insert, update, and delete operations to documents in each collection to a single Kafka topic.
-The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the xref:{link-mongodb-connector}#mongodb-logical-connector-name[logical name] of the connector as specified with the `topic.prefix` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
+The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the xref:mongodb-logical-connector-name[logical name] of the connector as specified with the `topic.prefix` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
 
 For example, consider a MongoDB replica set with an `inventory` database that contains four collections: `products`, `products_on_hand`, `customers`, and `orders`.
 If the connector monitoring this database were given a logical name of `fulfillment`, then the connector would produce events on these four Kafka topics:
@@ -412,7 +412,7 @@ The following example shows a typical message:
 }
 ----
 
-Unless overridden via the xref:{link-mongodb-connector}#mongodb-property-topic-transaction[`topic.transaction`] option,
+Unless overridden via the xref:mongodb-property-topic-transaction[`topic.transaction`] option,
 transaction events are written to the topic named xref:mongodb-property-topic-prefix[`_<topic.prefix>_`]`.transaction`.
 
 .Change data event enrichment
@@ -495,7 +495,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 
 |===
 
-By default, the connector streams change event records to topics with names that are the same as the event's originating collection. See xref:{link-mongodb-connector}#mongodb-topic-names[topic names].
+By default, the connector streams change event records to topics with names that are the same as the event's originating collection. See xref:mongodb-topic-names[topic names].
 
 [WARNING]
 ====
@@ -779,7 +779,7 @@ a|`dbserver1.inventory.customers.Envelope` is the schema for the overall structu
 |The value's actual data. This is the information that the change event is providing. +
  +
 It may appear that the JSON representations of the events are much larger than the documents they describe. This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the xref:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
 |6
 |`after`
@@ -1033,7 +1033,7 @@ To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB con
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* MongoDB is installed and is xref:{link-mongodb-connector}#setting-up-mongodb[set up to work with the {prodname} connector].
+* MongoDB is installed and is xref:setting-up-mongodb[set up to work with the {prodname} connector].
 
 .Procedure
 . Download the
@@ -1173,7 +1173,8 @@ docker push _<myregistry.io>_/debezium-container-for-mongodb:latest
 ----
 
 .. Create a new {prodname} MongoDB `KafkaConnect` custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -1187,6 +1188,8 @@ metadata:
 spec:
   #...
   image: debezium-container-for-mongodb  // <2>
+
+  ...
 ----
 =====================================================================
 +
@@ -1220,7 +1223,7 @@ Optionally, you can set properties that filter out collections that are not need
 +
 The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
 and captures changes that occur in the `inventory` collection.
-`fullfillment` is the logical name of the replica set.
+`inventory-connector-{context}` is the logical name of the replica set.
 +
 .MongoDB `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
@@ -1228,13 +1231,13 @@ and captures changes that occur in the `inventory` collection.
 apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
   metadata:
-    name: inventory-connector // <1>
+    name: inventory-connector-{context} // <1>
     labels: strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.mongodb.MongoDbConnector // <2>
     config:
      mongodb.connection.string: mongodb://192.168.99.100:27017/?replicaSet=rs0 // <3>
-     topic.prefix: fulfillment // <4>
+     topic.prefix: inventory-connector-{context} // <4>
      collection.include.list: inventory[.]* // <5>
 ----
 <1> The name that is used to register the connector with Kafka Connect.
@@ -1285,7 +1288,7 @@ Optionally, you can filter out collections that are not needed.
 endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} MongoDB connector,
-see xref:{link-mongodb-connector}#mongodb-connector-properties[MongoDB connector configuration properties].
+see xref:mongodb-connector-properties[MongoDB connector configuration properties].
 
 ifdef::community[]
 You can send this configuration with a `POST` command to a running Kafka Connect service.
@@ -1304,7 +1307,7 @@ To start running a {prodname} MongoDB connector, create a connector configuratio
 
 .Prerequisites
 
-* xref:{link-mongodb-connector}#setting-up-mongodb[MongoDB is set up to work with a {prodname} connector].
+* xref:setting-up-mongodb[MongoDB is set up to work with a {prodname} connector].
 * The {prodname} MongoDB connector is installed.
 
 .Procedure
@@ -1317,7 +1320,7 @@ endif::community[]
 .Results
 After the connector starts, it completes the following actions:
 
-* xref:{link-mongodb-connector}#mongodb-performing-a-snapshot[Performs a consistent snapshot] of the collections in your MongoDB replica sets.
+* xref:mongodb-performing-a-snapshot[Performs a consistent snapshot] of the collections in your MongoDB replica sets.
 * Reads the change streams for the replica sets.
 * Produces change events for every inserted, updated, and deleted document.
 * Streams change event records to Kafka topics.
@@ -1578,7 +1581,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
 |No default
@@ -1677,7 +1680,7 @@ For each collection that you specify, also specify another configuration propert
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See xref:{link-mongodb-connector}#mongodb-transaction-metadata[Transaction Metadata] for additional details.
+See xref:mongodb-transaction-metadata[Transaction Metadata] for additional details.
 
 |[[mongodb-property-retriable-restart-connector-wait-ms]]<<mongodb-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
@@ -1772,10 +1775,10 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* xref:{link-mongodb-connector}#mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* xref:{link-mongodb-connector}#mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* xref:mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
-The xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
+The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-mongodb-snapshots
