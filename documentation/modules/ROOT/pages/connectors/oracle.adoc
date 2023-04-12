@@ -192,7 +192,7 @@ The connector applies similar naming conventions to label its internal database 
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
-For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
 // ModuleID: how-debezium-oracle-connectors-expose-database-schema-changes
@@ -257,7 +257,7 @@ ifdef::community[]
 
 [NOTE]
 ====
-Following a change in table structure, you must follow (the xref:{link-oracle-connector}#surrogate-schema-evolution[schema evolution procedure]).
+Following a change in table structure, you must follow (the xref:surrogate-schema-evolution[schema evolution procedure]).
 ====
 endif::community[]
 
@@ -1042,7 +1042,7 @@ In the preceding example, notice how the event defines the following schema:
 [TIP]
 ====
 The names of the schemas for the `before` and `after` fields are of the form `_<logicalName>_._<schemaName>_._<tableName>_.Value`, and thus are entirely independent from the schemas for all other tables.
-As a result, when you use the xref:{link-avro-serialization}#avro-serialization[Avro converter], the Avro schemas for tables in each logical source have their own evolution and history.
+As a result, when you use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the Avro schemas for tables in each logical source have their own evolution and history.
 ====
 
 The `payload` portion of this event's _value_, provides information about the event.
@@ -1052,7 +1052,7 @@ It describes that a row was created (`op=c`), and shows that the `after` field v
 ====
 By default, the JSON representations of events are much larger than the rows that they describe.
 The larger size is due to the JSON representation including both the schema and payload portions of a message.
-You can use the xref:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
+You can use the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Converter] to decrease the size of messages that the connector writes to Kafka topics.
 ====
 
 // Type: continue
@@ -1117,7 +1117,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 As a result, {prodname} emits _three_ events after such an update:
 
 * A `DELETE` event.
-* A xref:{link-oracle-connector}#oracle-tombstone-events[tombstone event] with the old key for the row.
+* A xref:oracle-tombstone-events[tombstone event] with the old key for the row.
 * An `INSERT` event that provides the new key for the row.
 ====
 
@@ -2073,7 +2073,7 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Oracle Database is installed, and is xref:{link-oracle-connector}#setting-up-oracle[configured to work with the {prodname} connector].
+* Oracle Database is installed, and is xref:setting-up-oracle[configured to work with the {prodname} connector].
 
 .Procedure
 
@@ -2085,7 +2085,7 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 
 .Next steps
 
-* xref:{link-oracle-connector}#oracle-example-configuration[Configure the connector] and xref:{link-oracle-connector}#oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+* xref:oracle-example-configuration[Configure the connector] and xref:oracle-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 
 endif::community[]
 
@@ -2174,7 +2174,7 @@ You then need to create the following custom resources (CRs):
 * The Kafka Connect server has access to Maven Central to download the required JDBC driver for Oracle.
   You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
 +
-For more information, see xref:{link-oracle-connector}#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
 .Procedure
 
@@ -2246,7 +2246,8 @@ docker push _<myregistry.io>_/debezium-container-for-oracle:latest
 ----
 
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
-For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -2259,6 +2260,8 @@ metadata:
     strimzi.io/use-connector-resources: "true" // <1>
 spec:
   image: debezium-container-for-oracle // <2>
+
+  ...
 ----
 =====================================================================
 +
@@ -2298,7 +2301,7 @@ This host has a database named `ORCLCDB`, and `server1` is the server's logical 
 apiVersion: {KafkaConnectorApiVersion}
 kind: KafkaConnector
 metadata:
-  name: inventory-connector // <1>
+  name: inventory-connector-{context} // <1>
   labels:
     strimzi.io/cluster: my-connect-cluster
   annotations:
@@ -2312,7 +2315,7 @@ spec:
     database.password: dbz // <6>
     database.dbname: ORCLCDB // <7>
     database.pdb.name : ORCLPDB1, <8>
-    topic.prefix: server1 // <9>
+    topic.prefix: inventory-connector-{context} // <9>
     schema.history.internal.kafka.bootstrap.servers: kafka:9092 // <10>
     schema.history.internal.kafka.topic: schema-changes.inventory // <11>
 ----
@@ -2335,10 +2338,10 @@ spec:
 |The port number of the Oracle instance.
 
 |5
-|The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+|The name of the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 
 |6
-|The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+|The password for the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 
 |7
 |The name of the database to capture changes from.
@@ -2402,8 +2405,8 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <2> The name of this Oracle connector class.
 <3> The address of the Oracle instance.
 <4> The port number of the Oracle instance.
-<5> The name of the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
-<6> The password for the Oracle user, as specified in xref:{link-oracle-connector}#creating-users-for-the-connector[Creating users for the connector].
+<5> The name of the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
+<6> The password for the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
 <7> The name of the database to capture changes from.
 <8> Topic prefix that identifies and provides a namespace for the Oracle database server from which the connector captures changes.
 <9> The maximum number of tasks to create for this connector.
@@ -2437,8 +2440,7 @@ The following JSON example shows the same configuration as in the preceding exam
 ----
 endif::community[]
 
-
-For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:{link-oracle-connector}#oracle-connector-properties[Oracle connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:oracle-connector-properties[Oracle connector properties].
 
 ifdef::community[]
 You can send this configuration with a `POST` command to a running Kafka Connect service.
@@ -2455,19 +2457,19 @@ To start running a {prodname} Oracle connector, create a connector configuration
 
 .Prerequisites
 
-* xref:{link-oracle-connector}#setting-up-oracle[Oracle is configured for use with {prodname}].
+* xref:setting-up-oracle[Oracle is configured for use with {prodname}].
 * The {prodname} Oracle connector is installed.
 
 .Procedure
 
-. Create a xref:{link-oracle-connector}#oracle-example-configuration[configuration] for the Oracle connector.
+. Create a xref:oracle-example-configuration[configuration] for the Oracle connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
 endif::community[]
 
 .Results
 
-After the connector starts, it xref:{link-oracle-connector}#oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
+After the connector starts, it xref:oracle-snapshots[performs a consistent snapshot] of the Oracle databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 // Type: concept
@@ -3084,7 +3086,7 @@ For more information, see xref:{link-avro-serialization}#avro-naming[Avro naming
 |`false`
 |Set the property to `true` if you want {prodname} to generate events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See xref:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
+See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`redo_log_catalog`
@@ -3299,7 +3301,7 @@ By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-a|Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
 When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
@@ -3358,11 +3360,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 
 The {prodname} Oracle connector provides three metric types in addition to the built-in support for JMX metrics that Apache Zookeeper, Apache Kafka, and Kafka Connect have.
 
-* xref:{link-oracle-connector}#oracle-snapshot-metrics[snapshot metrics]; for monitoring the connector when performing snapshots
-* xref:{link-oracle-connector}#oracle-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
-* xref:{link-oracle-connector}#oracle-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
+* xref:oracle-snapshot-metrics[snapshot metrics]; for monitoring the connector when performing snapshots
+* xref:oracle-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
+* xref:oracle-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
 
-Please refer to the xref:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 // Type: reference
 // ModuleID: debezium-oracle-connector-snapshot-metrics
