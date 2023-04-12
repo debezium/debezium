@@ -124,6 +124,55 @@ The {prodname} CDC connector in conjunction with the Outbox Event Router will be
 
 To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
 
+[id=reactive-outbox]
+== Reactive Variant
+
+If your application is making use of Reactive Datasources or Hibernate Reactive, then there are some differences. 
+
+To import the reactive variant, the extension is added as follows:
+
+[source,xml,subs="verbatim,attributes"]
+----
+<dependency>
+  <groupId>io.debezium</groupId>
+  <artifactId>debezium-quarkus-outbox-reactive</artifactId>
+  <version>{debezium-version}</version>
+</dependency>
+----
+
+The extension provides the application with the `io.debezium.outbox.quarkus.ExportedEvent` interface just like in the non reactive variant, but also comes with the `DebeziumOutboxHandler` class which can be injected into your applications and exposes the `persistToOutbox` method. One example invocation is seen below which is using the same `ExportedEvent` as the previous example:
+
+.OrderService.java
+[source,java,indent=0]
+----
+@ApplicationScoped
+public class OrderService {
+
+    @Inject
+    DebeziumOutboxHandler debeziumOutboxHandler;
+
+    @Inject
+    OrderRepository orderRepository;
+
+    @Inject
+    Event<ExportedEvent<?, ?>> event;
+
+    @ReactiveTransactional
+    public Uni<Order> addOrder(Order order) {
+        return orderRepository.persistAndFlush(order)
+        .call(debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order)));
+
+    }
+}
+----
+
+[NOTE]
+====
+The `persistToOutbox` method returns a Uni, so however you decide to invoke it you must subscribe to the Uni in order to invoke it. More material on Reactive and Mutiny can be found link:https://quarkus.io/guides/mutiny-primer[here]
+====
+
+
+
 [id=additional-field-mappings]
 == Additional Field mappings
 
