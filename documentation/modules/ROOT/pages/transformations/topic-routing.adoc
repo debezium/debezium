@@ -49,7 +49,7 @@ You can re-route change event records for tables in any of the shards to the sam
 
 .Partitioned PostgreSQL tables
 
-When the {prodname} PostgreSQL connector captures changes in a partitioned table, the default behavior is that change event records are routed to a different topic for each partition. To emit records from all partitions to one topic, configure the topic routing SMT. Because each key in a partitioned table is guaranteed to be unique, configure xref:{link-topic-routing}#by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness=false`] so that the SMT does not add a key field to ensure unique keys. The addition of a key field is default behavior.
+When the {prodname} PostgreSQL connector captures changes in a partitioned table, the default behavior is that change event records are routed to a different topic for each partition. To emit records from all partitions to one topic, configure the topic routing SMT. Because each key in a partitioned table is guaranteed to be unique, configure xref:by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness=false`] so that the SMT does not add a key field to ensure unique keys. The addition of a key field is default behavior.
 
 // Type: concept
 // ModuleID: example-of-routing-debezium-records-for-multiple-tables-to-one-topic
@@ -151,7 +151,7 @@ Because the structure of these other messages differs from the structure of the 
 
 You can use one of the following methods to configure the connector to apply the SMT selectively:
 
-* xref:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
+* {link-prefix}:{link-smt-predicates}#applying-transformations-selectively[Configure an SMT predicate for the transformation].
 * Use the xref:by-logical-table-router-topic-regex[topic.regex] configuration option for the SMT.
 
 ifdef::community[]

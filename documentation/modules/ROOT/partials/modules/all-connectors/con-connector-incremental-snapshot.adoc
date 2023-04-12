@@ -1,5 +1,5 @@
 To provide flexibility in managing snapshots, {prodname} includes a supplementary snapshot mechanism, known as _incremental snapshotting_.
-Incremental snapshots rely on the {prodname} mechanism for xref:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
+Incremental snapshots rely on the {prodname} mechanism for {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 ifdef::community[]
 Incremental snapshots are based on the link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
 endif::community[]
