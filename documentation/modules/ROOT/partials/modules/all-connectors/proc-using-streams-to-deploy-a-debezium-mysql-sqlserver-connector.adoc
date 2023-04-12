@@ -28,8 +28,8 @@ ImageStreams are not available by default.
 
 . Log in to the OpenShift cluster.
 . Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one.
-For example, create a `KafkaConnect` CR that specifies the `metadata.annotations` and `spec.build` properties, as shown in the following example.
-Save the file with a name such as `dbz-connect.yaml`.
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies the `metadata.annotations` and `spec.build` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 .A `dbz-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 =====================================================================

@@ -13,7 +13,7 @@ When you watched the connector start up,
 you saw that events were written to the following topics with the `dbserver1` prefix (the name of the connector):
 
 `dbserver1`::
-The xref:{link-mysql-connector}#mysql-schema-change-topic[schema change topic] to which all of the DDL statements are written.
+The {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[schema change topic] to which all of the DDL statements are written.
 
 `dbserver1.inventory.products`::
 Captures change events for the `products` table in the `inventory` database.

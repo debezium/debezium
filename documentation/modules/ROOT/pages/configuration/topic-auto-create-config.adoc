@@ -83,8 +83,8 @@ You specify topic configuration properties in the {prodname} connector configura
 The connector configuration defines a default topic creation group, and, optionally, one or more custom topic creation groups.
 Custom topic creation groups use lists of topic name patterns to specify the topics to which the group's settings apply.
 
-For details about how Kafka Connect matches topics to topic creation groups, see xref:{link-topic-auto-creation}#topic-creation-groups[Topic creation groups].
-For more information about how configuration properties are assigned to groups, see xref:{link-topic-auto-creation}#topic-creation-group-configuration-properties[Topic creation group configuration properties].
+For details about how Kafka Connect matches topics to topic creation groups, see xref:topic-creation-groups[Topic creation groups].
+For more information about how configuration properties are assigned to groups, see xref:topic-creation-group-configuration-properties[Topic creation group configuration properties].
 
 By default, topics that Kafka Connect creates are named based on the pattern `server.schema.table`, for example, `dbserver.myschema.inventory`.
 
@@ -169,12 +169,12 @@ If no custom groups are registered, or if the `include` patterns for any registe
 then Kafka Connect uses the configuration of the `default` group to create topics.
 
 ifdef::community[]
-See xref:{link-install-debezium}#configuring-debezium-topics[Configuring {prodname} topics] in the
+See {link-prefix}:{link-install-debezium}#configuring-debezium-topics[Configuring {prodname} topics] in the
 {prodname} installation guide on generic topic configuration considerations.
 endif::community[]
 
 ifdef::product[]
-For general information about configuring topics, see xref:{LinkDebeziumInstallOpenShift}#kafka-topic-creation-recommendations[Kafka topic creation recommendations] in {NameDebeziumInstallOpenShift}.
+For general information about configuring topics, see link:{LinkDebeziumInstallOpenShift}#kafka-topic-creation-recommendations[Kafka topic creation recommendations] in {NameDebeziumInstallOpenShift}.
 endif::product[]
 
 // Type: procedure

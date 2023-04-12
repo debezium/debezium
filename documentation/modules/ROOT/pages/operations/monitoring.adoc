@@ -35,14 +35,14 @@ be sure to use distinct JMX ports for each service.
 In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
 each connector provides additional metrics that you can use to monitor their activities.
 
-* xref:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
-* xref:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
-* xref:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
-* xref:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
-* xref:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
+* {link-prefix}:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
+* {link-prefix}:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
+* {link-prefix}:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
+* {link-prefix}:{link-oracle-connector}#oracle-monitoring[Oracle connector metrics]
+* {link-prefix}:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
+* {link-prefix}:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
 ifdef::community[]
-* xref:{link-oracle-connector}#oracle-monitoring[Oracle connector metrics]
-* xref:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
+* {link-prefix}:{link-cassandra-connector}#cassandra-monitoring[Cassandra connector metrics]
 endif::community[]
 
 

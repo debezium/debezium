@@ -81,7 +81,8 @@ that enable SQL Replication in Db2. A capture agent:
 
 The {prodname} connector uses a SQL interface to query change-data tables for  change events.
 
-The database administrator must put the tables for which you want to capture changes into capture mode. For convenience and for automating testing, there are xref:{link-db2-connector}#db2-management[{prodname} user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
+The database administrator must put the tables for which you want to capture changes into capture mode.
+For convenience and for automating testing, there are xref:db2-management[{prodname} management user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
 
 * Start, stop, and reinitialize the ASN agent
 * Put tables into capture mode
@@ -214,7 +215,7 @@ The connector applies similar naming conventions to label its internal database 
 
 If the default topic name do not meet your requirements, you can configure custom topic names.
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
-For more information about using the logical topic routing SMT to customize topic naming, see xref:{link-topic-routing}#topic-routing[Topic routing].
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
 // Title: About the {prodname} Db2 connector schema change topic
@@ -227,7 +228,7 @@ You can configure a {prodname} Db2 connector to produce schema change events tha
 
 * A new table goes into capture mode.
 * A table is removed from capture mode.
-* During a xref:{link-db2-connector}#db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
+* During a xref:db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
 
 The connector writes schema change events to a Kafka schema change topic that has the name `_<topicPrefix>_` where `_<topicPrefix>_` is the topic prefix that is specified in the xref:db2-property-topic-prefix[`topic.prefix`] connector configuration property.
 Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
@@ -579,7 +580,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
  +
-It is possible to override the table's primary key by setting the xref:{link-db2-connector}#db2-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+It is possible to override the table's primary key by setting the xref:db2-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
 |`payload`
@@ -595,7 +596,7 @@ It is possible to override the table's primary key by setting the xref:{link-db2
 
 |===
 
-By default, the connector streams change event records to topics with names that are the same as the event's originating table. See xref:{link-db2-connector}#db2-topic-names[topic names].
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. For more information, see xref:db2-topic-names[topic names].
 
 [WARNING]
 ====
@@ -911,7 +912,7 @@ a|In the `schema` section, each `name` field specifies the schema for a field in
 `mydatabase.MYSCHEMA.CUSTOMERS.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. The connector uses this schema for all rows in the `MYSCHEMA.CUSTOMERS` table. +
  +
 Names of schemas for `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database.
-This means that when using the xref:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
 |3
 |`name`
@@ -926,7 +927,7 @@ a|`mydatabase.MYSCHEMA.CUSTOMERS.Envelope` is the schema for the overall structu
 |The value's actual data. This is the information that the change event is providing. +
  +
 It may appear that JSON representations of events are much larger than the rows they describe. This is because a JSON representation must include the schema portion and the payload portion of the message.
-However, by using the xref:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
 |6
 |`before`
@@ -1043,7 +1044,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:{link-db2-connector}#db2-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:db2-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row.
 ====
 
 [[db2-delete-events]]
@@ -1255,7 +1256,7 @@ String representation of an XML document
 
 If present, a column's default value is propagated to the corresponding field's Kafka Connect schema. Change events contain the field's default value unless an explicit column value had been given. Consequently, there is rarely a need to obtain the default value from the schema.
 ifdef::community[]
-Passing the default value helps satisfy compatibility rules when xref:{link-avro-serialization}[using Avro] as the serialization format together with the Confluent schema registry.
+Passing the default value helps satisfy compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as the serialization format together with the Confluent schema registry.
 endif::community[]
 
 [[db2-temporal-types]]
@@ -1532,7 +1533,7 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 .Additional resource
 
-xref:{link-db2-connector}#db2-management[Reference table for {prodname} Db2 management UDFs]
+xref:db2-management[Reference table for {prodname} Db2 management UDFs]
 
 // Type: concept
 // ModuleID: effect-of-db2-capture-agent-configuration-on-server-load-and-latency
@@ -1593,7 +1594,7 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 .Prerequisites
 
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Db2 is installed and xref:{link-db2-connector}#setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
+* Db2 is installed and xref:setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
 
@@ -1760,7 +1761,8 @@ docker push _<myregistry.io>_/debezium-container-for-db2:latest
 ----
 
 .. Create a new {prodname} Db2 `KafkaConnect` custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
 +
 =====================================================================
 [source,yaml,subs="+attributes"]
@@ -1774,6 +1776,8 @@ metadata:
 spec:
   #...
   image: debezium-container-for-db2  // <2>
+
+  ...
 ----
 =====================================================================
 +
@@ -1805,7 +1809,7 @@ You configure a {prodname} Db2 connector in a `.yaml` file that specifies the co
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
 +
 The following example configures a {prodname} connector that connects to a Db2 server host, `192.168.99.100`, on port `50000`.
-This host has a database named `mydatabase`, a table with the name `inventory`, and `fulfillment` is the server's logical name.
+This host has a database named `mydatabase`, a table with the name `inventory`, and `inventory-connector-{context}` is the server's logical name.
 +
 .Db2 `inventory-connector.yaml`
 [source,yaml,options="nowrap",subs="+attributes"]
@@ -1813,7 +1817,7 @@ This host has a database named `mydatabase`, a table with the name `inventory`, 
 apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
   metadata:
-    name: inventory-connector  // <1>
+    name: inventory-connector-{context}  // <1>
     labels:
       strimzi.io/cluster: my-connect-cluster
     annotations:
@@ -1827,8 +1831,10 @@ apiVersion: {KafkaConnectApiVersion}
       database.user: db2inst1 // <7>
       database.password: Password! // <8>
       database.dbname: mydatabase // <9>
-      topic.prefix: fullfillment   // <10>
+      topic.prefix: inventory-connector-{context}   // <10>
       table.include.list: public.inventory   // <11>
+
+      ...
 ----
 +
 .Descriptions of connector configuration settings
@@ -1864,7 +1870,7 @@ apiVersion: {KafkaConnectApiVersion}
 |The name of the database to capture changes from.
 
 |10
-|The logical name of the Db2 instance/cluster, which forms a namespace and is used in the names of the Kafka topics to which the connector writes, the names of Kafka Connect schemas, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}#avro-serialization[Avro Connector] is used.
+|The logical name of the Db2 instance/cluster, which forms a namespace and is used in the names of the Kafka topics to which the connector writes, the names of Kafka Connect schemas, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Connector] is used.
 
 |11
 |The connector captures changes from the `public.inventory` table only.
@@ -1919,14 +1925,14 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 <5> The name of the Db2 user.
 <6> The password for the Db2 user.
 <7> The name of the database to capture changes from.
-<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:{link-avro-serialization}[Avro Connector] is used.
+<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
 <11> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
 
 endif::community[]
 
-For the complete list of the configuration properties that you can set for the {prodname} Db2 connector, see xref:{link-db2-connector}#db2-connector-properties[Db2 connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} Db2 connector, see xref:db2-connector-properties[Db2 connector properties].
 
 ifdef::community[]
 
@@ -1944,7 +1950,7 @@ To start running a Db2 connector, create a connector configuration and add the c
 
 .Prerequisites
 
-* xref:{link-db2-connector}#setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
+* xref:setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
 * The Db2 connector is installed.
 
 .Procedure
@@ -1956,7 +1962,7 @@ endif::community[]
 
 .Results
 
-After the connector starts, it xref:{link-db2-connector}#db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
+After the connector starts, it xref:db2-snapshots[performs a consistent snapshot] of the Db2 database tables that the connector is configured to capture changes for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 ifdef::product[]
@@ -2106,7 +2112,8 @@ Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data 
  +
 `adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
  +
-`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision. See xref:{link-db2-connector}#db2-temporal-values[temporal values].
+`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision.
+For more information, see xref:db2-temporal-types[temporal types].
 
 |[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
@@ -2224,7 +2231,7 @@ For `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as 
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
 * `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
 
-See xref:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 [id="db2-advanced-configuration-properties"]
@@ -2345,7 +2352,7 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `+snapshot.lock.timeout.ms+`>>
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this interval, the snapshot fails. xref:{link-db2-connector}#db2-snapshots[How the connector performs snapshots] provides details. Other possible settings are: +
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this interval, the snapshot fails. xref:db2-snapshots[How the connector performs snapshots] provides details. Other possible settings are: +
  +
 `0` -  The connector immediately fails when it cannot obtain a lock. +
  +
@@ -2383,7 +2390,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 
 |[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
-|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
+|Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See xref:db2-transaction-metadata[Transaction metadata] for details.
 
 |[[db2-property-skipped-operations]]<<db2-property-skipped-operations, `+skipped.operations+`>>
 |`t`
@@ -2393,7 +2400,7 @@ By default, truncate operations are skipped (not emitted by this connector).
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send xref:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
 
@@ -2471,9 +2478,9 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 
 The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
 
-* xref:{link-db2-connector}#db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* xref:{link-db2-connector}#db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
-* xref:{link-db2-connector}#db2-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+* xref:db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* xref:db2-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
@@ -2561,8 +2568,8 @@ It is vital to execute a schema update procedure completely before there is a ne
 
 There are generally two procedures for updating table schemas:
 
-* xref:{link-db2-connector}#db2-offline-schema-update[Offline - executed while {prodname} is stopped]
-* xref:{link-db2-connector}#db2-online-schema-update[Online - executed while {prodname} is running]
+* xref:db2-offline-schema-update[Offline - executed while {prodname} is stopped]
+* xref:db2-hot-schema-update[Online - executed while {prodname} is running]
 
 Each approach has advantages and disadvantages.
 
@@ -2585,11 +2592,11 @@ You stop the {prodname} Db2 connector before you perform an offline schema updat
 . Stop the {prodname} connector.
 . Apply all changes to the source table schema.
 . In the ASN register table, mark the tables with updated schemas as `INACTIVE`.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service].
-. Remove the source table with the old schema from capture mode by xref:{link-db2-connector}#debezium-db2-remove-capture-mode[running the {prodname} UDF for removing tables from capture mode].
-. Add the source table with the new schema to capture mode by xref:{link-db2-connector}#debezium-db2-put-capture-mode[running the {prodname} UDF for adding tables to capture mode].
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service].
+. Remove the source table with the old schema from capture mode by xref:debezium-db2-remove-capture-mode[running the {prodname} UDF for removing tables from capture mode].
+. Add the source table with the new schema to capture mode by xref:debezium-db2-put-capture-mode[running the {prodname} UDF for adding tables to capture mode].
 . In the ASN register table, mark the updated source tables as `ACTIVE`.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . Resume the application that updates the database.
 . Restart the {prodname} connector.
 
@@ -2611,18 +2618,18 @@ However, when a table is in capture mode, after a change to a column name, the D
 
 . Lock the source tables whose schema you want to change.
 . In the ASN register table, mark the locked tables as `INACTIVE`.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . Apply all changes to the schemas for the source tables.
 . Apply all changes to the schemas for the corresponding change-data tables.
 . In the ASN register table, mark the source tables as `ACTIVE`.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . Optional. Restart the connector to see updated column names in change events.
 
 .Procedure when adding a column to the middle of a table
 
 . Lock the source table(s) to be changed.
 . In the ASN register table, mark the locked tables as `INACTIVE`.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . For each source table to be changed:
 .. Export the data in the source table.
 .. Truncate the source table.
@@ -2633,5 +2640,5 @@ However, when a table is in capture mode, after a change to a column name, the D
 .. Alter the change-data table and add the column.
 .. Load the exported data into the altered change-data table.
 . In the ASN register table, mark the tables as `INACTIVE`. This marks the old change-data tables as inactive, which allows the data in them to remain but they are no longer updated.
-. xref:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
+. xref:debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . Optional. Restart the connector to see updated column names in change events.

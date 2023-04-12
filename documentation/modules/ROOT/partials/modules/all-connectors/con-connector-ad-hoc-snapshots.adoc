@@ -11,11 +11,11 @@ The following changes in a database might be cause for performing an ad hoc snap
 * Data corruption occurs due to a configuration error or some other problem.
 
 You can re-run a snapshot for a {data-collection} for which you previously captured a snapshot by initiating a so-called _ad-hoc snapshot_.
-Ad hoc snapshots require the use of xref:{link-signalling}#sending-signals-to-a-debezium-connector[signaling {data-collection}s].
+Ad hoc snapshots require the use of {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[signaling {data-collection}s].
 You initiate an ad hoc snapshot by sending a signal request to the {prodname} signaling {data-collection}.
 
 When you initiate an ad hoc snapshot of an existing {data-collection}, the connector appends content to the topic that already exists for the {data-collection}.
-If a previously existing topic was removed, {prodname} can create a topic automatically if xref:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
+If a previously existing topic was removed, {prodname} can create a topic automatically if {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[automatic topic creation] is enabled.
 
 Ad hoc snapshot signals specify the {data-collection}s to include in the snapshot.
 The snapshot can capture the entire contents of the database, or capture only a subset of the {data-collection}s in the database.
@@ -65,7 +65,7 @@ After the connector processes the message, it begins the snapshot operation.
 The snapshot process reads the first and last primary key values and uses those values as the start and end point for each {data-collection}.
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
-Currently, the `execute-snapshot` action type triggers xref:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
+Currently, the `execute-snapshot` action type triggers {link-prefix}:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
 For more information, see xref:#{context}-incremental-snapshots[Incremental snapshots].
 ////
 .Prerequisites

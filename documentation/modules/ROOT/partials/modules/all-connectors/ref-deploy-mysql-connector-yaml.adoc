@@ -19,6 +19,8 @@
         database.server.id: 184054 // <9>
         topic.prefix: inventory-connector-{context} // <10>
         table.include.list: {include-list-example}  // <11>
+
+        ...
 ----
 =====================================================================
 +
@@ -58,7 +60,7 @@
 |The topic prefix for the database instance or cluster. +
 The specified name must be formed only from alphanumeric characters or underscores. +
 Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster. +
-This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the xref:{link-avro-serialization}#avro-serialization[Avro connector].
+This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro connector].
 
 |11
 |The list of tables from which the connector captures change events.
