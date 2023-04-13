@@ -74,7 +74,9 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         private boolean skipDockerDesktopLogWarning = false;
 
         public Builder imageName(DockerImageName imageName) {
-            this.imageName = imageName;
+            if (imageName != null) {
+                this.imageName = imageName;
+            }
             return this;
         }
 
