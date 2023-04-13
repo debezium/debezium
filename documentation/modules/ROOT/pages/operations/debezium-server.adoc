@@ -1322,6 +1322,44 @@ When the alternative implementations are not available then the default ones are
 |Custom configured instance of a RocketMQ used to publish messages to target topic.
 |===
 
+==== RabbitMQ Stream
+
+https://www.rabbitmq.com/[RabbitMQ] is an open source message broker, supporting multiple messaging protocols and can be deployed in distributed and federated configurations to meet high-scale, high-availability requirements. RabbitMQ supports messages queues and streams. Debezium server supports publishing
+captured change events to a configured RabbitMQ Stream.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[rabbitmq-type]]<<rabbitmq-type, `debezium.sink.type`>>
+|
+|Must be set to `rabbitmq`.
+
+|[[rabbitmq-host]]<<rabbitmq-host, `debezium.sink.rabbitmq.connection.host`>>
+| localhost
+|Host of RabbitMQ server.
+
+|[[rabbitmq-port]]<<rabbitmq-port, `debezium.sink.rabbitmq.connection.port`>>
+| 5672
+|Port of RabbitMQ server.
+
+|[[rabbitmq-connection]]<<rabbitmq-connection, `debezium.sink.rabbitmq.connection.*`>>
+|
+|The RabbitMQ module supports pass-through configuration.
+The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
+
+|[[rabbitmq-ack-timeout]]<<rabbitmq-ack-timeout, `debezium.sink.rabbitmq.ackTimeout`>>
+| 30000
+| Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
+
+|[[rabbitmq-routing-key]]<<rabbitmq-routing-key, `debezium.sink.rabbitmq.routingKey`>>
+|
+|(Optional) Routing key to use when publishing messages.
+
+|===
+
 
 == Extensions
 
