@@ -8,17 +8,11 @@ package io.debezium.testing.system.tests.mysql;
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
-import static io.debezium.testing.system.tools.WaitConditions.scaled;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
-import java.io.IOException;
 import java.sql.SQLException;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.testing.system.assertions.KafkaAssertions;
@@ -26,7 +20,6 @@ import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.databases.mysql.MySqlMasterController;
-import io.debezium.testing.system.tools.databases.mysql.MySqlReplicaController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -45,23 +38,23 @@ public abstract class MySqlTests extends ConnectorTest {
         super(kafkaController, connectController, connectorConfig, assertions);
     }
 
-    public void insertCustomer(
-                               SqlDatabaseController dbController,
-                               String firstName, String lastName,
-                               String email)
+    public static void insertCustomer(
+                                      SqlDatabaseController dbController,
+                                      String firstName, String lastName,
+                                      String email)
             throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "INSERT INTO customers VALUES  (default, '" + firstName + "', '" + lastName + "', '" + email + "')";
         client.execute("inventory", sql);
     }
 
-    public void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
+    public static void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "UPDATE customers SET first_name = '" + newName + "' WHERE first_name = '" + oldName + "'";
         client.execute("inventory", sql);
     }
 
-    public int getCustomerCount(SqlDatabaseController dbController) throws SQLException {
+    public static int getCustomerCount(SqlDatabaseController dbController) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "SELECT count(*) FROM customers";
         return client.executeQuery("inventory", sql, rs -> {
@@ -166,28 +159,5 @@ public abstract class MySqlTests extends ConnectorTest {
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
-    }
-
-    @Test
-    @Tag("openshift")
-    @Order(100)
-    public void shouldStreamAfterConnectingToReplica(MySqlReplicaController replicaController, MySqlMasterController masterController)
-            throws SQLException, IOException, InterruptedException {
-        // wait for replication to complete
-        await()
-                .atMost(scaled(5), TimeUnit.MINUTES)
-                .pollInterval(Duration.ofSeconds(20))
-                .until(() -> Integer.valueOf(7).equals(getCustomerCount(replicaController)));
-
-        masterController.reload();
-
-        connectorConfig.put("database.hostname", replicaController.getDatabaseHostname());
-        connectController.deployConnector(connectorConfig);
-
-        String topic = connectorConfig.getDbServerName() + ".inventory.customers";
-
-        insertCustomer(masterController, "Arnold", "Test", "atest@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 8));
-        awaitAssert(() -> assertions.assertRecordsContain(topic, "atest@test.com"));
     }
 }
