@@ -24,9 +24,12 @@ import java.util.stream.StreamSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
+import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 import io.debezium.testing.testcontainers.util.MoreStartables;
@@ -47,6 +50,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     private final PortResolver portResolver;
 
     private final List<MongoDbContainer> members = new ArrayList<>();
+    private final DockerImageName imageName;
 
     private boolean started;
 
@@ -64,6 +68,12 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         private Network network = Network.newNetwork();
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
+        private DockerImageName imageName;
+
+        public Builder imageName(DockerImageName imageName) {
+            this.imageName = imageName;
+            return this;
+        }
 
         public Builder name(String name) {
             this.name = name;
@@ -111,6 +121,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         this.configServer = builder.configServer;
         this.network = builder.network;
         this.portResolver = builder.portResolver;
+        this.imageName = builder.imageName;
 
         for (int i = 1; i <= memberCount; i++) {
             members.add(node()
@@ -119,6 +130,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                     .replicaSet(name)
                     .portResolver(portResolver)
                     .skipDockerDesktopLogWarning(true)
+                    .imageName(imageName)
                     .build());
         }
 
@@ -199,6 +211,17 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 .toArray(Address[]::new);
 
         arbitraryNode.initReplicaSet(configServer, serverAddresses);
+    }
+
+    /**
+     * Upload and executes mongodb javascript file against current primary
+     *
+     * See {@link  MongoDbContainer#execMongoScriptInContainer(MountableFile, String)}
+     */
+    public Container.ExecResult execMongoScript(MountableFile file, String containerPath) {
+        return tryPrimary()
+                .map(primary -> primary.execMongoScriptInContainer(file, containerPath))
+                .orElseThrow();
     }
 
     public void awaitReplicaPrimary() {
