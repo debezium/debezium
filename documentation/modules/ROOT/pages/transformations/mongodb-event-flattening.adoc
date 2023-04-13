@@ -130,7 +130,7 @@ When you use the event flattening SMT to process a message emitted from a MongoD
 For example, the SMT converts the JSON strings that represent the `after` information in the original message into schema structures that any consumer can process.
 
 Optionally, you can configure the event flattening SMT for MongoDB to modify messages in other ways during processing.
-For more information, see xref:mongodb-event-flattening-configuration[].
+For more information, see the xref:mongodb-event-flattening-configuration[configuration topic].
 
 // Type: concept
 // ModuleID: configuration-of-the-debezium-mongodb-event-flattening-transformation
@@ -182,7 +182,7 @@ transforms.unwrap.delete.handling.mode=drop
 transforms.unwrap.add.headers=op
 ----
 
-For more information about the configuration options in the preceding example, see xref:mongodb-extract-new-record-state-configuration-options[]
+For more information about the configuration options in the preceding example, see the xref:mongodb-extract-new-record-state-configuration-options[configuration topic].
 
 .Customizing the configuration
 The connector might emit many types of event messages (for example, heartbeat messages, tombstone messages, or metadata messages about transactions).
