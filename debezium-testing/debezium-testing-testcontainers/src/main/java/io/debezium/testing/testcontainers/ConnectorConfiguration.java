@@ -74,6 +74,14 @@ public class ConnectorConfiguration {
         return configuration;
     }
 
+    public static ConnectorConfiguration forMongoDbReplicaSet(MongoDbReplicaSet rs) {
+        ConnectorConfiguration configuration = new ConnectorConfiguration();
+        configuration.with(CONNECTOR, "io.debezium.connector.mongodb.MongoDbConnector")
+                .with(CONNECTION_STRING, rs.getConnectionString());
+
+        return configuration;
+    }
+
     private static boolean isMySQL(String driverClassName) {
         return "com.mysql.cj.jdbc.Driver".equals(driverClassName) || "com.mysql.jdbc.Driver".equals(driverClassName);
     }
