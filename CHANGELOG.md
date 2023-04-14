@@ -2,6 +2,60 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.CR1
+April 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12405777)
+
+### New features since 2.2.0.Beta1
+
+* Capture evenents in order across mongodb shards [DBZ-5590](https://issues.redhat.com/browse/DBZ-5590)
+* Pass through configurations for kafka topics/configuration [DBZ-6262](https://issues.redhat.com/browse/DBZ-6262)
+* Enable the docker tag to be configurable in the Spanner connector [DBZ-6302](https://issues.redhat.com/browse/DBZ-6302)
+* Support async producer for Pulsar sink to improve performance [DBZ-6319](https://issues.redhat.com/browse/DBZ-6319)
+
+
+### Breaking changes since 2.2.0.Beta1
+
+* Upgrade to Quarkus 3.0.0.Final [DBZ-6129](https://issues.redhat.com/browse/DBZ-6129)
+
+
+### Fixes since 2.2.0.Beta1
+
+* Failed retriable operations are retried infinitely [DBZ-4488](https://issues.redhat.com/browse/DBZ-4488)
+* DDL events not stored in schema history topic for excluded tables [DBZ-6070](https://issues.redhat.com/browse/DBZ-6070)
+* Oracle path used current batchSize to calculate end scn is wrong, need to use min batch size [DBZ-6155](https://issues.redhat.com/browse/DBZ-6155)
+* Multiplatform build of example-postres fails [DBZ-6258](https://issues.redhat.com/browse/DBZ-6258)
+* Add protoc version property to postgres connector pom.xml [DBZ-6261](https://issues.redhat.com/browse/DBZ-6261)
+* Postgres connector doesn't need logical WAL level when snapshotting only [DBZ-6265](https://issues.redhat.com/browse/DBZ-6265)
+* MySQL connector doesn't need to query binlog when snapshotting only [DBZ-6271](https://issues.redhat.com/browse/DBZ-6271)
+* Table names with spaces are not correctly deserialized when using an Infinispan cache as the transaction buffer [DBZ-6273](https://issues.redhat.com/browse/DBZ-6273)
+* Transaction buffer state can become corrupted when using Infinispan cache with LOBs [DBZ-6275](https://issues.redhat.com/browse/DBZ-6275)
+* DDL statement couldn't be parsed - Oracle connector 2.1.3.Final [DBZ-6314](https://issues.redhat.com/browse/DBZ-6314)
+* Unparsable DDL statements (MySQL/MariaDB) [DBZ-6316](https://issues.redhat.com/browse/DBZ-6316)
+* Cassandra 3 cannot be built using JDK20 [DBZ-6320](https://issues.redhat.com/browse/DBZ-6320)
+
+
+### Other changes since 2.2.0.Beta1
+
+* Upgrade dependencies (Quarkus, etc) of Debezium UI [DBZ-4109](https://issues.redhat.com/browse/DBZ-4109)
+* UI- Add the UI to configure the additional properties for a connector [DBZ-5365](https://issues.redhat.com/browse/DBZ-5365)
+* Upgrade UI build to use Debezium 2.2 or latest [DBZ-6173](https://issues.redhat.com/browse/DBZ-6173)
+* Oracle-Connector dbz##user needs more rights [DBZ-6198](https://issues.redhat.com/browse/DBZ-6198)
+* Make quay.io primary image repository [DBZ-6216](https://issues.redhat.com/browse/DBZ-6216)
+* Update config properties in RHEL deployment instructions [DBZ-6266](https://issues.redhat.com/browse/DBZ-6266)
+* Fix errors in downstream Getting Started guide [DBZ-6268](https://issues.redhat.com/browse/DBZ-6268)
+* Address review feedback in downstream RHEL and OCP installation guides [DBZ-6272](https://issues.redhat.com/browse/DBZ-6272)
+* Infinispan cache configuration used by Oracle tests are not compatible with Infinispan 14.0.2 [DBZ-6274](https://issues.redhat.com/browse/DBZ-6274)
+* Remove unused/migrated jobs from upstream repository [DBZ-6299](https://issues.redhat.com/browse/DBZ-6299)
+* Upgrade MySQL JDBC driver to 8.0.32 [DBZ-6304](https://issues.redhat.com/browse/DBZ-6304)
+* Allow specifying docker image reference in MongoDB testcontainers implementation [DBZ-6305](https://issues.redhat.com/browse/DBZ-6305)
+* Use *MongoDbContainer* instead of *MongoDBContainer* test containers class  in ConnectorConfiguration class [DBZ-6306](https://issues.redhat.com/browse/DBZ-6306)
+* Add documentation for JDBC sink connector [DBZ-6310](https://issues.redhat.com/browse/DBZ-6310)
+* Fix all compliance warnings for Jenkins [DBZ-6315](https://issues.redhat.com/browse/DBZ-6315)
+* Remove outdated information about SYS user accounts with Oracle [DBZ-6318](https://issues.redhat.com/browse/DBZ-6318)
+* Bundle Jolokia with Debezium connect image  [DBZ-6323](https://issues.redhat.com/browse/DBZ-6323)
+
+
+
 ## 2.2.0.Beta1
 March 31st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12404187)
 

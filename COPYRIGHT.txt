@@ -184,6 +184,7 @@ Hang Ruan
 Hans-Peter Grahsl
 Harvey Yue
 Helong Zhang
+Henrik Schnell
 Henry Cai
 Henryk Konsek
 Himanshu Mishra
@@ -408,6 +409,7 @@ Shichao An
 Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
+Shuran Zhang
 SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
