@@ -193,4 +193,5 @@ shantanu-sharechat,Shantanu Sharma
 imtj1,Tony Joseph
 sondn,Đỗ Ngọc Sơn
 Fiore Mario Vitale,Mario Fiore Vitale
-smallYellowCat, Dou Pengwei
+smallYellowCat,Dou Pengwei
+ShuranZhang,Shuran Zhang
