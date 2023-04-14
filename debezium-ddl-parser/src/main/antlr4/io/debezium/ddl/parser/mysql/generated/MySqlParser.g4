@@ -74,7 +74,7 @@ dmlStatement
     : selectStatement | insertStatement | updateStatement
     | deleteStatement | replaceStatement | callStatement
     | loadDataStatement | loadXmlStatement | doStatement
-    | handlerStatement | valuesStatement |  | withStatement
+    | handlerStatement | valuesStatement | withStatement
     ;
 
 transactionStatement
