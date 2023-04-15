@@ -2788,10 +2788,14 @@ For example: `P1Y2M3DT4H5M6.78S`.
 For more information, see xref:postgresql-basic-types[PostgreSQL basic types].
 
 |[[postgresql-property-database-sslmode]]<<postgresql-property-database-sslmode, `+database.sslmode+`>>
-|`disable`
+|`prefer`
 |Whether to use an encrypted connection to the PostgreSQL server. Options include: +
  +
 `disable` uses an unencrypted connection. +
+ +
+`allow` attempts to use an unencrypted connection first and, failing that, a secure (encrypted) connection. +
+ +
+`prefer` attempts to use a secure (encrypted) connection first and, failing that, an unencrypted connection. +
  +
 `require` uses a secure (encrypted) connection, and fails if one cannot be established. +
  +
