@@ -74,7 +74,7 @@ dmlStatement
     : selectStatement | insertStatement | updateStatement
     | deleteStatement | replaceStatement | callStatement
     | loadDataStatement | loadXmlStatement | doStatement
-    | handlerStatement | valuesStatement
+    | handlerStatement | valuesStatement | withStatement
     ;
 
 transactionStatement
@@ -959,6 +959,10 @@ valuesStatement
     '(' expressionsWithDefaults? ')'
     (',' '(' expressionsWithDefaults? ')')*
     ;
+
+withStatement
+  : WITH RECURSIVE? commonTableExpressions (',' commonTableExpressions)*
+  ;
 
 updateStatement
     : singleUpdateStatement | multipleUpdateStatement
