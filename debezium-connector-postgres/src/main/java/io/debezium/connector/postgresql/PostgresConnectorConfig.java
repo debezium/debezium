@@ -277,6 +277,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         DISABLED("disable"),
 
         /**
+         * Establish an unencrypted connection first.
+         * Establish a secure connection next if an unencrypted connection cannot be established
+         *
+         * see the {@code sslmode} Postgres JDBC driver option
+         */
+        ALLOW("allow"),
+
+        /**
+        * Establish a secure connection first.
+        * Establish an unencrypted connection next if a secure connection cannot be established
+        *
+        * see the {@code sslmode} Postgres JDBC driver option
+        */
+        PREFER("prefer"),
+
+        /**
          * Establish a secure connection if the server supports secure connections.
          * The connection attempt fails if a secure connection cannot be established
          *
@@ -638,11 +654,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
             .withDisplayName("SSL mode")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
-            .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFER)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether to use an encrypted connection to Postgres. Options include: "
                     + "'disable' (the default) to use an unencrypted connection; "
+                    + "'allow' to try and use an unencrypted connection first and, failing that, a secure (encrypted) connection; "
+                    + "'prefer' (the default) to try and use a secure (encrypted) connection first and, failing that, an unencrypted connection; "
                     + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
                     + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
                     + "(CA) certificates, or fail if no valid matching CA certificates are found; or "

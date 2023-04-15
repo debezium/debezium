@@ -230,7 +230,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.MAX_BATCH_SIZE, PostgresConnectorConfig.DEFAULT_MAX_BATCH_SIZE);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_FETCH_SIZE, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.POLL_INTERVAL_MS, PostgresConnectorConfig.DEFAULT_POLL_INTERVAL_MILLIS);
-        validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_MODE, PostgresConnectorConfig.SecureConnectionMode.DISABLED);
+        validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_MODE, PostgresConnectorConfig.SecureConnectionMode.PREFER);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_CERT, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
