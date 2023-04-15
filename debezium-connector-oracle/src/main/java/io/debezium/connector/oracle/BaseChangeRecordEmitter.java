@@ -54,6 +54,11 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     }
 
     @Override
+    protected boolean skipMessagesWithoutChange() {
+        return connectorConfig.skipMessagesWithoutChange();
+    }
+
+    @Override
     protected Object[] getOldColumnValues() {
         return oldColumnValues;
     }
