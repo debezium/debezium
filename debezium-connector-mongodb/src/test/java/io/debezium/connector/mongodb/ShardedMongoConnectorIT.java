@@ -14,65 +14,21 @@ import java.util.stream.IntStream;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.model.Updates;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.ConnectionMode;
-import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.testing.testcontainers.MongoDbShardedCluster;
-import io.debezium.testing.testcontainers.util.DockerUtils;
 
-public class ShardedMongoConnectorIT extends AbstractConnectorTest {
+public class ShardedMongoConnectorIT extends AbstractShardedMongoConnectorIT {
 
     public static final String TOPIC_PREFIX = "mongo";
-    private static final String DATABASE = "dbit";
-    public static final String COLLECTION = "items";
     private static final int INIT_DOCUMENT_COUNT = 1000;
     private static final int NEW_DOCUMENT_COUNT = 4;
     private static final int STOPPED_NEW_DOCUMENT_COUNT = 5;
-
-    protected static MongoDbShardedCluster mongo;
-
-    @BeforeClass
-    public static void beforeAll() {
-        DockerUtils.enableFakeDnsIfRequired();
-        mongo = MongoDbDatabaseProvider.mongoDbShardedCluster();
-        mongo.start();
-    }
-
-    @AfterClass
-    public static void afterAll() {
-        DockerUtils.disableFakeDns();
-        if (mongo != null) {
-            mongo.stop();
-        }
-    }
-
-    @Before
-    public void beforeEach() {
-        stopConnector();
-        initializeConnectorTestFramework();
-
-        TestHelper.cleanDatabase(mongo, DATABASE);
-        mongo.enableSharding(DATABASE);
-        mongo.shardCollection(DATABASE, COLLECTION, "_id");
-    }
-
-    @After
-    public void afterEach() {
-        stopConnector();
-    }
 
     protected static void populateCollection(String dbName, String colName, int count) {
         populateCollection(dbName, colName, 0, count);
@@ -102,10 +58,10 @@ public class ShardedMongoConnectorIT extends AbstractConnectorTest {
 
     public void shouldConsumeAllEventsFromDatabase(ConnectionMode connectionMode) throws InterruptedException {
         var documentCount = 0;
-        var topic = String.format("%s.%s.%s", TOPIC_PREFIX, DATABASE, COLLECTION);
+        var topic = String.format("%s.%s.%s", TOPIC_PREFIX, shardedDatabase(), shardedCollection());
 
         // Populate collection
-        populateCollection(DATABASE, COLLECTION, INIT_DOCUMENT_COUNT);
+        populateCollection(shardedDatabase(), shardedCollection(), INIT_DOCUMENT_COUNT);
         documentCount += INIT_DOCUMENT_COUNT;
 
         // Use the DB configuration to define the connector's configuration ...
@@ -128,7 +84,7 @@ public class ShardedMongoConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Store more documents while the connector is still running
         // ---------------------------------------------------------------------------------------------------------------
-        populateCollection(DATABASE, COLLECTION, documentCount, NEW_DOCUMENT_COUNT);
+        populateCollection(shardedDatabase(), shardedCollection(), documentCount, NEW_DOCUMENT_COUNT);
         documentCount += NEW_DOCUMENT_COUNT;
 
         // Wait until we can consume the documents we just added ...
@@ -142,7 +98,7 @@ public class ShardedMongoConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Store more documents while the connector is NOT running
         // ---------------------------------------------------------------------------------------------------------------
-        populateCollection(DATABASE, COLLECTION, documentCount, STOPPED_NEW_DOCUMENT_COUNT);
+        populateCollection(shardedDatabase(), shardedCollection(), documentCount, STOPPED_NEW_DOCUMENT_COUNT);
         documentCount += STOPPED_NEW_DOCUMENT_COUNT;
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -155,15 +111,11 @@ public class ShardedMongoConnectorIT extends AbstractConnectorTest {
         // Update a document
         // ---------------------------------------------------------------------------------------------------------------
         try (var client = connect()) {
-            var db = client.getDatabase(DATABASE);
-            var collection = db.getCollection(COLLECTION);
+            var db = client.getDatabase(shardedDatabase());
+            var collection = db.getCollection(shardedCollection());
             collection.updateOne(new Document("_id", 0), Updates.set("name", "Tom"));
         }
         consumeAndVerifyNotFromInitialSync(topic, 1, Envelope.Operation.UPDATE);
-    }
-
-    protected static MongoClient connect() {
-        return MongoClients.create(mongo.getConnectionString());
     }
 
     protected void consumeAndVerifyFromInitialSync(ConnectionMode connectionMode, String topic, int expectedRecords) throws InterruptedException {
