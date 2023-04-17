@@ -19,7 +19,7 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.tests.ConnectorTest;
 import io.debezium.testing.system.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
-import io.debezium.testing.system.tools.databases.mysql.MySqlMasterController;
+import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -38,23 +38,23 @@ public abstract class MySqlTests extends ConnectorTest {
         super(kafkaController, connectController, connectorConfig, assertions);
     }
 
-    public static void insertCustomer(
-                                      SqlDatabaseController dbController,
-                                      String firstName, String lastName,
-                                      String email)
+    public void insertCustomer(
+                               SqlDatabaseController dbController,
+                               String firstName, String lastName,
+                               String email)
             throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "INSERT INTO customers VALUES  (default, '" + firstName + "', '" + lastName + "', '" + email + "')";
         client.execute("inventory", sql);
     }
 
-    public static void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
+    public void renameCustomer(SqlDatabaseController dbController, String oldName, String newName) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "UPDATE customers SET first_name = '" + newName + "' WHERE first_name = '" + oldName + "'";
         client.execute("inventory", sql);
     }
 
-    public static int getCustomerCount(SqlDatabaseController dbController) throws SQLException {
+    public int getCustomerCount(SqlDatabaseController dbController) throws SQLException {
         SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
         String sql = "SELECT count(*) FROM customers";
         return client.executeQuery("inventory", sql, rs -> {
@@ -101,7 +101,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(40)
-    public void shouldStreamChanges(MySqlMasterController dbController) throws SQLException {
+    public void shouldStreamChanges(MySqlController dbController) throws SQLException {
         insertCustomer(dbController, "Tom", "Tester", "tom@test.com");
 
         String topic = connectorConfig.getDbServerName() + ".inventory.customers";
@@ -111,7 +111,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(41)
-    public void shouldRerouteUpdates(MySqlMasterController dbController) throws SQLException {
+    public void shouldRerouteUpdates(MySqlController dbController) throws SQLException {
         renameCustomer(dbController, "Tom", "Thomas");
 
         String prefix = connectorConfig.getDbServerName();
@@ -123,7 +123,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(50)
-    public void shouldBeDown(MySqlMasterController dbController) throws Exception {
+    public void shouldBeDown(MySqlController dbController) throws Exception {
         connectController.undeployConnector(connectorConfig.getConnectorName());
         insertCustomer(dbController, "Jerry", "Tester", "jerry@test.com");
 
@@ -143,7 +143,7 @@ public abstract class MySqlTests extends ConnectorTest {
 
     @Test
     @Order(70)
-    public void shouldBeDownAfterCrash(MySqlMasterController dbController) throws SQLException {
+    public void shouldBeDownAfterCrash(MySqlController dbController) throws SQLException {
         connectController.destroy();
         insertCustomer(dbController, "Nibbles", "Tester", "nibbles@test.com");
 

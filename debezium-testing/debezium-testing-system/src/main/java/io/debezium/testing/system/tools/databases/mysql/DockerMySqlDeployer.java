@@ -5,7 +5,7 @@
  */
 package io.debezium.testing.system.tools.databases.mysql;
 
-import static io.debezium.testing.system.tools.ConfigProperties.DOCKER_IMAGE_MYSQL_MASTER;
+import static io.debezium.testing.system.tools.ConfigProperties.DOCKER_IMAGE_MYSQL;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ public final class DockerMySqlDeployer
             extends DockerBuilder<Builder, DBZMySQLContainer<?>, DockerMySqlDeployer> {
 
         public Builder() {
-            this(new DBZMySQLContainer<>(DOCKER_IMAGE_MYSQL_MASTER));
+            this(new DBZMySQLContainer<>(DOCKER_IMAGE_MYSQL));
         }
 
         public Builder(DBZMySQLContainer<?> container) {

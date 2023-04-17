@@ -22,12 +22,12 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public final class OcpMySqlMasterDeployer extends AbstractOcpDatabaseDeployer<MySqlMasterController> {
+public final class OcpMySqlDeployer extends AbstractOcpDatabaseDeployer<MySqlController> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMySqlMasterDeployer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpMySqlDeployer.class);
     private final PersistentVolumeClaim volumeClaim;
 
-    private OcpMySqlMasterDeployer(
+    private OcpMySqlDeployer(
                                    String project,
                                    Deployment deployment,
                                    List<Service> services,
@@ -39,7 +39,7 @@ public final class OcpMySqlMasterDeployer extends AbstractOcpDatabaseDeployer<My
     }
 
     @Override
-    public MySqlMasterController deploy() {
+    public MySqlController deploy() {
         LOGGER.info("Deploying persistent volume claim");
         ocp.persistentVolumeClaims().inNamespace(ConfigProperties.OCP_PROJECT_MYSQL).createOrReplace(volumeClaim);
         return super.deploy();
@@ -51,7 +51,7 @@ public final class OcpMySqlMasterDeployer extends AbstractOcpDatabaseDeployer<My
         return new OcpMySqlController(deployment, services, "mysql", ocp);
     }
 
-    public static class Deployer extends DatabaseBuilder<Deployer, OcpMySqlMasterDeployer> {
+    public static class Deployer extends DatabaseBuilder<Deployer, OcpMySqlDeployer> {
         private PersistentVolumeClaim volumeClaim;
 
         public Deployer withVolumeClaim(String dbVolumeClaimPath) {
@@ -60,8 +60,8 @@ public final class OcpMySqlMasterDeployer extends AbstractOcpDatabaseDeployer<My
         }
 
         @Override
-        public OcpMySqlMasterDeployer build() {
-            return new OcpMySqlMasterDeployer(
+        public OcpMySqlDeployer build() {
+            return new OcpMySqlDeployer(
                     project,
                     deployment,
                     services,

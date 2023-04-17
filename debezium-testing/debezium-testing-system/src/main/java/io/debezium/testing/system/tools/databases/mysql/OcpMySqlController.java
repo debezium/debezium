@@ -12,7 +12,7 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
-public class OcpMySqlController extends OcpSqlDatabaseController implements MySqlMasterController, MySqlReplicaController {
+public class OcpMySqlController extends OcpSqlDatabaseController implements MySqlController, MySqlReplicaController {
     public OcpMySqlController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         super(deployment, services, dbType, ocp);
     }
