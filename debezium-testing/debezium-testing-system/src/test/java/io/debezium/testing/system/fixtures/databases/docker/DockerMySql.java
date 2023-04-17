@@ -12,19 +12,19 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.Network;
 
 import io.debezium.testing.system.tools.databases.mysql.DockerMySqlDeployer;
-import io.debezium.testing.system.tools.databases.mysql.MySqlMasterController;
+import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 
 import fixture5.annotations.FixtureContext;
 
-@FixtureContext(requires = { Network.class }, provides = { MySqlMasterController.class })
-public class DockerMySql extends DockerDatabaseFixture<MySqlMasterController> {
+@FixtureContext(requires = { Network.class }, provides = { MySqlController.class })
+public class DockerMySql extends DockerDatabaseFixture<MySqlController> {
 
     public DockerMySql(ExtensionContext.Store store) {
-        super(MySqlMasterController.class, store);
+        super(MySqlController.class, store);
     }
 
     @Override
-    protected MySqlMasterController databaseController() throws Exception {
+    protected MySqlController databaseController() throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
         DockerMySqlDeployer deployer = new DockerMySqlDeployer.Builder()
                 .withNetwork(network)

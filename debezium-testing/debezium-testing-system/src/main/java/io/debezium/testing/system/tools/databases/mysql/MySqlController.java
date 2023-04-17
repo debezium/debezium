@@ -7,5 +7,5 @@ package io.debezium.testing.system.tools.databases.mysql;
 
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 
-public interface MySqlMasterController extends SqlDatabaseController {
+public interface MySqlController extends SqlDatabaseController {
 }
