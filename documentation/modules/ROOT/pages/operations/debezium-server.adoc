@@ -789,6 +789,10 @@ Pulsar exposes a REST APIs and a native endpoint provides a (not-only) Java clie
 |
 |Must be set to `pulsar`.
 
+|[[pulsar-timeout]]<<pulsar-timeout, `debezium.sink.pulsar.timeout`>>
+|`0`
+|Configures timeout in milliseconds for sending a batch of messages to Pulsar and waiting for the producer to flush and persist all of them. By default it is set to `0` which means no timeout. Make sure that https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#maxPendingMessages(int)[`maxPendingMessages`] and https://pulsar.apache.org/api/client/2.10.1/org/apache/pulsar/client/api/ProducerBuilder.html#blockIfQueueFull(boolean)[`blockIfQueueFull`] are configured properly on the producer.
+
 |[[pulsar-client]]<<pulsar-client, `debezium.sink.pulsar.client.*`>>
 |
 |The Pulsar module supports pass-through configuration.
