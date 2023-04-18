@@ -20,9 +20,10 @@ To store the build image in an image registry, such as Red Hat Quay.io or Docker
 ** An account and permissions to create and manage images in the registry.
 
 To store the build image as a native OpenShift ImageStream::
-** An link:https://docs.openshift.com/container-platform/latest/openshift_images/images-understand.html#images-imagestream-use_images-understand[ImageStream] resource is deployed to the cluster.
+** An link:{LinkConfiguringStreamsOpenShift}#literal_output_literal[ImageStream] resource is deployed to the cluster for storing new container images.
 You must explicitly create an ImageStream for the cluster.
 ImageStreams are not available by default.
+For more information about ImageStreams, see link:{LinkCreatingManagingOpenShiftImages}#managing-image-streams[Managing image streams on OpenShift Container Platform].
 
 .Procedure
 
