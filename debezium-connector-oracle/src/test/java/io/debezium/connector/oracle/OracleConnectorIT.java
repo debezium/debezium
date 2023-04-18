@@ -309,6 +309,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-6276")
+    @Ignore("Requires database to be configured without ARCHIVELOG_MODE enabled; which conflicts with dbz-oracle images")
     public void shouldSkipCheckingArchiveLogIfNoCdc() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
@@ -320,6 +322,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
         stopConnector();
 
         assertThat(logInterceptor.containsWarnMessage("Failed the archive log check but continuing as redo log isn't strictly required")).isTrue();
