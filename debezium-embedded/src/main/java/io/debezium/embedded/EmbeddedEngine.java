@@ -173,36 +173,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription("Optional list of single message transformations applied on the messages. "
                     + "The transforms are defined using '<transform.prefix>.type' config option and configured using options '<transform.prefix>.<option>'");
 
-//     static final int DEFAULT_ERROR_MAX_RETRIES = -1;
-
-    // private static final Field ERRORS_MAX_RETRIES = Field.create("errors.max.retries")
-    // .withDisplayName("The maximum number of retries")
-    // .withType(Type.INT)
-    // .withWidth(Width.SHORT)
-    // .withImportance(Importance.MEDIUM)
-    // .withDefault(DEFAULT_ERROR_MAX_RETRIES)
-    // .withValidation(Field::isInteger)
-    // .withDescription("The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
-
-    // private static final Field ERRORS_RETRY_DELAY_INITIAL_MS = Field.create("errors.retry.delay.initial.ms")
-    // .withDisplayName("Initial delay for retries")
-    // .withType(Type.INT)
-    // .withWidth(Width.SHORT)
-    // .withImportance(Importance.MEDIUM)
-    // .withDefault(300)
-    // .withValidation(Field::isPositiveInteger)
-    // .withDescription("Initial delay (in ms) for retries when encountering connection errors."
-    // + " This value will be doubled upon every retry but won't exceed 'errors.retry.delay.max.ms'.");
-    //
-    // private static final Field ERRORS_RETRY_DELAY_MAX_MS = Field.create("errors.retry.delay.max.ms")
-    // .withDisplayName("Max delay between retries")
-    // .withType(Type.INT)
-    // .withWidth(Width.SHORT)
-    // .withImportance(Importance.MEDIUM)
-    // .withDefault(10000)
-    // .withValidation(Field::isPositiveInteger)
-    // .withDescription("Max delay (in ms) between retries when encountering connection errors.");
-
     public static final Field WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS = Field.create("debezium.embedded.shutdown.pause.before.interrupt.ms")
             .withDisplayName("Time to wait to engine completion before interrupt")
             .withType(Type.LONG)

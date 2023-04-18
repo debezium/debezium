@@ -17,12 +17,12 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -869,22 +869,21 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
             CountDownLatch latch = new CountDownLatch(3 * 5); // 3 tasks * 5 records per task
 
-            var actual = new HashSet<Integer>();
+            var actual = ConcurrentHashMap.newKeySet();
             var expected = IntStream.range(0, 3).map(x -> x * offset + 1).flatMap(x -> IntStream.range(x, x + 5)).boxed().toArray(Integer[]::new);
 
             DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> engineBuilder = DebeziumEngine.create(Connect.class, Connect.class)
                     .using(config.asProperties())
                     .notifying((events, committer) -> {
-                        System.out.println("received event");
                         for (var event : events) {
                             SourceRecord record = event.value();
                             Struct key = (Struct) record.key();
                             int id = key.getInt32("id");
                             actual.add(id);
-                            latch.countDown();
                             committer.markProcessed(event);
                         }
                         committer.markBatchFinished();
+                        events.forEach(e -> latch.countDown());
                     })
                     .using(this.getClass().getClassLoader());
 
@@ -894,8 +893,8 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 engineBuilder.build().run();
             });
 
-            var finished = latch.await(1000, TimeUnit.MILLISECONDS);
-            System.out.println(latch.getCount());
+            var finished = latch.await(3000, TimeUnit.MILLISECONDS);
+
             assertThat(finished).as("Latch reached 0").isTrue();
             assertThat(actual).containsOnly(expected);
         }
