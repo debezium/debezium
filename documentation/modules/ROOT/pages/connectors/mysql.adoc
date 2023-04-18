@@ -2796,7 +2796,8 @@ Setting `include.query` to `true` might expose tables or fields that are explici
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
-|Specifies how the connector should react to exceptions during deserialization of binlog events. +
+|Specifies how the connector should react to exceptions during deserialization of binlog events.
+This option is deprecated, please use xref:mysql-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] option instead. +
  +
 `fail` propagates the exception, which indicates the problematic event and its binlog offset, and causes the connector to stop. +
  +
