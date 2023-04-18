@@ -87,6 +87,13 @@ debezium.source.topic.prefix=tutorial
 debezium.source.schema.include.list=inventory
 ----
 
+In this configuration file example:
+
+* The sink is setup for AWS Kinesis in region `eu-central-1`
+* The source connector is setup for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.  If using PostgreSQL's built-in `pgoutput` plugin, set `debezium.source.plugin.name=pgoutput`
+* The source connector is set to capture events from a schema named `inventory`.  If you want to capture all changes in the database, remove this line.  Otherwise, update this line to correspond to your preferred schema or tables.
+* The source offset will be stored in a file named `offsets.dat` in the `data` directory.  Note that you might need to create this directory to prevent an error on startup.
+
 When the server is started it generates a seqeunce of log messages like this:
 
 ----
@@ -461,8 +468,8 @@ The configuration will need to contain the list of predicates, implementation cl
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
-Debezium Server runs on top Quarkus framework.
-All configuration options exposed by Quarkus are available in Debezium Server too.
+{prodname} Server runs on top of the Quarkus framework.
+All configuration options exposed by Quarkus are available in {prodname} Server too.
 The most frequent used are:
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -474,7 +481,7 @@ The most frequent used are:
 [id="debezium-quarkus-http-port"]
 |`quarkus.http.port`
 |8080
-|The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.
+|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information.
 
 [id="debezium-quarkus-log-level"]
 |`quarkus.log.level`
@@ -492,11 +499,11 @@ JSON logging can be disabled by setting `quarkus.log.console.json=false` in the 
 
 ==== Enabling message filtering
 
-Debezium server provide filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
-However, for security reasons it's not enabled by default and has to be explicitly enabled when Debezium server is started.
+{prodname} Server provides filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
+However, for security reasons it's not enabled by default and has to be explicitly enabled when {prodname} Server is started.
 To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
 This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
-These jar files are contained in `opt_lib` directory of the Debezium server distribution.
+These jar files are contained in `opt_lib` directory of the {prodname} Server distribution.
 
 === Sink configuration
 
@@ -735,7 +742,7 @@ When the alternative implementations are not available then the default ones are
 ==== HTTP Client
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
-Debezium act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].
+{prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -799,7 +806,7 @@ At least `serviceUrl` must be provided.
 |
 |The Pulsar module supports pass-through configuration.
 The message producer https://pulsar.apache.org/docs/en/client-libraries-java/#client-configuration[configuration properties] are passed to the producer with the prefix removed.
-The `topic` is set by Debezium.
+The `topic` is set by {prodname}.
 
 |[[pulsar-null-key]]<<pulsar-null-key, `debezium.sink.pulsar.null.key`>>
 |`default`
@@ -858,11 +865,11 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |[[partition-id]]<<partition-id, `debezium.sink.eventhubs.partitionid`>>
 |
-|(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
+|(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
 
 |[[partition-key]]<<partition-key, `debezium.sink.eventhubs.partitionkey`>>
 |
-|(Optional) The partition key will be used to hash the events. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionid`
+|(Optional) The partition key will be used to hash the events. Use this if you want all the change events received by {prodname} to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionid`
 
 |[[max-batch-size]]<<max-batch-size, `debezium.sink.eventhubs.maxbatchsize`>>
 |
@@ -1135,7 +1142,7 @@ By default the same name is used.
 
 ==== Apache Kafka
 
-https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. Debezium server supports publishing captured change events to a configured Kafka message broker.
+https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1151,13 +1158,13 @@ https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for di
 |
 |The Kafka sink adapter supports pass-through configuration.
 This means that all Kafka producer https://kafka.apache.org/documentation/#producerconfigs[configuration properties] are passed to the producer with the prefix removed.
-At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by Debezium.
+At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
 |===
 
 ==== Pravega
 
-https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a Debezium batch to Pravega. The transactional mode writes the Debezium batch to a Pravega transaction that commits when the batch is completed.
+https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a {prodname} batch to Pravega. The transactional mode writes the {prodname} batch to a Pravega transaction that commits when the batch is completed.
 
 The Pravega sink expects destination scope and streams to already be created.
 
@@ -1181,7 +1188,7 @@ The Pravega sink expects destination scope and streams to already be created.
 
 |[[pravega-transaction]]<<pravega-transaction, `debezium.sink.pravega.transaction`>>
 |`false`
-|Set to `true` to have the sink use Pravega transactions for each Debezium batch.
+|Set to `true` to have the sink use Pravega transactions for each {prodname} batch.
 
 |===
 
@@ -1261,7 +1268,7 @@ When the alternative implementations are not available then the default ones are
 ==== Apache RocketMQ
 
 https://rocketmq.apache.org/[Apache RocketMQ] is a distributed messaging and streaming platform with low latency, high
-performance and reliability, trillion-level capacity and flexible scalability.Debezium server supports publishing
+performance and reliability, trillion-level capacity and flexible scalability. {prodname} server supports publishing
 captured change events to a configured RocketMQ.
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -1352,7 +1359,7 @@ See an example of a custom https://github.com/debezium/debezium-examples/tree/ma
 
 == Cassandra connector
 
-=== Running Debezium Server with Cassandra connector
+=== Running {prodname} Server with Cassandra connector
 
 Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
 
@@ -1383,8 +1390,8 @@ debezium.source.http.port=8040
 
 === Transformation for Operation Code
 
-By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with Debezium Operation Codes.
-If needed, a specific transform can be defined in Debezium Server's `application.properties` to enable the conversion:
+By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with {prodname} Operation Codes.
+If needed, a specific transform can be defined in {prodname} Server's `application.properties` to enable the conversion:
 
 ```
 debezium.transforms=EnvelopeTransformation
