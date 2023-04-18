@@ -90,9 +90,13 @@ debezium.source.schema.include.list=inventory
 In this configuration file example:
 
 * The sink is setup for AWS Kinesis in region `eu-central-1`
-* The source connector is setup for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.  If using PostgreSQL's built-in `pgoutput` plugin, set `debezium.source.plugin.name=pgoutput`
-* The source connector is set to capture events from a schema named `inventory`.  If you want to capture all changes in the database, remove this line.  Otherwise, update this line to correspond to your preferred schema or tables.
-* The source offset will be stored in a file named `offsets.dat` in the `data` directory.  Note that you might need to create this directory to prevent an error on startup.
+* The source connector is setup for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.
+If using PostgreSQL's built-in `pgoutput` plugin, set `debezium.source.plugin.name=pgoutput`
+* The source connector is set to capture events from a schema named `inventory`.
+If you want to capture all changes in the database, remove this line.
+Otherwise, update this line to correspond to your preferred schema or tables.
+* The source offset will be stored in a file named `offsets.dat` in the `data` directory.
+Note that you might need to create this directory to prevent an error on startup.
 
 When the server is started it generates a seqeunce of log messages like this:
 
