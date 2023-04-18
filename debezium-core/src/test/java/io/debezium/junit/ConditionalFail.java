@@ -76,8 +76,8 @@ public class ConditionalFail extends AnnotationBasedTestRule {
     private Statement ignoreFlakyFailure(final Statement base, final Description description,
                                          final Flaky flakyClass) {
 
-        final String flakyFailuresProperty = System.getProperty(Flaky.IGNORE_FLAKY_FAILURES_PROPERTY);
-        if (flakyFailuresProperty == null || !Boolean.valueOf(flakyFailuresProperty)) {
+        final String failFlakyTestsProperty = System.getProperty(Flaky.FAIL_FLAKY_TESTS_PROPERTY);
+        if (failFlakyTestsProperty == null || Boolean.valueOf(failFlakyTestsProperty)) {
             return base;
         }
         final String flakyAttemptsProperty = System.getProperty(Flaky.FLAKY_ATTEMPTS_FAILURES_PROPERTY, "1");

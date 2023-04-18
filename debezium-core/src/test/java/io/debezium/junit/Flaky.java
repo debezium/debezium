@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
 @Target({ ElementType.METHOD, ElementType.TYPE })
 public @interface Flaky {
 
-    String IGNORE_FLAKY_FAILURES_PROPERTY = "ignoreFlakyFailures";
+    String FAIL_FLAKY_TESTS_PROPERTY = "failFlakyTests";
     String FLAKY_ATTEMPTS_FAILURES_PROPERTY = "flaky.attempts";
 
     /**
