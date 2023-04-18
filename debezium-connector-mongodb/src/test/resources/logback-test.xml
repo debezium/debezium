@@ -22,6 +22,31 @@
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
+            name="io.debezium.connector.mongodb.ReplicaSetDiscovery"
+            level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+            name="io.debezium.connector.mongodb.MongoDbIncrementalSnapshotChangeEventSource"
+            level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+            name="io.debezium.connector.mongodb.MongoDbStreamingChangeEventSource"
+            level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+            name="io.debezium.connector.mongodb.MongoDbIncrementalSnapshotContext"
+            level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+            name="io.debezium.pipeline.EventDispatcher$IncrementalSnapshotChangeRecordReceiver"
+            level="TRACE" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
         name="org.mongodb.driver"
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />

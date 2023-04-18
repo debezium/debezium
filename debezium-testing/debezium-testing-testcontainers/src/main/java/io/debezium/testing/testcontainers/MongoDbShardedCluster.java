@@ -165,6 +165,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
 
     public void shardCollection(String databaseName, String collectionName, String keyField) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#shard-a-collection
+        LOGGER.info("Enabling sharding for {}.{} using '{}' filed as key", databaseName, collectionName, keyField);
         var arbitraryRouter = routers.get(0);
         arbitraryRouter.eval("sh.shardCollection(" +
                 "'" + databaseName + "." + collectionName + "'," +
