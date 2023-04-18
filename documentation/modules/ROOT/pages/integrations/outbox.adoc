@@ -127,9 +127,9 @@ To see a full end-to-end demo, the https://github.com/debezium/debezium-examples
 [id=reactive-outbox]
 == Reactive Variant
 
-If your application is making use of Reactive Datasources or Hibernate Reactive, then there are some differences. 
+If your application uses reactive datasources, or Hibernate Reactive, you must use a slightly different configuration to add the extension to your application.
 
-To import the reactive variant, the extension is added as follows:
+For example, use the following configuration to  import the reactive variant of the extension:
 
 [source,xml,subs="verbatim,attributes"]
 ----
@@ -140,7 +140,9 @@ To import the reactive variant, the extension is added as follows:
 </dependency>
 ----
 
-The extension provides the application with the `io.debezium.outbox.quarkus.ExportedEvent` interface just like in the non reactive variant, but also comes with the `DebeziumOutboxHandler` class which can be injected into your applications and exposes the `persistToOutbox` method. One example invocation is seen below which is using the same `ExportedEvent` as the previous example:
+The reactive extension provides the application with the same `io.debezium.outbox.quarkus.ExportedEvent` interface as the non-reactive variant, but it also provides the `DebeziumOutboxHandler` class.
+This class can be injected into your applications and expose the `persistToOutbox` method.
+The following example shows an invocation that uses the same `ExportedEvent` as in the earlier example:
 
 .OrderService.java
 [source,java,indent=0]
@@ -168,7 +170,8 @@ public class OrderService {
 
 [NOTE]
 ====
-The `persistToOutbox` method returns a Uni, so however you decide to invoke it you must subscribe to the Uni in order to invoke it. More material on Reactive and Mutiny can be found link:https://quarkus.io/guides/mutiny-primer[here]
+The `persistToOutbox` method returns a Uni; therefore, it must be observed by a subscriber ito receive the result.
+For more information about using the Mutiny library to build reactive applications, see the link:https://quarkus.io/guides/mutiny-primer[Quarkus Mutiny primer].
 ====
 
 
