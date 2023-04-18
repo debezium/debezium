@@ -237,7 +237,7 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                     "--host " + name + " " +
                     "--port " + port + " " +
                     "--eval \"JSON.stringify(" + command + ")\"";
-
+            LOGGER.debug("Running command inside container: {}", mongoCommand);
             // Support newer and older MongoDB versions respectively
             var result = execInContainer("sh", "-c", isLegacy() ? mongoCommand : "mongosh " + mongoCommand);
             checkExitCode(result);
