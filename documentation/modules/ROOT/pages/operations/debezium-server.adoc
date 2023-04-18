@@ -1307,7 +1307,7 @@ proper value based on the actual application to avoid long thread blocking time.
 
 ===== Injection points
 
-The rocketmq sink behaviour can be modified by a custom logic providing alternative implementations for specific
+The RocketMQ sink behaviour can be modified by a custom logic providing alternative implementations for specific
 functionalities.
 When the alternative implementations are not available then the default ones are used.
 
@@ -1320,12 +1320,18 @@ When the alternative implementations are not available then the default ones are
 |[[rocketmq-producer]]<<rocketmq-producer, `org.apache.rocketmq.client.producer.DefaultMQProducer`>>
 |`@CustomConsumerBuilder`
 |Custom configured instance of a RocketMQ used to publish messages to target topic.
+
+|[[rocketmq-ext-stream-name-mapper]]<<rocketmq-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (stream) name into a RocketMQ topic name.
+By default the same name is used.
 |===
 
 ==== RabbitMQ Stream
 
-https://www.rabbitmq.com/[RabbitMQ] is an open source message broker, supporting multiple messaging protocols and can be deployed in distributed and federated configurations to meet high-scale, high-availability requirements. RabbitMQ supports messages queues and streams. Debezium server supports publishing
-captured change events to a configured RabbitMQ Stream.
+https://www.rabbitmq.com/[RabbitMQ] is an open source message broker, supporting multiple messaging protocols and can be deployed in distributed and federated configurations to meet high-scale, high-availability requirements.
+RabbitMQ supports messages queues and streams.
+Debezium Server supports publishing captured change events to a configured RabbitMQ Stream.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1360,6 +1366,23 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 
 |===
 
+
+===== Injection points
+
+RabbitMQ sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[rabbitmq-ext-stream-name-mapper]]<<rabbitmq-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (stream) name into a RabbitMQ exchange name.
+By default the same name is used.
+|===
 
 == Extensions
 
