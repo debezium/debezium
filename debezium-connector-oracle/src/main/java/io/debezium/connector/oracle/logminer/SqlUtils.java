@@ -225,6 +225,15 @@ public class SqlUtils {
         return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
     }
 
+    public static String getScnByTimeDeltaQuery(Scn scn, Duration duration) {
+        if (scn == null) {
+            return null;
+        }
+
+        return "select timestamp_to_scn(CAST(scn_to_timestamp(" + scn.toString() + ") as date)" +
+                " - INTERVAL '" + duration.toMinutes() + "' MINUTE) from dual";
+    }
+
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
