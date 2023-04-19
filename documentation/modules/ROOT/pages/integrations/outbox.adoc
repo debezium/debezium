@@ -141,7 +141,7 @@ For example, use the following configuration to  import the reactive variant of 
 ----
 
 The reactive extension provides the application with the same `io.debezium.outbox.quarkus.ExportedEvent` interface as the non-reactive variant, but it also provides the `DebeziumOutboxHandler` class.
-This class can be injected into your applications and expose the `persistToOutbox` method.
+Injecting the `DebeziumOutboxHandler` bean into an application provides a method for quickly persisting an `ExportedEvent` to the outbox table.
 The following example shows an invocation that uses the same `ExportedEvent` as in the earlier example:
 
 .OrderService.java
