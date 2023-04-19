@@ -44,7 +44,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabled() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
 
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS updates_test CASCADE;",
@@ -66,7 +66,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
 
-        final SourceRecords records = consumeRecordsByTopic(4);
+        final SourceRecords records = consumeRecordsByTopic(3);
         /*
          * Total Events
          * 1,1,1 (I)
@@ -84,7 +84,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
 
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS updates_test CASCADE;",
@@ -106,7 +106,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
 
-        final SourceRecords records = consumeRecordsByTopic(4);
+        final SourceRecords records = consumeRecordsByTopic(3);
         /*
          * Total Events
          * 1,1,1 (I)
@@ -124,7 +124,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldNotSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabledButTableReplicaIdentityNotFull() throws Exception {
+    public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledButTableReplicaIdentityNotFull() throws Exception {
 
         TestHelper.execute("DROP SCHEMA IF EXISTS updates_test CASCADE;",
                 "CREATE SCHEMA updates_test;",
@@ -143,7 +143,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         TestHelper.execute("UPDATE updates_test.debezium_test SET black=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=2 where id = 1;");
         TestHelper.execute("UPDATE updates_test.debezium_test SET white=3, black=3 where id = 1;");
-        final SourceRecords records = consumeRecordsByTopic(5);
+        final SourceRecords records = consumeRecordsByTopic(4);
         /*
          * Total Events
          * 1,1,1 (I)
@@ -163,7 +163,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldNotSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipDisabled() throws Exception {
+    public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
 
         TestHelper.execute(
                 "DROP SCHEMA IF EXISTS updates_test CASCADE;",
@@ -191,7 +191,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
          * 1,2,2 (U)
          * 1,3,3 (U)
          */
-        final SourceRecords records = consumeRecordsByTopic(5);
+        final SourceRecords records = consumeRecordsByTopic(4);
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("updates_test.debezium_test"));
 
         assertThat(recordsForTopic).hasSize(4);

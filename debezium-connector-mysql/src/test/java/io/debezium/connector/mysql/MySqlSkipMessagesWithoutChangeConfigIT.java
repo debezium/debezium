@@ -57,7 +57,7 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabled() throws SQLException, InterruptedException {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(MySqlConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
@@ -76,7 +76,7 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(7);
+        SourceRecords records = consumeRecordsByTopic(6);
 
         List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("debezium_test"));
         /*
@@ -98,7 +98,7 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, getQualifiedColumnName("black"))
                 .with(MySqlConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
@@ -117,7 +117,7 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(7);
+        SourceRecords records = consumeRecordsByTopic(6);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("debezium_test"));
         /*
          * Total Events:
@@ -138,7 +138,7 @@ public class MySqlSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTes
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldNotSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipDisabled() throws Exception {
+    public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, getQualifiedColumnName("id") + "," + getQualifiedColumnName("white"))
                 .with(MySqlConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)

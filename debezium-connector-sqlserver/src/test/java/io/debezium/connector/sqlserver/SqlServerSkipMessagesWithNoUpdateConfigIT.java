@@ -28,7 +28,7 @@ import io.debezium.embedded.AbstractConnectorTest;
  * @author Ronak Jain
  *
  */
-public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnectorTest {
+public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnectorTest {
     private SqlServerConnection connection;
 
     private final Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -56,7 +56,7 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
     }
 
     @Test
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabled() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
         Configuration config = configBuilder
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
                 .build();
@@ -68,7 +68,7 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=3,black=3 where id=1");
-        final SourceRecords records = consumeRecordsByTopic(4);
+        final SourceRecords records = consumeRecordsByTopic(3);
         final List<SourceRecord> tableMessages = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
         /*
          * Total events:
@@ -87,7 +87,7 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.skip_messages_test")
@@ -102,7 +102,7 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
         connection.execute("UPDATE skip_messages_test SET black=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=2 where id=1");
         connection.execute("UPDATE skip_messages_test SET white=3,black=3 where id=1");
-        final SourceRecords records = consumeRecordsByTopic(4);
+        final SourceRecords records = consumeRecordsByTopic(3);
         final List<SourceRecord> tableMessages = records.recordsForTopic("server1.testDB1.dbo.skip_messages_test");
         /*
          * Total events:
@@ -121,7 +121,7 @@ public class SQLServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnector
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldNotSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipDisabled() throws Exception {
+    public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         Configuration config = configBuilder
                 .with(SqlServerConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
                 .build();
