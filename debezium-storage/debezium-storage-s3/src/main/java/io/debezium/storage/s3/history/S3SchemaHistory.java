@@ -5,18 +5,8 @@
  */
 package io.debezium.storage.s3.history;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -30,16 +20,12 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.document.DocumentReader;
-import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.AbstractSchemaHistory;
+import io.debezium.relational.history.AbstractFileBasedSchemaHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
-import io.debezium.util.FunctionalReadWriteLock;
-import io.debezium.util.Loggings;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -69,7 +55,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  * @author hossein.torabi
  */
 @NotThreadSafe
-public class S3SchemaHistory extends AbstractSchemaHistory {
+public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
     private static final Logger LOGGER = LoggerFactory.getLogger(S3SchemaHistory.class);
     public static final String ACCESS_KEY_ID_CONFIG = "s3.access.key.id";
     public static final String SECRET_ACCESS_KEY_CONFIG = "s3.secret.access.key";
@@ -95,17 +81,20 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             .withDisplayName("S3 region")
             .withWidth(Width.LONG)
             .withType(Type.STRING)
-            .withImportance(Importance.MEDIUM);
+            .withImportance(Importance.MEDIUM)
+            .required();
 
     public static final Field BUCKET = Field.create(BUCKET_CONFIG)
             .withDisplayName("S3 bucket")
             .withType(Type.STRING)
-            .withImportance(Importance.HIGH);
+            .withImportance(Importance.HIGH)
+            .required();
 
     public static final Field OBJECT_NAME = Field.create(OBJECT_NAME_CONFIG)
             .withDisplayName("S3 Object name")
             .withType(Type.STRING)
             .withImportance(Importance.HIGH)
+            .required()
             .withDescription("The name of the object under which the history is stored.");
 
     public static final Field ENDPOINT = Field.create(ENDPOINT_CONFIG)
@@ -115,42 +104,26 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
 
     public static final Field.Set ALL_FIELDS = Field.setOf(ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION, BUCKET, ENDPOINT);
 
-    private final AtomicBoolean running = new AtomicBoolean();
-    private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final DocumentWriter documentWriter = DocumentWriter.defaultWriter();
-    private final DocumentReader reader = DocumentReader.defaultReader();
-
-    private String bucket = null;
-    private String objectName = null;
-    private Region region = null;
+    private String bucket;
+    private String objectName;
+    private Region region;
     private URI endpoint = null;
     private AwsCredentialsProvider credentialsProvider = null;
 
     private volatile S3Client client = null;
-    private volatile List<HistoryRecord> records = new ArrayList<>();
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
-            throw new SchemaHistoryException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+            throw new DebeziumException(
+                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
         bucket = config.getString(BUCKET);
-        if (bucket == null) {
-            throw new DebeziumException(BUCKET + " is required to be set");
-        }
-
         objectName = config.getString(OBJECT_NAME);
-        if (objectName == null) {
-            throw new DebeziumException(OBJECT_NAME + " is required to be set");
-        }
-
-        // Unknown value is not detected by Region.of
         final var regionName = config.getString(REGION);
-        if (regionName == null) {
-            throw new DebeziumException(REGION + " is required to be set");
-        }
+        // Unknown value is not detected by Region.of
         region = Region.of(regionName);
 
         LOGGER.info("Database history will be stored in bucket '{}' under key '{}' using region '{}'", bucket, objectName, region);
@@ -162,7 +135,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
         }
 
         if (config.getString(ACCESS_KEY_ID) == null && config.getString(SECRET_ACCESS_KEY) == null) {
-            LOGGER.info("DefaultCreadentialsProvider is used for authentication");
+            LOGGER.info("DefaultCredentialsProvider is used for authentication");
             credentialsProvider = DefaultCredentialsProvider.create();
         }
         else {
@@ -170,14 +143,12 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
             AwsCredentials credentials = AwsBasicCredentials.create(config.getString(ACCESS_KEY_ID), config.getString(SECRET_ACCESS_KEY));
             credentialsProvider = StaticCredentialsProvider.create(credentials);
         }
-
     }
 
     @Override
     public synchronized void start() {
         if (client == null) {
-            S3ClientBuilder clientBuilder = S3Client.builder().credentialsProvider(credentialsProvider)
-                    .region(region);
+            S3ClientBuilder clientBuilder = S3Client.builder().credentialsProvider(credentialsProvider).region(region);
             if (endpoint != null) {
                 clientBuilder.endpointOverride(endpoint);
             }
@@ -193,7 +164,11 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
 
                 InputStream objectInputStream = null;
                 try {
-                    GetObjectRequest request = GetObjectRequest.builder().bucket(bucket).key(objectName).responseContentType(OBJECT_CONTENT_TYPE).build();
+                    GetObjectRequest request = GetObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(objectName)
+                            .responseContentType(OBJECT_CONTENT_TYPE)
+                            .build();
                     objectInputStream = client.getObject(request, ResponseTransformer.toInputStream());
                 }
                 catch (NoSuchKeyException e) {
@@ -204,20 +179,7 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
                 }
 
                 if (objectInputStream != null) {
-                    try (BufferedReader historyReader = new BufferedReader(new InputStreamReader(objectInputStream, StandardCharsets.UTF_8))) {
-                        while (true) {
-                            String line = historyReader.readLine();
-                            if (line == null) {
-                                break;
-                            }
-                            if (!line.isEmpty()) {
-                                records.add(new HistoryRecord(reader.read(line)));
-                            }
-                        }
-                    }
-                    catch (IOException e) {
-                        throw new SchemaHistoryException("Unable to read object content", e);
-                    }
+                    toHistoryRecord(objectInputStream);
                 }
             }
         });
@@ -238,33 +200,15 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
     @Override
     protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (client == null) {
-            throw new IllegalStateException("No S3 client is available. Ensure that 'start()' is called before storing database history records.");
+            throw new SchemaHistoryException("No S3 client is available. Ensure that 'start()' is called before storing database history records.");
         }
         if (record == null) {
             return;
         }
 
-        LOGGER.trace("Storing record into database history: {}", record);
         lock.write(() -> {
             if (!running.get()) {
-                throw new IllegalStateException("The history has been stopped and will not accept more records");
-            }
-
-            records.add(record);
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            try (BufferedWriter historyWriter = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-                for (HistoryRecord r : records) {
-                    String line = null;
-                    line = documentWriter.write(r.document());
-                    if (line != null) {
-                        historyWriter.newLine();
-                        historyWriter.append(line);
-                    }
-                }
-            }
-            catch (IOException e) {
-                Loggings.logErrorAndTraceRecord(logger, record, "Failed to convert record", e);
-                throw new SchemaHistoryException("Failed to convert record", e);
+                throw new SchemaHistoryException("The history has been stopped and will not accept more records");
             }
 
             try {
@@ -273,23 +217,22 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
                         .key(objectName)
                         .contentType(OBJECT_CONTENT_TYPE)
                         .build();
-                client.putObject(request, RequestBody.fromBytes(outputStream.toByteArray()));
+                client.putObject(request, RequestBody.fromBytes(fromHistoryRecord(record)));
             }
             catch (S3Exception e) {
                 throw new SchemaHistoryException("Can not store record to S3", e);
             }
-
         });
     }
 
     @Override
     protected void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> this.records.forEach(records));
+        lock.write(() -> getRecords().forEach(records));
     }
 
     @Override
     public boolean exists() {
-        return !records.isEmpty();
+        return !getRecords().isEmpty();
     }
 
     @Override
@@ -306,7 +249,6 @@ public class S3SchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public void initializeStorage() {
-        super.initializeStorage();
         LOGGER.info("Creating S3 bucket '{}' used to store database history", bucket);
         client.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
     }
