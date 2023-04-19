@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.processor.memory;
 
+import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -138,7 +139,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
             final Scn offsetScn = offsetContext.getScn();
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, offsetScn, retention);
+            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
                 LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
@@ -320,22 +321,23 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
      * The criteria is do not let the offset SCN expire from archives older the specified retention hours.
      *
      * @param connection database connection, should not be {@code null}
-     * @param offsetScn offset system change number, should not be {@code null}
      * @param retention duration to tolerate long running transactions before being abandoned, must not be {@code null}
      * @return an optional system change number as the watermark for transaction buffer abandonment
      */
-    protected Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration retention) {
+    protected Optional<Scn> getLastScnToAbandon(OracleConnection connection, Duration retention) {
         try {
-            Float diffInDays = connection.singleOptionalValue(SqlUtils.diffInDaysQuery(offsetScn), rs -> rs.getFloat(1));
-            if (diffInDays != null && (diffInDays * 24) > retention.toHours()) {
-                return Optional.of(offsetScn);
+            if (getLastProcessedScn().isNull()) {
+                return Optional.empty();
             }
-            return Optional.empty();
+            BigInteger scnToAbandon = connection.singleOptionalValue(
+                    SqlUtils.getScnByTimeDeltaQuery(getLastProcessedScn(), retention),
+                    rs -> rs.getBigDecimal(1).toBigInteger());
+            return Optional.of(new Scn(scnToAbandon));
         }
         catch (SQLException e) {
-            LOGGER.error("Cannot calculate days difference for transaction abandonment", e);
+            LOGGER.error("Cannot fetch SCN by given duration to calculate SCN to abandon", e);
             metrics.incrementErrorCount();
-            return Optional.of(offsetScn);
+            return Optional.empty();
         }
     }
 
