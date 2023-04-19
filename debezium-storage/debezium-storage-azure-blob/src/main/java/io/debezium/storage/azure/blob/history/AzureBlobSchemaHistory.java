@@ -5,17 +5,8 @@
  */
 package io.debezium.storage.azure.blob.history;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -30,16 +21,12 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.document.DocumentReader;
-import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.AbstractSchemaHistory;
+import io.debezium.relational.history.AbstractFileBasedSchemaHistory;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
-import io.debezium.util.FunctionalReadWriteLock;
-import io.debezium.util.Loggings;
 
 /** A {@link SchemaHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
  * and that recovers the history by establishing a Kafka Consumer re-processing all messages on that topic.
@@ -49,9 +36,8 @@ import io.debezium.util.Loggings;
  *  Also {@link AzureBlobSchemaHistory#storeRecord(HistoryRecord)} creates new history blob everytime invokes on Blob
  *
  * @author hossein torabi
- * @a
  */
-public class AzureBlobSchemaHistory extends AbstractSchemaHistory {
+public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AzureBlobSchemaHistory.class);
 
@@ -71,46 +57,33 @@ public class AzureBlobSchemaHistory extends AbstractSchemaHistory {
             .withDisplayName("container name")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.HIGH);
+            .withImportance(ConfigDef.Importance.HIGH)
+            .required();
 
     public static final Field BLOB_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + BLOB_NAME_CONFIG)
             .withDisplayName("blob name")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.HIGH);
+            .withImportance(ConfigDef.Importance.HIGH)
+            .required();
 
     public static final Field.Set ALL_FIELDS = Field.setOf(ACCOUNT_CONNECTION_STRING, CONTAINER_NAME, BLOB_NAME);
 
-    private final AtomicBoolean running = new AtomicBoolean();
-    private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
-    private final DocumentWriter documentWriter = DocumentWriter.defaultWriter();
-    private final DocumentReader reader = DocumentReader.defaultReader();
-
     private volatile BlobServiceClient blobServiceClient = null;
     private volatile BlobClient blobClient = null;
-    private String container = null;
-
-    private String blobName = null;
-
-    private volatile List<HistoryRecord> records = new ArrayList<>();
+    private String container;
+    private String blobName;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
-            throw new SchemaHistoryException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+            throw new DebeziumException(
+                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
         container = config.getString(CONTAINER_NAME);
-        if (container == null) {
-            throw new DebeziumException(CONTAINER_NAME + " is required to be set");
-        }
-
         blobName = config.getString(BLOB_NAME);
-        if (blobName == null) {
-            throw new DebeziumException(BLOB_NAME + " is required to be set");
-        }
-
     }
 
     @Override
@@ -136,20 +109,7 @@ public class AzureBlobSchemaHistory extends AbstractSchemaHistory {
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
                 blobClient.downloadStream(outputStream);
                 ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-                try (BufferedReader historyReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-                    while (true) {
-                        String line = historyReader.readLine();
-                        if (line == null) {
-                            break;
-                        }
-                        if (!line.isEmpty()) {
-                            records.add(new HistoryRecord(reader.read(line)));
-                        }
-                    }
-                }
-                catch (IOException e) {
-                    throw new SchemaHistoryException("Unable to read object content", e);
-                }
+                toHistoryRecord(inputStream);
             }
         });
         super.start();
@@ -158,54 +118,35 @@ public class AzureBlobSchemaHistory extends AbstractSchemaHistory {
     @Override
     protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (blobClient == null) {
-            throw new IllegalStateException("No Blob client is available. Ensure that 'start()' is called before storing database history records.");
+            throw new SchemaHistoryException("No Blob client is available. Ensure that 'start()' is called before storing database history records.");
         }
         if (record == null) {
             return;
         }
 
-        LOGGER.trace("Storing record into database history: {}", record);
         lock.write(() -> {
             if (!running.get()) {
-                throw new IllegalStateException("The history has been stopped and will not accept more records");
+                throw new SchemaHistoryException("The history has been stopped and will not accept more records");
             }
 
-            records.add(record);
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            try (BufferedWriter historyWriter = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-                for (HistoryRecord r : records) {
-                    String line = null;
-                    line = documentWriter.write(r.document());
-                    if (line != null) {
-                        historyWriter.newLine();
-                        historyWriter.append(line);
-                    }
-                }
-            }
-            catch (IOException e) {
-                Loggings.logErrorAndTraceRecord(logger, record, "Failed to convert record", e);
-                throw new SchemaHistoryException("Failed to convert record", e);
-            }
-
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(fromHistoryRecord(record));
             blobClient.upload(inputStream, true);
         });
     }
 
     @Override
     protected void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> this.records.forEach(records));
+        lock.write(() -> getRecords().forEach(records));
     }
 
     @Override
     public boolean exists() {
-        return !records.isEmpty();
+        return !getRecords().isEmpty();
     }
 
     @Override
     public boolean storageExists() {
-        final boolean containerExists = blobServiceClient.getBlobContainerClient(container)
-                .exists();
+        final boolean containerExists = blobServiceClient.getBlobContainerClient(container).exists();
 
         if (containerExists) {
             LOGGER.info("Container '{}' used to store database history exists", container);
@@ -217,6 +158,7 @@ public class AzureBlobSchemaHistory extends AbstractSchemaHistory {
     }
 
     public void initializeStorage() {
+        LOGGER.info("Creating Azure Blob container '{}' used to store database history", container);
         blobServiceClient.createBlobContainer(container);
     }
 
