@@ -516,7 +516,7 @@ tableOption
     | tablespaceStorage                                                             #tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                                                #tableOptionTransactional
     | UNION '='? '(' tables ')'                                                     #tableOptionUnion
-    | WITH SYSTEM VERSIONING                                                        #tableOptionWithSystemVersioning
+    | WITH SYSTEM VERSIONING                                                        #tableOptionWithSystemVersioning // MariaDB-specific only
     ;
 
 tableType
