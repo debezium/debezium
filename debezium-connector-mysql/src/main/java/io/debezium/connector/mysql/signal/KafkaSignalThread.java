@@ -81,7 +81,7 @@ public class KafkaSignalThread<T extends DataCollectionId> {
             .withValidation(Field::isRequired);
 
     public static final Field SIGNAL_POLL_TIMEOUT_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
-            + "signal.kafka.poll.timeout.ms")
+            + "kafka.poll.timeout.ms")
             .withDisplayName("Poll timeout for kafka signals (ms)")
             .withType(ConfigDef.Type.INT)
             .withWidth(ConfigDef.Width.SHORT)
