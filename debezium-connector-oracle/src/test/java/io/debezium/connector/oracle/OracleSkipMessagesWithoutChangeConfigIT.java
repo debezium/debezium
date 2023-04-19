@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -56,11 +57,12 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabled() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabled() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
-                "  id INT NOT NULL, white INT, black INT PRIMARY KEY (id))";
+                "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
@@ -84,23 +86,24 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
          * 1,2,2 (U)
          * 1,3,3 (U)
          */
-        SourceRecords records = consumeRecordsByTopic(5);
+        SourceRecords records = consumeRecordsByTopic(3);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("test"));
         assertThat(recordsForTopic).hasSize(3);
 
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(2);
+        assertThat(secondMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(3);
+        assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
     }
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
+    public void shouldSkipEventsWithNoChangeInIncludedColumnsWhenSkipEnabledWithExcludeConfig() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
-                "  id INT NOT NULL, white INT, black INT PRIMARY KEY (id))";
+                "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
@@ -124,23 +127,24 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
          * 1,2,2 (U)
          * 1,3,3 (U)
          */
-        SourceRecords records = consumeRecordsByTopic(5);
+        SourceRecords records = consumeRecordsByTopic(3);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("test"));
         assertThat(recordsForTopic).hasSize(3);
 
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(2);
+        assertThat(secondMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(3);
+        assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
     }
 
     @Test
     @FixFor("DBZ-2979")
-    public void shouldNotSkipEventsWithNoChangeInWhitelistedColumnsWhenSkipDisabled() throws Exception {
+    public void shouldNotSkipEventsWithNoChangeInIncludedColumnsWhenSkipDisabled() throws Exception {
         String ddl = "CREATE TABLE debezium.test (" +
-                "  id INT NOT NULL, white INT, black INT PRIMARY KEY (id))";
+                "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
@@ -164,19 +168,19 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
          * 1,2,2 (U)
          * 1,3,3 (U)
          */
-        SourceRecords records = consumeRecordsByTopic(5);
+        SourceRecords records = consumeRecordsByTopic(4);
         List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("test"));
-        assertThat(recordsForTopic).hasSize(3);
+        assertThat(recordsForTopic).hasSize(4);
 
         Struct secondMessage = ((Struct) recordsForTopic.get(1).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(secondMessage.get("white")).isEqualTo(1);
+        assertThat(secondMessage.get("WHITE")).isEqualTo(new BigDecimal("1"));
         Struct thirdMessage = ((Struct) recordsForTopic.get(2).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(thirdMessage.get("white")).isEqualTo(2);
+        assertThat(thirdMessage.get("WHITE")).isEqualTo(new BigDecimal("2"));
         Struct forthMessage = ((Struct) recordsForTopic.get(3).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(forthMessage.get("white")).isEqualTo(3);
+        assertThat(forthMessage.get("WHITE")).isEqualTo(new BigDecimal("3"));
     }
 
     private static String topicName(String tableName) {
-        return TestHelper.SERVER_NAME + ".DEBEZIUM." + tableName;
+        return TestHelper.SERVER_NAME + ".DEBEZIUM." + tableName.toUpperCase();
     }
 }
