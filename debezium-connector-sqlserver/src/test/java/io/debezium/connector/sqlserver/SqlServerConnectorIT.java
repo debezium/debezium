@@ -57,6 +57,7 @@ import io.debezium.data.SourceRecordAssert;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.Offsets;
@@ -629,6 +630,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2329")
+    @Flaky("DBZ-4475")
     public void updatePrimaryKeyTwiceWithRestartInMiddleOfTx() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
