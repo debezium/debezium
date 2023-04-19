@@ -62,12 +62,13 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.test TO " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
+                .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "DEBEZIUM\\.TEST\\.ID, DEBEZIUM\\.TEST\\.WHITE")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "debezium\\.test\\.id, debezium\\.test\\.white")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .build();
 
@@ -103,11 +104,12 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.test TO " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
-                .with(OracleConnectorConfig.COLUMN_EXCLUDE_LIST, "debezium\\.test\\.black")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
+                .with(OracleConnectorConfig.COLUMN_EXCLUDE_LIST, "DEBEZIUM\\.TEST\\.BLACK")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .build();
@@ -144,12 +146,13 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 "  id INT NOT NULL, white INT, black INT, PRIMARY KEY (id))";
 
         connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.test TO " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium\\.test")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
+                .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "DEBEZIUM\\.TEST\\.ID, DEBEZIUM\\.TEST\\.WHITE")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
-                .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "debezium\\.test\\.id, debezium\\.test\\.white")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .build();
 
