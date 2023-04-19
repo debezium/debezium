@@ -1,7 +1,7 @@
 <configuration>
 
     <appender name="CONSOLE"
-        class="ch.qos.logback.core.ConsoleAppender">
+              class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n</pattern>
         </encoder>
@@ -17,43 +17,18 @@
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
-        name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
-        level="warn" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-            name="io.debezium.connector.mongodb.ReplicaSetDiscovery"
+            name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
             level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
-            name="io.debezium.connector.mongodb.MongoDbIncrementalSnapshotChangeEventSource"
-            level="TRACE" additivity="false">
+            name="org.mongodb.driver"
+            level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
-            name="io.debezium.connector.mongodb.MongoDbStreamingChangeEventSource"
-            level="TRACE" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-            name="io.debezium.connector.mongodb.MongoDbIncrementalSnapshotContext"
-            level="TRACE" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-            name="io.debezium.pipeline.EventDispatcher$IncrementalSnapshotChangeRecordReceiver"
-            level="TRACE" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-        name="org.mongodb.driver"
-        level="warn" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-        name="org.apache.kafka.connect.json.JsonConverterConfig"
-        level="warn" additivity="false">
+            name="org.apache.kafka.connect.json.JsonConverterConfig"
+            level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
 </configuration>
