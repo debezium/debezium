@@ -36,9 +36,12 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotNewTables;
 import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -51,6 +54,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DatabaseSchema;
@@ -160,54 +164,65 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldValidateAcceptableConfiguration() {
-        Configuration config = DATABASE.defaultJdbcConfigBuilder()
-                .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "myServer")
-                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "some.host.com")
-                .with(KafkaSchemaHistory.TOPIC, "my.db.history.topic")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.ON_CONNECT_STATEMENTS, "SET SESSION wait_timeout=2000")
-                .build();
+        Configuration config = Configuration.create().build();
         MySqlConnector connector = new MySqlConnector();
         Config result = connector.validate(config.asMap());
 
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS);
-        assertNoConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MSG_KEY_COLUMNS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_QUEUE_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.MAX_BATCH_SIZE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.POLL_INTERVAL_MS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SCHEMA_HISTORY);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.BOOTSTRAP_SERVERS);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaSchemaHistory.RECOVERY_POLL_INTERVAL_MS);
+        // validate that the required fields have errors
+        assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
+        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID, 1);
+        assertConfigurationErrors(result, CommonConnectorConfig.TOPIC_PREFIX, 1);
+
+        // validate the non required fields
+        validateConfigField(result, MySqlConnectorConfig.PORT, 3306);
+        validateConfigField(result, MySqlConnectorConfig.PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.DATABASE_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLE_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST, null);
+        validateConfigField(result, MySqlConnectorConfig.MSG_KEY_COLUMNS, null);
+        validateConfigField(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS, 30000);
+        validateConfigField(result, MySqlConnectorConfig.KEEP_ALIVE, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS, 60000L);
+        validateConfigField(result, MySqlConnectorConfig.MAX_QUEUE_SIZE, 8192);
+        validateConfigField(result, MySqlConnectorConfig.MAX_BATCH_SIZE, 2048);
+        validateConfigField(result, MySqlConnectorConfig.POLL_INTERVAL_MS, 500L);
+        validateConfigField(result, MySqlConnectorConfig.SCHEMA_HISTORY, "io.debezium.storage.kafka.history.KafkaSchemaHistory");
+        validateConfigField(result, MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, Boolean.TRUE);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
+        validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, SnapshotNewTables.OFF);
+        validateConfigField(result, MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.PREFERRED);
+        validateConfigField(result, MySqlConnectorConfig.SSL_KEYSTORE, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_TRUSTSTORE, null);
+        validateConfigField(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, null);
+        validateConfigField(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE);
+        validateConfigField(result, MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+    }
+
+    private <T> void validateConfigField(Config config, Field field, T expectedValue) {
+        assertNoConfigurationErrors(config, field);
+        Object actualValue = configValue(config, field.name()).value();
+        if (actualValue == null) {
+            actualValue = field.defaultValue();
+        }
+        if (expectedValue == null) {
+            assertThat(actualValue).isNull();
+        }
+        else {
+            if (expectedValue instanceof EnumeratedValue) {
+                assertThat(((EnumeratedValue) expectedValue).getValue()).isEqualTo(actualValue.toString());
+            }
+            else {
+                assertThat(expectedValue).isEqualTo(actualValue);
+            }
+        }
     }
 
     /**

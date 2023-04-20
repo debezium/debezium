@@ -562,13 +562,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
             .withDisplayName("SSL mode")
-            .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFERRED)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether to use an encrypted connection to MySQL. Options include: "
-                    + "'disabled' (the default) to use an unencrypted connection; "
-                    + "'preferred' to establish a secure (encrypted) connection if the server supports secure connections, "
+                    + "'disabled' to use an unencrypted connection; "
+                    + "'preferred' (the default) to establish a secure (encrypted) connection if the server supports secure connections, "
                     + "but fall back to an unencrypted connection otherwise; "
                     + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
                     + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
