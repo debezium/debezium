@@ -2272,9 +2272,9 @@ FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
 RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
 RUN cd /opt/kafka/plugins/debezium/
 USER 1001
 EOF
@@ -2665,7 +2665,7 @@ If you include this property in the configuration, do not set the `column.exclud
 
 |[[mysql-property-skip-messages-without-change]]<<mysql-property-skip-messages-without-change, `+skip.messages.without.change+`>>
 |`false`
-| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties. 
+| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
 
 
 |[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
