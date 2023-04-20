@@ -244,7 +244,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     "Must be bigger than the time it takes two polling loops to finish ({} ms)", ChangeEventSourceCoordinator.SHUTDOWN_WAIT_TIMEOUT.toMillis() * 2));
 
     // JDBC OFFSET STORAGE FIELDS.
-    public static final Field OFFSET_STORAGE_JDBC_URI = Field.create("offset.storage.jdbc.uri")
+    public static final Field OFFSET_STORAGE_JDBC_URL = Field.create("offset.storage.jdbc.url")
             .withDescription("URI of the database which will be used to record the database history")
             .withDefault("jdbc:")
             .withValidation(Field::isRequired);
@@ -277,7 +277,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
             ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS,
             // JDBC OFFSET STORAGE FIELDS
-            OFFSET_STORAGE_JDBC_URI, OFFSET_STORAGE_JDBC_USER, OFFSET_STORAGE_JDBC_PASSWORD, OFFSET_STORAGE_JDBC_TABLE_NAME);
+            OFFSET_STORAGE_JDBC_URL, OFFSET_STORAGE_JDBC_USER, OFFSET_STORAGE_JDBC_PASSWORD, OFFSET_STORAGE_JDBC_TABLE_NAME);
 
     public static final class BuilderImpl implements Builder {
         private Configuration config;
@@ -1230,7 +1230,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_PARTITIONS);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
-            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_URI);
+            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_URL);
             Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_USER);
             Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_PASSWORD);
             Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_TABLE_NAME);
