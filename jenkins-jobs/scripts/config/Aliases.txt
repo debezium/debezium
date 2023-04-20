@@ -196,4 +196,7 @@ Fiore Mario Vitale,Mario Fiore Vitale
 smallYellowCat,Dou Pengwei
 ShuranZhang,Shuran Zhang
 Henko,Henrik Schnell
-HangC
+caicancai,蔡灿材
+eizners,Sergey Eizner
+tthorn,Thomas Thornton
+hiscat,My Lang Pangzi
