@@ -43,7 +43,7 @@ import io.debezium.config.Field;
 public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
     public static final Field OFFSET_STORAGE_JDBC_URL = Field.create("offset.storage.jdbc.url")
-            .withDescription("URI of the database which will be used to record the database history")
+            .withDescription("URL of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
     public static final Field OFFSET_STORAGE_JDBC_USER = Field.create("offset.storage.jdbc.user")
@@ -84,7 +84,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     protected ExecutorService executor;
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
     private Connection conn;
-    private String jdbcUri;
+    private String jdbcUrl;
 
     private String offsetStorageTableName;
 
@@ -103,13 +103,13 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public void configure(WorkerConfig config) {
 
         try {
-            jdbcUri = config.getString("offset.storage.jdbc.url");
+            jdbcUrl = config.getString("offset.storage.jdbc.url");
             offsetStorageTableName = config.getString(OFFSET_STORAGE_TABLE_NAME.name());
-            conn = DriverManager.getConnection(jdbcUri, config.getString(OFFSET_STORAGE_JDBC_USER.name()), config.getString(OFFSET_STORAGE_JDBC_PASSWORD.name()));
+            conn = DriverManager.getConnection(jdbcUrl, config.getString(OFFSET_STORAGE_JDBC_USER.name()), config.getString(OFFSET_STORAGE_JDBC_PASSWORD.name()));
             conn.setAutoCommit(false);
         }
         catch (Exception e) {
-            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + jdbcUri, e);
+            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + jdbcUrl, e);
         }
     }
 
@@ -118,13 +118,13 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(
                 this.getClass().getSimpleName() + "-%d", false));
 
-        LOG.info("Starting JdbcOffsetBackingStore db {}", jdbcUri);
+        LOG.info("Starting JdbcOffsetBackingStore db {}", jdbcUrl);
         try {
             initializeTable();
         }
         catch (SQLException e) {
 
-            throw new IllegalStateException("Failed to create JDBC offset table: " + jdbcUri, e);
+            throw new IllegalStateException("Failed to create JDBC offset table: " + jdbcUrl, e);
         }
         load();
     }
@@ -187,7 +187,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             data = tmpData;
         }
         catch (SQLException e) {
-            LOG.error("Failed recover records from database: {}", jdbcUri, e);
+            LOG.error("Failed recover records from database: {}", jdbcUrl, e);
         }
     }
 
