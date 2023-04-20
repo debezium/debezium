@@ -2,6 +2,42 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.0.Final
+April 20th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12406487)
+
+### New features since 2.2.0.CR1
+
+* Describe Postgres example configuration for Debezium Server [DBZ-6325](https://issues.redhat.com/browse/DBZ-6325)
+* Improve messages in Redis sink in case of OOM [DBZ-6346](https://issues.redhat.com/browse/DBZ-6346)
+* Stream shard list for debezium vitess connector [DBZ-6356](https://issues.redhat.com/browse/DBZ-6356)
+
+
+### Breaking changes since 2.2.0.CR1
+
+None
+
+
+### Fixes since 2.2.0.CR1
+
+* If column.include.list/column.exclude.list are used and the target table receives an update for the excluded (or not included) column - such events should be ignored [DBZ-2979](https://issues.redhat.com/browse/DBZ-2979)
+* Connector offsets do not advance on transaction commit with filtered events when LOB enabled [DBZ-5395](https://issues.redhat.com/browse/DBZ-5395)
+* Task failure when index is made on primary columns of table. [DBZ-6238](https://issues.redhat.com/browse/DBZ-6238)
+* Oracle connector doesn't need to verify redo log when snapshotting only [DBZ-6276](https://issues.redhat.com/browse/DBZ-6276)
+* MySQL connector cannot parse table with SYSTEM VERSIONING [DBZ-6331](https://issues.redhat.com/browse/DBZ-6331)
+* MySql in debezium-parser-ddl does not support with keyword parsing [DBZ-6336](https://issues.redhat.com/browse/DBZ-6336)
+* Duplicate JMX MBean names when multiple vitess tasks running in the same JVM [DBZ-6347](https://issues.redhat.com/browse/DBZ-6347)
+* KafkaSignalThread#SIGNAL_POLL_TIMEOUT_MS option duplicate signal prefix [DBZ-6361](https://issues.redhat.com/browse/DBZ-6361)
+
+
+### Other changes since 2.2.0.CR1
+
+* Complete MongoDB incremental snapshotting implementation [DBZ-4427](https://issues.redhat.com/browse/DBZ-4427)
+* Add documentation for the reactive variant of the Quarkus outbox extension [DBZ-5859](https://issues.redhat.com/browse/DBZ-5859)
+* Create an annotation for flaky tests [DBZ-6324](https://issues.redhat.com/browse/DBZ-6324)
+* 2.1.4 post-release documentation fixes [DBZ-6351](https://issues.redhat.com/browse/DBZ-6351)
+
+
+
 ## 2.2.0.CR1
 April 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12405777)
 
