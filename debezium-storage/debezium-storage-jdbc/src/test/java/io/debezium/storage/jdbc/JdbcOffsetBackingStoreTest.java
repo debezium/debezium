@@ -6,7 +6,7 @@
 package io.debezium.storage.jdbc;
 
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 import static org.junit.Assert.assertEquals;
@@ -44,7 +44,7 @@ public class JdbcOffsetBackingStoreTest {
         dbFile = File.createTempFile("test-", "db");
         store = new JdbcOffsetBackingStore();
         props = new HashMap<>();
-        props.put(OFFSET_STORAGE_JDBC_URI.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
+        props.put(OFFSET_STORAGE_JDBC_URL.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
         props.put(OFFSET_STORAGE_JDBC_USER.name(), "user");
         props.put(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass");
         props.put(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");

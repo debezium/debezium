@@ -6,7 +6,7 @@
 package io.debezium.storage.jdbc.history;
 
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
+import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -100,7 +100,7 @@ public class JdbcSchemaHistoryTest {
     public void beforeEach() {
         history = new JdbcSchemaHistory();
         history.configure(Configuration.create()
-                .with(JDBC_URI, "jdbc:sqlite:" + dbFile)
+                .with(JDBC_URL, "jdbc:sqlite:" + dbFile)
                 .with(JDBC_USER, "user")
                 .with(JDBC_PASSWORD, "pass")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
@@ -138,7 +138,7 @@ public class JdbcSchemaHistoryTest {
         // after restart, it should recover history correctly
         JdbcSchemaHistory history2 = new JdbcSchemaHistory();
         history2.configure(Configuration.create()
-                .with(JDBC_URI, "jdbc:sqlite:" + dbFile)
+                .with(JDBC_URL, "jdbc:sqlite:" + dbFile)
                 .with(JDBC_USER, "user")
                 .with(JDBC_PASSWORD, "pass")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);

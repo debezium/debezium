@@ -42,7 +42,7 @@ import io.debezium.config.Field;
  */
 public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
-    public static final Field OFFSET_STORAGE_JDBC_URI = Field.create("offset.storage.jdbc.uri")
+    public static final Field OFFSET_STORAGE_JDBC_URL = Field.create("offset.storage.jdbc.url")
             .withDescription("URI of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
@@ -103,7 +103,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public void configure(WorkerConfig config) {
 
         try {
-            jdbcUri = config.getString("offset.storage.jdbc.uri");
+            jdbcUri = config.getString("offset.storage.jdbc.url");
             offsetStorageTableName = config.getString(OFFSET_STORAGE_TABLE_NAME.name());
             conn = DriverManager.getConnection(jdbcUri, config.getString(OFFSET_STORAGE_JDBC_USER.name()), config.getString(OFFSET_STORAGE_JDBC_PASSWORD.name()));
             conn.setAutoCommit(false);
