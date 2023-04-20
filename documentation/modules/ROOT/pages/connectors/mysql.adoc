@@ -2979,7 +2979,7 @@ For example, to define a `selector` parameter that specifies the subset of colum
 |A Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include and exclude lists. By default, system tables are excluded from having their changes captured, and no events are generated when changes are made to any system tables.
 
 |[[mysql-property-database-ssl-mode]]<<mysql-property-database-ssl-mode, `+database.ssl.mode+`>>
-|`disabled`
+|`preferred`
 |Specifies whether to use an encrypted connection. Possible settings are: +
  +
 `disabled` specifies the use of an unencrypted connection. +
