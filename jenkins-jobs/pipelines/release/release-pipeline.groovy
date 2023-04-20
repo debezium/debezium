@@ -59,7 +59,6 @@ VERSION_TAG = "v$RELEASE_VERSION"
 VERSION_PARTS = RELEASE_VERSION.split('\\.')
 VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
-PRODUCT_RELEASE = "${VERSION_MAJOR_MINOR}.GA"
 CANDIDATE_BRANCH = "candidate-$RELEASE_VERSION"
 
 POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine', '13', '13-alpine', '14', '14-alpine', '15', '15-alpine']
@@ -109,7 +108,6 @@ withCredentials([string(credentialsId: JIRA_CREDENTIALS_ID, variable: 'PAT')]) {
 
 JIRA_PROJECT = 'DBZ'
 JIRA_VERSION = RELEASE_VERSION
-JIRA_FIELD_TARGET_RELEASE = 'customfield_12311240'
 
 JIRA_CLOSE_ISSUE = """
     {
@@ -124,15 +122,6 @@ JIRA_CLOSE_ISSUE = """
         },
         "transition": {
             "id": "701"
-        }
-    }
-"""
-JIRA_SET_TARGET_RELEASE = """
-    {
-        "fields": {
-            "$JIRA_FIELD_TARGET_RELEASE": {
-                 "name": "$PRODUCT_RELEASE"
-            }
         }
     }
 """
@@ -231,19 +220,6 @@ def findVersion(jiraVersion) {
 @NonCPS
 def closeJiraRelease() {
     jiraUpdate(findVersion(JIRA_VERSION).self, JIRA_CLOSE_RELEASE, 'PUT')
-}
-
-@NonCPS
-def issuesWithoutTargetFromJira() {
-    jiraGET('search', [
-        'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND \"Target Release\" IS EMPTY AND status='Resolved'",
-        'fields': 'key'
-    ]).issues.collect { it.self }
-}
-
-@NonCPS
-def setTargetReleaseForJiraIssues() {
-    issuesWithoutTargetFromJira().each { issue -> jiraUpdate("${issue}", JIRA_SET_TARGET_RELEASE, 'PUT') }
 }
 
 def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
@@ -400,12 +376,6 @@ node('Slave') {
                 if (issuesWithoutComponents) {
                     error "Error, issues ${issuesWithoutComponents.toString()} must have component set"
                 }
-            }
-        }
-
-        stage('Set Target release') {
-            if (!DRY_RUN) {
-                setTargetReleaseForJiraIssues()
             }
         }
 
@@ -694,7 +664,7 @@ node('Slave') {
                         it.replaceFirst('FROM \\S+', "FROM quay.io/debezium/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile") {
-                        it.replaceFirst('FROM \\S+', "FROM \$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect-base:$nextTag")
+                        it.replaceFirst('FROM \\S+', "FROM \\$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect-base:$nextTag")
                     }
                     modifyFile("connect/$nextTag/Dockerfile.local") {
                         it
@@ -702,7 +672,7 @@ node('Slave') {
                                 .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=${DEVELOPMENT_VERSION - '-SNAPSHOT'}")
                     }
                     modifyFile("connect-base/$nextTag/Dockerfile") {
-                        it.replaceFirst('FROM \\S+', "FROM \$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$nextTag")
+                        it.replaceFirst('FROM \\S+', "FROM \\$DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$nextTag")
                     }
                 }
                 if (!DRY_RUN) {
