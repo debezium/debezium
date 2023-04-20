@@ -2351,9 +2351,9 @@ FROM {DockerKafkaConnect}
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium // <2>
 RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-__<build_number>__/debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-__<build_number>__-plugin.zip
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
 RUN cd /opt/kafka/plugins/debezium/
 USER 1001
 EOF
@@ -2744,6 +2744,12 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the expression is used to match the entire name string of the column; it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.include.list` property.
+
+|[[postgresql-property-skip-messages-without-change]]<<postgresql-property-skip-messages-without-change, `+skip.messages.without.change+`>>
+|`false`
+| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
+
+Note: Only works when REPLICA IDENTITY of the table to is FULL
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
