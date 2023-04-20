@@ -99,7 +99,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
 
     private Connection conn;
-    private String jdbcUri;
+    private String jdbcUrl;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
@@ -114,12 +114,12 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
 
         try {
-            jdbcUri = config.getString(JDBC_URL.name());
+            jdbcUrl = config.getString(JDBC_URL.name());
             conn = DriverManager.getConnection(config.getString(JDBC_URL.name()), config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
             conn.setAutoCommit(false);
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Failed to connect " + jdbcUri);
+            throw new IllegalStateException("Failed to connect " + jdbcUrl);
         }
     }
 
@@ -137,7 +137,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     }
                 }
                 catch (Exception e) {
-                    throw new SchemaHistoryException("Unable to create history table " + jdbcUri + ": " + e.getMessage(), e);
+                    throw new SchemaHistoryException("Unable to create history table " + jdbcUrl + ": " + e.getMessage(), e);
                 }
             }
         });
@@ -269,7 +269,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public String toString() {
-        return "Jdbc database: " + (jdbcUri != null ? jdbcUri : "(unstarted)");
+        return "Jdbc database: " + (jdbcUrl != null ? jdbcUrl : "(unstarted)");
     }
 
     @Override
