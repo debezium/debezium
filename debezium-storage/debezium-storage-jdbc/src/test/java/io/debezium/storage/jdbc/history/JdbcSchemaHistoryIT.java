@@ -120,7 +120,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
     private Configuration.Builder config() throws IOException {
         File dbFile = File.createTempFile("test-", "db");
 
-        String jdbcUri = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
+        String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         final Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
@@ -135,7 +135,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUri)
+                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUrl)
                 .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
                 .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
                 .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");

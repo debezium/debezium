@@ -123,7 +123,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(JDBC_PASSWORD, "pass");
     }
 
-    private Configuration.Builder config(String jdbcUri) {
+    private Configuration.Builder config(String jdbcUrl) {
 
         final Configuration.Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
@@ -138,7 +138,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUri)
+                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUrl)
                 .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
                 .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
                 .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
@@ -170,34 +170,34 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
         }
 
         File dbFile = File.createTempFile("test-", "db");
-        String jdbcUri = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
+        String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        Configuration config = config(jdbcUri).build();
+        Configuration config = config(jdbcUrl).build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
         waitForStreamingRunning("mysql", TOPIC_PREFIX);
 
         consumeRecordsByTopic(4);
-        validateIfDataIsCreatedInJDBCDatabase(jdbcUri, "user", "pass", "offsets_jdbc");
+        validateIfDataIsCreatedInJDBCDatabase(jdbcUrl, "user", "pass", "offsets_jdbc");
     }
 
     /**
      * Function to validate the offset storage data that is created
      * in Database.
      *
-     * @param jdbcUri
+     * @param jdbcUrl
      * @param jdbcUser
      * @param jdbcPassword
      */
-    private void validateIfDataIsCreatedInJDBCDatabase(String jdbcUri, String jdbcUser,
+    private void validateIfDataIsCreatedInJDBCDatabase(String jdbcUrl, String jdbcUser,
                                                        String jdbcPassword, String jdbcTableName) {
         Connection connection = null;
         try {
             // create a database connection
-            connection = DriverManager.getConnection(jdbcUri, jdbcUser, jdbcPassword);
+            connection = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
             Statement statement = connection.createStatement();
             statement.setQueryTimeout(30); // set timeout to 30 sec.
 
