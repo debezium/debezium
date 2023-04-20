@@ -52,8 +52,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     private static final Logger LOG = LoggerFactory.getLogger(JdbcSchemaHistory.class);
 
-    public static final Field JDBC_URI = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.uri")
-            .withDescription("URI of the database which will be used to record the database history")
+    public static final Field JDBC_URL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.url")
+            .withDescription("URL of the database which will be used to record the database history")
             .withValidation(Field::isRequired);
 
     public static final Field JDBC_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.user")
@@ -109,13 +109,13 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         }
         config.validateAndRecord(ALL_FIELDS, LOG::error);
         if (running.get()) {
-            throw new IllegalStateException("Database history already initialized db: " + config.getString(JDBC_URI));
+            throw new IllegalStateException("Database history already initialized db: " + config.getString(JDBC_URL));
         }
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
 
         try {
-            jdbcUri = config.getString(JDBC_URI.name());
-            conn = DriverManager.getConnection(config.getString(JDBC_URI.name()), config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
+            jdbcUri = config.getString(JDBC_URL.name());
+            conn = DriverManager.getConnection(config.getString(JDBC_URL.name()), config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
             conn.setAutoCommit(false);
         }
         catch (SQLException e) {

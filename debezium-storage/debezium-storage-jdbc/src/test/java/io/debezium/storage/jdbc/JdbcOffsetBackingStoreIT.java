@@ -16,12 +16,12 @@ import io.debezium.jdbc.JdbcConfiguration;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URI;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URI;
+import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
 import io.debezium.util.Testing;
 import org.junit.After;
@@ -118,7 +118,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
 
     protected Configuration.Builder schemaHistory(Configuration.Builder builder) {
         return builder
-                .with(JDBC_URI, "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
+                .with(JDBC_URL, "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
                 .with(JDBC_USER, "user")
                 .with(JDBC_PASSWORD, "pass");
     }
@@ -138,7 +138,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OFFSET_STORAGE_JDBC_URI.name(), jdbcUri)
+                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUri)
                 .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
                 .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
                 .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
