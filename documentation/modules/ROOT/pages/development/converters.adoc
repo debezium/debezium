@@ -47,7 +47,7 @@ The converter ignores columns that do not match the specified criteria.
 
 Custom converters are Java classes that implement the Debezium service provider interface (SPI).
 You enable and configure a custom converter by setting the `converters` property in the connector configuration.
-The `converters` property specifies the converters avaialble to a connector, and can include sub-properties that further modify conversion behavior.
+The `converters` property specifies the converters that are available to a connector, and can include sub-properties that further modify conversion behavior.
 
 After you start a connector, the converters that are enabled in the connector configuration are instantiated and are added to a registry.
 The registry associates each converter with the columns or fields for it to process.
