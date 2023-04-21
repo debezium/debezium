@@ -313,6 +313,7 @@ Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
 Muhammad Sufyian
+My Lang Pangzi
 Nancy Xu
 Nansen
 Narz David
@@ -401,6 +402,7 @@ Sean Rooney
 Sebastian Bruckner
 Seo Jae-kwon
 Sergei Morozov
+Sergey Eizner
 Shane Paul
 Shantanu Sharma
 Sherafudheen PM
@@ -499,6 +501,7 @@ Snigdhajyoti Ghosh
 Andrei Isac
 Mark Allanson
 Rahul Khanna
+Ronak Jain
 Pengwei Dou
 Zhongqiang Gong
 Inki Hwang

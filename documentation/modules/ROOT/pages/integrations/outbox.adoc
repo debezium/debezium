@@ -124,6 +124,58 @@ The {prodname} CDC connector in conjunction with the Outbox Event Router will be
 
 To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
 
+[id=reactive-outbox]
+== Reactive Variant
+
+If your application uses reactive datasources, or Hibernate Reactive, you must use a slightly different configuration to add the extension to your application.
+
+For example, use the following configuration to  import the reactive variant of the extension:
+
+[source,xml,subs="verbatim,attributes"]
+----
+<dependency>
+  <groupId>io.debezium</groupId>
+  <artifactId>debezium-quarkus-outbox-reactive</artifactId>
+  <version>{debezium-version}</version>
+</dependency>
+----
+
+The reactive extension provides the application with the same `io.debezium.outbox.quarkus.ExportedEvent` interface as the non-reactive variant, but it also provides the `DebeziumOutboxHandler` class.
+Injecting the `DebeziumOutboxHandler` bean into an application provides a method for quickly persisting an `ExportedEvent` to the outbox table.
+The following example shows an invocation that uses the same `ExportedEvent` as in the earlier example:
+
+.OrderService.java
+[source,java,indent=0]
+----
+@ApplicationScoped
+public class OrderService {
+
+    @Inject
+    DebeziumOutboxHandler debeziumOutboxHandler;
+
+    @Inject
+    OrderRepository orderRepository;
+
+    @Inject
+    Event<ExportedEvent<?, ?>> event;
+
+    @ReactiveTransactional
+    public Uni<Order> addOrder(Order order) {
+        return orderRepository.persistAndFlush(order)
+        .call(debeziumOutboxHandler.persistToOutbox(new OrderCreatedEvent(Instant.now(), order)));
+
+    }
+}
+----
+
+[NOTE]
+====
+The `persistToOutbox` method returns a Uni; therefore, it must be observed by a subscriber ito receive the result.
+For more information about using the Mutiny library to build reactive applications, see the link:https://quarkus.io/guides/mutiny-primer[Quarkus Mutiny primer].
+====
+
+
+
 [id=additional-field-mappings]
 == Additional Field mappings
 
