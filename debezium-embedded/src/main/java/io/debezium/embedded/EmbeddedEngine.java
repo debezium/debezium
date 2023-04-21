@@ -537,7 +537,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private final VariableLatch latch = new VariableLatch(0);
     private final WorkerConfig workerConfig;
     private final CompletionResult completionResult;
-    private OffsetCommitPolicy offsetCommitPolicy;
     private final Transformations transformations;
 
     private final EmbeddedEngineState embeddedEngineState = new EmbeddedEngineState();
@@ -652,7 +651,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     return;
                 }
 
-                OffsetManager offsetManager = new DefaultOffsetManager();
+                OffsetManager offsetManager = new KafkaOffsetManager();
                 offsetManager.configure(config);
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...

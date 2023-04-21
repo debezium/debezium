@@ -29,6 +29,9 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 
+/**
+ * Class that executes a {@link SourceTask}.
+ */
 public class TaskWorker {
 
     static final int DEFAULT_ERROR_MAX_RETRIES = -1;
@@ -96,6 +99,9 @@ public class TaskWorker {
         this.completionResult = completionResult;
     }
 
+    /**
+     * Configure the worker with the given configuration.
+     */
     public void configure(Configuration config) {
 
         task = null;
@@ -109,7 +115,7 @@ public class TaskWorker {
 
         this.taskConfig = config.asMap();
 
-        taskOffsetManager = new DefaultTaskOffsetManager(
+        taskOffsetManager = new KafkaTaskOffsetManager(
                 this.clock, task, embeddedEngineState);
         taskOffsetManager.configure(config);
 
@@ -118,10 +124,16 @@ public class TaskWorker {
                 Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_MAX_MS)));
     }
 
+    /**
+     * Retrieve the {@link SourceTask} that the worker is executing.
+     */
     public SourceTask task() {
         return task;
     }
 
+    /**
+     * Execute the {@link SourceTask}.
+     */
     public void run() {
         try {
             SourceTaskContext taskContext = new SourceTaskContext() {

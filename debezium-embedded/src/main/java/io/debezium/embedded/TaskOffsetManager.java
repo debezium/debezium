@@ -12,6 +12,9 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
+/**
+ * Manages an individual task's offsets.
+ */
 public interface TaskOffsetManager {
 
     /**
@@ -46,15 +49,33 @@ public interface TaskOffsetManager {
      */
     Field.Set ALL_FIELDS = Field.setOf(OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS, OFFSET_FLUSH_INTERVAL_MS);
 
+    /**
+     * Possibly commit the offsets.
+     */
     void maybeFlush() throws InterruptedException;
 
+    /**
+     * Commit the offsets.
+     */
     void commitOffsets() throws InterruptedException;
 
+    /**
+     * Commit an individual {@link SourceRecord}.
+     */
     void commit(SourceRecord record) throws InterruptedException;
 
+    /**
+     * Retrieve the {@link OffsetStorageReader} that is managed by this {@link TaskOffsetManager}.
+     */
     OffsetStorageReader offsetStorageReader();
 
+    /**
+     * Configure the {@link TaskOffsetManager} with the given configuration.
+     */
     void configure(Configuration config);
 
+    /**
+     * Lifecycle method indicating that processing should stop and resources be freed.
+     */
     void stop();
 }

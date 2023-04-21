@@ -28,11 +28,23 @@ public interface OffsetManager {
                     + "restart, the connector can resume where it last left off.")
             .withDefault(FileOffsetBackingStore.class.getName());
 
+    /**
+     * Retrieve the {@link OffsetStorageReader} that is managed by this {@link OffsetManager}.
+     */
     OffsetStorageReader offsetStorageReader();
 
+    /**
+     * Retrieve the {@link OffsetStorageWriter} that is managed by this {@link OffsetManager}.
+     */
     OffsetStorageWriter offsetStorageWriter();
 
+    /**
+     * Configure the {@link OffsetManager} with the given configuration.
+     */
     void configure(Configuration config);
 
+    /**
+     * Lifecycle method indicating that processing should stop and resources be freed.
+     */
     void stop();
 }

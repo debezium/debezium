@@ -24,9 +24,9 @@ import io.debezium.config.Instantiator;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 
-public class DefaultTaskOffsetManager implements TaskOffsetManager {
+public class KafkaTaskOffsetManager implements TaskOffsetManager {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultTaskOffsetManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaTaskOffsetManager.class);
 
     private final Clock clock;
     private final SourceTask sourceTask;
@@ -40,10 +40,10 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
     private OffsetStorageWriter offsetStorageWriter;
     private OffsetStorageReader offsetStorageReader;
 
-    public DefaultTaskOffsetManager(
-                                    Clock clock,
-                                    SourceTask sourceTask,
-                                    EmbeddedEngineState embeddedEngineState) {
+    public KafkaTaskOffsetManager(
+                                  Clock clock,
+                                  SourceTask sourceTask,
+                                  EmbeddedEngineState embeddedEngineState) {
         this.clock = clock;
         this.sourceTask = sourceTask;
         this.embeddedEngineState = embeddedEngineState;
@@ -58,7 +58,7 @@ public class DefaultTaskOffsetManager implements TaskOffsetManager {
                 config.getString(OFFSET_COMMIT_POLICY), config.asProperties());
         this.commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
 
-        this.offsetManager = new DefaultOffsetManager();
+        this.offsetManager = new KafkaOffsetManager();
         this.offsetManager.configure(config);
         this.offsetStorageWriter = offsetManager.offsetStorageWriter();
         this.offsetStorageReader = offsetManager.offsetStorageReader();

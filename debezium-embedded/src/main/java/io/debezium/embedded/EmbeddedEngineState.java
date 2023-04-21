@@ -14,18 +14,30 @@ import java.util.concurrent.atomic.AtomicReference;
 public class EmbeddedEngineState {
     private final AtomicReference<Thread> runningThread = new AtomicReference<>();
 
+    /**
+     * Mark the engine as running.
+     */
     public void start() {
         this.runningThread.set(Thread.currentThread());
     }
 
+    /**
+     * Returns true if the engine has been started.
+     */
     public boolean isRunning() {
         return this.runningThread.get() != null;
     }
 
+    /**
+     * Returns true if the engine has been stopped.
+     */
     public boolean isStopped() {
         return this.runningThread.get() == null;
     }
 
+    /**
+     * Mark the engine as no longer running.
+     */
     public Thread stop() {
         return this.runningThread.getAndSet(null);
     }

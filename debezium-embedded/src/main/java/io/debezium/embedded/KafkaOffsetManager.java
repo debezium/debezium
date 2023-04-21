@@ -19,6 +19,7 @@ import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
@@ -27,9 +28,10 @@ import io.debezium.config.Instantiator;
  * Default implementation of {@link OffsetManager} that uses Kafka's OffsetStorageWriter to commit offsets.
  * This class is meant to be used in a thread confined manner and is not thread safe.
  */
-public class DefaultOffsetManager implements OffsetManager {
+@NotThreadSafe
+public class KafkaOffsetManager implements OffsetManager {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOffsetManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaOffsetManager.class);
 
     private OffsetStorageWriter offsetStorageWriter;
     private OffsetBackingStore offsetStore;
@@ -50,6 +52,21 @@ public class DefaultOffsetManager implements OffsetManager {
 
         this.offsetStorageWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
         this.offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
+    }
+
+    @Override
+    public OffsetStorageReader offsetStorageReader() {
+        return offsetReader;
+    }
+
+    @Override
+    public OffsetStorageWriter offsetStorageWriter() {
+        return offsetStorageWriter;
+    }
+
+    @Override
+    public void stop() {
+        this.offsetStore.stop();
     }
 
     private static OffsetBackingStore initializeOffsetStore(Configuration config) {
@@ -74,20 +91,4 @@ public class DefaultOffsetManager implements OffsetManager {
         }
         return offsetStore;
     }
-
-    @Override
-    public OffsetStorageReader offsetStorageReader() {
-        return offsetReader;
-    }
-
-    @Override
-    public OffsetStorageWriter offsetStorageWriter() {
-        return offsetStorageWriter;
-    }
-
-    @Override
-    public void stop() {
-        this.offsetStore.stop();
-    }
-
 }
