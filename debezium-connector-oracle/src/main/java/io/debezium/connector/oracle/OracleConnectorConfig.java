@@ -177,8 +177,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.DOUBLE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(0.0)
+            .withValidation(Field::isNonNegativeDouble)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
             .withDescription("Hours to keep long running transactions in transaction buffer between log mining " +
                     "sessions. By default, all transactions are retained.");
