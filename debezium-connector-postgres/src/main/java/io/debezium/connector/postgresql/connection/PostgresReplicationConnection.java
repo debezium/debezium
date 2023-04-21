@@ -33,6 +33,7 @@ import org.postgresql.core.ServerVersion;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -365,7 +366,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             stmt.execute(seekCommand);
         }
         catch (PSQLException e) {
-            if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")) {
+            if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")
+                    || PSQLState.UNDEFINED_FUNCTION.getState().equals(e.getSQLState())) {
                 LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
             }
             else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")) {
