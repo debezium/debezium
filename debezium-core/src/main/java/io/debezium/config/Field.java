@@ -835,6 +835,16 @@ public final class Field {
 
     /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
+     * @param defaultValue the new default value for the new field
+     * @return the new field; never null
+     */
+    public Field withDefault(double defaultValue) {
+        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+                () -> defaultValue, validator, recommender, isRequired, group, allowedValues);
+    }
+
+    /**
+     * Create and return a new Field instance that is a copy of this field but with the given default value.
      *
      * @param defaultValue the new default value for the new field
      * @return the new field; never null
@@ -1264,6 +1274,22 @@ public final class Field {
         catch (Throwable e) {
         }
         problems.accept(field, value, "An non-negative integer is expected");
+        return 1;
+    }
+
+    public static int isNonNegativeDouble(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        if (value == null) {
+            return 0;
+        }
+        try {
+            if (Double.parseDouble(value) >= 0) {
+                return 0;
+            }
+        }
+        catch (Throwable e) {
+        }
+        problems.accept(field, value, "An non-negative double is expected");
         return 1;
     }
 
