@@ -201,6 +201,10 @@ public class OracleConnectorConfigTest {
 
         config = Configuration.create().with(transactionRetentionField, -1).build();
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
+
+        config = Configuration.create().with(transactionRetentionField, 0.25).build();
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofMinutes(15));
     }
 
     @Test
