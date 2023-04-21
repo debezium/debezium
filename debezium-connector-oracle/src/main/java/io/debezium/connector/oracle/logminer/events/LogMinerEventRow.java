@@ -175,7 +175,7 @@ public class LogMinerEventRow {
         this.userName = resultSet.getString(USERNAME);
         this.rowId = resultSet.getString(ROW_ID);
         this.rollbackFlag = resultSet.getInt(ROLLBACK_FLAG) == 1;
-        this.rsId = resultSet.getString(RS_ID);
+        this.rsId = trim(resultSet.getString(RS_ID));
         this.redoSql = getSqlRedo(resultSet);
         this.status = resultSet.getInt(STATUS);
         this.info = resultSet.getString(INFO);
@@ -231,6 +231,13 @@ public class LogMinerEventRow {
         }
 
         return result.toString();
+    }
+
+    private static String trim(String value) {
+        if (value != null) {
+            return Strings.trim(value);
+        }
+        return null;
     }
 
     @Override
