@@ -65,7 +65,7 @@ This field is present in environments that run MongoDB 6.0 and later when the `c
 * `change_streams_with_pre_image`.
 * `change_streams_update_full_with_pre_image`.
 +
-For more information, see {link-prefix}:{link-mongodb-connector}#[mongodb-pre-image-support[MongoDB pre-image support]
+For more information, see {link-prefix}:{link-mongodb-connector}#mongodb-pre-image-support[MongoDB pre-image support]
 
 `after` data:::
 JSON strings that represent the values that are present in a document after the current operation.
