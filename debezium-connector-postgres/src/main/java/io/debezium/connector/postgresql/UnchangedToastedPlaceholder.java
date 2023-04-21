@@ -24,6 +24,7 @@ public class UnchangedToastedPlaceholder {
     private final Map<Object, Object> placeholderValues = new HashMap<Object, Object>();
     private final byte[] toastPlaceholderBinary;
     private final String toastPlaceholderString;
+    private final Map toastPlaceholderHstore = new HashMap<String, String>();
 
     public UnchangedToastedPlaceholder(PostgresConnectorConfig connectorConfig) {
         toastPlaceholderBinary = connectorConfig.getUnavailableValuePlaceholder();
@@ -39,6 +40,8 @@ public class UnchangedToastedPlaceholder {
         }
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE, toastedIntArrayPlaceholder);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE, toastedLongArrayPlaceholder);
+        toastPlaceholderHstore.put(toastPlaceholderString, toastPlaceholderString);
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE, toastPlaceholderHstore);
     }
 
     public Optional<Object> getValue(Object obj) {
