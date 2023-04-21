@@ -24,6 +24,10 @@ public interface OffsetCommitPolicy {
      */
     class AlwaysCommitOffsetPolicy implements OffsetCommitPolicy {
 
+        public AlwaysCommitOffsetPolicy() {
+            this(null);
+        }
+
         public AlwaysCommitOffsetPolicy(Properties properties) {
         }
 
@@ -53,7 +57,7 @@ public interface OffsetCommitPolicy {
     }
 
     static OffsetCommitPolicy always() {
-        return new AlwaysCommitOffsetPolicy(null);
+        return new AlwaysCommitOffsetPolicy();
     }
 
     static OffsetCommitPolicy periodic(Properties config) {
