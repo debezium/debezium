@@ -2262,6 +2262,18 @@ Again, regularly emitting events solves the problem.
 ====
 endif::community[]
 
+
+[[postgresql-deploying-multiple-connectors]]
+=== Setting up multiple connectors for same database server
+
+{prodname} uses replication slots to stream changes from a database. These replication slots maintain the current position in form of a LSN (Log Sequence Number) which is pointer to a location in the WAL being consumed by the Debezium connector. This helps PostgreSQL keep the WAL available until it is processed by {prodname}. A single replication slot can exist only for a single consumer or process - as different consumer might have different state and may need data from different position.
+
+Since a replication slot can only be used by a single connector, it is essential to create a unique replication slot for each Debezium connector. Although when a connector is not active, Postgres may allow other connector to consume the replication slot - which could be dangerous as it may lead to data loss as a slot will emit each change just once [link:https://www.postgresql.org/docs/10/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS[See More]].
+
+In addition to replication slot, {prodname} uses publication to stream events when using the `pgoutput` plugin. Similar to replication slot, publication is at database level and is defined for a set of tables. Thus, you'll need a unique publication for each connector, unless the connectors work on same set of tables. For more information about the options for enabling {prodname} to create publications, see xref:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]
+
+See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] and xref:{link-postgresql-connector}#postgresql-property-publication-name[`publication.name`] on how to set a unique replication slot name and publication name for each connector.
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-postgresql-connectors
 // Title: Deployment of {prodname} PostgreSQL connectors
