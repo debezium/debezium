@@ -8,7 +8,9 @@ package io.debezium.storage.jdbc;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_DDL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_SELECT;
 
 import java.util.Map;
 
@@ -35,7 +37,15 @@ public class JdbcConfig extends WorkerConfig {
                 .define(OFFSET_STORAGE_TABLE_NAME.name(),
                         ConfigDef.Type.STRING,
                         ConfigDef.Importance.HIGH,
-                        "Name of the table to store offsets");
+                        "Name of the table to store offsets")
+                .define(OFFSET_STORAGE_TABLE_DDL.name(),
+                        ConfigDef.Type.STRING,
+                        ConfigDef.Importance.HIGH,
+                        "Create table query for JDBC offset table")
+                .define(OFFSET_STORAGE_TABLE_SELECT.name(),
+                        ConfigDef.Type.STRING,
+                        ConfigDef.Importance.HIGH,
+                        "Select query to get data from JDBC offset table");
     }
 
     public JdbcConfig(Map<String, String> props) {

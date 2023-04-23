@@ -8,7 +8,9 @@ package io.debezium.storage.jdbc;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_DDL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_SELECT;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
@@ -48,6 +50,13 @@ public class JdbcOffsetBackingStoreTest {
         props.put(OFFSET_STORAGE_JDBC_USER.name(), "user");
         props.put(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass");
         props.put(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");
+        props.put(OFFSET_STORAGE_TABLE_DDL.name(), "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+                "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
+                "record_insert_ts TIMESTAMP NOT NULL," +
+                "record_insert_seq INTEGER NOT NULL" +
+                ")");
+        props.put(OFFSET_STORAGE_TABLE_SELECT.name(), "SELECT id, offset_key, offset_val FROM %s " +
+                "ORDER BY record_insert_ts, record_insert_seq");
         props.put(StandaloneConfig.KEY_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         props.put(StandaloneConfig.VALUE_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         config = new JdbcConfig(props);
