@@ -5,33 +5,16 @@
  */
 package io.debezium.storage.jdbc;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnector;
-import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlTestConnection;
-import io.debezium.connector.mysql.UniqueDatabase;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcConfiguration;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import io.debezium.junit.SkipWhenDatabaseVersion;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_DDL;
 import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
-import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
+import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_SELECT;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
 import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
-import io.debezium.util.Testing;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +25,27 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnector;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlTestConnection;
+import io.debezium.connector.mysql.UniqueDatabase;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
+import io.debezium.util.Testing;
 
 /**
  * @author Kanthi Subramanian
@@ -112,10 +116,6 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
         }
     }
 
-    private String topicName() {
-        return String.format("%s.%s.%s", TOPIC_PREFIX, DBNAME, TABLE_NAME);
-    }
-
     protected Configuration.Builder schemaHistory(Configuration.Builder builder) {
         return builder
                 .with(JDBC_URL, "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
@@ -142,6 +142,13 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
                 .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
                 .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
+                .with(OFFSET_STORAGE_TABLE_DDL.name(), "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+                        "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
+                        "record_insert_ts TIMESTAMP NOT NULL," +
+                        "record_insert_seq INTEGER NOT NULL" +
+                        ")")
+                .with(OFFSET_STORAGE_TABLE_SELECT.name(), "SELECT id, offset_key, offset_val FROM %s " +
+                        "ORDER BY record_insert_ts, record_insert_seq")
                 .with("offset.flush.interval.ms", "1000")
                 .with("offset.storage", "io.debezium.storage.jdbc.JdbcOffsetBackingStore");
 
@@ -160,7 +167,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldStartCorrectlyWithJDBCOffsetStorage() throws SQLException, InterruptedException, IOException {
+    public void shouldStartCorrectlyWithJDBCOffsetStorage() throws InterruptedException, IOException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
