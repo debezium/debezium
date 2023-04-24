@@ -18,6 +18,8 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
  */
 public class UnchangedToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
 
+    private static final String TYPE_ARRAY_SUFFIX = "[]";
+    private static final String TYPR_ARRAY_PREFIX = "_";
     /**
      * Marker value indicating an unchanged TOAST column value.
      */
@@ -45,11 +47,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     private void setUnchangedToastValue(String typeWithModifiers) {
-        // Removing the size for type like _varchar(2000, 0)
-        int parenthesis = typeWithModifiers.indexOf("(");
-        if (parenthesis > 0) {
-            typeWithModifiers = typeWithModifiers.substring(0, parenthesis);
-        }
+        typeWithModifiers = removeSizeModifierFromArrayTypes(typeWithModifiers);
         switch (typeWithModifiers) {
             case "text[]":
             case "_text":
@@ -76,5 +74,27 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             default:
                 unchangedToastValue = UNCHANGED_TOAST_VALUE;
         }
+    }
+
+    private boolean isArrayType(String typeWithModifiers) {
+        return typeWithModifiers.startsWith(TYPR_ARRAY_PREFIX) || typeWithModifiers.endsWith(TYPE_ARRAY_SUFFIX);
+    }
+
+    protected String removeSizeModifierFromArrayTypes(String typeWithModifiers) {
+        // Removing the size for type like _varchar(2000, 0)
+        if (isArrayType(typeWithModifiers)) {
+            final int leftParenthesis = typeWithModifiers.indexOf("(");
+            final int rightParenthesis = typeWithModifiers.lastIndexOf(")");
+            if (leftParenthesis > 0 && rightParenthesis > 0) {
+                if (rightParenthesis == typeWithModifiers.length() - 1) {
+                    typeWithModifiers = typeWithModifiers.substring(0, leftParenthesis);
+                }
+                else {
+                    typeWithModifiers = typeWithModifiers.substring(0, leftParenthesis)
+                            + typeWithModifiers.substring(rightParenthesis + 1);
+                }
+            }
+        }
+        return typeWithModifiers;
     }
 }
