@@ -138,22 +138,17 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     @Override
     public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
-            final Scn offsetScn = offsetContext.getScn();
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
                 LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                 Scn smallestScn = getTransactionCacheMinimumScn();
-                if (!smallestScn.isNull()) {
-                    if (thresholdScn.compareTo(smallestScn) < 0) {
-                        thresholdScn = smallestScn;
-                    }
-
+                if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
                     Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.entrySet().iterator();
                     while (iterator.hasNext()) {
                         Map.Entry<String, MemoryTransaction> entry = iterator.next();
                         if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                            LOGGER.warn("Transaction {} is being abandoned.", entry.getKey());
+                            LOGGER.warn("Transaction {} is being abandoned, started at {} ({}).", entry.getKey(), entry.getValue().getChangeTime(), entry.getValue().getStartScn());
                             abandonedTransactionsCache.add(entry.getKey());
                             iterator.remove();
 
@@ -165,9 +160,9 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                     // Update the oldest scn metric are transaction abandonment
                     smallestScn = getTransactionCacheMinimumScn();
                     metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
-                }
 
-                offsetContext.setScn(thresholdScn);
+                    offsetContext.setScn(thresholdScn);
+                }
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
         }
@@ -335,7 +330,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return Optional.of(new Scn(scnToAbandon));
         }
         catch (SQLException e) {
-            LOGGER.error("Cannot fetch SCN by given duration to calculate SCN to abandon", e);
+            LOGGER.error(String.format("Cannot fetch SCN %s by given duration to calculate SCN to abandon", getLastProcessedScn()), e);
             metrics.incrementErrorCount();
             return Optional.empty();
         }
