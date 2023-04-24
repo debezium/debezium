@@ -50,10 +50,10 @@ public class SqlUtilsTest {
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.diffInDaysQuery(Scn.valueOf(123L));
-        expected = "select sysdate - CAST(scn_to_timestamp(123) as date) from dual";
+        result = SqlUtils.getScnByTimeDeltaQuery(Scn.valueOf(123L), Duration.ofMinutes(1));
+        expected = "select timestamp_to_scn(CAST(scn_to_timestamp(123) as date) - INTERVAL '1' MINUTE) from dual";
         assertThat(expected.equals(result)).isTrue();
-        result = SqlUtils.diffInDaysQuery(null);
+        result = SqlUtils.getScnByTimeDeltaQuery(null, Duration.ofMinutes(1));
         assertThat(result).isNull();
 
         result = SqlUtils.redoLogStatusQuery();
