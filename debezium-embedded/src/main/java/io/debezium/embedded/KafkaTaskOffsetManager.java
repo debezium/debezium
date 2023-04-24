@@ -28,6 +28,7 @@ public class KafkaTaskOffsetManager implements TaskOffsetManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaTaskOffsetManager.class);
 
+    private final OffsetManager offsetManager;
     private final Clock clock;
     private final SourceTask sourceTask;
     private final EmbeddedEngineState embeddedEngineState;
@@ -36,16 +37,17 @@ public class KafkaTaskOffsetManager implements TaskOffsetManager {
 
     private long recordsSinceLastCommit = 0;
     private long timeOfLastCommitMillis;
-    private OffsetManager offsetManager;
     private OffsetStorageWriter offsetStorageWriter;
     private OffsetStorageReader offsetStorageReader;
 
     public KafkaTaskOffsetManager(
+                                  OffsetManager offsetManager,
                                   Clock clock,
                                   SourceTask sourceTask,
                                   EmbeddedEngineState embeddedEngineState) {
         this.clock = clock;
         this.sourceTask = sourceTask;
+        this.offsetManager = offsetManager;
         this.embeddedEngineState = embeddedEngineState;
 
         this.timeOfLastCommitMillis = clock.currentTimeInMillis();
@@ -58,7 +60,6 @@ public class KafkaTaskOffsetManager implements TaskOffsetManager {
                 config.getString(OFFSET_COMMIT_POLICY), config.asProperties());
         this.commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
 
-        this.offsetManager = new KafkaOffsetManager();
         this.offsetManager.configure(config);
         this.offsetStorageWriter = offsetManager.offsetStorageWriter();
         this.offsetStorageReader = offsetManager.offsetStorageReader();

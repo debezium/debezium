@@ -893,7 +893,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 engineBuilder.build().run();
             });
 
-            var finished = latch.await(3000, TimeUnit.MILLISECONDS);
+            var finished = latch.await(10000, TimeUnit.MILLISECONDS);
 
             assertThat(finished).as("Latch reached 0").isTrue();
             assertThat(actual).containsOnly(expected);

@@ -71,11 +71,12 @@ public class TaskWorker {
     private final EmbeddedEngineState embeddedEngineState;
     private final DebeziumEngine.ChangeConsumer<SourceRecord> handler;
     private final Transformations transformations;
-    private SourceTask task;
-    private TaskOffsetManager taskOffsetManager;
+    private final OffsetManager offsetManager;
     private final Clock clock;
     private final Optional<DebeziumEngine.ConnectorCallback> connectorCallback;
     private final EmbeddedEngine.CompletionResult completionResult;
+    private SourceTask task;
+    private TaskOffsetManager taskOffsetManager;
     private Map<String, String> taskConfig;
 
     private int maxRetries;
@@ -86,6 +87,7 @@ public class TaskWorker {
                       Class<? extends Task> taskClass, EmbeddedEngineState embeddedEngineState,
                       DebeziumEngine.ChangeConsumer<SourceRecord> handler,
                       Transformations transformations,
+                      OffsetManager offsetManager,
                       Clock clock,
                       DebeziumEngine.ConnectorCallback connectorCallback,
                       EmbeddedEngine.CompletionResult completionResult) {
@@ -94,6 +96,7 @@ public class TaskWorker {
         this.embeddedEngineState = embeddedEngineState;
         this.handler = handler;
         this.transformations = transformations;
+        this.offsetManager = offsetManager;
         this.clock = clock;
         this.connectorCallback = Optional.ofNullable(connectorCallback);
         this.completionResult = completionResult;
@@ -115,8 +118,7 @@ public class TaskWorker {
 
         this.taskConfig = config.asMap();
 
-        taskOffsetManager = new KafkaTaskOffsetManager(
-                this.clock, task, embeddedEngineState);
+        taskOffsetManager = new KafkaTaskOffsetManager(offsetManager, clock, task, embeddedEngineState);
         taskOffsetManager.configure(config);
 
         this.maxRetries = config.getInteger(ERRORS_MAX_RETRIES);

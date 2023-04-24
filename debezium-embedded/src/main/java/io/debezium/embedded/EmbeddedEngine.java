@@ -709,7 +709,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 }
 
                                 TaskWorker taskWorker = new TaskWorker(
-                                        taskId, taskClass, embeddedEngineState, handler, transformations, clock, connectorCallback.orElse(null), completionResult);
+                                        taskId, taskClass, embeddedEngineState, handler, transformations, offsetManager, clock, connectorCallback.orElse(null),
+                                        completionResult);
                                 taskWorkers.put(taskId, taskWorker);
 
                                 taskWorker.configure(Configuration.from(taskConfig));
