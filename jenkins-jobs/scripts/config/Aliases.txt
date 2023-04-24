@@ -203,3 +203,4 @@ hiscat,My Lang Pangzi
 bpaquet,Bertrand Paquet
 brenoavm,Breno Moreira
 ddsr-ops,ddsr-ops
+eizners, Sergey Eizner
