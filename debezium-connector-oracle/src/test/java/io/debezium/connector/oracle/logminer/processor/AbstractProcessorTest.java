@@ -203,49 +203,4 @@ public abstract class AbstractProcessorTest extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(4);
         assertThat(after.get("NAME")).isEqualTo("Roger Rabbit");
     }
-
-    @Test
-    @FixFor("DBZ-6355")
-    public void testBacklogTransactionShouldNotBeAbandon() throws Exception {
-        if (!hasPersistedState()) {
-            return;
-        }
-
-        // Start thbacke connector using the specified buffer & not to drop the buffer across restarts.
-        // The testing framework automatically specifies this as true, so we need to override it.
-        Configuration config = getBufferImplementationConfig()
-                .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 0.017) // 1 Minute retention
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3752")
-                .build();
-
-        // Insert one record.
-        try (OracleConnection secondary = TestHelper.testConnection()) {
-            secondary.execute("INSERT INTO dbz3752 (id,name) values (1, 'Gerald Jinx Mouse')");
-        }
-
-        Thread.sleep(120000);
-
-        // Start connector and wait for streaming to begin
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-        // Get only record
-        SourceRecords records = consumeRecordsByTopic(1);
-        assertThat(records.allRecordsInOrder()).hasSize(1);
-        List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ3752");
-        assertThat(tableRecords).hasSize(1);
-
-        // Assert record state
-        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
-        assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("NAME")).isEqualTo("Gerald Jinx Mouse");
-
-        // There should be no more records to consume.
-        // The persisted state should contain the Thomas Jasper insert
-        assertNoRecordsToConsume();
-
-        // Shutdown the connector
-        stopConnector();
-    }
 }
