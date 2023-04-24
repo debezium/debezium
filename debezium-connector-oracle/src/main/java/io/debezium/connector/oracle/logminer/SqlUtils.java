@@ -234,13 +234,4 @@ public class SqlUtils {
                 " - INTERVAL '" + duration.toMinutes() + "' MINUTE) from dual";
     }
 
-    /**
-     * This method return query which converts given SCN in days and deduct from the current day
-     */
-    public static String diffInDaysQuery(Scn scn) {
-        if (scn == null) {
-            return null;
-        }
-        return "select sysdate - CAST(scn_to_timestamp(" + scn.toString() + ") as date) from dual";
-    }
 }
