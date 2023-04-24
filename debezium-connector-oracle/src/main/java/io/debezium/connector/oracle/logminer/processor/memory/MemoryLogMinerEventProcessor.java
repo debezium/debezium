@@ -149,7 +149,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                         Map.Entry<String, MemoryTransaction> entry = iterator.next();
                         if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
                             LOGGER.warn("Transaction {} with start SCN {} is being abandoned.",
-                                    entry.getKey(),entry.getValue().getStartScn());
+                                    entry.getKey(), entry.getValue().getStartScn());
 
                             abandonedTransactionsCache.add(entry.getKey());
                             iterator.remove();
