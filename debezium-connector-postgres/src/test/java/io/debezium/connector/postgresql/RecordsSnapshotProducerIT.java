@@ -478,6 +478,24 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-6384")
+    public void shouldGenerateSnapshotsForHstoresMapMode() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));");
+        TestHelper.execute(INSERT_HSTORE_TYPE_STMT);
+
+        // then start the producer and validate all records are there
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
+
+        TestConsumer consumer = testConsumer(1, "public", "Quoted__");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.hstore_table", schemaAndValueFieldForMapEncodedHStoreType());
+
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
+    @Test
     @FixFor("DBZ-1163")
     public void shouldGenerateSnapshotForATableWithoutPrimaryKey() throws Exception {
         TestHelper.execute("insert into table_without_pk values(1, 1000)");
