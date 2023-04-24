@@ -201,3 +201,4 @@ eizners,Sergey Eizner
 tthorn,Thomas Thornton
 hiscat,My Lang Pangzi
 bpaquet,Bertrand Paquet
+eizners, Sergey Eizner
