@@ -5114,6 +5114,77 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6355")
+    public void testBacklogTransactionShouldNotBeAbandon() throws Exception {
+        TestHelper.dropTable(connection, "dbz6355");
+        try {
+            connection.execute("CREATE TABLE dbz6355 (id numeric(9,0) primary key, name varchar2(50))");
+            TestHelper.streamTable(connection, "dbz6355");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 1) // 1 Minute retention
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6355")
+                    .build();
+
+            // Insert one snapshot record.
+            // Guarantees that we flush offsets.
+            connection.execute("INSERT INTO dbz6355 (id,name) values (1, 'Gerald Jinx Mouse')");
+
+            // Start connector and wait for streaming to begin
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Get only record
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.allRecordsInOrder()).hasSize(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6355");
+            assertThat(tableRecords).hasSize(1);
+
+            // Assert record state
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("NAME")).isEqualTo("Gerald Jinx Mouse");
+
+            stopConnector();
+
+            // Insert streaming record as in-progress transaction
+            // Guarantees that we flush offsets.
+            connection.executeWithoutCommitting("INSERT INTO dbz6355 (id,name) values (2, 'Minnie Mouse')");
+
+            LOGGER.info("Waiting {}ms for second change to age; should still be captured.", 120_000L);
+            Thread.sleep(120000);
+
+            // Restart the connector after downtime
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Commit in progress transaction
+            connection.commit();
+
+            // Get only record
+            records = consumeRecordsByTopic(1);
+            assertThat(records.allRecordsInOrder()).hasSize(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6355");
+            assertThat(tableRecords).hasSize(1);
+
+            // Assert record state
+            after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("NAME")).isEqualTo("Minnie Mouse");
+
+            // There should be no more records to consume.
+            // The persisted state should contain the Thomas Jasper insert
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6355");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
