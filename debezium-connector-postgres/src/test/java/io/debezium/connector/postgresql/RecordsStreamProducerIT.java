@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -1641,6 +1642,136 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-6122")
+    public void shouldHandleToastedArrayColumnCharacterVarying() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, text character varying(255));");
+        startConnector(Function.identity(), false);
+        final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN mandatory_text_array character varying(20000)[] NOT NULL;"
+                + "ALTER TABLE test_toast_table ALTER COLUMN mandatory_text_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, text, mandatory_text_array) values (10, 'text', ARRAY ['" + toastedValue + "']);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(), Arrays.asList(toastedValue))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
+                new SchemaAndValueField("mandatory_text_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).build(),
+                        Arrays.asList(DecoderDifferences.mandatoryToastedValuePlaceholder()))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-6122")
+    public void shouldHandleToastedDateArrayColumn() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
+        startConnector(Function.identity(), false);
+        List<Integer> intList = IntStream.range(1, 100000).boxed().map((x) -> 19338).collect(Collectors.toList());
+        final String toastedValue = intList.stream().map((x) -> "'2022-12-12'::date").collect(Collectors.joining(","));
+
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN date_array date[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN date_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, date_array) values (10, ARRAY [" + toastedValue + "]);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        intList)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        DecoderDifferences.toastedValueIntPlaceholder())),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-6122")
+    public void shouldHandleToastedByteArrayColumn() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
+        startConnector(Function.identity(), false);
+        List<Integer> intList = IntStream.range(1, 100000).boxed().map((x) -> 19338).collect(Collectors.toList());
+        final String toastedValue = intList.stream().map((x) -> "'2022-12-12'::date").collect(Collectors.joining(","));
+
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
+                + "ALTER TABLE test_toast_table ADD COLUMN date_array date[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN date_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, date_array) values (10, ARRAY [" + toastedValue + "]);";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        intList)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET not_toast = 2;";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
+            });
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("date_array",
+                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
+                        DecoderDifferences.toastedValueIntPlaceholder())),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
     @FixFor("DBZ-5936")
     public void shouldHandleToastedIntegerArrayColumn() throws Exception {
         TestHelper.execute(
@@ -1764,6 +1895,47 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("json_array", SchemaBuilder.array(
                         io.debezium.data.Json.builder().optional().build()).optional().build(),
                         Arrays.asList(DecoderDifferences.mandatoryToastedValuePlaceholder()))),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-6379")
+    public void shouldHandleToastedHstoreInHstoreMapMode() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, text TEXT);");
+        startConnector(config -> config.with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP));
+        final String toastedValue = RandomStringUtils.randomAlphanumeric(100000);
+        String statement = "ALTER TABLE test_toast_table ADD COLUMN col hstore;"
+                + "INSERT INTO test_toast_table (id, col) values (10, 'a=>" + toastedValue + "');";
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        HashMap colValue = new HashMap();
+        colValue.put("a", toastedValue);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("col", SchemaBuilder.map(SchemaBuilder.STRING_SCHEMA,
+                        SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(), colValue)),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+        statement = "UPDATE test_toast_table SET text = 'text';";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                assertEquals(Arrays.asList("id", "text", "col"), tbl.retrieveColumnNames());
+            });
+        });
+        colValue.clear();
+        colValue.put(DecoderDifferences.optionalToastedValuePlaceholder(), DecoderDifferences.optionalToastedValuePlaceholder());
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "text"),
+                new SchemaAndValueField("col", SchemaBuilder.map(SchemaBuilder.STRING_SCHEMA,
+                        SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(), colValue)),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
     }
