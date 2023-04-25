@@ -285,8 +285,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private boolean useTemporarySlot() throws SQLException {
         // Temporary replication slots cannot be used due to connection restart
         // when finding WAL position
-        // return dropSlotOnClose && pgConnection().haveMinimumServerVersion(ServerVersion.v10);
-        return false;
+         return dropSlotOnClose && pgConnection().haveMinimumServerVersion(ServerVersion.v10);
     }
 
     /**
