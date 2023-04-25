@@ -602,6 +602,20 @@ jobs:
           restore-keys: |
             maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
+      - name: Build Debezium (Core)
+        run: >
+          ./mvnw clean install
+          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+          -am
+          -DskipTests=true
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
+          -Dmaven.wagon.http.pool=false 
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
       - name: Build Debezium Storage
         run: >
           ./mvnw clean install -B -f debezium-storage/pom.xml -Passembly
