@@ -142,15 +142,20 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
-                LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                 Scn smallestScn = getTransactionCacheMinimumScn();
                 if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
+                    boolean first = true;
                     Iterator<Map.Entry<String, MemoryTransaction>> iterator = transactionCache.entrySet().iterator();
                     while (iterator.hasNext()) {
                         Map.Entry<String, MemoryTransaction> entry = iterator.next();
                         if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                            LOGGER.warn("Transaction {} with start SCN {} is being abandoned.",
-                                    entry.getKey(), entry.getValue().getStartScn());
+                            if (first) {
+                                LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
+                                first = false;
+                            }
+                            LOGGER.warn("Transaction {} (start SCN {}, change time {}, {} events) is being abandoned.",
+                                    entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
+                                    entry.getValue().getNumberOfEvents());
 
                             abandonedTransactionsCache.add(entry.getKey());
                             iterator.remove();
