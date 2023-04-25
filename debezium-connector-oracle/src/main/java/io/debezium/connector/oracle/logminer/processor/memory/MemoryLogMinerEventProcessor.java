@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -332,6 +333,17 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
             return Optional.of(new Scn(scnToAbandon));
         }
         catch (SQLException e) {
+            // This can happen when the last processed SCN has aged out of the UNDO_RETENTION.
+            // In this case, we use a fallback in order to calculate the SCN based on the
+            // change times in the transaction cache.
+            if (getLastProcessedScnChangeTime() != null) {
+                final Scn calculatedLastScn = getLastScnToAbandonFallbackByTransactionChangeTime(retention);
+                if (!calculatedLastScn.isNull()) {
+                    return Optional.of(calculatedLastScn);
+                }
+            }
+
+            // Both SCN database calculation and fallback failed, log error.
             LOGGER.error(String.format("Cannot fetch SCN %s by given duration to calculate SCN to abandon", getLastProcessedScn()), e);
             metrics.incrementErrorCount();
             return Optional.empty();
@@ -350,5 +362,36 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 .map(MemoryTransaction::getStartScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
+    }
+
+    /**
+     * Calculates the last system change number to abandon by directly examining the transaction buffer
+     * cache and comparing the transaction start time to the most recent last processed change time and
+     * comparing the difference to the configured transaction retention policy.
+     *
+     * @param retention duration to tolerate long-running transactions before being abandoned, must not be {@code null}
+     * @return the system change number to consider for transaction abandonment, never {@code null}
+     */
+    private Scn getLastScnToAbandonFallbackByTransactionChangeTime(Duration retention) {
+        LOGGER.debug("Getting abandon SCN breakpoint based on change time {} (retention {} minutes).",
+                getLastProcessedScnChangeTime(), retention.toMinutes());
+
+        Scn calculatedLastScn = Scn.NULL;
+        for (MemoryTransaction transaction : getTransactionCache().values()) {
+            final Instant changeTime = transaction.getChangeTime();
+            final long diffMinutes = Duration.between(getLastProcessedScnChangeTime(), changeTime).abs().toMinutes();
+            if (diffMinutes > 0 && diffMinutes > retention.toMinutes()) {
+                // We either now will capture the transaction's SCN because it is the first detected transaction
+                // outside the configured retention period or the transaction has a start SCN that is more recent
+                // than the current calculated SCN but is still outside the configured retention period.
+                LOGGER.debug("Transaction {} with SCN {} started at {}, age is {} minutes.",
+                        transaction.getTransactionId(), transaction.getStartScn(), changeTime, diffMinutes);
+                if (calculatedLastScn.isNull() || calculatedLastScn.compareTo(transaction.getStartScn()) < 0) {
+                    calculatedLastScn = transaction.getStartScn();
+                }
+            }
+        }
+
+        return calculatedLastScn;
     }
 }

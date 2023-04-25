@@ -81,6 +81,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
     private Scn currentOffsetScn = Scn.NULL;
     private Map<Integer, Scn> currentOffsetCommitScns = new HashMap<>();
+    private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
@@ -139,6 +140,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected Scn getLastProcessedScn() {
         return lastProcessedScn;
+    }
+
+    /**
+     * Return the last processed system change number's change time.
+     *
+     * @return the last processed system change number change time, may be {@code null}
+     */
+    protected Instant getLastProcessedScnChangeTime() {
+        return lastProcessedScnChangeTime;
     }
 
     /**
@@ -266,6 +276,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected void processRow(OraclePartition partition, LogMinerEventRow row) throws SQLException, InterruptedException {
         if (!row.getEventType().equals(EventType.MISSING_SCN)) {
             lastProcessedScn = row.getScn();
+            lastProcessedScnChangeTime = row.getChangeTime();
         }
         // filter out all events that are captured as part of the initial snapshot
         if (row.getScn().compareTo(offsetContext.getSnapshotScn()) < 0) {
