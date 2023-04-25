@@ -5123,7 +5123,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.streamTable(connection, "dbz6355");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 1) // 1 Minute retention
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 0.017) // 1 Minute retention
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6355")
                     .build();
 
@@ -5151,10 +5151,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // Insert streaming record as in-progress transaction
             // Guarantees that we flush offsets.
+            // It is expected that this will be discarded due to retention policy of 1 minute.
             connection.executeWithoutCommitting("INSERT INTO dbz6355 (id,name) values (2, 'Minnie Mouse')");
 
-            LOGGER.info("Waiting {}ms for second change to age; should still be captured.", 120_000L);
-            Thread.sleep(120000);
+            LOGGER.info("Waiting {}ms for second change to age; should not be captured.", 70_000L);
+            Thread.sleep(70_000L);
 
             // Restart the connector after downtime
             start(OracleConnector.class, config);
@@ -5165,6 +5166,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             // Commit in progress transaction
             connection.commit();
 
+            connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
+
             // Get only record
             records = consumeRecordsByTopic(1);
             assertThat(records.allRecordsInOrder()).hasSize(1);
@@ -5173,8 +5176,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // Assert record state
             after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
-            assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("NAME")).isEqualTo("Minnie Mouse");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("Donald Duck");
 
             // There should be no more records to consume.
             // The persisted state should contain the Thomas Jasper insert
