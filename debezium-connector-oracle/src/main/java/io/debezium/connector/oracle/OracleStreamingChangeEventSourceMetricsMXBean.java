@@ -193,8 +193,16 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
 
     /**
      * @return the number of hours to keep transaction in buffer before abandoning
+     *
+     * @deprecated Use {@link #getMillisecondsToKeepTransactionsInBuffer()} instead.
      */
+    @Deprecated
     int getHoursToKeepTransactionInBuffer();
+
+    /**
+     * @return the number of milliseconds to keep transactions in the buffer before abandoning
+     */
+    long getMillisecondsToKeepTransactionsInBuffer();
 
     /**
      * @return number of current active transactions in the transaction buffer

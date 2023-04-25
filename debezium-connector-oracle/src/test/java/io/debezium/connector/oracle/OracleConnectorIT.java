@@ -5123,7 +5123,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.streamTable(connection, "dbz6355");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 0.017) // 1 Minute retention
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 60000L) // 1 Minute retention
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6355")
                     .build();
 

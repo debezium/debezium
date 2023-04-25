@@ -26,7 +26,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
-import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -1243,18 +1242,6 @@ public interface Configuration {
         return defaultValueSupplier != null ? defaultValueSupplier.getAsInt() : null;
     }
 
-    default Double getDouble(String key, DoubleSupplier defaultValueSupplier) {
-        String value = getString(key);
-        if (value != null) {
-            try {
-                return Double.valueOf(value);
-            }
-            catch (NumberFormatException e) {
-            }
-        }
-        return defaultValueSupplier != null ? defaultValueSupplier.getAsDouble() : null;
-    }
-
     /**
      * Get the long value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
@@ -1327,10 +1314,6 @@ public interface Configuration {
      */
     default int getInteger(Field field) {
         return getInteger(field.name(), () -> Integer.valueOf(field.defaultValueAsString())).intValue();
-    }
-
-    default Double getDouble(Field field) {
-        return getDouble(field.name(), () -> Double.valueOf(field.defaultValueAsString())).doubleValue();
     }
 
     /**

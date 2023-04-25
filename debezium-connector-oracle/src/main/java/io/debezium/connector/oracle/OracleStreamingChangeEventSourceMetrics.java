@@ -69,9 +69,9 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     private final AtomicInteger batchSize = new AtomicInteger();
     private final AtomicLong millisecondToSleepBetweenMiningQuery = new AtomicLong();
 
-    private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
     private final AtomicLong networkConnectionProblemsCounter = new AtomicLong();
 
+    private final AtomicReference<Duration> keepTransactionsDuration = new AtomicReference<>();
     private final AtomicReference<Duration> lagFromTheSourceDuration = new AtomicReference<>();
     private final AtomicReference<Duration> minLagFromTheSourceDuration = new AtomicReference<>();
     private final AtomicReference<Duration> maxLagFromTheSourceDuration = new AtomicReference<>();
@@ -155,7 +155,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax().toMillis();
         sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
 
-        hoursToKeepTransaction.set(Long.valueOf(connectorConfig.getLogMiningTransactionRetention().toHours()).intValue());
+        keepTransactionsDuration.set(connectorConfig.getLogMiningTransactionRetention());
 
         reset();
     }
@@ -375,7 +375,12 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
 
     @Override
     public int getHoursToKeepTransactionInBuffer() {
-        return hoursToKeepTransaction.get();
+        return (int) keepTransactionsDuration.get().toHours();
+    }
+
+    @Override
+    public long getMillisecondsToKeepTransactionsInBuffer() {
+        return keepTransactionsDuration.get().toMillis();
     }
 
     @Override
@@ -774,7 +779,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
                 ", switchCounter=" + switchCounter +
                 ", batchSize=" + batchSize +
                 ", millisecondToSleepBetweenMiningQuery=" + millisecondToSleepBetweenMiningQuery +
-                ", hoursToKeepTransaction=" + hoursToKeepTransaction +
+                ", keepTransactionsDuration=" + keepTransactionsDuration.get() +
                 ", networkConnectionProblemsCounter" + networkConnectionProblemsCounter +
                 ", batchSizeDefault=" + batchSizeDefault +
                 ", batchSizeMin=" + batchSizeMin +
