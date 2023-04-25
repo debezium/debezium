@@ -203,6 +203,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+        abandonedTransactionsCache.remove(transactionId);
         if (getConfig().isLobEnabled()) {
             // cache recently committed transactions by transaction id
             recentlyProcessedTransactionsCache.put(transactionId, commitScn);
@@ -224,6 +225,22 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
         if (row.getTableName() != null && getConfig().isLobEnabled()) {
             schemaChangesCache.add(row.getScn());
         }
+    }
+
+    @Override
+    protected void handleCommitNotFoundInBuffer(LogMinerEventRow row) {
+        // In the event the transaction was prematurely removed due to retention policy, when we do find
+        // the transaction's commit in the logs in the future, we should remove the entry if it exists
+        // to avoid any potential memory-leak with the cache.
+        abandonedTransactionsCache.remove(row.getTransactionId());
+    }
+
+    @Override
+    protected void handleRollbackNotFoundInBuffer(LogMinerEventRow row) {
+        // In the event the transaction was prematurely removed due to retention policy, when we do find
+        // the transaction's rollback in the logs in the future, we should remove the entry if it exists
+        // to avoid any potential memory-leak with the cache.
+        abandonedTransactionsCache.remove(row.getTransactionId());
     }
 
     @Override
