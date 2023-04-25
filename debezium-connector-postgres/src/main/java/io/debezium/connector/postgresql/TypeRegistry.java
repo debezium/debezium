@@ -69,7 +69,7 @@ public class TypeRegistry {
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
-            + "WHERE n.nspname != 'pg_toast'";
+            + "WHERE n.nspname != 'pg_toast' ORDER BY t.oid";
 
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
@@ -129,7 +129,9 @@ public class TypeRegistry {
 
     private void addType(PostgresType type) {
         oidToType.put(type.getOid(), type);
-        nameToType.put(type.getName(), type);
+        if (!nameToType.containsKey(type.getName())) {
+            nameToType.put(type.getName(), type);
+        }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
             geometryOid = type.getOid();
