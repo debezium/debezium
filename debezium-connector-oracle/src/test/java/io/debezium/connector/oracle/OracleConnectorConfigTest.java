@@ -201,8 +201,30 @@ public class OracleConnectorConfigTest {
 
         config = Configuration.create().with(transactionRetentionField, -1).build();
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
+    }
 
-        config = Configuration.create().with(transactionRetentionField, 0.25).build();
+    @Test
+    @FixFor("DBZ-6355")
+    public void testTransactionRetentionMs() throws Exception {
+        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS;
+
+        Configuration config = Configuration.create()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(transactionRetentionField, 10800000L)
+                .build();
+
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(3));
+
+        config = Configuration.create().with(transactionRetentionField, 0).build();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        config = Configuration.create().with(transactionRetentionField, -1).build();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
+
+        config = Configuration.create().with(transactionRetentionField, 900000L).build();
         connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofMinutes(15));
     }

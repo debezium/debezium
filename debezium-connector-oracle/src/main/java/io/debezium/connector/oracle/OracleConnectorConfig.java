@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -172,15 +173,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 11))
             .withDescription("A token to replace on snapshot predicate template");
 
+    @Deprecated
     public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
             .withDisplayName("Log Mining long running transaction retention")
-            .withType(Type.DOUBLE)
+            .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(0.0)
-            .withValidation(Field::isNonNegativeDouble)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeLong)
             .withDescription("Hours to keep long running transactions in transaction buffer between log mining " +
+                    "sessions. By default, all transactions are retained.");
+
+    public static final Field LOG_MINING_TRANSACTION_RETENTION_MS = Field.create("log.mining.transaction.retention.ms")
+            .withDisplayName("Log Mining long running transaction retention")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
+            .withDescription("Duration in milliseconds to keep long running transactions in transaction buffer between log mining " +
                     "sessions. By default, all transactions are retained.");
 
     public static final Field RAC_NODES = Field.create("rac.nodes")
@@ -513,6 +525,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
                     LOG_MINING_TRANSACTION_RETENTION,
+                    LOG_MINING_TRANSACTION_RETENTION_MS,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
@@ -633,7 +646,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
-        this.logMiningTransactionRetention = Duration.ofMinutes((long) (config.getDouble(LOG_MINING_TRANSACTION_RETENTION) * 60));
+        this.logMiningTransactionRetention = resolveLogMiningTransactionRetentionDuration(config);
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
@@ -1530,6 +1543,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 return node;
             }
         }).collect(Collectors.toSet());
+    }
+
+    private Duration resolveLogMiningTransactionRetentionDuration(Configuration config) {
+        // Calculate the log mining transaction retention between the two properties
+        Duration logMiningTransactionRetentionMs = config.getDuration(LOG_MINING_TRANSACTION_RETENTION_MS, ChronoUnit.MILLIS);
+        Duration logMiningTransactionRetentionHours = config.getDuration(LOG_MINING_TRANSACTION_RETENTION, ChronoUnit.HOURS);
+        if (logMiningTransactionRetentionMs.isZero()) {
+            if (!logMiningTransactionRetentionHours.isZero()) {
+                LOGGER.warn("The option {} is deprecated and replaced by {} and will be removed in a future build.",
+                        LOG_MINING_TRANSACTION_RETENTION.name(), LOG_MINING_TRANSACTION_RETENTION_MS.name());
+                return logMiningTransactionRetentionHours;
+            }
+        }
+        return logMiningTransactionRetentionMs;
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {

@@ -119,6 +119,7 @@ public class OracleStreamingMetricsTest {
         assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(0);
 
         assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(0);
+        assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(0L);
 
         metrics.setRedoLogStatus(Collections.singletonMap("name", "current"));
         assertThat(metrics.getRedoLogStatus()[0].equals("name | current")).isTrue();
@@ -317,6 +318,7 @@ public class OracleStreamingMetricsTest {
     public void testCustomTransactionRetention() throws Exception {
         init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
         assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
+        assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(3 * 3600000);
     }
 
     @Test

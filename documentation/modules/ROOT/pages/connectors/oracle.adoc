@@ -3210,19 +3210,16 @@ The degree of latency depends on how frequently the database is configured to ar
 |The number of milliseconds the connector will sleep in between polling to determine if the starting system change number is in the archive logs.
 If `log.mining.archive.log.only.mode` is not enabled, this setting is not used.
 
-|[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
+|[[oracle-property-log-mining-transaction-retention-ms]]<<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>>
 |`0`
-|Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
+|Positive integer value that specifies the number of milliseconds to retain long running transactions between redo log switches.
 When set to `0`, transactions are retained until a commit or rollback is detected.
 
-The LogMiner adapter maintains an in-memory buffer of all running transactions.
+By default, the LogMiner adapter maintains an in-memory buffer of all running transactions.
 Because all of the DML operations that are part of a transaction are buffered until a commit or rollback is detected,
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
-ifdef::community[]
-While this option allows the behavior to be configured on a case-by-case basis,
-we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see xref:{jira-url}/browse/DBZ-3123[DBZ-3123]).
-endif::community[]
+
 |[[oracle-property-log-mining-archive-destination-name]]<<oracle-property-log-mining-archive-destination-name, `+log.mining.archive.destination.name+`>>
 |No default
 |Specifies the configured Oracle archive destination to use when mining archive logs with LogMiner. +
@@ -3588,7 +3585,7 @@ endif::community[]
 |[[oracle-streaming-metrics-abandoned-transaction-ids]]<<oracle-streaming-metrics-abandoned-transaction-ids, `+AbandonedTransactionIds+`>>
 |`string[]`
 |An array of the most recent abandoned transaction identifiers removed from the transaction buffer due to their age.
-See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>> for details.
+See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transaction.retention.ms`>> for details.
 
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
