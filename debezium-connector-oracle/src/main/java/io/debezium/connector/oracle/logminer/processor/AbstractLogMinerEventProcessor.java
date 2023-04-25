@@ -384,6 +384,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         final T transaction = getAndRemoveTransactionFromCache(transactionId);
         if (transaction == null) {
+            handleCommitNotFoundInBuffer(row);
             LOGGER.trace("Transaction {} not found, commit skipped.", transactionId);
             return;
         }
@@ -517,6 +518,26 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     /**
+     * Allow for post-processing of a transaction commit in the stream that was not found in the
+     * transaction buffer, perhaps because it aged out due to retention policies.
+     *
+     * @param row the result set row
+     */
+    protected void handleCommitNotFoundInBuffer(LogMinerEventRow row) {
+        // no-op
+    }
+
+    /**
+     * Allow for post-processing of a transaction rollback in the stream that was not found in
+     * the transaction buffer, perhaps because it aged out due to retention policies.
+     *
+     * @param row the result set row
+     */
+    protected void handleRollbackNotFoundInBuffer(LogMinerEventRow row) {
+        // no-op
+    }
+
+    /**
      * Gets a transaction instance from the transaction cache while also removing its cache entry.
      *
      * @param transactionId the transaction's unique identifier, should not be {@code null}
@@ -583,6 +604,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
         else {
             LOGGER.trace("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
+            handleRollbackNotFoundInBuffer(row);
         }
     }
 
