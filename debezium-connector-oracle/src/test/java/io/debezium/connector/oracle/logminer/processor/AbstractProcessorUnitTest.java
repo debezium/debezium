@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -44,6 +45,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
@@ -64,6 +66,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
+    private static final String TRANSACTION_ID_3 = "9880212345";
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
@@ -87,7 +90,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        this.connection = createOracleConnection();
+        this.connection = createOracleConnection(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
     }
@@ -274,6 +277,42 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         }
     }
 
+    @Test
+    @FixFor("DBZ-6355")
+    public void testAbandonTransactionsUsingFallbackBasedOnChangeTime() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        // re-create some mocked objects
+        this.schema.close();
+
+        connection = createOracleConnection(true);
+        schema = createOracleDatabaseSchema();
+        metrics = createMetrics(schema);
+
+        final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
+        try (T processor = getProcessor(config)) {
+            Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
+
+            Instant changeTime1 = Instant.now().minus(24, ChronoUnit.HOURS);
+            Instant changeTime2 = Instant.now().minus(23, ChronoUnit.HOURS);
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime1));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime1));
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2, changeTime2));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2, changeTime2));
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(6L), TRANSACTION_ID_3));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(7L), TRANSACTION_ID_3));
+            processor.abandonTransactions(Duration.ofHours(1L));
+            assertThat(processor.getTransactionCache().isEmpty()).isFalse();
+            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNull();
+            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_3)).isNotNull();
+        }
+
+    }
+
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
@@ -299,7 +338,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         return schema;
     }
 
-    private OracleConnection createOracleConnection() throws Exception {
+    private OracleConnection createOracleConnection(boolean singleOptionalValueThrowException) throws Exception {
         final ResultSet rs = Mockito.mock(ResultSet.class);
         Mockito.when(rs.next()).thenReturn(true);
         Mockito.when(rs.getFloat(1)).thenReturn(2.f);
@@ -312,7 +351,13 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
-        Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
+        if (!singleOptionalValueThrowException) {
+            Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
+        }
+        else {
+            Mockito.when(connection.singleOptionalValue(anyString(), any()))
+                    .thenThrow(new SQLException("ORA-01555 Snapshot too old", null, 1555));
+        }
         return connection;
     }
 
