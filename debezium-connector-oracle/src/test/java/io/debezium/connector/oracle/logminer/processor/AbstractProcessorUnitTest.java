@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -240,10 +241,11 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
         try (T processor = getProcessor(config)) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
-            processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime));
-            processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime));
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isTrue();
         }
@@ -258,12 +260,13 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         final OracleConnectorConfig config = new OracleConnectorConfig(getConfig().build());
         try (T processor = getProcessor(config)) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
-            processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime));
-            processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime));
-            processor.handleStart(getStartLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2));
-            processor.handleDataEvent(getInsertLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2));
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(2L), TRANSACTION_ID_1, changeTime));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_1, changeTime));
+            processor.processRow(partition, getStartLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_2));
+            processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isFalse();
             assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
@@ -309,7 +312,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
 
         OracleConnection connection = Mockito.mock(OracleConnection.class);
         Mockito.when(connection.connection(Mockito.anyBoolean())).thenReturn(conn);
-        Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(2.f);
+        Mockito.when(connection.singleOptionalValue(anyString(), any())).thenReturn(BigInteger.TWO);
         return connection;
     }
 
