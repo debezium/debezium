@@ -14,10 +14,6 @@ import io.debezium.relational.TableId;
  * @author Chris Cranford
  */
 public interface LogWriterFlushStrategy extends AutoCloseable {
-    /**
-     * The LogMiner implemenation's flush table name.
-     */
-    String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
 
     /**
      * @return the host or ip address that will be flushed by the strategy
@@ -36,10 +32,11 @@ public interface LogWriterFlushStrategy extends AutoCloseable {
      *
      * @param id the table id
      * @param schemaName the schema name
+     * @param flushTableName configured flush table name
      * @return true if the table is the flush table, false otherwise
      */
-    static boolean isFlushTable(TableId id, String schemaName) {
-        return id.table().equalsIgnoreCase(LOGMNR_FLUSH_TABLE) && id.schema().equalsIgnoreCase(schemaName);
+    static boolean isFlushTable(TableId id, String schemaName, String flushTableName) {
+        return id.table().equalsIgnoreCase(flushTableName) && id.schema().equalsIgnoreCase(schemaName);
     }
 
 }

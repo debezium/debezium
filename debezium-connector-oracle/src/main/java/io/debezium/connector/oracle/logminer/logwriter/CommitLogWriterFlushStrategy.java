@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 
@@ -25,11 +26,12 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogWriterFlushStrategy.class);
 
-    private static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
-    private static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES (0)";
-    private static final String UPDATE_FLUSH_TABLE = "UPDATE " + LOGMNR_FLUSH_TABLE + " SET LAST_SCN = ";
-    private static final String DELETE_FLUSH_TABLE = "DELETE FROM " + LOGMNR_FLUSH_TABLE;
+    private static final String CREATE_FLUSH_TABLE = "CREATE TABLE %s (LAST_SCN NUMBER(19,0))";
+    private static final String INSERT_FLUSH_TABLE = "INSERT INTO %s VALUES (0)";
+    private static final String UPDATE_FLUSH_TABLE = "UPDATE %s SET LAST_SCN = ";
+    private static final String DELETE_FLUSH_TABLE = "DELETE FROM %s";
 
+    private final String flushTableName;
     private final OracleConnection connection;
     private final boolean closeConnectionOnClose;
 
@@ -39,9 +41,11 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * This will use the existing database connection to make the flush and the connection will not
      * be automatically closed when the strategy is closed.
      *
+     * @param connectorConfig the connector configuration, must not be {@code null}
      * @param connection the connection to be used to force the flush, must not be {@code null}
      */
-    public CommitLogWriterFlushStrategy(OracleConnection connection) {
+    public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+        this.flushTableName = connectorConfig.getLogMiningFlushTableName();
         this.connection = connection;
         this.closeConnectionOnClose = false;
         createFlushTableIfNotExists();
@@ -53,10 +57,12 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * This will create a new database connection based on the supplied JDBC configuration and the
      * connection will automatically be closed when the strategy is closed.
      *
+     * @param connectorConfig the connector configuration, must not be {@code null}
      * @param jdbcConfig the jdbc configuration
      * @throws SQLException if there was a database problem
      */
-    public CommitLogWriterFlushStrategy(JdbcConfiguration jdbcConfig) throws SQLException {
+    public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) throws SQLException {
+        this.flushTableName = connectorConfig.getLogMiningFlushTableName();
         this.connection = new OracleConnection(jdbcConfig);
         this.connection.setAutoCommit(false);
         this.closeConnectionOnClose = true;
@@ -83,7 +89,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     @Override
     public void flush(Scn currentScn) {
         try {
-            connection.execute(UPDATE_FLUSH_TABLE + currentScn);
+            connection.execute(String.format(UPDATE_FLUSH_TABLE, flushTableName) + currentScn);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to flush Oracle LogWriter (LGWR) buffers to disk", e);
@@ -96,14 +102,14 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      */
     private void createFlushTableIfNotExists() {
         try {
-            if (!connection.isTableExists(LOGMNR_FLUSH_TABLE)) {
-                connection.executeWithoutCommitting(CREATE_FLUSH_TABLE);
+            if (!connection.isTableExists(flushTableName)) {
+                connection.executeWithoutCommitting(String.format(CREATE_FLUSH_TABLE, flushTableName));
             }
 
             fixMultiRowDataBug();
 
-            if (connection.isTableEmpty(LOGMNR_FLUSH_TABLE)) {
-                connection.executeWithoutCommitting(INSERT_FLUSH_TABLE);
+            if (connection.isTableEmpty(flushTableName)) {
+                connection.executeWithoutCommitting(String.format(INSERT_FLUSH_TABLE, flushTableName));
                 connection.commit();
             }
         }
@@ -121,10 +127,10 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      * @throws SQLException if a database exception occurs
      */
     private void fixMultiRowDataBug() throws SQLException {
-        if (connection.getRowCount(LOGMNR_FLUSH_TABLE) > 1L) {
-            LOGGER.warn("DBZ-4118: The flush table, {}, has multiple rows and has been corrected.", LOGMNR_FLUSH_TABLE);
-            connection.executeWithoutCommitting(DELETE_FLUSH_TABLE);
-            connection.executeWithoutCommitting(INSERT_FLUSH_TABLE);
+        if (connection.getRowCount(flushTableName) > 1L) {
+            LOGGER.warn("DBZ-4118: The flush table, {}, has multiple rows and has been corrected.", flushTableName);
+            connection.executeWithoutCommitting(String.format(DELETE_FLUSH_TABLE, flushTableName));
+            connection.executeWithoutCommitting(String.format(INSERT_FLUSH_TABLE, flushTableName));
             connection.commit();
         }
     }

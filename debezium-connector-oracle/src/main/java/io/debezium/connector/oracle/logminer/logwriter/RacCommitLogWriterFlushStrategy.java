@@ -42,6 +42,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private final Map<String, CommitLogWriterFlushStrategy> flushStrategies = new HashMap<>();
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final JdbcConfiguration jdbcConfiguration;
+    private final OracleConnectorConfig connectorConfig;
     private final Set<String> hosts;
 
     /**
@@ -55,6 +56,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                                            OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConfiguration = jdbcConfig;
         this.streamingMetrics = streamingMetrics;
+        this.connectorConfig = connectorConfig;
         this.hosts = connectorConfig.getRacNodes().stream().map(String::toUpperCase).collect(Collectors.toSet());
         recreateRacNodeFlushStrategies();
     }
@@ -134,7 +136,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                 .with(JdbcConfiguration.PORT, port).build());
 
         LOGGER.debug("Creating flush connection to RAC node '{}'", hostName);
-        return new CommitLogWriterFlushStrategy(jdbcHostConfig);
+        return new CommitLogWriterFlushStrategy(connectorConfig, jdbcHostConfig);
     }
 
     /**
