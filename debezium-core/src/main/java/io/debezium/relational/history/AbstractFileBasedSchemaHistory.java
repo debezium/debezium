@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public abstract class AbstractFileBasedSchemaHistory extends AbstractSchemaHisto
     protected final DocumentWriter documentWriter = DocumentWriter.defaultWriter();
     protected final DocumentReader documentReader = DocumentReader.defaultReader();
 
-    private volatile List<HistoryRecord> records = new ArrayList<>();
+    protected volatile List<HistoryRecord> records = new ArrayList<>();
 
     public AbstractFileBasedSchemaHistory() {
     }
@@ -78,5 +79,71 @@ public abstract class AbstractFileBasedSchemaHistory extends AbstractSchemaHisto
 
     protected List<HistoryRecord> getRecords() {
         return records;
+    }
+
+    @Override
+    public synchronized void start() {
+        doPreStart();
+
+        lock.write(() -> {
+            if (running.compareAndSet(false, true)) {
+                if (!storageExists()) {
+                    initializeStorage();
+                }
+
+                doStart();
+            }
+        });
+        super.start();
+    }
+
+    @Override
+    public synchronized void stop() {
+        if (running.compareAndSet(true, false)) {
+            doStop();
+        }
+
+        super.stop();
+    }
+
+    @Override
+    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
+        doPreStoreRecord(record);
+        if (record == null) {
+            return;
+        }
+
+        lock.write(() -> {
+            if (!running.get()) {
+                throw new SchemaHistoryException("The history has been stopped and will not accept more records");
+            }
+
+            doStoreRecord(record);
+        });
+    }
+
+    @Override
+    protected void recoverRecords(Consumer<HistoryRecord> records) {
+        lock.write(() -> getRecords().forEach(records));
+    }
+
+    @Override
+    public boolean exists() {
+        return !getRecords().isEmpty();
+    }
+
+    protected void doPreStart() {
+    }
+
+    protected void doStart() {
+    }
+
+    protected void doStop() {
+    }
+
+    protected void doPreStoreRecord(HistoryRecord record) {
+    }
+
+    protected void doStoreRecord(HistoryRecord record) {
     }
 }
