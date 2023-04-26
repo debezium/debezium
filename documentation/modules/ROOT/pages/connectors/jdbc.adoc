@@ -465,7 +465,7 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 
 .Procedure
 
-. Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[JDBC connector plug-in archive].
+. Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC connector plug-in archive].
 . Extract the files into your Kafka Connect environment.
 . Optionally download the JDBC driver from Maven Central and extract the downloaded driver file to the directory that contains the JDBC sink connector JAR file.
 +
