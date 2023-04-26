@@ -118,8 +118,7 @@ public class TaskWorker {
 
         this.taskConfig = config.asMap();
 
-        taskOffsetManager = new KafkaTaskOffsetManager(offsetManager, clock, task, embeddedEngineState);
-        taskOffsetManager.configure(config);
+        taskOffsetManager = new KafkaTaskOffsetManager(offsetManager, clock, task, embeddedEngineState, config);
 
         this.maxRetries = config.getInteger(ERRORS_MAX_RETRIES);
         this.delayStrategy = DelayStrategy.exponential(Duration.ofMillis(config.getInteger(ERRORS_RETRY_DELAY_INITIAL_MS)),
@@ -272,13 +271,7 @@ public class TaskWorker {
                 LOGGER.info("Stopping the task and engine");
                 task.stop();
                 connectorCallback.ifPresent(c -> c.taskStopped(taskId));
-                // Always commit offsets that were captured from the source records we actually processed ...
-                try {
-                    taskOffsetManager.commitOffsets();
-                }
-                finally {
-                    taskOffsetManager.stop();
-                }
+                taskOffsetManager.commitOffsets();
             }
             catch (InterruptedException e) {
                 LOGGER.debug("Interrupted while committing offsets");

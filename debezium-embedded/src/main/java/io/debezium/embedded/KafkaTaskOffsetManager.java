@@ -6,15 +6,20 @@
 package io.debezium.embedded;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
+import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,46 +33,45 @@ public class KafkaTaskOffsetManager implements TaskOffsetManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaTaskOffsetManager.class);
 
-    private final OffsetManager offsetManager;
     private final Clock clock;
     private final SourceTask sourceTask;
     private final EmbeddedEngineState embeddedEngineState;
-    private Duration commitTimeout;
-    private OffsetCommitPolicy offsetCommitPolicy;
-
+    private final Duration commitTimeout;
+    private final OffsetCommitPolicy offsetCommitPolicy;
+    private final OffsetStorageWriter offsetStorageWriter;
+    private final OffsetStorageReader offsetStorageReader;
     private long recordsSinceLastCommit = 0;
     private long timeOfLastCommitMillis;
-    private OffsetStorageWriter offsetStorageWriter;
-    private OffsetStorageReader offsetStorageReader;
 
     public KafkaTaskOffsetManager(
                                   OffsetManager offsetManager,
                                   Clock clock,
                                   SourceTask sourceTask,
-                                  EmbeddedEngineState embeddedEngineState) {
+                                  EmbeddedEngineState embeddedEngineState,
+                                  Configuration config) {
         this.clock = clock;
         this.sourceTask = sourceTask;
-        this.offsetManager = offsetManager;
         this.embeddedEngineState = embeddedEngineState;
 
         this.timeOfLastCommitMillis = clock.currentTimeInMillis();
-    }
 
-    @Override
-    public void configure(Configuration config) {
         // Set up the offset commit policy ...
         this.offsetCommitPolicy = Instantiator.getInstanceWithProperties(
                 config.getString(OFFSET_COMMIT_POLICY), config.asProperties());
         this.commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
 
-        this.offsetManager.configure(config);
-        this.offsetStorageWriter = offsetManager.offsetStorageWriter();
-        this.offsetStorageReader = offsetManager.offsetStorageReader();
-    }
+        final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
 
-    @Override
-    public void stop() {
-        this.offsetManager.stop();
+        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
+
+        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        keyConverter.configure(internalConverterConfig, true);
+
+        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        valueConverter.configure(internalConverterConfig, false);
+
+        this.offsetStorageWriter = new OffsetStorageWriter(offsetManager.getOffsetBackingStore(), engineName, keyConverter, valueConverter);
+        this.offsetStorageReader = new OffsetStorageReaderImpl(offsetManager.getOffsetBackingStore(), engineName, keyConverter, valueConverter);
     }
 
     @Override

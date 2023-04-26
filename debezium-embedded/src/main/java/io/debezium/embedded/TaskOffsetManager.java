@@ -8,7 +8,6 @@ package io.debezium.embedded;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
@@ -69,13 +68,4 @@ public interface TaskOffsetManager {
      */
     OffsetStorageReader offsetStorageReader();
 
-    /**
-     * Configure the {@link TaskOffsetManager} with the given configuration.
-     */
-    void configure(Configuration config);
-
-    /**
-     * Lifecycle method indicating that processing should stop and resources be freed.
-     */
-    void stop();
 }

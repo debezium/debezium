@@ -651,8 +651,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     return;
                 }
 
-                OffsetManager offsetManager = new KafkaOffsetManager();
-                offsetManager.configure(config);
+                OffsetManager offsetManager = new KafkaOffsetManager(config);
+                offsetManager.start();
 
                 // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
                 ConnectorContext context = new SourceConnectorContext() {
@@ -695,18 +695,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             try {
                                 MDC.put("taskId", String.valueOf(taskId));
                                 Map<String, String> taskConfig = taskConfigs.get(taskId);
-
-                                if (maxTasks > 0) {
-                                    taskConfig = new HashMap<>(taskConfig);
-                                    if (taskConfig.containsKey(OFFSET_STORAGE_FILE_FILENAME.name())) {
-                                        taskConfig.replace(OFFSET_STORAGE_FILE_FILENAME.name(),
-                                                String.format(connectorConfig.get(OFFSET_STORAGE_FILE_FILENAME.name()), taskId));
-                                    }
-                                    else if (taskConfig.containsKey(OFFSET_STORAGE_KAFKA_TOPIC.name())) {
-                                        taskConfig.replace(OFFSET_STORAGE_KAFKA_TOPIC.name(),
-                                                String.format(connectorConfig.get(OFFSET_STORAGE_KAFKA_TOPIC.name()), taskId));
-                                    }
-                                }
 
                                 TaskWorker taskWorker = new TaskWorker(
                                         taskId, taskClass, embeddedEngineState, handler, transformations, offsetManager, clock, connectorCallback.orElse(null),

@@ -19,44 +19,50 @@ import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.NotThreadSafe;
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
 
 /**
  * Default implementation of {@link OffsetManager} that uses Kafka's OffsetStorageWriter to commit offsets.
- * This class is meant to be used in a thread confined manner and is not thread safe.
  */
-@NotThreadSafe
+@ThreadSafe
 public class KafkaOffsetManager implements OffsetManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaOffsetManager.class);
 
-    private OffsetStorageWriter offsetStorageWriter;
-    private OffsetBackingStore offsetStore;
-    private OffsetStorageReader offsetReader;
-    private Converter keyConverter;
-    private Converter valueConverter;
+    private final OffsetBackingStore offsetBackingStore;
+    private final OffsetStorageWriter offsetStorageWriter;
+    private final OffsetStorageReader offsetStorageReader;
 
-    public void configure(Configuration config) {
-        this.offsetStore = initializeOffsetStore(config);
+    public KafkaOffsetManager(Configuration config) {
+        this(initializeOffsetStore(config), config);
+    }
 
+    public KafkaOffsetManager(OffsetBackingStore offsetBackingStore, Configuration config) {
         final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
 
         Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        this.keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        this.keyConverter.configure(internalConverterConfig, true);
-        this.valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        this.valueConverter.configure(internalConverterConfig, false);
 
-        this.offsetStorageWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
-        this.offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
+        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        keyConverter.configure(internalConverterConfig, true);
+
+        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
+        valueConverter.configure(internalConverterConfig, false);
+
+        this.offsetBackingStore = offsetBackingStore;
+        this.offsetStorageWriter = new OffsetStorageWriter(offsetBackingStore, engineName, keyConverter, valueConverter);
+        this.offsetStorageReader = new OffsetStorageReaderImpl(offsetBackingStore, engineName, keyConverter, valueConverter);
+    }
+
+    public OffsetBackingStore getOffsetBackingStore() {
+        return offsetBackingStore;
     }
 
     @Override
     public OffsetStorageReader offsetStorageReader() {
-        return offsetReader;
+        return offsetStorageReader;
     }
 
     @Override
@@ -65,14 +71,20 @@ public class KafkaOffsetManager implements OffsetManager {
     }
 
     @Override
+    public void start() {
+        this.offsetBackingStore.start();
+    }
+
+    @Override
     public void stop() {
-        this.offsetStore.stop();
+        this.offsetBackingStore.stop();
     }
 
     private static OffsetBackingStore initializeOffsetStore(Configuration config) {
+        LOGGER.info("Initializing OffsetBackingStore from configuration");
         // Instantiate the offset store ...
         final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-        OffsetBackingStore offsetStore = Instantiator.getInstance(offsetStoreClassName);
+        OffsetBackingStore offsetBackingStore = Instantiator.getInstance(offsetStoreClassName);
 
         // Initialize the offset store ...
         try {
@@ -81,14 +93,13 @@ public class KafkaOffsetManager implements OffsetManager {
             embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
             WorkerConfig workerConfig = new EmbeddedEngine.EmbeddedConfig(embeddedConfig);
 
-            offsetStore.configure(workerConfig);
-            offsetStore.start();
+            offsetBackingStore.configure(workerConfig);
         }
         catch (Throwable t) {
-            offsetStore.stop();
+            offsetBackingStore.stop();
             throw new RuntimeException(t);
 
         }
-        return offsetStore;
+        return offsetBackingStore;
     }
 }

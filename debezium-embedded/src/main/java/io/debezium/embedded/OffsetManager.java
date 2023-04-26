@@ -10,7 +10,6 @@ import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
 
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 
 /**
@@ -29,6 +28,11 @@ public interface OffsetManager {
             .withDefault(FileOffsetBackingStore.class.getName());
 
     /**
+     * Retrieve the {@link OffsetBackingStore} that is managed by this {@link OffsetManager}.
+     */
+    OffsetBackingStore getOffsetBackingStore();
+
+    /**
      * Retrieve the {@link OffsetStorageReader} that is managed by this {@link OffsetManager}.
      */
     OffsetStorageReader offsetStorageReader();
@@ -39,9 +43,9 @@ public interface OffsetManager {
     OffsetStorageWriter offsetStorageWriter();
 
     /**
-     * Configure the {@link OffsetManager} with the given configuration.
+     * Lifecycle method indicating that processing should start.
      */
-    void configure(Configuration config);
+    void start();
 
     /**
      * Lifecycle method indicating that processing should stop and resources be freed.
