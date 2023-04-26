@@ -69,7 +69,9 @@ public class TypeRegistry {
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
-            + "WHERE n.nspname != 'pg_toast' ORDER BY t.oid ASC";
+            + "WHERE n.nspname != 'pg_toast'";
+
+    private static final String PRIME_SQL_TYPES_QUERY = SQL_TYPES + " ORDER BY t.oid ASC";
 
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
@@ -317,7 +319,7 @@ public class TypeRegistry {
      */
     private void prime() throws SQLException {
         try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(SQL_TYPES)) {
+                ResultSet rs = statement.executeQuery(PRIME_SQL_TYPES_QUERY)) {
             final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
             while (rs.next()) {
                 PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
