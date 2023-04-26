@@ -501,7 +501,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
                             continue;
                         }
-                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection());
+                        final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, txOrder, oplogContext, connectorConfig.getEnableRawOplog(),
+                                connectorConfig.getAllowCmdCollection());
                         if (!r) {
                             return false;
                         }
@@ -513,7 +514,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             try {
                 dispatcher.dispatchTransactionStartedEvent(oplogContext.getPartition(), getTransactionId(event), oplogContext.getOffset());
                 for (BsonValue change : txChanges) {
-                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog(), connectorConfig.getAllowCmdCollection());
+                    final boolean r = handleOplogEvent(primaryAddress, change.asDocument(), event, ++txOrder, oplogContext, connectorConfig.getEnableRawOplog(),
+                            connectorConfig.getAllowCmdCollection());
                     if (!r) {
                         return false;
                     }
