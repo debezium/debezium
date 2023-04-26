@@ -2747,7 +2747,7 @@ If you include this property in the configuration, do not set the `column.includ
 
 |[[postgresql-property-skip-messages-without-change]]<<postgresql-property-skip-messages-without-change, `+skip.messages.without.change+`>>
 |`false`
-| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties. 
+| Specifies whether to skip publishing messages when there is no change in included columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
 
 Note: Only works when REPLICA IDENTITY of the table to is FULL
 

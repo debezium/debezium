@@ -113,7 +113,7 @@ public abstract class RelationalChangeRecordEmitter<P extends Partition>
          * (Postgres) Only works if REPLICA IDENTITY is set to FULL - as oldValues won't be available
          */
         if (skipMessagesWithoutChange() && Objects.nonNull(newValue) && newValue.equals(oldValue)) {
-            LOGGER.debug("No new values found for table '{}' in whitelisted columns from update message at '{}'; skipping record", tableSchema,
+            LOGGER.debug("No new values found for table '{}' in included columns from update message at '{}'; skipping record", tableSchema,
                     getOffset().getSourceInfo());
             return;
         }
