@@ -52,3 +52,4 @@ ALTER TABLE VIDEO ADD (sql_code_injection_check NUMBER GENERATED ALWAYS AS (sdd_
 -- Shrink Space
 ALTER TABLE "ODS_XMES_QY"."ORDER_ITEM" shrink space CHECK;
 ALTER TABLE boff_item_jn SET INTERVAL ( numtodsinterval ( 1, 'DAY' ) );
+ALTER TABLE tft_tsm.t_act_trade_detail MODIFY PARTITION  SYS_P41089 SHRINK SPACE ;
