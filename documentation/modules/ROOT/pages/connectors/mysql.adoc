@@ -2665,7 +2665,7 @@ If you include this property in the configuration, do not set the `column.exclud
 
 |[[mysql-property-skip-messages-without-change]]<<mysql-property-skip-messages-without-change, `+skip.messages.without.change+`>>
 |`false`
-| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
+| Specifies whether to skip publishing messages when there is no change in included columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
 
 
 |[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>

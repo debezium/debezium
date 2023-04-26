@@ -2249,7 +2249,7 @@ If you include this property in the configuration, do not also set the `column.i
 
 |[[sqlserver-property-skip-messages-without-change]]<<sqlserver-property-skip-messages-without-change, `+skip.messages.without.change+`>>
 |`false`
-| Specifies whether to skip publishing messages when there is no change in whitelisted columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
+| Specifies whether to skip publishing messages when there is no change in included columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
 
 |[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>;
 [[sqlserver-property-column-mask-hash-v2]]<<sqlserver-property-column-mask-hash-v2, `column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`>>

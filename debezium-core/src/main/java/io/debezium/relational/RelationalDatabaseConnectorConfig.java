@@ -323,7 +323,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription(("Enable to skip publishing messages when there is no change in whitelisted columns."
+            .withDescription(("Enable to skip publishing messages when there is no change in included columns."
                     + "This would essentially filter messages to be sent when there is no change in columns included as per column.include.list/column.exclude.list."
                     + "For Postgres - this would require REPLICA IDENTITY of table to be FULL."))
             .withValidation(Field::isBoolean);
