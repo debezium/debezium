@@ -71,8 +71,6 @@ public class TypeRegistry {
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
             + "WHERE n.nspname != 'pg_toast'";
 
-    private static final String PRIME_SQL_TYPES_QUERY = SQL_TYPES + " ORDER BY t.oid ASC";
-
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
     private static final String SQL_OID_LOOKUP = SQL_TYPES + " AND t.oid = ?";
@@ -133,6 +131,8 @@ public class TypeRegistry {
         oidToType.put(type.getOid(), type);
         if (!nameToType.containsKey(type.getName())) {
             nameToType.put(type.getName(), type);
+        } else {
+            LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), type.getName());
         }
 
         if (TYPE_NAME_GEOMETRY.equals(type.getName())) {
@@ -319,7 +319,7 @@ public class TypeRegistry {
      */
     private void prime() throws SQLException {
         try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(PRIME_SQL_TYPES_QUERY)) {
+                ResultSet rs = statement.executeQuery(SQL_TYPES)) {
             final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
             while (rs.next()) {
                 PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
