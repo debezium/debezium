@@ -540,8 +540,9 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |(Optional) An endpoint url at which the Kinesis target streams are provided.
 
 |[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.credentials.profile`>>
-|`default`
-|A credentials profile name used to communicate with Amazon API.
+|
+|(Optional) A credentials profile name used to communicate with Amazon API through the default credential profiles file.
+If not present will be used the default credentials provider chain. It will look for credentials on the following order: environment variables, java system properties, web identity token credentials, default credential profiles file, Amazon ECS container credentials and instance profile credentials.
 
 |[[kinesis-null-key]]<<kinesis-null-key, `debezium.sink.kinesis.null.key`>>
 |`default`
