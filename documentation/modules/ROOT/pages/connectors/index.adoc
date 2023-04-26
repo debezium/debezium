@@ -10,7 +10,7 @@ We currently have the following connectors:
 * xref:connectors/sqlserver.adoc[SQL Server]
 * xref:connectors/oracle.adoc[Oracle]
 * xref:connectors/db2.adoc[Db2]
-* xref:connectors/cassandra.adoc[Cassandra] (Incubating)
+* xref:connectors/cassandra.adoc[Cassandra]
 * xref:connectors/vitess.adoc[Vitess] (Incubating)
 * xref:connectors/spanner.adoc[Spanner] (Incubating)
 * xref:connectors/jdbc.adoc[JDBC] (Incubating)
