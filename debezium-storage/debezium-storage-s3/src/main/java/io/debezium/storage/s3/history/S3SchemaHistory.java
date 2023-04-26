@@ -7,7 +7,6 @@ package io.debezium.storage.s3.history;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -146,7 +145,7 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
     }
 
     @Override
-    public synchronized void start() {
+    protected void doPreStart() {
         if (client == null) {
             S3ClientBuilder clientBuilder = S3Client.builder().credentialsProvider(credentialsProvider).region(region);
             if (endpoint != null) {
@@ -155,84 +154,58 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
 
             client = clientBuilder.build();
         }
-
-        lock.write(() -> {
-            if (running.compareAndSet(false, true)) {
-                if (!storageExists()) {
-                    initializeStorage();
-                }
-
-                InputStream objectInputStream = null;
-                try {
-                    GetObjectRequest request = GetObjectRequest.builder()
-                            .bucket(bucket)
-                            .key(objectName)
-                            .responseContentType(OBJECT_CONTENT_TYPE)
-                            .build();
-                    objectInputStream = client.getObject(request, ResponseTransformer.toInputStream());
-                }
-                catch (NoSuchKeyException e) {
-                    // do nothing
-                }
-                catch (S3Exception e) {
-                    throw new SchemaHistoryException("Can't retrieve history object from S3", e);
-                }
-
-                if (objectInputStream != null) {
-                    toHistoryRecord(objectInputStream);
-                }
-            }
-        });
-        super.start();
     }
 
     @Override
-    public synchronized void stop() {
-        if (running.compareAndSet(true, false)) {
-            if (client != null) {
-                client.close();
-            }
+    protected void doStart() {
+        InputStream objectInputStream = null;
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(objectName)
+                    .responseContentType(OBJECT_CONTENT_TYPE)
+                    .build();
+            objectInputStream = client.getObject(request, ResponseTransformer.toInputStream());
+        }
+        catch (NoSuchKeyException e) {
+            // do nothing
+        }
+        catch (S3Exception e) {
+            throw new SchemaHistoryException("Can't retrieve history object from S3", e);
         }
 
-        super.stop();
+        if (objectInputStream != null) {
+            toHistoryRecord(objectInputStream);
+        }
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
+    public void doStop() {
+        if (client != null) {
+            client.close();
+        }
+    }
+
+    @Override
+    protected void doPreStoreRecord(HistoryRecord record) {
         if (client == null) {
             throw new SchemaHistoryException("No S3 client is available. Ensure that 'start()' is called before storing database history records.");
         }
-        if (record == null) {
-            return;
+    }
+
+    @Override
+    protected void doStoreRecord(HistoryRecord record) {
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(objectName)
+                    .contentType(OBJECT_CONTENT_TYPE)
+                    .build();
+            client.putObject(request, RequestBody.fromBytes(fromHistoryRecord(record)));
         }
-
-        lock.write(() -> {
-            if (!running.get()) {
-                throw new SchemaHistoryException("The history has been stopped and will not accept more records");
-            }
-
-            try {
-                PutObjectRequest request = PutObjectRequest.builder()
-                        .bucket(bucket)
-                        .key(objectName)
-                        .contentType(OBJECT_CONTENT_TYPE)
-                        .build();
-                client.putObject(request, RequestBody.fromBytes(fromHistoryRecord(record)));
-            }
-            catch (S3Exception e) {
-                throw new SchemaHistoryException("Can not store record to S3", e);
-            }
-        });
-    }
-
-    @Override
-    protected void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> getRecords().forEach(records));
-    }
-
-    @Override
-    public boolean exists() {
-        return !getRecords().isEmpty();
+        catch (S3Exception e) {
+            throw new SchemaHistoryException("Can not store record to S3", e);
+        }
     }
 
     @Override

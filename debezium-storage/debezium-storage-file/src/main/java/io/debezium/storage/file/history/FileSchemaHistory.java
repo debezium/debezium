@@ -5,7 +5,6 @@
  */
 package io.debezium.storage.file.history;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -14,7 +13,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
-import java.util.function.Consumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
@@ -36,6 +37,7 @@ import io.debezium.util.Loggings;
  */
 @ThreadSafe
 public final class FileSchemaHistory extends AbstractFileBasedSchemaHistory {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileSchemaHistory.class);
 
     public static final Field FILE_PATH = Field.create(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
             .withDescription("The path to the file that will be used to record the database schema history")
@@ -58,75 +60,38 @@ public final class FileSchemaHistory extends AbstractFileBasedSchemaHistory {
     }
 
     @Override
-    public void start() {
-        super.start();
-        lock.write(() -> {
-            if (running.compareAndSet(false, true)) {
-                if (!storageExists()) {
-                    initializeStorage();
-                }
-            }
-        });
-    }
+    protected void doStoreRecord(HistoryRecord record) {
+        try {
+            LOGGER.trace("Storing record into database history: {}", record);
+            records.add(record);
+            String line = documentWriter.write(record.document());
 
-    @Override
-    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
-        if (record == null) {
-            return;
-        }
-        lock.write(() -> {
-            if (!running.get()) {
-                throw new IllegalStateException("The history has been stopped and will not accept more records");
-            }
-            try {
-                String line = documentWriter.write(record.document());
-                // Create a buffered writer to write all of the records, closing the file when there is an error or when
-                // the thread is no longer supposed to run
-                try (BufferedWriter historyWriter = Files.newBufferedWriter(path, StandardOpenOption.APPEND)) {
-                    try {
-                        historyWriter.append(line);
-                        historyWriter.newLine();
-                    }
-                    catch (IOException e) {
-                        Loggings.logErrorAndTraceRecord(logger, record, "Failed to add record to history at {}", path, e);
-                    }
+            try (BufferedWriter historyWriter = Files.newBufferedWriter(path, StandardOpenOption.APPEND)) {
+                try {
+                    historyWriter.append(line);
+                    historyWriter.newLine();
                 }
                 catch (IOException e) {
-                    throw new SchemaHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
+                    Loggings.logErrorAndTraceRecord(logger, record, "Failed to add record to history at {}", path, e);
                 }
             }
             catch (IOException e) {
-                Loggings.logErrorAndTraceRecord(logger, record, "Failed to convert record to string", e);
+                throw new SchemaHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
             }
-        });
+        }
+        catch (IOException e) {
+            Loggings.logErrorAndTraceRecord(logger, record, "Failed to convert record to string", e);
+        }
     }
 
     @Override
-    public void stop() {
-        running.set(false);
-        super.stop();
-    }
-
-    @Override
-    protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> {
-            if (exists()) {
-                try (BufferedReader historyReader = Files.newBufferedReader(path)) {
-                    while (true) {
-                        String line = historyReader.readLine();
-                        if (line == null) {
-                            break;
-                        }
-                        if (!line.isEmpty()) {
-                            records.accept(new HistoryRecord(documentReader.read(line)));
-                        }
-                    }
-                }
-                catch (IOException e) {
-                    logger.error("Failed to add recover records from history at {}", path, e);
-                }
-            }
-        });
+    protected void doStart() {
+        try {
+            toHistoryRecord(Files.newInputStream(path));
+        }
+        catch (IOException e) {
+            throw new SchemaHistoryException("Can't retrieve file with schema history", e);
+        }
     }
 
     @Override

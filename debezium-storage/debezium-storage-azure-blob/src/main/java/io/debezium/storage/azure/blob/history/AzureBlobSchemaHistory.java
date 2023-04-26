@@ -7,7 +7,6 @@ package io.debezium.storage.azure.blob.history;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -87,7 +86,7 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
     }
 
     @Override
-    public synchronized void start() {
+    protected void doPreStart() {
         if (blobServiceClient == null) {
             blobServiceClient = new BlobServiceClientBuilder()
                     .connectionString(config.getString(ACCOUNT_CONNECTION_STRING))
@@ -97,51 +96,28 @@ public class AzureBlobSchemaHistory extends AbstractFileBasedSchemaHistory {
             blobClient = blobServiceClient.getBlobContainerClient(container)
                     .getBlobClient(blobName);
         }
-
-        lock.write(() -> {
-            if (running.compareAndSet(false, true)) {
-                if (!storageExists()) {
-                    initializeStorage();
-                }
-            }
-
-            if (blobClient.exists()) {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                blobClient.downloadStream(outputStream);
-                ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-                toHistoryRecord(inputStream);
-            }
-        });
-        super.start();
     }
 
     @Override
-    protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
+    protected void doStart() {
+        if (blobClient.exists()) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            blobClient.downloadStream(outputStream);
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+            toHistoryRecord(inputStream);
+        }
+    }
+
+    @Override
+    protected void doPreStoreRecord(HistoryRecord record) {
         if (blobClient == null) {
             throw new SchemaHistoryException("No Blob client is available. Ensure that 'start()' is called before storing database history records.");
         }
-        if (record == null) {
-            return;
-        }
-
-        lock.write(() -> {
-            if (!running.get()) {
-                throw new SchemaHistoryException("The history has been stopped and will not accept more records");
-            }
-
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(fromHistoryRecord(record));
-            blobClient.upload(inputStream, true);
-        });
     }
 
     @Override
-    protected void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> getRecords().forEach(records));
-    }
-
-    @Override
-    public boolean exists() {
-        return !getRecords().isEmpty();
+    protected void doStoreRecord(HistoryRecord record) {
+        blobClient.upload(new ByteArrayInputStream(fromHistoryRecord(record)), true);
     }
 
     @Override
