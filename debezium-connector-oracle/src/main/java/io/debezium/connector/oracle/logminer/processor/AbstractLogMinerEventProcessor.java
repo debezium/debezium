@@ -290,7 +290,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // Check whether the row has a table reference and if so, is the reference included by the filter.
         // If the reference isn't included, the row will be skipped entirely.
         if (row.getTableId() != null) {
-            if (LogWriterFlushStrategy.isFlushTable(row.getTableId(), connectorConfig.getJdbcConfig().getUser())) {
+            if (LogWriterFlushStrategy.isFlushTable(row.getTableId(), connectorConfig.getJdbcConfig().getUser(), connectorConfig.getLogMiningFlushTableName())) {
                 LOGGER.trace("Skipped change associated with flush table '{}'", row.getTableId());
                 return;
             }

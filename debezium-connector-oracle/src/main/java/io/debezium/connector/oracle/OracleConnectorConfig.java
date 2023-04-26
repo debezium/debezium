@@ -486,6 +486,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
             .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
 
+    public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
+            .withDisplayName("Specifies the name of the flush table used by the connector")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault("LOG_MINING_FLUSH")
+            .withValidation(OracleConnectorConfig::validateLogMiningFlushTableName)
+            .withDescription("The name of the flush table used by the connector, defaults to LOG_MINING_FLUSH.");
+
     public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
             .withDescription(
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size, defaults to '2000'.")
@@ -548,7 +557,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
                     LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
-                    LOG_MINING_READ_ONLY)
+                    LOG_MINING_READ_ONLY,
+                    LOG_MINING_FLUSH_TABLE_NAME)
             .create();
 
     /**
@@ -607,6 +617,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningMaximumSession;
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
     private final Boolean logMiningReadOnly;
+    private final String logMiningFlushTableName;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -662,6 +673,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
         this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
         this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
+        this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
     }
 
     private static String toUpperCase(String property) {
@@ -1280,7 +1292,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         private boolean isFlushTable(TableId id) {
-            return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER));
+            return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER), config.getString(LOG_MINING_FLUSH_TABLE_NAME));
         }
 
         private boolean isCompressionAdvisorTable(TableId id) {
@@ -1524,6 +1536,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningReadOnly;
     }
 
+    /**
+     * @return the log mining flush table name
+     */
+    public String getLogMiningFlushTableName() {
+        return logMiningFlushTableName;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -1638,5 +1657,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    public static int validateLogMiningFlushTableName(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
+            // This option is not required when using read-only mode
+            return 0;
+        }
+        else if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            // This option is not required when using XStream
+            return 0;
+        }
+        return Field.isRequired(config, field, problems);
     }
 }

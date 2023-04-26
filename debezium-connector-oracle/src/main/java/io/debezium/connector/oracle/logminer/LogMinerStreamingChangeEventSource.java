@@ -858,7 +858,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         if (connectorConfig.isRacSystem()) {
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }
-        return new CommitLogWriterFlushStrategy(jdbcConnection);
+        return new CommitLogWriterFlushStrategy(connectorConfig, jdbcConnection);
     }
 
     /**
