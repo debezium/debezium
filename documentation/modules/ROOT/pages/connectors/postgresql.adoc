@@ -2296,7 +2296,7 @@ So when the connector restarts and it reads the WAL files on the new slot, it ca
 Because the connector cannot find the known offset, it skips any existing change events in the log and resumes streaming only from the most recent position.
 Silent data loss occurs, because the connector does not emit records for the skipped events, and the connector does not report an error.
 To ensure that {prodname} captures does not miss any events, it might be necessary to remove offsets from from the offset storage topic.
-See the following procedure for guidance about how to perform a PostgreSQL database upgrade to enable {prodname} to continue to capture events, and minimize the risk of data loss.
+See the following procedure for guidance about how to perform a PostgreSQL database upgrade to enable {prodname} to continue to capture events, and to minimize the risk of data loss.
 
 .Procedure
 
@@ -2372,7 +2372,7 @@ ifdef::community[]
 * xref:postgresql-server-configuration[Configuring replication slots for {prodname}]
 endif::community[]
 ifdef::product[]
-* xref::configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configuring replication slots for {prodname}].
+* xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configuring replication slots for {prodname}].
 endif::product[]
 
 // Type: assembly
