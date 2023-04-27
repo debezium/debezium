@@ -1038,10 +1038,11 @@ public interface Configuration {
 
     default <T> List<T> getList(String key, String separator, Function<String, T> converter) {
         var value = getString(key);
-        return Arrays.stream(value.split(separator))
-                .map(String::trim)
-                .map(converter)
-                .collect(Collectors.toList());
+        return value == null ? List.of()
+                : Arrays.stream(value.split(separator))
+                        .map(String::trim)
+                        .map(converter)
+                        .collect(Collectors.toList());
     }
 
     /**

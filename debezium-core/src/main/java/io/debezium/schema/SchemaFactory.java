@@ -22,6 +22,7 @@ import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord;
@@ -77,6 +78,10 @@ public class SchemaFactory {
 
     private static final String SCHEMA_HISTORY_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
     private static final int SCHEMA_HISTORY_CHANGE_SCHEMA_VERSION = 1;
+    private static final String NOTIFICATION_KEY_SCHEMA_NAME = "io.debezium.connector.common.NotificationKey";
+    private static final Integer NOTIFICATION_KEY_SCHEMA_VERSION = 1;
+    private static final String NOTIFICATION_VALUE_SCHEMA_NAME = "io.debezium.connector.common.Notification";
+    private static final Integer NOTIFICATION_VALUE_SCHEMA_VERSION = 1;
 
     private static final SchemaFactory schemaFactoryObject = new SchemaFactory();
 
@@ -206,6 +211,25 @@ public class SchemaFactory {
                 .field(HistoryRecord.Fields.SCHEMA_NAME, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(HistoryRecord.Fields.DDL_STATEMENTS, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(HistoryRecord.Fields.TABLE_CHANGES, SchemaBuilder.array(serializer.getChangeSchema()).build())
+                .build();
+    }
+
+    public Schema notificationKeySchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(NOTIFICATION_KEY_SCHEMA_NAME))
+                .version(NOTIFICATION_KEY_SCHEMA_VERSION)
+                .field(Notification.ID_KEY, Schema.STRING_SCHEMA)
+                .build();
+    }
+
+    public Schema notificationValueSchema(SchemaNameAdjuster adjuster) {
+        return SchemaBuilder.struct()
+                .name(adjuster.adjust(NOTIFICATION_VALUE_SCHEMA_NAME))
+                .version(NOTIFICATION_VALUE_SCHEMA_VERSION)
+                .field(Notification.ID_KEY, SchemaBuilder.STRING_SCHEMA)
+                .field(Notification.TYPE, Schema.STRING_SCHEMA)
+                .field(Notification.AGGREGATE_TYPE, Schema.STRING_SCHEMA)
+                .field(Notification.ADDITIONAL_DATA, SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).optional().build())
                 .build();
     }
 

@@ -8,6 +8,7 @@ package io.debezium.pipeline;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,6 +25,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.notification.Notification;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
@@ -65,6 +68,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
     protected final SignalProcessor<P, O> signalProcessor;
+    protected final NotificationService<P, O> notificationService;
 
     private volatile boolean running;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
@@ -78,7 +82,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
                                         DatabaseSchema<?> schema,
-                                        SignalProcessor<P, O> signalProcessor) {
+                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -87,14 +91,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
         this.signalProcessor = signalProcessor;
-    }
-
-    public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
-                                        CommonConnectorConfig connectorConfig,
-                                        ChangeEventSourceFactory<P, O> changeEventSourceFactory,
-                                        ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
-                                        DatabaseSchema<?> schema) {
-        this(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory, changeEventSourceMetricsFactory, eventDispatcher, schema, null);
+        this.notificationService = notificationService;
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -154,6 +151,18 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
 
+        try {
+            notificationService.notify(Notification.Builder.builder()
+                    .withId(UUID.randomUUID().toString())
+                    .withAggregateType("Initial Snapshot")
+                    .withType("Status " + snapshotResult.getStatus())
+                    .build(),
+                    Offsets.of(previousOffsets.getTheOnlyPartition(), snapshotResult.getOffset()));
+        }
+        catch (UnsupportedOperationException e) {
+            LOGGER.warn("Initial Snapshot notification not currently supported for MongoDB");
+        }
+
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(snapshotResult.getOffset()));
 
         LOGGER.debug("Snapshot result {}", snapshotResult);
@@ -198,10 +207,12 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     protected void initStreamEvents(P partition, O offsetContext) throws InterruptedException {
+
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init(offsetContext);
+
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));
 
         final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory

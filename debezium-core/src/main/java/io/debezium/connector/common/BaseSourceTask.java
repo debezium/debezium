@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -34,6 +35,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
@@ -60,7 +62,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         RESTARTING,
         RUNNING,
         INITIAL,
-        STOPPED;
+        STOPPED
     }
 
     private final AtomicReference<State> state = new AtomicReference<>(State.INITIAL);
@@ -98,6 +100,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
+    private List<NotificationChannel> notificationChannels;
+
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -105,6 +109,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         // Initial our poll output delay logic ...
         pollOutputDelay.hasElapsed();
         previousOutputInstant = clock.currentTimeAsInstant();
+
+        this.notificationChannels = StreamSupport.stream(ServiceLoader.load(NotificationChannel.class).spliterator(), false)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -406,5 +413,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         finally {
             stateLock.unlock();
         }
+    }
+
+    public List<NotificationChannel> getNotificationChannels() {
+        return notificationChannels;
     }
 }

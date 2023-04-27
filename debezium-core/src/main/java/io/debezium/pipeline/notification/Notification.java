@@ -1,0 +1,91 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.pipeline.notification;
+
+import java.util.Map;
+
+public class Notification {
+
+    public static final String ID_KEY = "id";
+    public static final String TYPE = "type";
+    public static final String AGGREGATE_TYPE = "aggregate_type";
+    public static final String ADDITIONAL_DATA = "additional_data";
+
+    private final String id;
+    private final String aggregateType;
+    private final String type;
+    private final Map<String, String> additionalData;
+
+    public Notification(String id, String aggregateType, String type, Map<String, String> additionalData) {
+        this.id = id;
+        this.aggregateType = aggregateType;
+        this.type = type;
+        this.additionalData = additionalData;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getAggregateType() {
+        return aggregateType;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public Map<String, String> getAdditionalData() {
+        return additionalData;
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "aggregateType='" + aggregateType + '\'' +
+                ", type='" + type + '\'' +
+                ", additionalData=" + additionalData +
+                '}';
+    }
+
+    public static final class Builder {
+        private String id;
+        private String aggregateType;
+        private String type;
+        private Map<String, String> additionalData;
+
+        private Builder() {
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public Builder withId(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder withAggregateType(String aggregateType) {
+            this.aggregateType = aggregateType;
+            return this;
+        }
+
+        public Builder withType(String type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder withAdditionalData(Map<String, String> additionalData) {
+            this.additionalData = additionalData;
+            return this;
+        }
+
+        public Notification build() {
+            return new Notification(id, aggregateType, type, additionalData);
+        }
+    }
+}

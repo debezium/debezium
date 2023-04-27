@@ -29,8 +29,10 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
@@ -118,6 +120,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
+            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                    connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
+
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     // TODO pass offsets from all the partitions
                     Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
@@ -135,7 +140,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     new MongoDbChangeEventSourceMetricsFactory(),
                     dispatcher,
                     schema,
-                    signalProcessor);
+                    signalProcessor,
+                    notificationService);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

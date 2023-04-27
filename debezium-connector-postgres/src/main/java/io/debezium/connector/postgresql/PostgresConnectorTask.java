@@ -39,9 +39,11 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -211,6 +213,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
+            NotificationService<PostgresPartition, PostgresOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
+                    connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
+
             ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffsets,
                     errorHandler,
@@ -233,7 +238,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     schema,
                     snapshotter,
                     slotInfo,
-                    signalProcessor);
+                    signalProcessor,
+                    notificationService);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 
