@@ -326,13 +326,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
-        validateSlotIsInExpectedState(walPosition);
-
         final int maxRetries = connectorConfig.maxRetries();
         final Duration delay = connectorConfig.retryDelay();
         int tryCount = 0;
         while (true) {
             try {
+                validateSlotIsInExpectedState(walPosition);
                 return createReplicationStream(lsn, walPosition);
             }
             catch (Exception e) {
