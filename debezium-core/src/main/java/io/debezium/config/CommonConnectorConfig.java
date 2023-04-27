@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -39,6 +40,7 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
@@ -385,6 +387,7 @@ public abstract class CommonConnectorConfig {
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
+    public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
 
     public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withDisplayName("Topic prefix")
@@ -658,6 +661,13 @@ public abstract class CommonConnectorConfig {
                     + " matched against this regular expression. If matched the error is changed to retriable.")
             .withDefault(false);
 
+    public static final Field NOTIFICATION_ENABLED_CHANNELS = Field.create(NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "enabled.channels")
+            .withDisplayName("Enabled notification channels names")
+            .withType(Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("List of notification channels names that is enabled.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -681,7 +691,9 @@ public abstract class CommonConnectorConfig {
                     SIGNAL_DATA_COLLECTION,
                     SIGNAL_POLL_INTERVAL_MS,
                     SIGNAL_ENABLED_CHANNELS,
-                    TOPIC_NAMING_STRATEGY)
+                    TOPIC_NAMING_STRATEGY,
+                    NOTIFICATION_ENABLED_CHANNELS,
+                    SinkNotificationChannel.NOTIFICATION_TOPIC)
             .create();
 
     private final Configuration config;
@@ -715,6 +727,9 @@ public abstract class CommonConnectorConfig {
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
 
+    private final String notificationTopicName;
+    private final List<String> enabledNotificationChannels;
+
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
@@ -744,6 +759,8 @@ public abstract class CommonConnectorConfig {
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(TASK_ID);
+        this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
+        this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -841,6 +858,14 @@ public abstract class CommonConnectorConfig {
 
     public int getIncrementalSnashotChunkSize() {
         return incrementalSnapshotChunkSize;
+    }
+
+    public String getNotificationTopic() {
+        return notificationTopicName;
+    }
+
+    public List<String> getEnabledNotificationChannels() {
+        return enabledNotificationChannels;
     }
 
     public boolean shouldProvideTransactionMetadata() {

@@ -85,7 +85,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     @SingleThreadAccess("producer thread")
     private boolean buffering;
 
-    private AtomicReference<T> bufferedEvent = new AtomicReference<>();
+    private final AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
 
@@ -330,5 +330,9 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     @Override
     public long currentQueueSizeInBytes() {
         return currentQueueSizeInBytes;
+    }
+
+    public boolean isBuffered() {
+        return buffering;
     }
 }

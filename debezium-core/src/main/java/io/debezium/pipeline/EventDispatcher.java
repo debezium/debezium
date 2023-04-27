@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -163,6 +164,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             this.sourceSignalChannel = null;
         }
         this.heartbeat = heartbeat;
+
+        // TODO this should be the place where this queue must be passed to KafkaNotificationChannel
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
@@ -447,6 +450,15 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void dispatchServerHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
+        }
+    }
+
+    public void enqueueNotification(SourceRecord record) throws InterruptedException {
+
+        queue.enqueue(new DataChangeEvent(record));
+
+        if (queue.isBuffered()) {
+            queue.flushBuffer(Function.identity());
         }
     }
 

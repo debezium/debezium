@@ -19,6 +19,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -45,9 +46,10 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                                                 ChangeEventSourceMetricsFactory<PostgresPartition> changeEventSourceMetricsFactory,
                                                 EventDispatcher<PostgresPartition, ?> eventDispatcher, DatabaseSchema<?> schema,
                                                 Snapshotter snapshotter, SlotState slotInfo,
-                                                SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor) {
+                                                SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor,
+                                                NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService);
         this.snapshotter = snapshotter;
         this.slotInfo = slotInfo;
     }
