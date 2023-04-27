@@ -1943,6 +1943,7 @@ Details are in the following topics:
 * xref:setting-privileges-to-permit-debezium-user-to-create-postgresql-publications[]
 * xref:configuring-postgresql-to-allow-replication-with-the-connector-host[]
 * xref:configuring-postgresql-to-manage-debezium-wal-disk-space-consumption[]
+* xref:upgrading-postgresql-databases-that-debezium-captures-from[]
 
 endif::product[]
 
@@ -2275,8 +2276,8 @@ See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] 
 
 
 // Type: procedure
-// ModuleID: upgrading-postgresql-in-a-way-that-preserves-debezium-data-and-operations
-// Title: Upgrading PostgreSQL in a way that preserves {prodname} data and operations
+// ModuleID: upgrading-postgresql-databases-that-debezium-captures-from
+// Title: Upgrading PostgreSQL databases that {prodname} captures from
 [id="upgrading-postgresql"]
 === Upgrading PostgreSQL
 
