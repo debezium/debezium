@@ -170,7 +170,6 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     }
                 }
                 else {
-                    // System.out.println("STORAGE DOES NOT EXIST");
                     LOG.error("Storage does not exist when recovering records");
                 }
             }
