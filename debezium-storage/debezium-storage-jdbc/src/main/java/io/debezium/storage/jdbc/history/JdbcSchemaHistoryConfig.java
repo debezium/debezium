@@ -22,8 +22,8 @@ import io.debezium.util.Collect;
 public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private static final String DEFAULT_TABLE_NAME = "debezium_database_history";
-    private static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_hsitory_table_name")
-            .withDescription("The Redis key that will be used to store the database schema history")
+    private static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_name")
+            .withDescription("The Redis key -that will be used to store the database schema history")
             .withDefault(DEFAULT_TABLE_NAME);
 
     /**
@@ -34,7 +34,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
      * record_insert_ts - Timestamp when the record was inserted
      * record_insert_seq - Sequence number(Incremented for every record inserted)
      */
-    private static final String TABLE_DDL = "CREATE TABLE %s" +
+    private static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s" +
             "(" +
             "id VARCHAR(36) NOT NULL," +
             "history_data VARCHAR(65000)," +
@@ -43,8 +43,18 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             "record_insert_seq INTEGER NOT NULL" +
             ")";
 
-    private static final String TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM %s"
+    // Field that will store the Create Table DDL for schema history.
+    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_ddl")
+            .withDescription("Create table syntax for schema history table")
+            .withDefault(DEFAULT_TABLE_DDL);
+
+    private static final String DEFAULT_TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM %s"
             + " ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq";
+
+    // Field that will store the Schema history Select query.
+    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_select")
+            .withDescription("Select syntax to get schema history from jdbc table")
+            .withDefault(DEFAULT_TABLE_SELECT);
 
     private static final String TABLE_DATA_EXISTS_SELECT = "SELECT * FROM %s LIMIT 1";
 
@@ -64,15 +74,15 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     protected void init(Configuration config) {
         super.init(config);
         this.tableName = config.getString(PROP_TABLE_NAME);
-        this.tableCreate = String.format(TABLE_DDL, tableName);
-        this.tableSelect = String.format(TABLE_SELECT, tableName);
+        this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
+        this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(TABLE_DATA_EXISTS_SELECT, tableName);
         this.tableInsert = String.format(TABLE_INSERT, tableName);
     }
 
     @Override
     protected List<Field> getAllConfigurationFields() {
-        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME);
+        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME, PROP_TABLE_DDL, PROP_TABLE_SELECT);
         fields.addAll(super.getAllConfigurationFields());
         return fields;
     }
