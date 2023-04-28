@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.storage.jdbc;
+package io.debezium.storage.jdbc.offset;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -35,72 +35,21 @@ import org.apache.kafka.connect.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.Field;
+import io.debezium.config.Configuration;
 
 /**
  * Implementation of OffsetBackingStore that saves data to database table.
  */
 public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
-    public static final Field OFFSET_STORAGE_JDBC_URL = Field.create("offset.storage.jdbc.url")
-            .withDescription("URL of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
 
-    public static final Field OFFSET_STORAGE_JDBC_USER = Field.create("offset.storage.jdbc.user")
-            .withDescription("Username of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
-
-    public static final Field OFFSET_STORAGE_JDBC_PASSWORD = Field.create("offset.storage.jdbc.password")
-            .withDescription("Password of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
-
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
-    public static final Field OFFSET_STORAGE_TABLE_NAME = Field.create("offset.storage.jdbc.offset_table_name")
-            .withDescription("Name of the table to store offsets")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
-
-    /**
-     * JDBC Offset storage CREATE TABLE syntax.
-     */
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
-            "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
-            "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
-            ")";
-    /**
-     * The JDBC table that will store offset information.
-     * id - UUID
-     * offset_key - Offset Key
-     * offset_val - Offset value
-     * record_insert_ts - Timestamp when the record was inserted
-     * record_insert_seq - Sequence number of record
-     */
-    public static final Field OFFSET_STORAGE_TABLE_DDL = Field.create("offset.storage.jdbc.offset_table_ddl")
-            .withDescription("Create table syntax for offset jdbc table")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_DDL);
-
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
-            "ORDER BY record_insert_ts, record_insert_seq";
-    public static final Field OFFSET_STORAGE_TABLE_SELECT = Field.create("offset.storage.jdbc.offset_table_select`")
-            .withDescription("Select syntax to get offset data from jdbc table")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_SELECT);
-    public static final String OFFSET_STORAGE_TABLE_INSERT = "INSERT INTO %s VALUES ( ?, ?, ?, ?, ? )";
-
-    public static final String OFFSET_STORAGE_TABLE_DELETE = "DELETE FROM %s";
-
-    private static final Logger LOG = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
+    private JdbcOffsetBackingStoreConfig config;
 
     protected ConcurrentHashMap<String, String> data = new ConcurrentHashMap<>();
     protected ExecutorService executor;
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
     private Connection conn;
-    private String jdbcUrl;
-
-    private String offsetStorageTableName;
-
-    private String offsetStorageTableCreateDDL;
-
-    private String offsetStorageTableSelectQuery;
 
     public JdbcOffsetBackingStore() {
     }
@@ -117,19 +66,14 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     public void configure(WorkerConfig config) {
 
         try {
-            jdbcUrl = config.getString("offset.storage.jdbc.url");
-            offsetStorageTableName = config.getString(OFFSET_STORAGE_TABLE_NAME.name());
-            offsetStorageTableCreateDDL = String.format(config.getString(OFFSET_STORAGE_TABLE_DDL.name()),
-                    offsetStorageTableName);
-            offsetStorageTableSelectQuery = String.format(config.getString(OFFSET_STORAGE_TABLE_SELECT.name()),
-                    offsetStorageTableName);
+            Configuration configuration = Configuration.from(config.originalsStrings());
+            this.config = new JdbcOffsetBackingStoreConfig(configuration);
 
-            conn = DriverManager.getConnection(jdbcUrl, config.getString(OFFSET_STORAGE_JDBC_USER.name()),
-                    config.getString(OFFSET_STORAGE_JDBC_PASSWORD.name()));
+            conn = DriverManager.getConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword());
             conn.setAutoCommit(false);
         }
         catch (Exception e) {
-            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + jdbcUrl, e);
+            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + config.originalsStrings(), e);
         }
     }
 
@@ -138,42 +82,40 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(
                 this.getClass().getSimpleName() + "-%d", false));
 
-        LOG.info("Starting JdbcOffsetBackingStore db {}", jdbcUrl);
+        LOGGER.info("Starting JdbcOffsetBackingStore db '{}'", config.getJdbcUrl());
         try {
             initializeTable();
         }
         catch (SQLException e) {
 
-            throw new IllegalStateException("Failed to create JDBC offset table: " + jdbcUrl, e);
+            throw new IllegalStateException("Failed to create JDBC offset table: " + config.getJdbcUrl(), e);
         }
         load();
     }
 
     private void initializeTable() throws SQLException {
         DatabaseMetaData dbMeta = conn.getMetaData();
-        ResultSet tableExists = dbMeta.getTables(null, null, offsetStorageTableName, null);
+        ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
 
         if (tableExists.next()) {
             return;
         }
 
-        LOG.debug("Creating table {} to store offset", offsetStorageTableName);
-        conn.prepareStatement(offsetStorageTableCreateDDL).execute();
+        LOGGER.info("Creating table {} to store offset", config.getTableName());
+        conn.prepareStatement(config.getTableCreate()).execute();
     }
 
     protected void save() {
         try {
-            LOG.debug("Saving data to state table...");
-            try (PreparedStatement sqlDelete = conn.prepareStatement(String.format(OFFSET_STORAGE_TABLE_DELETE,
-                    offsetStorageTableName))) {
+            LOGGER.debug("Saving data to state table...");
+            try (PreparedStatement sqlDelete = conn.prepareStatement(config.getTableDelete())) {
                 sqlDelete.executeUpdate();
                 for (Map.Entry<String, String> mapEntry : data.entrySet()) {
                     Timestamp currentTs = new Timestamp(System.currentTimeMillis());
                     String key = (mapEntry.getKey() != null) ? mapEntry.getKey() : null;
                     String value = (mapEntry.getValue() != null) ? mapEntry.getValue() : null;
                     // Execute a query
-                    try (PreparedStatement sql = conn.prepareStatement(String.format(OFFSET_STORAGE_TABLE_INSERT,
-                            offsetStorageTableName))) {
+                    try (PreparedStatement sql = conn.prepareStatement(config.getTableInsert())) {
                         sql.setString(1, UUID.randomUUID().toString());
                         sql.setString(2, key);
                         sql.setString(3, value);
@@ -190,7 +132,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
                 conn.rollback();
             }
             catch (SQLException ex) {
-                //
+                // Ignore errors on rollback
             }
             throw new ConnectException(e);
         }
@@ -200,7 +142,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
         try {
             ConcurrentHashMap<String, String> tmpData = new ConcurrentHashMap<>();
             Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(offsetStorageTableSelectQuery);
+            ResultSet rs = stmt.executeQuery(config.getTableSelect());
             while (rs.next()) {
                 String key = rs.getString("offset_key");
                 String val = rs.getString("offset_val");
@@ -209,7 +151,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             data = tmpData;
         }
         catch (SQLException e) {
-            LOG.error("Failed recover records from database: {}", jdbcUrl, e);
+            throw new ConnectException("Failed recover records from database: " + config.getJdbcUrl(), e);
         }
     }
 
@@ -240,9 +182,9 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             }
         }
         catch (SQLException e) {
-            LOG.error("Exception while stopping JdbcOffsetBackingStore", e);
+            LOGGER.error("Exception while stopping JdbcOffsetBackingStore", e);
         }
-        LOG.info("Stopped JdbcOffsetBackingStore");
+        LOGGER.info("Stopped JdbcOffsetBackingStore");
     }
 
     @Override

@@ -15,21 +15,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
-import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
 import io.debezium.relational.history.AbstractSchemaHistory;
@@ -38,7 +35,6 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
-import io.debezium.util.Collect;
 import io.debezium.util.FunctionalReadWriteLock;
 
 /**
@@ -52,46 +48,6 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     private static final Logger LOG = LoggerFactory.getLogger(JdbcSchemaHistory.class);
 
-    public static final Field JDBC_URL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.url")
-            .withDescription("URL of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
-
-    public static final Field JDBC_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.user")
-            .withDescription("Username of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
-
-    public static final Field JDBC_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "jdbc.password")
-            .withDescription("Password of the database which will be used to record the database history")
-            .withValidation(Field::isRequired);
-
-    private static final String DATABASE_HISTORY_TABLE_NAME = "debezium_database_history";
-
-    /**
-     * Table that will store database history.
-     * id - Unique identifier(UUID)
-     * history_data - Schema history data.
-     * history_data_seq - Schema history part sequence number.
-     * record_insert_ts - Timestamp when the record was inserted
-     * record_insert_seq - Sequence number(Incremented for every record inserted)
-     */
-    private static final String DATABASE_HISTORY_TABLE_DDL = "CREATE TABLE " + DATABASE_HISTORY_TABLE_NAME +
-            "(" +
-            "id VARCHAR(36) NOT NULL," +
-            "history_data VARCHAR(65000)," +
-            "history_data_seq INTEGER," +
-            "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
-            ")";
-
-    private static final String DATABASE_HISTORY_TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM " + DATABASE_HISTORY_TABLE_NAME
-            + " ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq";
-
-    private static final String DATABASE_HISTORY_TABLE_DATA_EXISTS_SELECT = "SELECT * FROM " + DATABASE_HISTORY_TABLE_NAME + " LIMIT 1";
-
-    private static final String DATABASE_HISTORY_TABLE_INSERT = "INSERT INTO " + DATABASE_HISTORY_TABLE_NAME + " VALUES ( ?, ?, ?, ?, ? )";
-
-    private static final Collection<Field> ALL_FIELDS = Collect.arrayListOf(JDBC_USER);
-
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
@@ -99,27 +55,22 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
     private final AtomicInteger recordInsertSeq = new AtomicInteger(0);
 
     private Connection conn;
-    private String jdbcUrl;
+    private JdbcSchemaHistoryConfig config;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener, boolean useCatalogBeforeSchema) {
-        if (!config.validateAndRecord(ALL_FIELDS, LOG::error)) {
-            throw new ConnectException(
-                    "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
-        config.validateAndRecord(ALL_FIELDS, LOG::error);
+        this.config = new JdbcSchemaHistoryConfig(config);
         if (running.get()) {
-            throw new IllegalStateException("Database history already initialized db: " + config.getString(JDBC_URL));
+            throw new IllegalStateException("Database history already initialized db: " + this.config.getJdbcUrl());
         }
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
 
         try {
-            jdbcUrl = config.getString(JDBC_URL.name());
-            conn = DriverManager.getConnection(config.getString(JDBC_URL.name()), config.getString(JDBC_USER.name()), config.getString(JDBC_PASSWORD.name()));
+            conn = DriverManager.getConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword());
             conn.setAutoCommit(false);
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Failed to connect " + jdbcUrl);
+            throw new IllegalStateException("Failed to connect " + this.config.getJdbcUrl(), e);
         }
     }
 
@@ -137,7 +88,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     }
                 }
                 catch (Exception e) {
-                    throw new SchemaHistoryException("Unable to create history table " + jdbcUrl + ": " + e.getMessage(), e);
+                    throw new SchemaHistoryException("Unable to create history table " + config.getJdbcUrl() + ": " + e.getMessage(), e);
                 }
             }
         });
@@ -159,7 +110,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 List<String> substrings = split(line, 65000);
                 int partSeq = 0;
                 for (String dataPart : substrings) {
-                    PreparedStatement sql = conn.prepareStatement(DATABASE_HISTORY_TABLE_INSERT);
+                    PreparedStatement sql = conn.prepareStatement(config.getTableInsert());
                     sql.setString(1, UUID.randomUUID().toString());
                     sql.setString(2, dataPart);
                     sql.setInt(3, partSeq);
@@ -208,7 +159,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
             try {
                 if (exists()) {
                     Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery(DATABASE_HISTORY_TABLE_SELECT);
+                    ResultSet rs = stmt.executeQuery(config.getTableSelect());
 
                     while (rs.next()) {
                         String historyData = rs.getString("history_data");
@@ -234,7 +185,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         boolean sExists = false;
         try {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, DATABASE_HISTORY_TABLE_NAME, null);
+            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
             if (tableExists.next()) {
                 sExists = true;
             }
@@ -255,7 +206,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         boolean isExists = false;
         try {
             Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(DATABASE_HISTORY_TABLE_DATA_EXISTS_SELECT);
+            ResultSet rs = stmt.executeQuery(config.getTableDataExistsSelect());
             while (rs.next()) {
                 isExists = true;
             }
@@ -269,20 +220,20 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public String toString() {
-        return "Jdbc database: " + (jdbcUrl != null ? jdbcUrl : "(unstarted)");
+        return "Jdbc database: " + (config != null ? config.getJdbcUrl() : "(unstarted)");
     }
 
     @Override
     public void initializeStorage() {
         try {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, DATABASE_HISTORY_TABLE_NAME, null);
+            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
 
             if (tableExists.next()) {
                 return;
             }
-            LOG.debug("Creating table {} to store database history", DATABASE_HISTORY_TABLE_NAME);
-            conn.prepareStatement(DATABASE_HISTORY_TABLE_DDL).execute();
+            LOG.info("Creating table {} to store database history", config.getTableName());
+            conn.prepareStatement(config.getTableCreate()).execute();
             LOG.info("Created table in given database...");
         }
         catch (SQLException e) {

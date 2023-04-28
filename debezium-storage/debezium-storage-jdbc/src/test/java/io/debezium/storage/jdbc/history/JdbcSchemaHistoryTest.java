@@ -5,9 +5,6 @@
  */
 package io.debezium.storage.jdbc.history;
 
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -100,9 +97,9 @@ public class JdbcSchemaHistoryTest {
     public void beforeEach() {
         history = new JdbcSchemaHistory();
         history.configure(Configuration.create()
-                .with(JDBC_URL, "jdbc:sqlite:" + dbFile)
-                .with(JDBC_USER, "user")
-                .with(JDBC_PASSWORD, "pass")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         history.start();
     }
@@ -138,9 +135,9 @@ public class JdbcSchemaHistoryTest {
         // after restart, it should recover history correctly
         JdbcSchemaHistory history2 = new JdbcSchemaHistory();
         history2.configure(Configuration.create()
-                .with(JDBC_URL, "jdbc:sqlite:" + dbFile)
-                .with(JDBC_USER, "user")
-                .with(JDBC_PASSWORD, "pass")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         history2.start();
         assertTrue(history2.storageExists());
