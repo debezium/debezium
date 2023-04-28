@@ -6,15 +6,6 @@
 package io.debezium.storage.jdbc;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_DDL;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_SELECT;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +35,10 @@ import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
+import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
+import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -53,8 +47,6 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "connector_test")
-            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-    private final UniqueDatabase RO_DATABASE = new UniqueDatabase("myServer2", "connector_test_ro", DATABASE)
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("schema-history.db").toAbsolutePath();
 
@@ -118,9 +110,9 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
 
     protected Configuration.Builder schemaHistory(Configuration.Builder builder) {
         return builder
-                .with(JDBC_URL, "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
-                .with(JDBC_USER, "user")
-                .with(JDBC_PASSWORD, "pass");
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass");
     }
 
     private Configuration.Builder config(String jdbcUrl) {
@@ -138,19 +130,21 @@ public class JdbcOffsetBackingStoreIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUrl)
-                .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
-                .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
-                .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc")
-                .with(OFFSET_STORAGE_TABLE_DDL.name(), "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
-                        "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
-                        "record_insert_ts TIMESTAMP NOT NULL," +
-                        "record_insert_seq INTEGER NOT NULL" +
-                        ")")
-                .with(OFFSET_STORAGE_TABLE_SELECT.name(), "SELECT id, offset_key, offset_val FROM %s " +
-                        "ORDER BY record_insert_ts, record_insert_seq")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), jdbcUrl)
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), "user")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_PASSWORD.name(), "pass")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_NAME.name(), "offsets_jdbc")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_DDL.name(),
+                        "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+                                "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
+                                "record_insert_ts TIMESTAMP NOT NULL," +
+                                "record_insert_seq INTEGER NOT NULL" +
+                                ")")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_SELECT.name(),
+                        "SELECT id, offset_key, offset_val FROM %s " +
+                                "ORDER BY record_insert_ts, record_insert_seq")
                 .with("offset.flush.interval.ms", "1000")
-                .with("offset.storage", "io.debezium.storage.jdbc.JdbcOffsetBackingStore");
+                .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore");
 
         return schemaHistory(builder);
     }

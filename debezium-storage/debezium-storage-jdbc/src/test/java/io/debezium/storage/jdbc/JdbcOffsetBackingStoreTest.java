@@ -5,12 +5,6 @@
  */
 package io.debezium.storage.jdbc;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_DDL;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_SELECT;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
@@ -21,12 +15,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.util.Callback;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
+import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 
 /**
  * @author Ismail simsek
@@ -38,7 +36,7 @@ public class JdbcOffsetBackingStoreTest {
 
     JdbcOffsetBackingStore store;
     Map<String, String> props;
-    JdbcConfig config;
+    WorkerConfig config;
     File dbFile;
 
     @Before
@@ -46,20 +44,21 @@ public class JdbcOffsetBackingStoreTest {
         dbFile = File.createTempFile("test-", "db");
         store = new JdbcOffsetBackingStore();
         props = new HashMap<>();
-        props.put(OFFSET_STORAGE_JDBC_URL.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
-        props.put(OFFSET_STORAGE_JDBC_USER.name(), "user");
-        props.put(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass");
-        props.put(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");
-        props.put(OFFSET_STORAGE_TABLE_DDL.name(), "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, "dummy");
+        props.put(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile.getAbsolutePath());
+        props.put(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), "user");
+        props.put(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_PASSWORD.name(), "pass");
+        props.put(JdbcOffsetBackingStoreConfig.PROP_TABLE_NAME.name(), "offsets_jdbc");
+        props.put(JdbcOffsetBackingStoreConfig.PROP_TABLE_DDL.name(), "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                 "record_insert_ts TIMESTAMP NOT NULL," +
                 "record_insert_seq INTEGER NOT NULL" +
                 ")");
-        props.put(OFFSET_STORAGE_TABLE_SELECT.name(), "SELECT id, offset_key, offset_val FROM %s " +
+        props.put(JdbcOffsetBackingStoreConfig.PROP_TABLE_SELECT.name(), "SELECT id, offset_key, offset_val FROM %s " +
                 "ORDER BY record_insert_ts, record_insert_seq");
         props.put(StandaloneConfig.KEY_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
         props.put(StandaloneConfig.VALUE_CONVERTER_CLASS_CONFIG, "org.apache.kafka.connect.json.JsonConverter");
-        config = new JdbcConfig(props);
+        config = new StandaloneConfig(props);
         store.configure(config);
         store.start();
 
