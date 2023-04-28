@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoChangeStreamException;
+import com.mongodb.MongoCommandException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCollection;
@@ -207,7 +208,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                         LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
                         return false;
                     }
-                    catch (MongoChangeStreamException e) {
+                    catch (MongoCommandException | MongoChangeStreamException e) {
                         LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
                         return true;
                     }
