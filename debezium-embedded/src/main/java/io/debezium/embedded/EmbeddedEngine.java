@@ -243,54 +243,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             .withDescription(String.format("How long we wait before forcefully stopping the connector thread when shutting down. " +
                     "Must be bigger than the time it takes two polling loops to finish ({} ms)", ChangeEventSourceCoordinator.SHUTDOWN_WAIT_TIMEOUT.toMillis() * 2));
 
-    // JDBC OFFSET STORAGE FIELDS.
-    public static final Field OFFSET_STORAGE_JDBC_URL = Field.create("offset.storage.jdbc.url")
-            .withDescription("URI of the database which will be used to record the database history")
-            .withDefault("jdbc:")
-            .withValidation(Field::isRequired);
-
-    public static final Field OFFSET_STORAGE_JDBC_USER = Field.create("offset.storage.jdbc.user")
-            .withDescription("Username of the database which will be used to record the database history")
-            .withDefault("offsetuser")
-            .withValidation(Field::isRequired);
-
-    public static final Field OFFSET_STORAGE_JDBC_PASSWORD = Field.create("offset.storage.jdbc.password")
-            .withDescription("Password of the database which will be used to record the database history")
-            .withDefault("offsetpassword")
-            .withValidation(Field::isRequired);
-
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_NAME = "debezium_offset_storage";
-
-    public static final Field OFFSET_STORAGE_JDBC_TABLE_NAME = Field.create("offset.storage.jdbc.offset_table_name")
-            .withDescription("Name of the table to store offsets")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_NAME);
-
-    /**
-     * JDBC Offset storage CREATE TABLE syntax.
-     */
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_DDL = "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
-            "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
-            "record_insert_ts TIMESTAMP NOT NULL," +
-            "record_insert_seq INTEGER NOT NULL" +
-            ")";
-    /**
-     * The JDBC table that will store offset information.
-     * id - UUID
-     * offset_key - Offset Key
-     * offset_val - Offset value
-     * record_insert_ts - Timestamp when the record was inserted
-     * record_insert_seq - Sequence number of record
-     */
-    public static final Field OFFSET_STORAGE_TABLE_DDL = Field.create("offset.storage.jdbc.offset_table_ddl")
-            .withDescription("Create table syntax for offset jdbc table")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_DDL);
-
-    public static final String DEFAULT_OFFSET_STORAGE_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
-            "ORDER BY record_insert_ts, record_insert_seq";
-    public static final Field OFFSET_STORAGE_TABLE_SELECT = Field.create("offset.storage.jdbc.offset_table_select`")
-            .withDescription("Select syntax to get offset data from jdbc table")
-            .withDefault(DEFAULT_OFFSET_STORAGE_TABLE_SELECT);
-
     /**
      * The array of fields that are required by each connectors.
      */
@@ -301,10 +253,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
             OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
-            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS,
-            // JDBC OFFSET STORAGE FIELDS
-            OFFSET_STORAGE_JDBC_URL, OFFSET_STORAGE_JDBC_USER, OFFSET_STORAGE_JDBC_PASSWORD, OFFSET_STORAGE_JDBC_TABLE_NAME,
-            OFFSET_STORAGE_TABLE_DDL, OFFSET_STORAGE_TABLE_SELECT);
+            ERRORS_MAX_RETRIES, ERRORS_RETRY_DELAY_INITIAL_MS, ERRORS_RETRY_DELAY_MAX_MS);
 
     public static final class BuilderImpl implements Builder {
         private Configuration config;
@@ -1257,12 +1206,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_TOPIC);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_PARTITIONS);
             Field.group(config, "kafka", OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR);
-            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_URL);
-            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_USER);
-            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_PASSWORD);
-            Field.group(config, "jdbc", OFFSET_STORAGE_JDBC_TABLE_NAME);
-            Field.group(config, "jdbc", OFFSET_STORAGE_TABLE_DDL);
-            Field.group(config, "jdbc", OFFSET_STORAGE_TABLE_SELECT);
             CONFIG = config;
         }
 

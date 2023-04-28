@@ -5,13 +5,6 @@
  */
 package io.debezium.storage.jdbc.history;
 
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_URL;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_JDBC_USER;
-import static io.debezium.storage.jdbc.JdbcOffsetBackingStore.OFFSET_STORAGE_TABLE_NAME;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_PASSWORD;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_URL;
-import static io.debezium.storage.jdbc.history.JdbcSchemaHistory.JDBC_USER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.BufferedReader;
@@ -41,6 +34,8 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
 
 public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
@@ -112,9 +107,9 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
 
     protected Configuration.Builder schemaHistory(Configuration.Builder builder) {
         return builder
-                .with(JDBC_URL, "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
-                .with(JDBC_USER, "user")
-                .with(JDBC_PASSWORD, "pass");
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass");
     }
 
     private Configuration.Builder config() throws IOException {
@@ -135,10 +130,10 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(OFFSET_STORAGE_JDBC_URL.name(), jdbcUrl)
-                .with(OFFSET_STORAGE_JDBC_USER.name(), "user")
-                .with(OFFSET_STORAGE_JDBC_PASSWORD.name(), "pass")
-                .with(OFFSET_STORAGE_TABLE_NAME.name(), "offsets_jdbc");
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), jdbcUrl)
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), "user")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_PASSWORD.name(), "pass")
+                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_NAME.name(), "offsets_jdbc");
 
         return schemaHistory(builder);
     }
