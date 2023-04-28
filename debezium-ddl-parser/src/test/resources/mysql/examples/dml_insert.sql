@@ -50,3 +50,8 @@ CREATE TABLE tbl (.a BIGINT);
 INSERT INTO tbl (tbl.a) SELECT * FROM another_table;
 INSERT INTO tbl (.tbl.a) SELECT * FROM another_table;
 #end
+
+#begin
+---https://dev.mysql.com/doc/refman/8.0/en/insert.html
+INSERT INTO t1 (a,b,c) VALUES (1,2,3),(4,5,6) AS new ON DUPLICATE KEY UPDATE c = new.a+new.b; 
+#end
