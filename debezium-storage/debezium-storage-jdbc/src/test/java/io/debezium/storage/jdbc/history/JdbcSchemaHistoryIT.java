@@ -77,7 +77,6 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
         try (MySqlTestConnection conn = testConnection()) {
-            // System.out.println("DML");
             conn.execute(
                     "DROP TABLE IF EXISTS schematest",
                     "CREATE TABLE schematest (id INT PRIMARY KEY, val VARCHAR(16))",
