@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -262,13 +264,14 @@ public class SqlServerConnection extends JdbcConnection {
      *         that isn't further than {@code maxOffset} from the beginning.
      */
     public Lsn getNthTransactionLsnFromBeginning(String databaseName, int maxOffset) throws SQLException {
-        return prepareQueryAndMap(replaceDatabaseNamePlaceholder(GET_NTH_TRANSACTION_LSN_FROM_BEGINNING, databaseName), statement -> {
-            statement.setInt(1, maxOffset);
-        }, singleResultMapper(rs -> {
-            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-            LOGGER.trace("Nth lsn from beginning is {}", ret);
-            return ret;
-        }, "Nth LSN query must return exactly one value"));
+        return prepareQueryAndMap(
+                replaceDatabaseNamePlaceholder(GET_NTH_TRANSACTION_LSN_FROM_BEGINNING, databaseName),
+                statement -> statement.setInt(1, maxOffset),
+                singleResultMapper(rs -> {
+                    final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+                    LOGGER.trace("Nth lsn from beginning is {}", ret);
+                    return ret;
+                }, "Nth LSN query must return exactly one value"));
     }
 
     /**
@@ -619,8 +622,13 @@ public class SqlServerConnection extends JdbcConnection {
 
     public boolean isAgentRunning(String databaseName) throws SQLException {
         final String query = replaceDatabaseNamePlaceholder(config().getString(AGENT_STATUS_QUERY), databaseName);
-        final boolean isRunning = queryAndMap(query,
+        return queryAndMap(query,
                 singleResultMapper(rs -> rs.getBoolean(1), "SQL Server Agent running status query must return exactly one value"));
-        return isRunning;
+    }
+
+    @Override
+    public Optional<Instant> getCurrentTimestamp() throws SQLException {
+        return queryAndMap("SELECT SYSDATETIMEOFFSET()",
+                rs -> rs.next() ? Optional.of(rs.getObject(1, OffsetDateTime.class).toInstant()) : Optional.empty());
     }
 }

@@ -22,7 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -259,9 +259,9 @@ public class JdbcConnection implements AutoCloseable {
         return filtered;
     }
 
-    public Optional<Timestamp> getCurrentTimestamp() throws SQLException {
+    public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT CURRENT_TIMESTAMP",
-                rs -> rs.next() ? Optional.of(rs.getTimestamp(1)) : Optional.empty());
+                rs -> rs.next() ? Optional.of(rs.getTimestamp(1).toInstant()) : Optional.empty());
     }
 
     private static Field[] combineVariables(Field[] overriddenVariables,
@@ -277,7 +277,7 @@ public class JdbcConnection implements AutoCloseable {
                 fields.put(variable.name(), variable);
             }
         }
-        return fields.values().toArray(new Field[fields.size()]);
+        return fields.values().toArray(new Field[0]);
     }
 
     private static String findAndReplace(String url, Properties props, Field... variables) {

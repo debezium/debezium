@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -412,11 +411,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             LOGGER.info("Sort tables by row count '{}'", connectorConfig.snapshotOrderByRowCount());
             final var orderFactor = (connectorConfig.snapshotOrderByRowCount() == SnapshotTablesRowCountOrder.ASCENDING) ? 1 : -1;
             rowCountTables = rowCountTables.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue((a, b) -> orderFactor * ((Long) a.orElse(0)).compareTo(b.orElse(0))))
+                    .sorted(Map.Entry.comparingByValue((a, b) -> orderFactor * Long.compare(a.orElse(0), b.orElse(0))))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         }
 
-        Queue<O> offsets = new ConcurrentLinkedQueue<O>();
+        Queue<O> offsets = new ConcurrentLinkedQueue<>();
         offsets.add(snapshotContext.offset);
         for (int i = 1; i < snapshotMaxThreads; i++) {
             offsets.add(copyOffset(snapshotContext));
@@ -469,12 +468,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      */
     protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, O offset, TableId tableId) {
         try {
-            Optional<Timestamp> snapshotTs = jdbcConnection.getCurrentTimestamp();
+            Optional<Instant> snapshotTs = jdbcConnection.getCurrentTimestamp();
             if (snapshotTs.isEmpty()) {
                 throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database");
             }
 
-            return snapshotTs.get().toInstant();
+            return snapshotTs.get();
         }
         catch (SQLException e) {
             throw new ConnectException("Failed reading CURRENT_TIMESTAMP from source database", e);
@@ -553,7 +552,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 }
             }
             else {
-                setSnapshotMarker(offset, firstTable, lastTable, rows == 1, !hasNext);
+                setSnapshotMarker(offset, firstTable, lastTable, false, true);
             }
 
             LOGGER.info("\t Finished exporting {} records for table '{}' ({} of {} tables); total duration '{}'",
@@ -650,7 +649,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .stream()
                 .filter(columnName -> additionalColumnFilter(partition, table.id(), columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
+                .map(jdbcConnection::quotedColumnIdString)
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
@@ -658,7 +657,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             columnNames = table.retrieveColumnNames()
                     .stream()
-                    .map(columnName -> jdbcConnection.quotedColumnIdString(columnName))
+                    .map(jdbcConnection::quotedColumnIdString)
                     .collect(Collectors.toList());
         }
 
