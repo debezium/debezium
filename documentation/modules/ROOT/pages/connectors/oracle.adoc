@@ -3544,7 +3544,7 @@ The {prodname} Oracle connector also provides the following additional streaming
 |[[oracle-streaming-metrics-hourstokeeptransactioninbuffer]]<<oracle-streaming-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
 |`int`
 |The number of hours that transactions are retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
-See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
+For more information, see xref:oracle-property-log-mining-transaction-retention-ms[`log.mining.transaction.retention.ms`].
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`
