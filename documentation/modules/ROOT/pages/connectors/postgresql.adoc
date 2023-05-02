@@ -2284,33 +2284,34 @@ See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] 
 When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and ensure that {prodname} continues to operate.
 In general, {prodname} is resilient to interruptions caused by network failures and other outages.
 For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
-The connector obtains the information about the last recorded offset from the write-ahead log (WAL) at the configured PostgreSQL replication slot.
+The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for a log sequence number (LSN) with the same value.
 
-However, as part of the PostgreSQL upgrade process, the database removes all replication slots, including those that store the {prodname} connector offsets.
-After the upgrade, the database does not restore the original slots.
-For the connector to start and to continue capturing change events from the database, replication slots must be present.
-You can create the new slot manually, or you can rely on {prodname}'s automatic slot creation process.
+For the connector to start and to capture change events from the database, a replication slot must be present.
+However, as part of the PostgreSQL upgrade process, replication slots are removed, and the original slots are not restored after the upgrade completes.
+As a result, when the connector restarts and requests the last known offset from the replication slot, PostgreSQL cannot return the information.
 
-But the presence of a new replication slot is not sufficient to guarantee against data loss.
-When you create a new slot, the log sequence numbers (LSNs) on the new slot do not match the numbers from the original slot, which were based on the offsets that existed before the upgrade.
-So when the connector restarts and it reads the WAL files on the new slot, it cannot find the last known position from which to resume streaming.
-Because the connector cannot find the known offset, it skips any existing change events in the log and resumes streaming only from the most recent position.
-Silent data loss occurs, because the connector does not emit records for the skipped events, and the connector does not report an error.
-To ensure that {prodname} captures does not miss any events, it might be necessary to remove offsets from from the offset storage topic.
-See the following procedure for guidance about how to perform a PostgreSQL database upgrade to enable {prodname} to continue to capture events, and to minimize the risk of data loss.
+You can create a new replication slot, but you must do more than create a new slot to guard against data loss.
+A new replication slot can provide the LSNs only for changes the occur after the upgrade; it cannot provide the offsets for events that occurred before that.
+When the connector restarts, it first requests the last known offset from the Kafka offsets topic.
+It then sends a request to the replication slot to return information for the offset retrieved from the offsets topic.
+But the new replication slot cannot provide the information that the connector needs to resume streaming from the expected position.
+The connector then skips any existing change events in the log, and only resumes streaming from the most recent position in the log.
+This can lead to silent data loss: the connector emits no records for the skipped events, and it does not provide any information to indicate that events were skipped.
+
+For guidance about how to perform a PostgreSQL database upgrade so that {prodname} can continue to capture events while minimizing the risk of data loss, see the following procedure.
 
 .Procedure
 
-1. Ensure that no data changes can occur during the upgrade process by temporarily stopping applications that write to the database, or putting them into a read-only mode.
+1. Temporarily stop applications that write to the database, or put them into a read-only mode.
 
 2. Back up the database.
 
 3. Temporarily disable write access to the database.
 
-4. Verify that any changes that occurred in the database before you blocked write operations are saved to the WAL on the replication slot.
+4. Verify that any changes that occurred in the database before you blocked write operations are saved to the write-ahead log (WAL), and that the WAL LSN is reflected on the replication slot.
 
 5. Provide the connector with enough time to capture all event records that are written to the replication slot. +
-This step ensures that all change events that occured before the downtime are accounted for, and that they are saved to Kafka.
+This step ensures that all change events that occurred before the downtime are accounted for, and that they are saved to Kafka.
 
 6. Verify that the connector has finished consuming entries from the replication slot by checking the value of the flushed LSN.
 
@@ -2326,7 +2327,7 @@ Later, after you restore write access to the database and you are ready to resta
 
 8. As a PostgreSQL administrator, drop the replication slot on the primary database server.
 Do not use the xref:postgresql-property-slot-drop-on-stop[`slot.drop.on.stop`] property to drop the replication slot.
-This property is for testing only
+This property is for testing only.
 
 9. Stop the database.
 
@@ -2348,7 +2349,6 @@ endif::product[]
 
 14. Verify that the publication that defines the tables for {prodname} to capture is still present after the upgrade.
 If the publication is not available, connect to the database as a PostgreSQL administrator to create a new publication.
-
 
 15. If it was necessary to create a new publication in the previous step, update the {prodname} connector configuration to add the name of the new publication to the xref:postgresql-property-publication-name[`publication.name`] property.
 
