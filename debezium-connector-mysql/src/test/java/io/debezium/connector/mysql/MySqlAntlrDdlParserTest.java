@@ -3379,6 +3379,19 @@ public class MySqlAntlrDdlParserTest {
         assertThat(getColumnSchema(table, "bi").defaultValue()).isNull();
     }
 
+    @Test
+    @FixFor("DBZ-6357")
+    public void shouldSupportNationalChar() {
+        String ddl = "CREATE TABLE ttt(c NATIONAL CHAR)";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "ttt"));
+        assertThat(table).isNotNull();
+        assertThat(table.retrieveColumnNames()).containsExactly("c");
+        assertThat(table.primaryKeyColumnNames()).isEmpty();
+        assertColumn(table, "c", "NATIONAL CHAR", Types.NCHAR, 1, "utf8", true);
+    }
+
     private String toIsoString(String timestamp) {
         return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
