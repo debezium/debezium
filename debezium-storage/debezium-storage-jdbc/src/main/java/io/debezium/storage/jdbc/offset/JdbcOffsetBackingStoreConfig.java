@@ -24,7 +24,7 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
     public static final String PROP_PREFIX = OFFSET_STORAGE_PREFIX + CONFIGURATION_FIELD_PREFIX_STRING;
 
     public static final String DEFAULT_TABLE_NAME = "debezium_offset_storage";
-    public static final Field PROP_TABLE_NAME = Field.create(PROP_PREFIX + "offset_table_name")
+    public static final Field PROP_TABLE_NAME = Field.create(PROP_PREFIX + "offset.table.name")
             .withDescription("Name of the table to store offsets")
             .withDefault(DEFAULT_TABLE_NAME);
 
@@ -45,13 +45,13 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
      * record_insert_ts - Timestamp when the record was inserted
      * record_insert_seq - Sequence number of record
      */
-    public static final Field PROP_TABLE_DDL = Field.create(PROP_PREFIX + "offset_table_ddl")
+    public static final Field PROP_TABLE_DDL = Field.create(PROP_PREFIX + "offset.table.ddl")
             .withDescription("Create table syntax for offset jdbc table")
             .withDefault(DEFAULT_TABLE_DDL);
 
     public static final String DEFAULT_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
             "ORDER BY record_insert_ts, record_insert_seq";
-    public static final Field PROP_TABLE_SELECT = Field.create(PROP_PREFIX + "offset_table_select")
+    public static final Field PROP_TABLE_SELECT = Field.create(PROP_PREFIX + "offset.table.select")
             .withDescription("Select syntax to get offset data from jdbc table")
             .withDefault(DEFAULT_TABLE_SELECT);
 

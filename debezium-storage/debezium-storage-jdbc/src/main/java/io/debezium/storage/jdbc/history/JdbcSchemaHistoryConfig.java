@@ -22,7 +22,7 @@ import io.debezium.util.Collect;
 public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private static final String DEFAULT_TABLE_NAME = "debezium_database_history";
-    private static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_name")
+    private static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name")
             .withDescription("The database key that will be used to store the database schema history")
             .withDefault(DEFAULT_TABLE_NAME);
 
@@ -46,7 +46,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      * Field that will store the CREATE TABLE DDL for schema history.
      */
-    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_ddl")
+    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.ddl")
             .withDescription("CREATE TABLE statement for schema history table")
             .withDefault(DEFAULT_TABLE_DDL);
 
@@ -56,7 +56,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      * Field that will store the Schema history SELECT query.
      */
-    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_select")
+    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select")
             .withDescription("SELECT statement to get the schema history from a database table")
             .withDefault(DEFAULT_TABLE_SELECT);
 
@@ -65,7 +65,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      *  Field that will store the Schema history SELECT query to check existence of the table.
      */
-    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema_history_table_select")
+    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select")
             .withDescription("SELECT statement to check existence of the storage table")
             .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT);
 
