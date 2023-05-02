@@ -28,12 +28,12 @@ public final class OcpMySqlDeployer extends AbstractOcpDatabaseDeployer<MySqlCon
     private final PersistentVolumeClaim volumeClaim;
 
     private OcpMySqlDeployer(
-                                   String project,
-                                   Deployment deployment,
-                                   List<Service> services,
-                                   Secret pullSecret,
-                                   PersistentVolumeClaim volumeClaim,
-                                   OpenShiftClient ocp) {
+                             String project,
+                             Deployment deployment,
+                             List<Service> services,
+                             Secret pullSecret,
+                             PersistentVolumeClaim volumeClaim,
+                             OpenShiftClient ocp) {
         super(project, deployment, services, pullSecret, ocp);
         this.volumeClaim = volumeClaim;
     }
