@@ -1943,7 +1943,7 @@ Details are in the following topics:
 * xref:setting-privileges-to-permit-debezium-user-to-create-postgresql-publications[]
 * xref:configuring-postgresql-to-allow-replication-with-the-connector-host[]
 * xref:configuring-postgresql-to-manage-debezium-wal-disk-space-consumption[]
-
+* xref:upgrading-postgresql-databases-that-debezium-captures-from[]
 endif::product[]
 
 ifdef::product[]
@@ -2273,6 +2273,107 @@ Since a replication slot can only be used by a single connector, it is essential
 In addition to replication slot, {prodname} uses publication to stream events when using the `pgoutput` plugin. Similar to replication slot, publication is at database level and is defined for a set of tables. Thus, you'll need a unique publication for each connector, unless the connectors work on same set of tables. For more information about the options for enabling {prodname} to create publications, see xref:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]
 
 See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] and xref:{link-postgresql-connector}#postgresql-property-publication-name[`publication.name`] on how to set a unique replication slot name and publication name for each connector.
+
+// Type: procedure
+// ModuleID: upgrading-postgresql-databases-that-debezium-captures-from
+// Title: Upgrading PostgreSQL databases that {prodname} captures from
+[id="upgrading-postgresql"]
+=== Upgrading PostgreSQL
+
+When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and ensure that {prodname} continues to operate.
+In general, {prodname} is resilient to interruptions caused by network failures and other outages.
+For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
+The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for a log sequence number (LSN) with the same value.
+
+For the connector to start and to capture change events from the database, a replication slot must be present.
+However, as part of the PostgreSQL upgrade process, replication slots are removed, and the original slots are not restored after the upgrade completes.
+As a result, when the connector restarts and requests the last known offset from the replication slot, PostgreSQL cannot return the information.
+
+You can create a new replication slot, but you must do more than create a new slot to guard against data loss.
+A new replication slot can provide the LSNs only for changes the occur after the upgrade; it cannot provide the offsets for events that occurred before that.
+When the connector restarts, it first requests the last known offset from the Kafka offsets topic.
+It then sends a request to the replication slot to return information for the offset retrieved from the offsets topic.
+But the new replication slot cannot provide the information that the connector needs to resume streaming from the expected position.
+The connector then skips any existing change events in the log, and only resumes streaming from the most recent position in the log.
+This can lead to silent data loss: the connector emits no records for the skipped events, and it does not provide any information to indicate that events were skipped.
+
+For guidance about how to perform a PostgreSQL database upgrade so that {prodname} can continue to capture events while minimizing the risk of data loss, see the following procedure.
+
+.Procedure
+
+1. Temporarily stop applications that write to the database, or put them into a read-only mode.
+
+2. Back up the database.
+
+3. Temporarily disable write access to the database.
+
+4. Verify that any changes that occurred in the database before you blocked write operations are saved to the write-ahead log (WAL), and that the WAL LSN is reflected on the replication slot.
+
+5. Provide the connector with enough time to capture all event records that are written to the replication slot. +
+This step ensures that all change events that occurred before the downtime are accounted for, and that they are saved to Kafka.
+
+6. Verify that the connector has finished consuming entries from the replication slot by checking the value of the flushed LSN.
+
+7. Shut down the connector gracefully by stopping Kafka Connect. +
+Kafka Connect stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector. +
++
+[NOTE]
+====
+As an alternative to stopping the entire Kafka Connect cluster, you can stop the connector by deleting it.
+Do not remove the offset topic, because it might be shared by other Kafka connectors.
+Later, after you restore write access to the database and you are ready to restart the connector, you must recreate the connector.
+====
+
+8. As a PostgreSQL administrator, drop the replication slot on the primary database server.
+Do not use the xref:postgresql-property-slot-drop-on-stop[`slot.drop.on.stop`] property to drop the replication slot.
+This property is for testing only.
+
+9. Stop the database.
+
+10. Perform the upgrade using an approved PostgreSQL upgrade procedure, such as `pg_upgrade`, or `pg_dump` and `pg_restore`.
+
+11. (Optional) Use a standard Kafka tool to remove the connector offsets from the offset storage topic. +
+For an example of how to remove connector offsets, see https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[how to remove connector offsets] in the {prodname} community FAQ.
+
+12. Restart the database.
+
+13. As a PostgreSQL administrator, create a {prodname} logical replication slot on the database.
+You must create the slot before enabling writes to the database.
+Otherwise, {prodname} cannot capture the changes, resulting in data loss.
+
+ifdef::product[]
++
+For information about setting up a replication slot, see xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[].
+endif::product[]
+
+14. Verify that the publication that defines the tables for {prodname} to capture is still present after the upgrade.
+If the publication is not available, connect to the database as a PostgreSQL administrator to create a new publication.
+
+15. If it was necessary to create a new publication in the previous step, update the {prodname} connector configuration to add the name of the new publication to the xref:postgresql-property-publication-name[`publication.name`] property.
+
+16. In the connector configuration, rename the connector.
+
+17. In the connector configuration, set xref:postgresql-property-slot-name[`slot.name`] to the name of the {prodname} replication slot.
+
+18. Verify that the new replication slot is available.
+
+19. Restore write access to the database and restart any applications that write to the database.
+
+20. In the connector configuration, set the xref:postgresql-property-snapshot-mode[`snapshot.mode`] property to `never`, and then restart the connector.
++
+[NOTE]
+====
+If you were unable to verify that {prodname} finished reading all database changes in Step 6, you can configure the connector to perform a new snapshot by setting `snapshot.mode=initial`.
+If necessary, you can confirm whether the connector read all changes from the replication slot by checking the contents of a database backup that was taken immediately before the upgrade.
+====
+
+.Additional resources
+ifdef::community[]
+* xref:postgresql-server-configuration[Configuring replication slots for {prodname}]
+endif::community[]
+ifdef::product[]
+* xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configuring replication slots for {prodname}].
+endif::product[]
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-postgresql-connectors
