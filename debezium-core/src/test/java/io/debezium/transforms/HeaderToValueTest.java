@@ -26,6 +26,7 @@ import org.apache.kafka.connect.transforms.util.Requirements;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 public class HeaderToValueTest {
 
@@ -358,6 +359,45 @@ public class HeaderToValueTest {
 
         Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
         assertThat(payloadStruct).isEqualTo(payload);
+
+    }
+
+    @Test
+    @FixFor("DBZ-6411")
+    public void whenARecordNotContainsHeadersShouldBeSkipped() {
+
+        Schema headerSchema = SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().name("h1").build();
+        headerToValue.configure(Map.of(
+                "headers", "h1",
+                "fields", "f1",
+                "operation", "copy"));
+
+        Struct row = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "a product");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+
+        Struct payload = createEnvelope.read(row, null, Instant.now());
+        SourceRecord readRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+
+        SourceRecord transformedRecord = headerToValue.apply(readRecord);
+
+        assertThat(transformedRecord).isEqualTo(readRecord);
+
+        payload = createEnvelope.create(row, null, Instant.now());
+        SourceRecord sourceRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload);
+        sourceRecord.headers().add("h1", List.of("v1", "v2"), headerSchema);
+
+        transformedRecord = headerToValue.apply(sourceRecord);
+
+        Struct payloadStruct = Requirements.requireStruct(transformedRecord.value(), "");
+        assertThat(payloadStruct.getArray("f1")).contains("v1", "v2");
 
     }
 }
