@@ -2280,17 +2280,17 @@ See xref:{link-postgresql-connector}#postgresql-property-slot-name[`slot.name`] 
 [id="upgrading-postgresql"]
 === Upgrading PostgreSQL
 
-When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and ensure that {prodname} continues to operate.
+When you upgrade the PostgreSQL database that {prodname} uses, you must take specific steps to protect against data loss and to ensure that {prodname} continues to operate.
 In general, {prodname} is resilient to interruptions caused by network failures and other outages.
 For example, when a database server that a connector monitors stops or crashes, after the connector re-establishes communication with the PostgreSQL server, it continues to read from the last position recorded by the log sequence number (LSN) offset.
 The connector retrieves information about the last recorded offset from the Kafka Connect offsets topic, and queries the configured PostgreSQL replication slot for a log sequence number (LSN) with the same value.
 
-For the connector to start and to capture change events from the database, a replication slot must be present.
+For the connector to start and to capture change events from a PostgreSQL database, a replication slot must be present.
 However, as part of the PostgreSQL upgrade process, replication slots are removed, and the original slots are not restored after the upgrade completes.
 As a result, when the connector restarts and requests the last known offset from the replication slot, PostgreSQL cannot return the information.
 
 You can create a new replication slot, but you must do more than create a new slot to guard against data loss.
-A new replication slot can provide the LSNs only for changes the occur after the upgrade; it cannot provide the offsets for events that occurred before that.
+A new replication slot can provide the LSNs only for changes the occur after you create the slot; it cannot provide the offsets for events that occurred before the upgrade.
 When the connector restarts, it first requests the last known offset from the Kafka offsets topic.
 It then sends a request to the replication slot to return information for the offset retrieved from the offsets topic.
 But the new replication slot cannot provide the information that the connector needs to resume streaming from the expected position.
