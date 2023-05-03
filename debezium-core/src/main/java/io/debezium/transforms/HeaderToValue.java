@@ -146,7 +146,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
-        LOGGER.debug("Processing record {}", value);
+        LOGGER.trace("Processing record {}", value);
         Map<String, Header> headerToProcess = StreamSupport.stream(record.headers().spliterator(), false)
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
