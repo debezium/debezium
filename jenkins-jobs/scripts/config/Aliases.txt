@@ -205,4 +205,5 @@ brenoavm,Breno Moreira
 ddsr-ops,ddsr-ops
 subkanthi,Kanthi Subramanian
 benw-at-birdie,Ben White
-miguelbirdie, Miguel Angel Sotomayor
+miguelbirdie,Miguel Angel Sotomayor
+umachi,Hidetomi Umaki
