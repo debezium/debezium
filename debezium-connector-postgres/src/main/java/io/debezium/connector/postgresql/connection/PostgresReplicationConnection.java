@@ -58,6 +58,8 @@ import io.debezium.util.Metronome;
  */
 public class PostgresReplicationConnection extends JdbcConnection implements ReplicationConnection {
 
+    private static final String SQL_STATE_INSUFFICIENT_PRIVILEGE = "42501";
+
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
@@ -370,11 +372,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
             }
             else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")
-                    || PSQLState.OBJECT_IN_USE.getState().equals(e.getSQLState())) {
-                LOGGER.warn("Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version", e);
+                    || SQL_STATE_INSUFFICIENT_PRIVILEGE.equals(e.getSQLState())) {
+                LOGGER.warn(
+                        "Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version or privileges are not correctly set",
+                        e);
             }
             else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")
-                    || PSQLState.NOT_IMPLEMENTED.getState().equals(e.getSQLState())) {
+                    || PSQLState.OBJECT_NOT_IN_STATE.getState().equals(e.getSQLState())) {
                 switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                     case FAIL:
                     case WARN:
