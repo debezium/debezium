@@ -214,6 +214,12 @@ public interface JdbcConfiguration extends Configuration {
             }
 
             @Override
+            public Builder without(String key) {
+                builder.without(key);
+                return this;
+            }
+
+            @Override
             public Builder apply(Consumer<Builder> function) {
                 function.accept(this);
                 return this;
@@ -261,6 +267,12 @@ public interface JdbcConfiguration extends Configuration {
             @Override
             public Builder withDefault(String key, String value) {
                 builder.withDefault(key, value);
+                return this;
+            }
+
+            @Override
+            public Builder without(String key) {
+                builder.without(key);
                 return this;
             }
 
