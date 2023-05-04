@@ -90,7 +90,8 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
 
     @Override
     protected List<Field> getAllConfigurationFields() {
-        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME, PROP_TABLE_DDL, PROP_TABLE_SELECT);
+        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME, PROP_TABLE_DDL, PROP_TABLE_SELECT,
+                PROP_TABLE_INSERT, PROP_TABLE_DELETE);
         fields.addAll(super.getAllConfigurationFields());
         return fields;
     }
