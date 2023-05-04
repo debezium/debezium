@@ -51,13 +51,22 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
 
     public static final String DEFAULT_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
             "ORDER BY record_insert_ts, record_insert_seq";
+
+    public static final String DEFAULT_TABLE_DELETE = "DELETE FROM %s";
+
+    public static final String DEFAULT_TABLE_INSERT = "INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq) " +
+            "VALUES ( ?, ?, ?, ?, ? )";
     public static final Field PROP_TABLE_SELECT = Field.create(PROP_PREFIX + "offset.table.select")
             .withDescription("Select syntax to get offset data from jdbc table")
             .withDefault(DEFAULT_TABLE_SELECT);
 
-    public static final String TABLE_INSERT = "INSERT INTO %s VALUES ( ?, ?, ?, ?, ? )";
+    public static final Field PROP_TABLE_DELETE = Field.create(PROP_PREFIX + "offset.table.delete")
+            .withDescription("Delete syntax to delete offset data from jdbc table")
+            .withDefault(DEFAULT_TABLE_DELETE);
 
-    public static final String TABLE_DELETE = "DELETE FROM %s";
+    public static final Field PROP_TABLE_INSERT = Field.create(PROP_PREFIX + "offset.table.insert")
+            .withDescription("Insert syntax to add offset data to the jdbc table")
+            .withDefault(DEFAULT_TABLE_INSERT);
 
     private String tableCreate;
     private String tableSelect;
@@ -75,8 +84,8 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
         this.tableName = config.getString(PROP_TABLE_NAME);
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
-        this.tableInsert = String.format(TABLE_INSERT, tableName);
-        this.tableDelete = String.format(TABLE_DELETE, tableName);
+        this.tableInsert = String.format(config.getString(PROP_TABLE_INSERT), tableName);
+        this.tableDelete = String.format(config.getString(PROP_TABLE_DELETE), tableName);
     }
 
     @Override
