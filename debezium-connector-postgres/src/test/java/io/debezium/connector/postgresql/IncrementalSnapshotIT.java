@@ -97,9 +97,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
                 // DBZ-4272 required to allow dropping columns just before an incremental snapshot
@@ -216,7 +214,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         // Testing.Print.enable();
 
         populate4PkTable();
-        startConnector();
+        startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
+                .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
 
         sendExecuteSnapshotKafkaSignal("s1.a4");
 

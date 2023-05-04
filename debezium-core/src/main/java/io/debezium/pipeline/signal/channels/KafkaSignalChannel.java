@@ -79,7 +79,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The number of milliseconds to wait while polling signals.")
-            .withDefault(100)
+            .withDefault(0)
             .withValidation(Field::isNonNegativeInteger);
 
     private Optional<SignalRecord> processSignal(ConsumerRecord<String, String> record) {
@@ -163,6 +163,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
     @Override
     public List<SignalRecord> read() {
 
+        LOGGER.debug("Reading signal form kafka");
         // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
         ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
 

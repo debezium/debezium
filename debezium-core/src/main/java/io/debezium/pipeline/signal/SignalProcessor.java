@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -20,6 +21,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -44,6 +46,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
     public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    public static final int SEMAPHORE_WAIT_TIME = 10;
 
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
 
@@ -56,6 +59,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private final DocumentReader documentReader;
 
     private Offsets<P, O> previousOffsets;
+
+    private final Semaphore semaphore = new Semaphore(1);
 
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
@@ -118,14 +123,48 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         signalActions.put(id, signal);
     }
 
-    public synchronized void process() {
+    public void process() {
 
-        LOGGER.trace("SignalProcessor processing");
-        signalChannelReaders.parallelStream()
-                .filter(isEnabled())
-                .map(SignalChannelReader::read)
-                .flatMap(Collection::stream)
-                .forEach(this::processSignal);
+        executeWithSemaphore(() -> {
+            LOGGER.trace("SignalProcessor processing");
+            signalChannelReaders.parallelStream()
+                    .filter(isEnabled())
+                    .map(SignalChannelReader::read)
+                    .flatMap(Collection::stream)
+                    .forEach(this::processSignal);
+        });
+    }
+
+    public void processSourceSignal() {
+
+        executeWithSemaphore(() -> {
+            LOGGER.trace("Processing source signals");
+            signalChannelReaders.stream()
+                    .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
+                    .filter(isEnabled())
+                    .map(SignalChannelReader::read)
+                    .flatMap(Collection::stream)
+                    .forEach(this::processSignal);
+        });
+    }
+
+    private void executeWithSemaphore(Runnable operation) {
+
+        boolean acquired = false;
+        try {
+            acquired = semaphore.tryAcquire(SEMAPHORE_WAIT_TIME, TimeUnit.SECONDS);
+
+            operation.run();
+        }
+        catch (InterruptedException e) {
+            LOGGER.error("Not able to acquire semaphore after {}s", SEMAPHORE_WAIT_TIME);
+            throw new DebeziumException("Not able to acquire semaphore during signaling processing", e);
+        }
+        finally {
+            if (acquired) {
+                semaphore.release();
+            }
+        }
     }
 
     private void processSignal(SignalRecord signalRecord) {
@@ -158,7 +197,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     public SourceSignalChannel getSourceSignalChannel() {
         return (SourceSignalChannel) signalChannelReaders.stream()
-                .filter(channel -> channel.name().equals(SourceSignalChannel.CHANNEL_NAME))
+                .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
                 .findFirst().get();
+    }
+
+    private static Predicate<SignalChannelReader> isSignal(String signalName) {
+        return channel -> channel.name().equals(signalName);
     }
 }
