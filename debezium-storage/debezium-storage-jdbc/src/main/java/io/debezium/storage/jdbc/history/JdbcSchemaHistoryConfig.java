@@ -69,8 +69,11 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDescription("SELECT statement to check existence of the storage table")
             .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT);
 
-    private static final String TABLE_INSERT = "INSERT INTO %s VALUES ( ?, ?, ?, ?, ? )";
+    private static final String DEFAULT_TABLE_DATA_INSERT = "INSERT INTO %s VALUES ( ?, ?, ?, ?, ? )";
 
+    public static final Field PROP_TABLE_DATA_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.insert")
+            .withDescription("INSERT statement to add new records to the schema storage table")
+            .withDefault(DEFAULT_TABLE_DATA_INSERT);
     private String tableName;
     private String tableCreate;
     private String tableSelect;
@@ -88,12 +91,12 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(config.getString(PROP_TABLE_DATA_EXISTS_SELECT), tableName);
-        this.tableInsert = String.format(TABLE_INSERT, tableName);
+        this.tableInsert = String.format(config.getString(PROP_TABLE_DATA_INSERT), tableName);
     }
 
     @Override
     protected List<Field> getAllConfigurationFields() {
-        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME, PROP_TABLE_DDL, PROP_TABLE_SELECT, PROP_TABLE_DATA_EXISTS_SELECT);
+        List<Field> fields = Collect.arrayListOf(PROP_TABLE_NAME, PROP_TABLE_DDL, PROP_TABLE_SELECT, PROP_TABLE_DATA_EXISTS_SELECT, PROP_TABLE_DATA_INSERT);
         fields.addAll(super.getAllConfigurationFields());
         return fields;
     }
