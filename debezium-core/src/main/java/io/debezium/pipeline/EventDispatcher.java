@@ -302,7 +302,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                             if (signalProcessor != null) {
                                 // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
                                 // in this way the offset context updated by signaling will be correctly saved
-                                signalProcessor.process();
+                                signalProcessor.processSourceSignal();
                             }
                         }
 

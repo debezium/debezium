@@ -626,7 +626,7 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(5L)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 30 seconds (30,000 ms).");
+            .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 5 seconds.");
 
     public static final Field SIGNAL_ENABLED_CHANNELS = Field.create("signal.enabled.channels")
             .withDisplayName("Enabled channels names")
