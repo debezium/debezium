@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 /**
@@ -25,6 +26,11 @@ public abstract class AbstractType implements Type {
     private static final String SCHEMA_PARAMETER_COLUMN_TYPE = "__debezium.source.column.type";
     private static final String SCHEMA_PARAMETER_COLUMN_SIZE = "__debezium.source.column.length";
     private static final String SCHEMA_PARAMETER_COLUMN_PRECISION = "__debezium.source.column.scale";
+
+    @Override
+    public void configure(JdbcSinkConnectorConfig config) {
+        // no-op
+    }
 
     @Override
     public String getQueryBinding(Schema schema) {

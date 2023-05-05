@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc.type.connect;
 
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
@@ -35,21 +34,6 @@ public class ConnectTimeType extends AbstractTimeType {
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
         return dialect.getFormattedTime(toZonedDateTime((Date) value));
-        // final ZonedDateTime zdt = toZonedDateTime((Date) value);
-        // if (dialect instanceof OracleDatabaseDialect) {
-        // final String result = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(zdt);
-        // return String.format("TO_TIMESTAMP('%s', 'YYYY-MM-DD\"T\"HH24:MI::SS.FF9 TZH:TZM')", result);
-        // }
-        // else if (dialect instanceof PostgresDatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // else if (dialect instanceof MySqlDatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // else if (dialect instanceof Db2DatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // return String.format("'%s'", DateTimeFormatter.ISO_TIME.format(zdt));
     }
 
     @Override
@@ -67,6 +51,6 @@ public class ConnectTimeType extends AbstractTimeType {
     }
 
     private ZonedDateTime toZonedDateTime(Date value) {
-        return value.toInstant().atZone(ZoneOffset.UTC);
+        return value.toInstant().atZone(getDatabaseTimeZone().toZoneId());
     }
 }

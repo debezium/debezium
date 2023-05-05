@@ -29,6 +29,14 @@ public class TestHelper {
     private TestHelper() {
     }
 
+    public static String getSourceTimeZone() {
+        return System.getProperty("source.time_zone", "UTC");
+    }
+
+    public static String getSinkTimeZone() {
+        return System.getProperty("sink.time_zone", "UTC");
+    }
+
     public static TableAssert assertTable(DataSource dataSource, String tableName) {
         return assertThat(new Table(dataSource, tableName));
     }
