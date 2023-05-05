@@ -476,6 +476,14 @@ public interface Configuration {
         }
 
         /**
+         * Remove the value associated with the specified key.
+         *
+         * @param key the key
+         * @return this builder object so methods can be chained together; never null
+         */
+        B without(String key);
+
+        /**
          * Apply the function to this builder.
          *
          * @param function the predefined field for the key
@@ -688,6 +696,12 @@ public interface Configuration {
             if (!props.containsKey(key)) {
                 props.setProperty(key, value);
             }
+            return this;
+        }
+
+        @Override
+        public Builder without(String key) {
+            props.remove(key);
             return this;
         }
 

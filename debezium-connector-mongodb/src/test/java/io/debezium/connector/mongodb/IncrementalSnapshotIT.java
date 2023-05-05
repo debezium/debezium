@@ -45,7 +45,7 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.StopSnapshot;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 
 /**
  * Test to verify incremental snapshotting for MongoDB.
@@ -89,6 +89,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName() + ",dbA.c1,dbA.c2")
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
+                .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER);
     }
@@ -418,6 +419,8 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
 
+        LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+
         populateDataCollection();
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
@@ -428,6 +431,10 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         assertNoRecordsToConsume();
 
         sendAdHocSnapshotSignal();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .until(() -> interceptor
+                        .containsMessage("No data returned by the query, incremental snapshotting of table '" + "rs0." + fullDataCollectionName() + "' finished"));
 
         final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();

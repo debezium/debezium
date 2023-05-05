@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy.LOGMNR_FLUSH_TABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -50,10 +49,12 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     public final TestRule skipReadOnly = new SkipTestDependingOnReadOnly();
 
     private static OracleConnection connection;
+    private static String flushTableName;
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
+        flushTableName = TestHelper.defaultConfig().build().getString(OracleConnectorConfig.LOG_MINING_FLUSH_TABLE_NAME);
     }
 
     @AfterClass
@@ -112,7 +113,7 @@ public class FlushStrategyIT extends AbstractConnectorTest {
 
             // Verify that the connector logged multiple rows detected and fixed
             Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> logInterceptor.containsWarnMessage(
-                    "DBZ-4118: The flush table, " + LOGMNR_FLUSH_TABLE + ", has multiple rows"));
+                    "DBZ-4118: The flush table, " + flushTableName + ", has multiple rows"));
 
             // Verify that no additional rows get inserted on restart
             // Log entry will occur before the SQL has fired in the strategy, so delay checking to allow
@@ -152,6 +153,6 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     }
 
     private static String getFlushTableName() {
-        return TestHelper.getConnectorUserName() + "." + LOGMNR_FLUSH_TABLE;
+        return TestHelper.getConnectorUserName() + "." + flushTableName;
     }
 }

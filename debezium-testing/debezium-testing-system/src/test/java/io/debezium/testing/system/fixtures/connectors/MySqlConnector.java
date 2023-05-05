@@ -8,20 +8,21 @@ package io.debezium.testing.system.fixtures.connectors;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import io.debezium.testing.system.resources.ConnectorFactories;
-import io.debezium.testing.system.tools.databases.SqlDatabaseController;
+import io.debezium.testing.system.tools.databases.mysql.MySqlController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 
 import fixture5.annotations.FixtureContext;
 
-@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, SqlDatabaseController.class }, provides = { ConnectorConfigBuilder.class })
-public class MySqlConnector extends ConnectorFixture<SqlDatabaseController> {
+/** mysql connector, defaults to mysql master instance */
+@FixtureContext(requires = { KafkaController.class, KafkaConnectController.class, MySqlController.class }, provides = { ConnectorConfigBuilder.class })
+public class MySqlConnector extends ConnectorFixture<MySqlController> {
 
     private static final String CONNECTOR_NAME = "inventory-connector-mysql";
 
     public MySqlConnector(ExtensionContext.Store store) {
-        super(CONNECTOR_NAME, SqlDatabaseController.class, store);
+        super(CONNECTOR_NAME, MySqlController.class, store);
     }
 
     @Override

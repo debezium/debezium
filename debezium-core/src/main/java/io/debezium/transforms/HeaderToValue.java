@@ -146,6 +146,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
+        LOGGER.trace("Processing record {}", value);
         Map<String, Header> headerToProcess = StreamSupport.stream(record.headers().spliterator(), false)
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
@@ -154,9 +155,13 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             LOGGER.trace("Header to be processed: {}", headersToString(headerToProcess));
         }
 
+        if (headerToProcess.isEmpty()) {
+            return record;
+        }
+
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> makeNewSchema(valueSchema, headerToProcess));
 
-        LOGGER.trace("Updated schema: {}", updatedSchema);
+        LOGGER.trace("Updated schema fields: {}", updatedSchema.fields());
 
         Struct updatedValue = makeUpdatedValue(value, headerToProcess, updatedSchema);
 
@@ -253,16 +258,17 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
             }
         }
 
+        LOGGER.debug("Fields copied from the old schema {}", newSchemabuilder.fields());
         for (int i = 0; i < headers.size(); i++) {
 
             Header currentHeader = headerToProcess.get(headers.get(i));
             Optional<String> currentFieldName = getFieldName(fields.get(i), fieldName, level);
-
+            LOGGER.trace("CurrentHeader {} - currentFieldName {}", headers.get(i), currentFieldName);
             if (currentFieldName.isPresent() && currentHeader != null) {
                 newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), currentHeader.schema());
             }
         }
-
+        LOGGER.debug("Fields added from headers {}", newSchemabuilder.fields());
         return newSchemabuilder.build();
     }
 

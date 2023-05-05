@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -617,9 +618,28 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
 
+    public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
+            .withDisplayName("Signal processor poll interval")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(5L)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 5 seconds.");
+
+    public static final Field SIGNAL_ENABLED_CHANNELS = Field.create("signal.enabled.channels")
+            .withDisplayName("Enabled channels names")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 22))
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDefault("source")
+            .withDescription("List of channels names that are enabled. Source channel is enabled by default");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 21))
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 23))
             .withType(Type.CLASS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -659,6 +679,8 @@ public abstract class CommonConnectorConfig {
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                     SIGNAL_DATA_COLLECTION,
+                    SIGNAL_POLL_INTERVAL_MS,
+                    SIGNAL_ENABLED_CHANNELS,
                     TOPIC_NAMING_STRATEGY)
             .create();
 
@@ -686,6 +708,10 @@ public abstract class CommonConnectorConfig {
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final String signalingDataCollection;
+
+    private final Duration signalPollInterval;
+
+    private final List<String> signalEnabledChannels;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
 
@@ -714,8 +740,20 @@ public abstract class CommonConnectorConfig {
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
+        this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(TASK_ID);
+    }
+
+    private static List<String> getSignalEnabledChannels(Configuration config) {
+
+        if (config.hasKey(SIGNAL_ENABLED_CHANNELS)) {
+            return config.getList(SIGNAL_ENABLED_CHANNELS);
+        }
+        return Arrays.stream(Objects.requireNonNull(SIGNAL_ENABLED_CHANNELS.defaultValueAsString()).split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 
     private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {
@@ -998,6 +1036,14 @@ public abstract class CommonConnectorConfig {
 
     public String getSignalingDataCollectionId() {
         return signalingDataCollection;
+    }
+
+    public Duration getSignalPollInterval() {
+        return signalPollInterval;
+    }
+
+    public List<String> getEnabledChannels() {
+        return signalEnabledChannels;
     }
 
     public Optional<String[]> parseSignallingMessage(Struct value) {

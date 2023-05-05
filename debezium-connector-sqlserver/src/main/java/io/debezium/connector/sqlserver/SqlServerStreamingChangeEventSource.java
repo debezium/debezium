@@ -89,6 +89,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
 
     private boolean checkAgent;
+    private SqlServerOffsetContext effectiveOffset;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
@@ -113,6 +114,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     @Override
+    public void init(SqlServerOffsetContext offsetContext) throws InterruptedException {
+        this.effectiveOffset = offsetContext == null ? new SqlServerOffsetContext(connectorConfig, TxLogPosition.NULL, false, false) : offsetContext;
+    }
+
+    @Override
     public void execute(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) throws InterruptedException {
         throw new UnsupportedOperationException("Currently unsupported by the SQL Server connector");
     }
@@ -126,6 +132,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         final String databaseName = partition.getDatabaseName();
+
+        this.effectiveOffset = offsetContext;
 
         try {
             final SqlServerStreamingExecutionContext streamingExecutionContext = streamingExecutionContexts.getOrDefault(partition,
@@ -335,6 +343,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         return true;
+    }
+
+    @Override
+    public SqlServerOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 
     private void commitTransaction() throws SQLException {

@@ -27,7 +27,17 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.signal.actions.Log;
+import io.debezium.pipeline.signal.actions.SchemaChanges;
+import io.debezium.pipeline.signal.actions.SignalAction;
+import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
+import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
+import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
+import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot;
+import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
+import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -38,6 +48,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
@@ -81,7 +92,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final ConnectTableChangeSerializer tableChangesSerializer;
-    private final Signal<P> signal;
+    private final SourceSignalChannel sourceSignalChannel;
     private IncrementalSnapshotChangeEventSource<P, T> incrementalSnapshotChangeEventSource;
 
     /**
@@ -89,11 +100,22 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
      */
     private final StreamingChangeRecordReceiver streamingReceiver;
 
+    private final SignalProcessor<P, ?> signalProcessor;
+
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
+                           SignalProcessor<P, ?> signalProcessor) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster);
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, signalProcessor);
+    }
+
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
+                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor) {
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
+                heartbeat, schemaNameAdjuster, signalProcessor);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
@@ -101,13 +123,21 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster);
+                heartbeat, schemaNameAdjuster, null);
+    }
+
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
+                           SignalProcessor<P, ?> signalProcessor) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -124,7 +154,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, schemaNameAdjuster,
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
-        this.signal = new Signal<>(connectorConfig, this);
+        this.signalProcessor = signalProcessor;
+        if (signalProcessor != null) {
+            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel.init(connectorConfig);
+        }
+        else {
+            this.sourceSignalChannel = null;
+        }
         this.heartbeat = heartbeat;
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
@@ -135,7 +172,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, Heartbeat heartbeat,
-                           SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor) {
+                           SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor,
+                           SignalProcessor<P, ?> signalProcessor) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -150,10 +188,36 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
         this.transactionMonitor = transactionMonitor;
-        this.signal = new Signal<>(connectorConfig, this);
+        this.signalProcessor = signalProcessor;
+        if (signalProcessor != null) {
+            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel.init(connectorConfig);
+        }
+        else {
+            this.sourceSignalChannel = null;
+        }
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
+    }
+
+    public Map<String, SignalAction<P>> getSignalingActions() {
+
+        return Map.of(Log.NAME, new Log<>(),
+                SchemaChanges.NAME, getSchemaChangeAction(this.connectorConfig),
+                ExecuteSnapshot.NAME, new ExecuteSnapshot<>(this),
+                StopSnapshot.NAME, new StopSnapshot<>(this),
+                OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>(),
+                CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(this),
+                PauseIncrementalSnapshot.NAME, new PauseIncrementalSnapshot<>(this),
+                ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(this));
+    }
+
+    private SignalAction<P> getSchemaChangeAction(CommonConnectorConfig connectorConfig) {
+        return connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig
+                ? new SchemaChanges<>(this, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema())
+                : new SchemaChanges<>(this, false);
+
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
@@ -232,8 +296,14 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
-                        if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
-                            signal.process(partition, value, offset);
+                        if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && sourceSignalChannel != null) {
+                            sourceSignalChannel.process(value);
+
+                            if (signalProcessor != null) {
+                                // This is a synchronization point to immediately execute an eventual stop signal, just before emitting the CDC event
+                                // in this way the offset context updated by signaling will be correctly saved
+                                signalProcessor.processSourceSignal();
+                            }
                         }
 
                         if (neverSkip || !skippedOperations.contains(operation)) {
@@ -402,7 +472,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
+            LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offsetContext);
 
             // Truncate events must have null key schema as they are sent to table topics without keys
             Schema keySchema = (key == null && operation == Operation.TRUNCATE) ? null

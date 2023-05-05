@@ -45,7 +45,9 @@ import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -87,6 +89,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn snapshotScn;
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
+    private OracleOffsetContext effectiveOffset;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -110,6 +113,18 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.maxDelay = connectorConfig.getLogMiningMaxDelay();
     }
 
+    @Override
+    public void init(OracleOffsetContext offsetContext) throws InterruptedException {
+        this.effectiveOffset = offsetContext == null ? emptyContext() : offsetContext;
+    }
+
+    private OracleOffsetContext emptyContext() {
+        return OracleOffsetContext.create().logicalName(connectorConfig)
+                .snapshotPendingTransactions(Collections.emptyMap())
+                .transactionContext(new TransactionContext())
+                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
+    }
+
     /**
      * This is the loop to get changes from LogMiner
      *
@@ -126,6 +141,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             // We explicitly expect auto-commit to be disabled
             jdbcConnection.setAutoCommit(false);
 
+            this.effectiveOffset = offsetContext;
             startScn = offsetContext.getScn();
             snapshotScn = offsetContext.getSnapshotScn();
             Scn firstScn = getFirstScnInLogs(jdbcConnection);
@@ -858,7 +874,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         if (connectorConfig.isRacSystem()) {
             return new RacCommitLogWriterFlushStrategy(connectorConfig, jdbcConfiguration, streamingMetrics);
         }
-        return new CommitLogWriterFlushStrategy(jdbcConnection);
+        return new CommitLogWriterFlushStrategy(connectorConfig, jdbcConnection);
     }
 
     /**
@@ -906,5 +922,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         // nothing to do
+    }
+
+    @Override
+    public OracleOffsetContext getOffsetContext() {
+        return effectiveOffset;
     }
 }

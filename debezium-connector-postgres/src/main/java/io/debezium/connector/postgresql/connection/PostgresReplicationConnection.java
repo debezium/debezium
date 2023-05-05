@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
+import io.debezium.connector.postgresql.ReplicaIdentityMapper;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -57,6 +58,8 @@ import io.debezium.util.Metronome;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresReplicationConnection extends JdbcConnection implements ReplicationConnection {
+
+    private static final String SQL_STATE_INSUFFICIENT_PRIVILEGE = "42501";
 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
@@ -77,6 +80,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private SlotCreationResult slotCreationInfo;
     private boolean hasInitedSlot;
 
+    private Optional<ReplicaIdentityMapper> replicaIdentityMapper;
+
     /**
      * Creates a new replication connection with the given params.
      *
@@ -92,8 +97,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
-     *                                  <p>
-     *                                  updates to the server
      */
     private PostgresReplicationConnection(PostgresConnectorConfig config,
                                           String slotName,
@@ -123,6 +126,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+        this.replicaIdentityMapper = config.replicaIdentityMapper();
     }
 
     private static JdbcConfiguration addDefaultSettings(JdbcConfiguration configuration) {
@@ -212,6 +216,65 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         catch (Exception e) {
             throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),
                     e);
+        }
+    }
+
+    /**
+     * Check all tables captured by the connector, contained in {@link Set<TableId>} from {@link PostgresReplicationConnection#determineCapturedTables()}.
+     * Updating Replica Identity in PostgreSQL database based on {@link PostgresConnectorConfig#REPLICA_IDENTITY_AUTOSET_VALUES} configuration parameter
+     * for each {@link TableId}
+     *
+     * @throws Exception
+     */
+    private void initReplicaIdentity() {
+
+        if (this.replicaIdentityMapper.isPresent()) {
+            LOGGER.info("Updating Replica Identity");
+            Set<TableId> tablesCaptured;
+            try {
+                tablesCaptured = determineCapturedTables();
+            }
+            catch (Exception e) {
+                throw new DebeziumException("Unable to get Captured tables", e);
+            }
+            tablesCaptured.forEach(tableId -> {
+                try {
+                    Optional<ReplicaIdentityInfo> newReplicaIdentity = this.replicaIdentityMapper
+                            .get()
+                            .findReplicaIdentity(tableId);
+
+                    if (newReplicaIdentity.isPresent()) {
+                        ReplicaIdentityInfo currentReplicaIdentity = null;
+                        try {
+                            currentReplicaIdentity = jdbcConnection.readReplicaIdentityInfo(tableId);
+                            if (currentReplicaIdentity.getReplicaIdentity() == ReplicaIdentityInfo.ReplicaIdentity.INDEX) {
+                                currentReplicaIdentity.setIndexName(jdbcConnection.readIndexOfReplicaIdentity(tableId));
+                            }
+                        }
+                        catch (SQLException e) {
+                            LOGGER.error("Cannot determine REPLICA IDENTITY information for table {}", tableId);
+                        }
+                        if (currentReplicaIdentity != null
+                                && !currentReplicaIdentity.toString().equals(newReplicaIdentity.get().toString())) {
+                            jdbcConnection.setReplicaIdentityForTable(tableId, newReplicaIdentity.get());
+                            LOGGER.info("Replica identity set to {} for table '{}'",
+                                    newReplicaIdentity.get(), tableId);
+                        }
+                        else {
+                            LOGGER.info("Replica identity for table '{}' is already {}",
+                                    tableId, currentReplicaIdentity);
+                        }
+                    }
+                    else {
+                        LOGGER.debug(
+                                "Replica identity for table '{}' will not be updated because Replica Identity is not defined on REPLICA_IDENTITY_AUTOSET_VALUES property",
+                                tableId);
+                    }
+                }
+                catch (Exception e) {
+                    LOGGER.error("Unable to update Replica Identity for table {}", tableId, e);
+                }
+            });
         }
     }
 
@@ -369,10 +432,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     || PSQLState.UNDEFINED_FUNCTION.getState().equals(e.getSQLState())) {
                 LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
             }
-            else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")) {
-                LOGGER.warn("Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version", e);
+            else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")
+                    || SQL_STATE_INSUFFICIENT_PRIVILEGE.equals(e.getSQLState())) {
+                LOGGER.warn(
+                        "Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version or privileges are not correctly set",
+                        e);
             }
-            else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")) {
+            else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")
+                    || PSQLState.OBJECT_NOT_IN_STATE.getState().equals(e.getSQLState())) {
                 switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                     case FAIL:
                     case WARN:
@@ -407,6 +474,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         // See https://www.postgresql.org/docs/current/logical-replication-quick-setup.html
         // For pgoutput specifically, the publication must be created before the slot.
         initPublication();
+
+        initReplicaIdentity();
+
         if (!hasInitedSlot) {
             initReplicationSlot();
         }

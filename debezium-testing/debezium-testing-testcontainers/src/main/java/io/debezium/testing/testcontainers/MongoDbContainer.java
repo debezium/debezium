@@ -12,18 +12,22 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.range;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectContainerResponse;
@@ -74,7 +78,9 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         private boolean skipDockerDesktopLogWarning = false;
 
         public Builder imageName(DockerImageName imageName) {
-            this.imageName = imageName;
+            if (imageName != null) {
+                this.imageName = imageName;
+            }
             return this;
         }
 
@@ -189,6 +195,23 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     }
 
     /**
+     * Uploads given file to container and executes is as mongodb javascript
+     *
+     * @param file file to be uploaded
+     * @param containerPath path in the container
+     * @return execution result
+     */
+    public Container.ExecResult execMongoScriptInContainer(MountableFile file, String containerPath) {
+        try {
+            copyFileToContainer(file, containerPath);
+            return execMongoInContainer(containerPath);
+        }
+        catch (IOException | InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
      * Invokes <a href="https://www.mongodb.com/docs/manual/reference/method/rs.stepDown/">rs.stepDown</a> on the
      * container to instruct the primary of the replica set to become the primary.
      */
@@ -228,24 +251,33 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         action.apply(DockerClientFactory.instance().client()).exec();
     }
 
-    public JsonNode eval(String command) {
+    public Container.ExecResult execMongoInContainer(String... command) throws IOException, InterruptedException {
         checkStarted();
+        // Support newer and older MongoDB versions respectively
+        var mongoCommand = Stream.concat(
+                Stream.of(
+                        isLegacy() ? "" : "mongosh",
+                        "mongo",
+                        "--quiet",
+                        "--host " + name,
+                        "--port " + port),
+                Arrays.stream(command)).collect(joining(" "));
 
+        LOGGER.debug("Running command inside container: {}", mongoCommand);
+        var result = execInContainer("sh", "-c", mongoCommand);
+        LOGGER.debug(result.getStdout());
+
+        checkExitCode(result);
+        return result;
+    }
+
+    public JsonNode eval(String command) {
         try {
-            var mongoCommand = "mongo " +
-                    "--quiet " +
-                    "--host " + name + " " +
-                    "--port " + port + " " +
-                    "--eval \"JSON.stringify(" + command + ")\"";
-            LOGGER.debug("Running command inside container: {}", mongoCommand);
-            // Support newer and older MongoDB versions respectively
-            var result = execInContainer("sh", "-c", isLegacy() ? mongoCommand : "mongosh " + mongoCommand);
-            checkExitCode(result);
+            var result = execMongoInContainer("--eval", "\"JSON.stringify(" + command + ")\"");
 
             String stdout = result.getStdout();
             var response = parseResponse(stdout);
             LOGGER.info("{}:", response);
-
             return response;
         }
         catch (IOException | InterruptedException e) {

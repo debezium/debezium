@@ -10,11 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,11 +105,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void connectionCreated(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext)
-            throws Exception {
-    }
-
-    @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> ctx)
             throws Exception {
         // -------------------
@@ -161,7 +154,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
                                                RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext)
-            throws SQLException, InterruptedException {
+            throws SQLException {
         // Set the transaction isolation level to REPEATABLE READ. This is the default, but the default can be changed
         // which is why we explicitly set it here.
         //
@@ -234,9 +227,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 schemaEvents.clear();
                 createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
 
-                for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
-                    final SchemaChangeEvent event = i.next();
-
+                for (final SchemaChangeEvent event : schemaEvents) {
                     if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
                             && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                         LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
@@ -401,13 +392,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     private String getSnapshotSelect(TableId tableId, List<String> columns) {
-        String snapshotSelectColumns = columns.stream().collect(Collectors.joining(", "));
+        String snapshotSelectColumns = String.join(", ", columns);
         return String.format("SELECT %s FROM `%s`.`%s`", snapshotSelectColumns, tableId.catalog(), tableId.table());
     }
 
     @Override
     protected Optional<String> getSnapshotConnectionFirstSelect(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext, TableId tableId) {
-        return Optional.of(getSnapshotSelect(tableId, Arrays.asList("*")) + " LIMIT 1");
+        return Optional.of(getSnapshotSelect(tableId, List.of("*")) + " LIMIT 1");
     }
 
     private boolean isGloballyLocked() {
@@ -450,7 +441,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         LOGGER.info("Flush and obtain read lock for {} tables (preventing writes)", snapshotContext.capturedTables);
         if (!snapshotContext.capturedTables.isEmpty()) {
             final String tableList = snapshotContext.capturedTables.stream()
-                    .map(tid -> quote(tid))
+                    .map(this::quote)
                     .collect(Collectors.joining(","));
             connection.executeWithoutCommitting("FLUSH TABLES " + tableList + " WITH READ LOCK");
         }
@@ -489,7 +480,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     protected Statement readTableStatement(JdbcConnection jdbcConnection, OptionalLong rowCount) throws SQLException {
         MySqlConnection connection = (MySqlConnection) jdbcConnection;
         final long largeTableRowCount = connectorConfig.rowCountForLargeTable();
-        if (!rowCount.isPresent() || largeTableRowCount == 0 || rowCount.getAsLong() <= largeTableRowCount) {
+        if (rowCount.isEmpty() || largeTableRowCount == 0 || rowCount.getAsLong() <= largeTableRowCount) {
             return super.readTableStatement(connection, rowCount);
         }
         return createStatementWithLargeResultSet(connection);
@@ -537,8 +528,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             throws Exception {
         tryStartingSnapshot(snapshotContext);
 
-        for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
-            final SchemaChangeEvent event = i.next();
+        for (final SchemaChangeEvent event : schemaEvents) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while processing event " + event);
             }

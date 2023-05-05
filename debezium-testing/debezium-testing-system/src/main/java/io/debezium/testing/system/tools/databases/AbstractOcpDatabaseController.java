@@ -13,6 +13,7 @@ import static org.awaitility.Awaitility.await;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,9 +82,21 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .atMost(scaled(30), SECONDS)
                 .pollDelay(5, SECONDS)
                 .pollInterval(3, SECONDS)
-                .until(() -> ocp.pods().inNamespace(project).list().getItems().isEmpty());
+                .until(() -> {
+                    var pods = ocp.pods()
+                            .inNamespace(project)
+                            .list()
+                            .getItems()
+                            .stream()
+                            .filter(p -> p.getMetadata().getLabels().containsValue(name))
+                            .collect(Collectors.toList());
+                    return pods.isEmpty();
+                });
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
+        if (!isRunningFromOcp()) {
+            forwardDatabasePorts();
+        }
     }
 
     @Override

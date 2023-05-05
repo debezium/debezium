@@ -119,9 +119,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "Select one of the following snapshot options: "
+                    + "'always': The connector runs a snapshot every time that it starts. After the snapshot completes, the connector begins to stream changes from the redo logs.; "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the redo logs. "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the redo logs.; "
+                    + "'schema_only': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the redo logs.; "
+                    + "'schema_only_recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions to streaming from the redo logs. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.");
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
@@ -486,6 +489,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
             .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
 
+    public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
+            .withDisplayName("Specifies the name of the flush table used by the connector")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault("LOG_MINING_FLUSH")
+            .withValidation(OracleConnectorConfig::validateLogMiningFlushTableName)
+            .withDescription("The name of the flush table used by the connector, defaults to LOG_MINING_FLUSH.");
+
     public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
             .withDescription(
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size, defaults to '2000'.")
@@ -548,7 +560,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS,
                     LOG_MINING_SESSION_MAX_MS,
                     LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
-                    LOG_MINING_READ_ONLY)
+                    LOG_MINING_READ_ONLY,
+                    LOG_MINING_FLUSH_TABLE_NAME)
             .create();
 
     /**
@@ -607,6 +620,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningMaximumSession;
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
     private final Boolean logMiningReadOnly;
+    private final String logMiningFlushTableName;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -662,6 +676,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningMaximumSession = Duration.ofMillis(config.getLong(LOG_MINING_SESSION_MAX_MS));
         this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
         this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
+        this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
     }
 
     private static String toUpperCase(String property) {
@@ -1280,7 +1295,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         private boolean isFlushTable(TableId id) {
-            return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER));
+            return LogWriterFlushStrategy.isFlushTable(id, config.getString(USER), config.getString(LOG_MINING_FLUSH_TABLE_NAME));
         }
 
         private boolean isCompressionAdvisorTable(TableId id) {
@@ -1524,6 +1539,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningReadOnly;
     }
 
+    /**
+     * @return the log mining flush table name
+     */
+    public String getLogMiningFlushTableName() {
+        return logMiningFlushTableName;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -1638,5 +1660,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    public static int validateLogMiningFlushTableName(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
+            // This option is not required when using read-only mode
+            return 0;
+        }
+        else if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            // This option is not required when using XStream
+            return 0;
+        }
+        return Field.isRequired(config, field, problems);
     }
 }

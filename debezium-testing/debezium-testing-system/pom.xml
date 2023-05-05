@@ -34,7 +34,8 @@
     <image.as>${image.build.registry}/debezium/test-artifact-server:${project.version}</image.as>
 
     <!--Docker configuration-->
-    <docker.image.mysql>quay.io/debezium/example-mysql:latest</docker.image.mysql>
+    <docker.image.mysql>quay.io/debezium/example-mysql-master:latest</docker.image.mysql>
+    <docker.image.mysql.replica>quay.io/debezium/example-mysql-replica:latest</docker.image.mysql.replica>
     <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
     <docker.image.mongo>quay.io/debezium/example-mongodb:latest</docker.image.mongo>
     <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
@@ -53,6 +54,7 @@
     <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
+    <ocp.image.mysql.replica>${docker.image.mysql.replica}</ocp.image.mysql.replica>
     <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
     <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
@@ -465,6 +467,7 @@
                 <!--Docker Configuration-->
                 <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
+                <test.docker.image.mysql.replica>${docker.image.mysql.replica}</test.docker.image.mysql.replica>
                 <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
                 <test.docker.image.sqlserver>${docker.image.sqlserver}</test.docker.image.sqlserver>

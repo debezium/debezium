@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startable;
+import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.testing.testcontainers.MongoDbContainer.Address;
 import io.debezium.testing.testcontainers.util.MoreStartables;
@@ -46,6 +47,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
     private final MongoDbReplicaSet configServers;
     private final List<MongoDbReplicaSet> shards;
     private final List<MongoDbContainer> routers;
+    private final DockerImageName imageName;
 
     private volatile boolean started;
 
@@ -62,6 +64,12 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         private Network network = Network.newNetwork();
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
+        private DockerImageName imageName;
+
+        public Builder imageName(DockerImageName imageName) {
+            this.imageName = imageName;
+            return this;
+        }
 
         public Builder shardCount(int shardCount) {
             this.shardCount = shardCount;
@@ -104,6 +112,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
         this.routerCount = builder.routerCount;
         this.network = builder.network;
         this.portResolver = builder.portResolver;
+        this.imageName = builder.imageName;
 
         this.shards = createShards();
         this.configServers = createConfigServers();
@@ -189,6 +198,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .memberCount(replicaCount)
                 .portResolver(portResolver)
                 .skipDockerDesktopLogWarning(true)
+                .imageName(imageName)
                 .build();
 
         shard.getMembers().forEach(node -> node.setCommand(
@@ -210,6 +220,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .portResolver(portResolver)
                 .configServer(true)
                 .skipDockerDesktopLogWarning(true)
+                .imageName(imageName)
                 .build();
 
         configServers.getMembers().forEach(node -> node.setCommand(
@@ -234,6 +245,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .name("test-mongos" + i)
                 .portResolver(portResolver)
                 .skipDockerDesktopLogWarning(true)
+                .imageName(imageName)
                 .build();
 
         router.setCommand(

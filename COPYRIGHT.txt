@@ -189,6 +189,7 @@ Helong Zhang
 Henrik Schnell
 Henry Cai
 Henryk Konsek
+Hidetomi Umaki
 Himanshu Mishra
 Hoa Le
 Horia Chiorean
@@ -250,6 +251,7 @@ Jun Du
 Jure Kajzer
 Justin Hiza
 Kanha Gupta
+Kanthi Subramanian
 Katerina Galieva
 Kaushik Iyer
 Kazuki MATSUDA / 松田一樹
@@ -515,3 +517,6 @@ Moustapha Mahfoud
 RJ Nowling
 蔡灿材
 ddsr-ops
+Ben White
+Miguel Angel Sotomayor
+Stephen Clarkson

@@ -98,6 +98,12 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
             }
 
             @Override
+            public Builder without(String key) {
+                builder.without(key);
+                return this;
+            }
+
+            @Override
             public Builder apply(Consumer<SqlServerJdbcConfiguration.Builder> function) {
                 function.accept(this);
                 return this;
@@ -145,6 +151,12 @@ public interface SqlServerJdbcConfiguration extends JdbcConfiguration {
             @Override
             public Builder withDefault(String key, String value) {
                 builder.withDefault(key, value);
+                return this;
+            }
+
+            @Override
+            public Builder without(String key) {
+                builder.without(key);
                 return this;
             }
 

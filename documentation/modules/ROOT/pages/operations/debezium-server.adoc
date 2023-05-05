@@ -747,7 +747,8 @@ When the alternative implementations are not available then the default ones are
 ==== HTTP Client
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
-{prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].
+{prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].  The HTTP Client sink supports
+optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication].
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -782,6 +783,30 @@ The HTTP Client will stream changes to any HTTP Server for additional processing
 |[[httpclient-headers-encode-base64]]<<httpclient-headers-encode-base64, `debezium.sink.http.headers.encode.base64` >>
 |true
 |Header values will be base64 encoded (defaults to true).
+
+|[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
+|
+|Specifies the authentication type to use.  If missing, no authentication is used.  Currently, only JSON Web Token (JWT) authentication (indicated by the value `jwt`) is supported.
+
+|[[httpclient-authentication-jwt-username]]<<httpclient-authentication-jwt-username, `debezium.sink.http.authentication.jwt.username` >>
+|
+|Specifies the username for JWT authentication.
+
+|[[httpclient-authentication-jwt-password]]<<httpclient-authentication-jwt-password, `debezium.sink.http.authentication.jwt.password` >>
+|
+|Specifies the password for JWT authentication.
+
+|[[httpclient-authentication-jwt-url]]<<httpclient-authentication-jwt-url, `debezium.sink.http.authentication.jwt.url` >>
+|
+|Specifies the base URL (e.g., `http://myserver:8000/`) for JWT authentication.  The paths `auth/authenticate` and `auth/refreshToken` are appended for the JWT initial and authentication REST requests.
+
+|[[httpclient-authentication-jwt-token-expiration]]<<httpclient-authentication-jwt-token-expiration, `debezium.sink.http.authentication.jwt.token_expiration` >>
+|
+|Requested duration (in minutes) before the authentication token expires.
+
+|[[httpclient-authentication-jwt-refresh-token-expiration]]<<httpclient-authentication-jwt-refresh-token-expiration, `debezium.sink.http.authentication.jwt.refresh_token_expiration` >>
+|
+|Requested duration (in minutes) before the refresh token expires.
 
 
 |===

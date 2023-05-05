@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -60,8 +59,8 @@ public class MySqlFloatIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-3865")
     public void shouldHandleFloatAsFloatAndDouble() throws SQLException, InterruptedException {
-        String includeTables = Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2"))
-                .stream().collect(Collectors.joining(","));
+        String includeTables = String.join(",",
+                Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2")));
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)

@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -31,12 +32,14 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -171,6 +174,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
+            SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor = new SignalProcessor<>(
+                    PostgresConnector.class, connectorConfig, Map.of(),
+                    getAvailableSignalChannels(),
+                    DocumentReader.defaultReader(),
+                    previousOffsets);
+
             final PostgresEventDispatcher<TableId> dispatcher = new PostgresEventDispatcher<>(
                     connectorConfig,
                     topicNamingStrategy,
@@ -197,7 +206,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                         break;
                                 }
                             }),
-                    schemaNameAdjuster);
+                    schemaNameAdjuster,
+                    signalProcessor);
+
+            dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
 
             ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffsets,
@@ -216,11 +228,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             replicationConnection,
                             slotCreatedInfo,
                             slotInfo),
-                    new DefaultChangeEventSourceMetricsFactory<PostgresPartition>(),
+                    new DefaultChangeEventSourceMetricsFactory<>(),
                     dispatcher,
                     schema,
                     snapshotter,
-                    slotInfo);
+                    slotInfo,
+                    signalProcessor);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -14,14 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.mysql.signal.ExecuteSnapshotKafkaSignal;
-import io.debezium.connector.mysql.signal.KafkaSignal;
-import io.debezium.connector.mysql.signal.KafkaSignalThread;
-import io.debezium.connector.mysql.signal.PauseSnapshotKafkaSignal;
-import io.debezium.connector.mysql.signal.ResumeSnapshotKafkaSignal;
-import io.debezium.connector.mysql.signal.StopSnapshotKafkaSignal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -83,10 +79,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
     private final String showMasterStmt = "SHOW MASTER STATUS";
-    private final KafkaSignalThread<T> kafkaSignal;
-
-    private MySqlPartition partition;
-    private OffsetContext offsetContext;
+    private final KafkaSignalChannel kafkaSignal;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
@@ -96,22 +89,17 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              SnapshotProgressListener<MySqlPartition> progressListener,
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
-        kafkaSignal = new KafkaSignalThread<>(MySqlConnector.class, config, this);
+        kafkaSignal = new KafkaSignalChannel();
     }
 
     @Override
     public void init(MySqlPartition partition, OffsetContext offsetContext) {
         super.init(partition, offsetContext);
 
-        // cache these for stop signals
-        this.partition = partition;
-        this.offsetContext = offsetContext;
-
         Long signalOffset = getContext().getSignalOffset();
         if (signalOffset != null) {
             kafkaSignal.seek(signalOffset);
         }
-        kafkaSignal.start();
     }
 
     @Override
@@ -120,7 +108,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        checkEnqueuedSnapshotSignals(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
@@ -138,7 +125,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        checkEnqueuedSnapshotSignals(partition, offsetContext);
         readUntilGtidChange(partition, offsetContext);
     }
 
@@ -160,31 +146,11 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        checkEnqueuedSnapshotSignals(partition, offsetContext);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
             readChunk(partition);
         }
-    }
-
-    public void stopSnapshot(List<String> dataCollectionIds, long signalOffset) {
-        // We explicitly do not use the queue here for stop signals on purpose, for immediate processing
-        final StopSnapshotKafkaSignal signal = new StopSnapshotKafkaSignal(dataCollectionIds, signalOffset);
-        removeDataCollectionsFromSnapshot(signal, partition, offsetContext);
-    }
-
-    public void enqueueDataCollectionNamesToSnapshot(List<String> dataCollectionIds, long signalOffset, Optional<String> additionalCondition,
-                                                     Optional<String> surrogateKey) {
-        getContext().enqueueKafkaSignal(new ExecuteSnapshotKafkaSignal(dataCollectionIds, signalOffset, additionalCondition, surrogateKey));
-    }
-
-    public void enqueuePauseSnapshot() {
-        getContext().enqueueKafkaSignal(new PauseSnapshotKafkaSignal());
-    }
-
-    public void enqueueResumeSnapshot() {
-        getContext().enqueueKafkaSignal(new ResumeSnapshotKafkaSignal());
     }
 
     @Override
@@ -262,39 +228,22 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         sourceInfo.setQuery(query);
     }
 
-    private void checkEnqueuedSnapshotSignals(MySqlPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        while (getContext().hasKafkaSignals()) {
-            KafkaSignal signal = getContext().getKafkaSignals();
-            if (signal instanceof ExecuteSnapshotKafkaSignal) {
-                addDataCollectionNamesToSnapshot((ExecuteSnapshotKafkaSignal) signal, partition, offsetContext);
-            }
-            else if (signal instanceof StopSnapshotKafkaSignal) {
-                // If a stop signal gets passed here, write a log entry rather than throw an exception
-                LOGGER.warn("Stop signal skipped, this should never be processed via an enqueued signal");
-            }
-            else if (signal instanceof PauseSnapshotKafkaSignal) {
-                pauseSnapshot(partition, offsetContext);
-            }
-            else if (signal instanceof ResumeSnapshotKafkaSignal) {
-                resumeSnapshot(partition, offsetContext);
-            }
-            else {
-                throw new IllegalArgumentException("Unknown Kafka signal " + signal);
-            }
-        }
-    }
-
-    private void addDataCollectionNamesToSnapshot(ExecuteSnapshotKafkaSignal executeSnapshotSignal, MySqlPartition partition, OffsetContext offsetContext)
+    @Override
+    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData,
+                                                 List<String> dataCollectionIds,
+                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
-        super.addDataCollectionNamesToSnapshot(partition, executeSnapshotSignal.getDataCollections(), executeSnapshotSignal.getAdditionalCondition(),
-                executeSnapshotSignal.getSurrogateKey(),
-                offsetContext);
-        getContext().setSignalOffset(executeSnapshotSignal.getSignalOffset());
+        super.addDataCollectionNamesToSnapshot(partition, offsetContext, additionalData, dataCollectionIds, additionalCondition, surrogateKey);
+
+        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
-    private void removeDataCollectionsFromSnapshot(StopSnapshotKafkaSignal stopSnapshotKafkaSignal, MySqlPartition partition, OffsetContext offsetContext) {
-        super.stopSnapshot(partition, stopSnapshotKafkaSignal.getDataCollections(), offsetContext);
-        getContext().setSignalOffset(stopSnapshotKafkaSignal.getSignalOffset());
+    @Override
+    public void stopSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+        {
+            super.stopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
+            getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
+        }
     }
 
     private MySqlReadOnlyIncrementalSnapshotContext<T> getContext() {

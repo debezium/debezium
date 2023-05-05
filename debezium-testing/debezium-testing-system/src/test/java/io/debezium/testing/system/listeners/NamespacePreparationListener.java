@@ -54,7 +54,7 @@ public class NamespacePreparationListener implements TestExecutionListener {
 
     public void testPlanExecutionFinished(TestPlan testPlan) {
         // execute only after integration tests
-        if (ConfigProperties.OCP_PROJECT_DBZ != null) {
+        if (ConfigProperties.OCP_PROJECT_DBZ != null && ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
             LOGGER.info("Cleaning namespaces");
 
             // delete projects if project names are set
@@ -70,8 +70,11 @@ public class NamespacePreparationListener implements TestExecutionListener {
     }
 
     private void prepareNamespaces() {
-        LOGGER.info("Preparing namespaces");
+        if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
+            return;
+        }
 
+        LOGGER.info("Preparing namespaces");
         ClusterRoleBindingBuilder anyUidBindingBuilder = new ClusterRoleBindingBuilder()
                 .withApiVersion("authorization.openshift.io/v1")
                 .withKind("ClusterRoleBinding")
@@ -134,16 +137,8 @@ public class NamespacePreparationListener implements TestExecutionListener {
      * Check for invalid states of test parameters related to namespace preparation
      */
     private void validateSystemParameters() {
-        if (ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && namespacesExist()) {
-            LOGGER.warn("Should prepare strimzi operator, but namespaces exist. Using existing namespaces");
-        }
-
-        if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !ConfigProperties.PRODUCT_BUILD) {
-            throw new IllegalStateException("PREPARE_STRIMZI is false in upstream build");
-        }
-
         if (!ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI && !namespacesExist()) {
-            throw new IllegalStateException("should not prepare strimzi/namespace but namespace is missing");
+            throw new IllegalArgumentException("Should not prepare strimzi/namespace but namespace is missing");
         }
     }
 
