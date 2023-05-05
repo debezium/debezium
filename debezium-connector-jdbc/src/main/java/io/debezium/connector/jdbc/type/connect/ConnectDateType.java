@@ -6,13 +6,17 @@
 package io.debezium.connector.jdbc.type.connect;
 
 import java.sql.Types;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
+import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.type.AbstractTemporalType;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -20,7 +24,7 @@ import io.debezium.connector.jdbc.type.Type;
  *
  * @author Chris Cranford
  */
-public class ConnectDateType extends AbstractType {
+public class ConnectDateType extends AbstractTemporalType {
 
     public static final ConnectDateType INSTANCE = new ConnectDateType();
 
@@ -36,13 +40,24 @@ public class ConnectDateType extends AbstractType {
 
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDate(((java.util.Date) value).toInstant().atZone(ZoneOffset.UTC));
-        // final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
-        // final String result = formatter.format(((java.util.Date) value).toInstant().atZone(ZoneOffset.UTC));
-        // if (dialect instanceof OracleDatabaseDialect) {
-        // return String.format("TO_DATE('%s', 'YYYY-MM-DD')", result);
-        // }
-        // return String.format("'%s'", result);
+        return dialect.getFormattedDate(toZonedDateTime((java.util.Date) value));
     }
 
+    @Override
+    public void bind(Query<?> query, int index, Schema schema, Object value) {
+        if (value == null) {
+            query.setParameter(index, null);
+        }
+        else if (value instanceof java.util.Date) {
+            query.setParameter(index, toZonedDateTime((java.util.Date) value));
+        }
+        else {
+            throwUnexpectedValue(value);
+        }
+    }
+
+    private ZonedDateTime toZonedDateTime(java.util.Date date) {
+        return LocalDate.ofInstant(Instant.ofEpochMilli(date.getTime()), ZoneOffset.UTC)
+                .atStartOfDay(getDatabaseTimeZone().toZoneId());
+    }
 }

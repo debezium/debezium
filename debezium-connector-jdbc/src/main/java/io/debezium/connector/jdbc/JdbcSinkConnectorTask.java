@@ -94,7 +94,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 markNotProcessed(record);
 
                 // Capture failure
-                LOGGER.error("Failed to process record: {}", throwable.getMessage());
+                LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
                 previousPutException = throwable;
 
                 // Stash any remaining records

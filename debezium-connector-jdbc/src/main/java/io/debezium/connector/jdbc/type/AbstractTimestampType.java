@@ -14,7 +14,7 @@ import org.apache.kafka.connect.data.Schema;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractTimestampType extends AbstractType {
+public abstract class AbstractTimestampType extends AbstractTemporalType {
     protected int getTimePrecision(Schema schema) {
         final String length = getSourceColumnSize(schema).orElse("0");
         final Optional<String> scale = getSourceColumnPrecision(schema);

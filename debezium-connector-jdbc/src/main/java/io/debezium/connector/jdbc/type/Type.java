@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.type;
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 /**
@@ -19,6 +20,13 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
  * @author Chris Cranford
  */
 public interface Type {
+    /**
+     * Allows a type to perform initialization/configuration tasks based on user configs.
+     *
+     * @param config the JDBC sink connector's configuration, should not be {@code null}
+     */
+    void configure(JdbcSinkConnectorConfig config);
+
     /**
      * Returns the names that this type will be mapped as.
      *

@@ -535,6 +535,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     protected void registerType(Type type) {
+        type.configure(connectorConfig);
         for (String key : type.getRegistrationKeys()) {
             final Type existing = typeRegistry.put(key, type);
             if (existing != null) {

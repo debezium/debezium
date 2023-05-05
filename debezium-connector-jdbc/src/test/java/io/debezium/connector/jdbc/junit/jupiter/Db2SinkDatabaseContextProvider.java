@@ -9,6 +9,8 @@ import org.testcontainers.containers.Db2Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.connector.jdbc.junit.TestHelper;
+
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for Db2.
  *
@@ -22,7 +24,8 @@ public class Db2SinkDatabaseContextProvider extends AbstractSinkDatabaseContextP
     public Db2SinkDatabaseContextProvider() {
         super(SinkType.DB2, new Db2Container(IMAGE_NAME)
                 .acceptLicense()
-                .withNetwork(Network.newNetwork()));
+                .withNetwork(Network.newNetwork())
+                .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
 }

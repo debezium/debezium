@@ -9,6 +9,8 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.connector.jdbc.junit.TestHelper;
+
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for Oracle.
  *
@@ -25,7 +27,8 @@ public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseConte
                 .withNetwork(Network.newNetwork())
                 .withUsername("debezium")
                 .withPassword("dbz")
-                .withDatabaseName("ORCLPDB1"));
+                .withDatabaseName("ORCLPDB1")
+                .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
 }

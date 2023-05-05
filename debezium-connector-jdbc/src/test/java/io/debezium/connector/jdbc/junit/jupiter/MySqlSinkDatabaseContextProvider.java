@@ -9,6 +9,8 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.connector.jdbc.junit.TestHelper;
+
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for MySQL.
  *
@@ -22,7 +24,8 @@ public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContex
     public MySqlSinkDatabaseContextProvider() {
         super(SinkType.MYSQL, new MySQLContainer<>(IMAGE_NAME)
                 .withNetwork(Network.newNetwork())
-                .withDatabaseName("test"));
+                .withDatabaseName("test")
+                .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
 }

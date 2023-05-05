@@ -9,6 +9,8 @@ import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.connector.jdbc.junit.TestHelper;
+
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for SQL Server.
  *
@@ -27,7 +29,8 @@ public class SqlServerSinkDatabaseContextProvider extends AbstractSinkDatabaseCo
                         .withEnv("MSSQL_PID", "Standard")
                         .withNetwork(Network.newNetwork())
                         .withInitScript("database-init-scripts/sqlserver-init.sql")
-                        .acceptLicense());
+                        .acceptLicense()
+                        .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
 }

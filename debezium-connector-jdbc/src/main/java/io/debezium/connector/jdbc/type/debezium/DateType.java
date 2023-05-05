@@ -6,14 +6,14 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.type.AbstractTemporalType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.Date;
 
@@ -22,7 +22,7 @@ import io.debezium.time.Date;
  *
  * @author Chris Cranford
  */
-public class DateType extends AbstractType {
+public class DateType extends AbstractTemporalType {
 
     public static final DateType INSTANCE = new DateType();
 
@@ -38,13 +38,7 @@ public class DateType extends AbstractType {
 
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDate(getInstantFromEpochDays((Integer) value).atZone(ZoneOffset.UTC));
-        // final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
-        // final String result = formatter.format(getInstantFromEpochDays((Integer) value).atZone(ZoneOffset.UTC));
-        // if (dialect instanceof OracleDatabaseDialect) {
-        // return String.format("TO_DATE('%s', 'YYYY-MM-DD')", result);
-        // }
-        // return String.format("'%s'", result);
+        return dialect.getFormattedDate(toZonedDateTime((Integer) value));
     }
 
     @Override
@@ -53,14 +47,14 @@ public class DateType extends AbstractType {
             query.setParameter(index, null);
         }
         else if (value instanceof Integer) {
-            query.setParameter(index, java.util.Date.from(getInstantFromEpochDays((Integer) value)));
+            query.setParameter(index, toZonedDateTime((Integer) value));
         }
         else {
             throwUnexpectedValue(value);
         }
     }
 
-    private static Instant getInstantFromEpochDays(Integer value) {
-        return Instant.ofEpochSecond(value.longValue() * 86400L);
+    private ZonedDateTime toZonedDateTime(Integer value) {
+        return LocalDate.ofEpochDay(value.longValue()).atStartOfDay(getDatabaseTimeZone().toZoneId());
     }
 }
