@@ -584,12 +584,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             return true;
         }
         catch (SQLException e) {
+            LogMinerDatabaseStateWriter.writeLogMinerStartParameters(connection);
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
                 if (attempts <= MINING_START_RETRIES) {
                     LOGGER.warn("Failed to start Oracle LogMiner session, retrying...");
                     return false;
                 }
                 LOGGER.error("Failed to start Oracle LogMiner after '{}' attempts.", MINING_START_RETRIES, e);
+                LogMinerDatabaseStateWriter.writeLogMinerLogFailures(connection);
             }
             LOGGER.error("Got exception when starting mining session.", e);
             // Capture the database state before throwing the exception up
