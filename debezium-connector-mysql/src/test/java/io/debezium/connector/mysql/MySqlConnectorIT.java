@@ -798,7 +798,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldIgnoreAlterTableForNonCapturedTablesNotStoredInHistory() throws SQLException, InterruptedException {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
-        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
@@ -826,6 +826,66 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1);
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldResetBinlogPosition() throws SQLException, InterruptedException {
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(1 + 5);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
+        long timeSecBeforeInserts = System.currentTimeMillis() / 1000;
+        BinlogPosition positionBeforeInserts = new BinlogPosition();
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.query("SHOW MASTER STATUS", positionBeforeInserts::readFromDatabase);
+                connection.query("SELECT @@server_id", positionBeforeInserts::readServerIdFromDatabase);
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email0');");
+                connection.execute("ALTER TABLE customers ADD COLUMN (newcol INT)");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email',1);");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email1',2);");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email2',3);");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email3',4);");
+            }
+        }
+
+        records = consumeRecordsByTopic(12);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(5);
+        stopConnector();
+        // Reset to binlog position before inserts
+        MySqlConnectorOffset beforeInsertsOffset = new MySqlConnectorOffset(positionBeforeInserts.gtidSet(),
+                positionBeforeInserts.binlogFilename(), positionBeforeInserts.binlogPosition(),
+                positionBeforeInserts.serverId(), timeSecBeforeInserts);
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.FORCE_RESET_OFFSET, beforeInsertsOffset.toString())
+                .build();
+        // Restart the connector ...
+        start(MySqlConnector.class, config);
+
+        records = consumeRecordsByTopic(18);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(5);
 
         stopConnector();
     }
@@ -926,7 +986,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldIgnoreAlterTableForNonCapturedTablesStoredInHistory() throws SQLException, InterruptedException {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
-        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
@@ -964,7 +1024,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void shouldIgnoreCreateIndexForNonCapturedTablesNotStoredInHistory() throws SQLException, InterruptedException {
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
 
-        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName());
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
@@ -1107,6 +1167,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     protected static class BinlogPosition {
         private String binlogFilename;
         private long binlogPosition;
+        private int serverId;
         private String gtidSet;
 
         public void readFromDatabase(ResultSet rs) throws SQLException {
@@ -1120,12 +1181,22 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
+        public void readServerIdFromDatabase(ResultSet rs) throws SQLException {
+            if (rs.next()) {
+                serverId = rs.getInt(1);
+            }
+        }
+
         public String binlogFilename() {
             return binlogFilename;
         }
 
         public long binlogPosition() {
             return binlogPosition;
+        }
+
+        public int serverId() {
+            return serverId;
         }
 
         public String gtidSet() {

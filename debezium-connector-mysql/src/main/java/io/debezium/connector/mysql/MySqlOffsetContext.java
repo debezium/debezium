@@ -154,8 +154,26 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public static MySqlOffsetContext initial(MySqlConnectorConfig config) {
         final MySqlOffsetContext offset = new MySqlOffsetContext(config, false, false, new SourceInfo(config));
-        offset.setBinlogStartPoint("", 0L); // start from the beginning of the binlog
+        if (config.getForceResetOffset() != null) {
+            MySqlConnectorOffset resetOffset = new MySqlConnectorOffset(config.getForceResetOffset());
+            offset.reset(resetOffset);
+        }
+        else {
+            offset.setBinlogStartPoint("", 0L); // start from the beginning of the binlog
+        }
         return offset;
+    }
+
+    public void reset(MySqlConnectorOffset resetOffset) {
+        setBinlogStartPoint(resetOffset.file(), resetOffset.position());
+        setCompletedGtidSet(resetOffset.gtids());
+        if (resetOffset.serverId() != null) {
+            setBinlogServerId(resetOffset.serverId());
+        }
+        setInitialSkips(resetOffset.event(), resetOffset.row());
+        if (resetOffset.timestamp() != null) {
+            sourceInfo.setSourceTime(resetOffset.timestamp());
+        }
     }
 
     public static class Loader implements OffsetContext.Loader<MySqlOffsetContext> {
@@ -183,13 +201,15 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
             else {
                 incrementalSnapshotContext = SignalBasedIncrementalSnapshotContext.load(offset);
             }
+            SourceInfo sourceInfo = new SourceInfo(connectorConfig);
+            sourceInfo.setBinlogTimestampSeconds(longOffsetValue(offset, TIMESTAMP_KEY));
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(snapshot, snapshotCompleted,
-                    TransactionContext.load(offset), incrementalSnapshotContext,
-                    new SourceInfo(connectorConfig));
+                    TransactionContext.load(offset), incrementalSnapshotContext, sourceInfo);
             offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
             offsetContext.setInitialSkips(longOffsetValue(offset, EVENTS_TO_SKIP_OFFSET_KEY),
                     (int) longOffsetValue(offset, SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY));
             offsetContext.setCompletedGtidSet((String) offset.get(GTID_SET_KEY)); // may be null
+            offsetContext.setBinlogServerId(longOffsetValue(offset, SourceInfo.SERVER_ID_KEY));
             return offsetContext;
         }
 

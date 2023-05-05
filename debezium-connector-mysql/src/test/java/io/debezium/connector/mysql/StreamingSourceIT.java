@@ -582,9 +582,6 @@ public class StreamingSourceIT extends AbstractConnectorTest {
                 JdbcConnection connection = db.connect();
                 Connection jdbc = connection.connection();
                 Statement statement = jdbc.createStatement()) {
-            if (mode == null) {
-                waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-            }
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 

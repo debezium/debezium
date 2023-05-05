@@ -105,7 +105,10 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
 
         MySqlPartition partition = previousOffsets.getTheOnlyPartition();
         MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
-
+        if (previousOffset != null && connectorConfig.getForceResetOffset() != null) {
+            MySqlConnectorOffset resetOffset = new MySqlConnectorOffset(connectorConfig.getForceResetOffset());
+            previousOffset.reset(resetOffset);
+        }
         validateAndLoadSchemaHistory(connectorConfig, partition, previousOffset, schema);
 
         LOGGER.info("Reconnecting after finishing schema recovery");

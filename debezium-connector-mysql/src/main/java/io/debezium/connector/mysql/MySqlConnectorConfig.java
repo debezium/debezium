@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Set;
@@ -14,6 +15,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,8 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.document.Document;
+import io.debezium.document.DocumentReader;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -729,6 +733,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field FORCE_RESET_OFFSET = Field.create("force.reset.offset")
+            .withDisplayName("Force reset connector's offset")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Force reset binlog streaming from the specified offset.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(Type.CLASS)
@@ -1121,6 +1133,18 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public int bufferSizeForStreamingChangeEventSource() {
         return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
+    }
+
+    public Document getForceResetOffset() {
+        String value = config.getString(MySqlConnectorConfig.FORCE_RESET_OFFSET);
+        try {
+            return (value == null || value.isEmpty()) ? null
+                    : DocumentReader.defaultReader().read(value);
+        }
+        catch (IOException e) {
+            throw new ConnectException(String.format("Unable to parse the %s config json value %s",
+                    MySqlConnectorConfig.FORCE_RESET_OFFSET, value), e);
+        }
     }
 
     /**
