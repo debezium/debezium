@@ -18,7 +18,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractTimeType extends AbstractType {
+public abstract class AbstractTimeType extends AbstractTemporalType {
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {

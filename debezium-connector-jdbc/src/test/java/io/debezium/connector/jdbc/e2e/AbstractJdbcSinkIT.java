@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorTask;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
+import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 
@@ -56,6 +58,7 @@ public abstract class AbstractJdbcSinkIT {
     private CountDownLatch stopLatch = new CountDownLatch(1);
     private ExecutorService sinkExecutor;
     private JdbcSinkConnectorConfig currentSinkConfig;
+    private TimeZone currentSinkTimeZone;
 
     @AfterEach
     public void afterEach() throws Exception {
@@ -64,6 +67,13 @@ public abstract class AbstractJdbcSinkIT {
 
     protected JdbcSinkConnectorConfig getCurrentSinkConfig() {
         return currentSinkConfig;
+    }
+
+    protected TimeZone getCurrentSinkTimeZone() {
+        if (currentSinkTimeZone == null) {
+            currentSinkTimeZone = TimeZone.getTimeZone(currentSinkConfig.getDatabaseTimeZone());
+        }
+        return currentSinkTimeZone;
     }
 
     protected void startSink(Source source, Properties sinkProperties, String tableName) {
@@ -222,6 +232,8 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", "kafka:9092");
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-mysql");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
+                sourceConfig.with("database.connectionTimeZone", TestHelper.getSourceTimeZone());
+                sourceConfig.with("database.serverTimeZone", TestHelper.getSourceTimeZone());
                 if (source.getOptions().isColumnTypePropagated()) {
                     sourceConfig.with("column.propagate.source.type", "test.*");
                 }

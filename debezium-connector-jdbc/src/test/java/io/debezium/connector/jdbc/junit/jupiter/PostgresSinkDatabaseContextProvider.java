@@ -15,6 +15,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.PostgresExtensionUtils;
+import io.debezium.connector.jdbc.junit.TestHelper;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for PostgreSQL.
@@ -33,7 +34,8 @@ public class PostgresSinkDatabaseContextProvider extends AbstractSinkDatabaseCon
         super(SinkType.POSTGRES,
                 new PostgreSQLContainer<>(IMAGE_NAME)
                         .withNetwork(Network.newNetwork())
-                        .withDatabaseName("test"));
+                        .withDatabaseName("test")
+                        .withEnv("TZ", TestHelper.getSinkTimeZone()));
     }
 
     @Override
