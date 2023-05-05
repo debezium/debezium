@@ -54,20 +54,83 @@ public class LogMinerDatabaseStateWriter {
             catch (SQLException e) {
                 LOGGER.debug("Failed to obtain log history", e);
             }
-            LOGGER.debug("Log entries registered with LogMiner are:");
-            try {
-                logQueryResults(connection, "SELECT * FROM V$LOGMNR_LOGS");
-            }
-            catch (SQLException e) {
-                LOGGER.debug("Failed to obtain registered logs with LogMiner", e);
-            }
-            LOGGER.debug("Log mining session parameters are:");
-            try {
-                logQueryResults(connection, "SELECT * FROM V$LOGMNR_PARAMETERS");
-            }
-            catch (SQLException e) {
-                LOGGER.debug("Failed to obtain log mining session parameters", e);
-            }
+        }
+    }
+
+    public static void writeLogMinerStartParameters(OracleConnection connection) {
+        final String query = "SELECT START_SCN, END_SCN, REQUIRED_START_SCN, OPTIONS, STATUS, INFO " +
+                "FROM V$LOGMNR_PARAMETERS";
+        try {
+            connection.query(query, rs -> {
+                if (rs.next()) {
+                    LOGGER.error("Failed to start a LogMiner mining session with parameters: ");
+                    do {
+                        LOGGER.error("\tSCN: [{}-{}], Required Start SCN: {}, Options: {}, Status: {} - {}",
+                                rs.getString(1),
+                                rs.getString(2),
+                                rs.getString(3),
+                                rs.getString(4),
+                                rs.getString(5),
+                                rs.getString(6) == null ? "N/A" : rs.getString(6));
+                    } while (rs.next());
+                }
+            });
+        }
+        catch (SQLException e) {
+            // No need to throw this error as this method should only be called due to an earlier
+            // error, and this is intended to provide details regarding the original error.
+            LOGGER.error("Failed to read contents of V$LOGMNR_PARAMETERS", e);
+        }
+    }
+
+    public static void writeLogMinerLogFailures(OracleConnection connection) {
+        // Query fetches all logs that had problems when LogMiner started.
+        final String query = "SELECT FILENAME, THREAD_ID, THREAD_SQN, LOW_SCN, NEXT_SCN, DICTIONARY_BEGIN, " +
+                "DICTIONARY_END, TYPE, INFO FROM V$LOGMNR_LOGS WHERE STATUS = 4 " +
+                "ORDER BY THREAD_ID, THREAD_SQN";
+        try {
+            connection.query(query, rs -> {
+                if (rs.next()) {
+                    final String dictionaryStatus;
+                    if ("YES".equals(rs.getString(6))) {
+                        // BEGIN detected
+                        if ("YES".equals(rs.getString(7))) {
+                            // END detected
+                            dictionaryStatus = "BEGIN+END";
+                        }
+                        else {
+                            dictionaryStatus = "BEGIN";
+                        }
+                    }
+                    else if ("YES".equals(rs.getString(7))) {
+                        // Only END detected
+                        dictionaryStatus = "END";
+                    }
+                    else {
+                        dictionaryStatus = "NONE";
+                    }
+                    LOGGER.error("The following logs triggered a LogMiner failure:");
+                    do {
+                        LOGGER.error("\t* File '{}', Thread {} (Seq {}), SCN [{} - {}], Type {}, Dictionary {}: {}",
+                                rs.getString(1),
+                                rs.getLong(2),
+                                rs.getLong(3),
+                                rs.getString(4),
+                                rs.getString(5),
+                                rs.getString(8),
+                                dictionaryStatus,
+                                rs.getString(9));
+                    } while (rs.next());
+                }
+                else {
+                    LOGGER.error("No logs were found with a status code of 4.");
+                }
+            });
+        }
+        catch (SQLException e) {
+            // No need to throw this error as this method should only be called due to an earlier
+            // error, and this is intended to provide details regarding the original error.
+            LOGGER.error("Failed to read contents of V$LOGMNR_LOGS to determine log failures", e);
         }
     }
 
