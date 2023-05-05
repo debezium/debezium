@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.type.debezium;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -37,21 +36,6 @@ public class MicroTimeType extends AbstractTimeType {
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
         return dialect.getFormattedTime(toZonedDateTime((long) value));
-        // final ZonedDateTime zdt = toZonedDateTime((long) value);
-        // if (dialect instanceof OracleDatabaseDialect) {
-        // final String result = DateTimeFormatter.ISO_ZONED_DATE_TIME.format(zdt);
-        // return String.format("TO_TIMESTAMP('%s', 'YYYY-MM-DD\"T\"HH24:MI::SS.FF9 TZH:TZM')", result);
-        // }
-        // else if (dialect instanceof PostgresDatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // else if (dialect instanceof MySqlDatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // else if (dialect instanceof Db2DatabaseDialect) {
-        // return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(zdt));
-        // }
-        // return String.format("'%s'", DateTimeFormatter.ISO_TIME.format(zdt));
     }
 
     @Override
@@ -69,6 +53,6 @@ public class MicroTimeType extends AbstractTimeType {
 
     private ZonedDateTime toZonedDateTime(long value) {
         final Duration duration = Duration.of(value, ChronoUnit.MICROS);
-        return Instant.EPOCH.plus(duration.toNanos(), ChronoUnit.NANOS).atZone(ZoneOffset.UTC);
+        return Instant.EPOCH.plus(duration.toNanos(), ChronoUnit.NANOS).atZone(getDatabaseTimeZone().toZoneId());
     }
 }

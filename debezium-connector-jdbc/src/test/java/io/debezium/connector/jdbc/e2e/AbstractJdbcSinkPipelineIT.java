@@ -26,11 +26,9 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +40,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
+import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkType;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
@@ -1592,7 +1591,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "id", getTimeType(source, true, 6));
                     assertColumn(sink, record, "data", getTimeType(source, false, 6));
                 },
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1602,26 +1601,30 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final String ts0 = "'01:02:03.123456'";
         final String ts1 = "'14:15:16.456789'";
 
-        final List<LocalTime> expectedValues;
+        final List<OffsetTime> expectedValues;
         if (SourceType.SQLSERVER.is(source.getType())) {
             final boolean connect = source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT;
             if (source.getOptions().useSnapshot()) {
                 // todo: See DBZ-6222
                 // SQL Server rounds TIME(n) to the nearest millisecond during snapshot, see second value
                 int nanoSeconds = connect ? 456000000 : 456789000;
-                expectedValues = List.of(LocalTime.of(1, 2, 3, 123000000), LocalTime.of(14, 15, 16, nanoSeconds));
+                expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
+                                         OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC));
             }
             else {
                 // SQL Server rounds TIME(n) to the nearest microsecond during streaming, see second value
-                expectedValues = List.of(LocalTime.of(1, 2, 3, 123000000), LocalTime.of(14, 15, 16, 457000000));
+                expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
+                                         OffsetTime.of(14, 15, 16, 457000000, ZoneOffset.UTC));
             }
         }
         else if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT) {
             // There is always a loss of precision on time(p) where p > 3 using connect precision
-            expectedValues = List.of(LocalTime.of(1, 2, 3, 123000000), LocalTime.of(14, 15, 16, 456000000));
+            expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
+                                     OffsetTime.of(14, 15, 16, 456000000, ZoneOffset.UTC));
         }
         else {
-            expectedValues = List.of(LocalTime.of(1, 2, 3, 123000000), LocalTime.of(14, 15, 16, 456789000));
+            expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
+                                     OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC));
         }
 
         assertDataTypes(source,
@@ -1635,7 +1638,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data0", getTimeType(source, false, 3));
                     assertColumn(sink, record, "data1", getTimeType(source, false, 6));
                 },
-                (rs, index) -> rs.getTimestamp(index).toLocalDateTime().toLocalTime());
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
     }
 
     @TestTemplate
@@ -1648,12 +1651,12 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 sink,
                 "time(7)",
                 List.of("'01:02:03.123456789'", "'14:15:16.456789012'"),
-                List.of(LocalTime.of(1, 2, 3, 123456700), LocalTime.of(14, 15, 16, 456789000)),
+                List.of(OffsetTime.of(1, 2, 3, 123456700, ZoneOffset.UTC), OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC)),
                 (record) -> {
                     assertColumn(sink, record, "id", getTimeType(source, true, 7));
                     assertColumn(sink, record, "data", getTimeType(source, false, 7));
                 },
-                (rs, index) -> rs.getTimestamp(index).toLocalDateTime().toLocalTime());
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
     }
 
     @TestTemplate
@@ -1696,7 +1699,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     List.of(values.get(1)),
                     List.of(expectedValues.get(1)),
                     (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                    (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
         }
         else {
             assertDataType(source,
@@ -1715,7 +1718,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                             assertColumn(sink, record, "data", getTimestampType(source, false, 6));
                         }
                     },
-                    (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
         }
     }
 
@@ -1770,7 +1773,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                         assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
                         assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
                     },
-                    (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
         }
         else {
             assertDataTypes(source,
@@ -1810,7 +1813,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                             assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
                         }
                     },
-                    (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
         }
     }
 
@@ -1826,7 +1829,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("'2022-12-31 14:15:16.456789Z'"),
                 List.of(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1845,7 +1848,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2022, 12, 31, 16, 15, 16, 456789000, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1861,7 +1864,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC).toLocalDateTime()),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toLocalDateTime());
+                (rs, index) -> getTimestamp(rs, index).toLocalDateTime());
     }
 
     @TestTemplate
@@ -1895,7 +1898,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType()),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
     }
 
     @TestTemplate
@@ -1921,7 +1924,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, nanosOfSeconds, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, precision)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1958,7 +1961,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
                 },
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1979,7 +1982,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, nanosOfSeconds, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -2024,7 +2027,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
                     assertColumn(sink, record, "data6", getTimestampType(source, false, 6));
                 },
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -2039,7 +2042,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456789000, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -2078,7 +2081,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
                     assertColumn(sink, record, "data6", getTimestampWithTimezoneType(source, false, 6));
                 },
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -2093,7 +2096,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 0, 0, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
-                (rs, index) -> getTimestampUtc(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -2613,8 +2616,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         return false;
     }
 
-    protected Timestamp getTimestampUtc(ResultSet rs, int index) throws SQLException {
-        return rs.getTimestamp(index, Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC)));
+    protected Timestamp getTimestamp(ResultSet rs, int index) throws SQLException {
+        return rs.getTimestamp(index, Calendar.getInstance(getCurrentSinkTimeZone()));
     }
 
     protected List<String> bitValues(Source source, String... values) {
@@ -2711,7 +2714,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_URL, sink.getJdbcUrl());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_USER, sink.getUsername());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, sink.getPassword());
-        sinkProperties.put(AvailableSettings.JDBC_TIME_ZONE, "UTC");
+        sinkProperties.put(JdbcSinkConnectorConfig.DATABASE_TIME_ZONE, TestHelper.getSinkTimeZone());
         return sinkProperties;
     }
 

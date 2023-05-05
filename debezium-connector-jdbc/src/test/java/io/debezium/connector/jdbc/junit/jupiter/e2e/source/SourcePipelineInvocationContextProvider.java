@@ -49,6 +49,7 @@ import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.PostgresExtensionUtils;
+import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSourceNoMatrix;
@@ -362,7 +363,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withNetwork(network)
                         .withUsername(MYSQL_USERNAME)
                         .withPassword(MYSQL_PASSWORD)
-                        .withNetworkAliases(sourceType.getValue());
+                        .withNetworkAliases(sourceType.getValue())
+                        .withEnv("TZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);
             }
             else if (SourceType.POSTGRES.equals(sourceType)) {
@@ -371,7 +373,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withNetwork(network)
                         .withUsername(POSTGRES_USERNAME)
                         .withPassword(POSTGRES_PASSWORD)
-                        .withNetworkAliases(sourceType.getValue());
+                        .withNetworkAliases(sourceType.getValue())
+                        .withEnv("TZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);
             }
             else if (SourceType.SQLSERVER.equals(sourceType)) {
@@ -383,7 +386,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withEnv("MSSQL_PID", "Standard")
                         .withPassword(SQLSERVER_PASSWORD)
                         .withInitScript("database-init-scripts/sqlserver-source-init.sql")
-                        .withNetworkAliases(sourceType.getValue());
+                        .withNetworkAliases(sourceType.getValue())
+                        .withEnv("TZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);
             }
             else if (SourceType.ORACLE.equals(sourceType)) {
@@ -393,7 +397,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withUsername(ORACLE_USERNAME)
                         .withPassword(ORACLE_PASSWORD)
                         .withDatabaseName("ORCLPDB1")
-                        .withNetworkAliases(sourceType.getValue());
+                        .withNetworkAliases(sourceType.getValue())
+                        .withEnv("TZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);
             }
             // else if (SourceType.DB2.equals(sourceType)) {
