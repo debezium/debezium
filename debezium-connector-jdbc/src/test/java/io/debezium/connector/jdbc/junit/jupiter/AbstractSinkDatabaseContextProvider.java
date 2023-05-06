@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSink;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipWhenSinks;
 import io.debezium.util.Strings;
 
 /**
@@ -61,16 +62,18 @@ public abstract class AbstractSinkDatabaseContextProvider implements BeforeAllCa
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
         if (context.getTestMethod().isPresent()) {
-            final SkipWhenSink skipWhenSink = context.getRequiredTestMethod().getAnnotation(SkipWhenSink.class);
-            if (skipWhenSink != null) {
-                for (SinkType skipType : skipWhenSink.value()) {
-                    if (skipType == sinkType) {
-                        if (Strings.isNullOrBlank(skipWhenSink.reason())) {
-                            return ConditionEvaluationResult.disabled("Annotated with SkipWhenSink for " + sinkType);
-                        }
-                        return ConditionEvaluationResult.disabled("Skipped: " + skipWhenSink.reason());
+            final SkipWhenSinks skipWhenSinks = context.getRequiredTestMethod().getAnnotation(SkipWhenSinks.class);
+            if (skipWhenSinks != null) {
+                for (SkipWhenSink skipWhenSink : skipWhenSinks.value()) {
+                    if (isSkipped(skipWhenSink)) {
+                        return getSkippedEvaluationResult(skipWhenSink);
                     }
                 }
+            }
+
+            final SkipWhenSink skipWhenSink = context.getRequiredTestMethod().getAnnotation(SkipWhenSink.class);
+            if (isSkipped(skipWhenSink)) {
+                return getSkippedEvaluationResult(skipWhenSink);
             }
         }
         return ConditionEvaluationResult.enabled("Not annotated with SkipWhenSink for " + sinkType);
@@ -79,4 +82,23 @@ public abstract class AbstractSinkDatabaseContextProvider implements BeforeAllCa
     protected Sink getSink() {
         return sink;
     }
+
+    private boolean isSkipped(SkipWhenSink skipWhenSink) {
+        if (skipWhenSink != null) {
+            for (SinkType sinkType : skipWhenSink.value()) {
+                if (sinkType == this.sinkType) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private ConditionEvaluationResult getSkippedEvaluationResult(SkipWhenSink skipWhenSink) {
+        if (Strings.isNullOrBlank(skipWhenSink.reason())) {
+            return ConditionEvaluationResult.disabled("Annotated with SkipWhenSink for " + sinkType);
+        }
+        return ConditionEvaluationResult.disabled("Skipped: " + skipWhenSink.reason());
+    }
+
 }
