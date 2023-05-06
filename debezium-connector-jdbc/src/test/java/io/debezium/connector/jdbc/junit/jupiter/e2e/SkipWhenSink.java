@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.junit.jupiter.e2e;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -20,6 +21,7 @@ import io.debezium.connector.jdbc.junit.jupiter.SinkType;
  */
 @Target({ ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
+@Repeatable(SkipWhenSinks.class)
 public @interface SkipWhenSink {
     /**
      * Returns the connector types that will be excluded from the test template invocation matrix.

@@ -8,10 +8,12 @@ package io.debezium.connector.jdbc.type.debezium;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.query.Query;
+import org.hibernate.type.StandardBasicTypes;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
@@ -65,11 +67,9 @@ public class ZonedTimeType extends AbstractTimeType {
             query.setParameter(index, null);
         }
         else if (value instanceof String) {
-            // NOTE:
-            // We must bind the value as an Instant as Hibernate will refuse to bind the TZ details
-            // on the destination correctly for Oracle.
             final OffsetTime offsetTime = OffsetTime.parse((String) value, ZonedTime.FORMATTER);
-            query.setParameter(index, offsetTime.atDate(LocalDate.now()).toInstant());
+            final ZonedDateTime zdt = offsetTime.atDate(LocalDate.EPOCH).toInstant().atZone(getDatabaseTimeZone().toZoneId());
+            query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
         }
         else {
             throwUnexpectedValue(value);
