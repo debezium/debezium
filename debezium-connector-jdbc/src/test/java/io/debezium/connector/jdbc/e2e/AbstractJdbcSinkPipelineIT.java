@@ -1608,22 +1608,22 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 // SQL Server rounds TIME(n) to the nearest millisecond during snapshot, see second value
                 int nanoSeconds = connect ? 456000000 : 456789000;
                 expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                                         OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC));
+                        OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC));
             }
             else {
                 // SQL Server rounds TIME(n) to the nearest microsecond during streaming, see second value
                 expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                                         OffsetTime.of(14, 15, 16, 457000000, ZoneOffset.UTC));
+                        OffsetTime.of(14, 15, 16, 457000000, ZoneOffset.UTC));
             }
         }
         else if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT) {
             // There is always a loss of precision on time(p) where p > 3 using connect precision
             expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                                     OffsetTime.of(14, 15, 16, 456000000, ZoneOffset.UTC));
+                    OffsetTime.of(14, 15, 16, 456000000, ZoneOffset.UTC));
         }
         else {
             expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                                     OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC));
+                    OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC));
         }
 
         assertDataTypes(source,
