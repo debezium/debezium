@@ -15,7 +15,6 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -1870,6 +1869,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No TIME(n) WITH TIME ZONE data type support")
     @SkipWhenSink(value = { SinkType.MYSQL }, reason = "MySQL has no support for TIME(n) with TIME ZONE support")
+    @SkipWhenSink(value = { SinkType.DB2 }, reason = "There is an issue with Daylight Savings Time")
     @WithTemporalPrecisionMode
     public void testTimeWithTimeZoneDataType(Source source, Sink sink) throws Exception {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
