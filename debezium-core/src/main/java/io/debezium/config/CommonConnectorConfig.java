@@ -559,6 +559,21 @@ public abstract class CommonConnectorConfig {
                     "The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes, 't' for truncates, and 'none' to indicate nothing skipped. "
                             + "By default, only truncate operations will be skipped.");
 
+    /**
+     *  Specifies whether to skip messages containing no updates in included columns
+     */
+    public static final Field SKIP_MESSAGES_WITHOUT_CHANGE = Field.create("skip.messages.without.change")
+            .withDisplayName("Enable skipping messages without change")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(("Enable to skip publishing messages when there is no change in included columns."
+                    + "This would essentially filter messages to be sent when there is no change in columns included as per column.include.list/column.exclude.list."
+                    + "For Postgres - this would require REPLICA IDENTITY of table to be FULL."))
+            .withValidation(Field::isBoolean);
+
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
             .withDisplayName("Binary Handling")
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
@@ -726,6 +741,7 @@ public abstract class CommonConnectorConfig {
     private final List<String> signalEnabledChannels;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
+    private final boolean skipMessagesWithoutChange;
 
     private final String notificationTopicName;
     private final List<String> enabledNotificationChannels;
@@ -761,6 +777,7 @@ public abstract class CommonConnectorConfig {
         this.taskId = config.getString(TASK_ID);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
+        this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -856,7 +873,7 @@ public abstract class CommonConnectorConfig {
         return queryFetchSize;
     }
 
-    public int getIncrementalSnashotChunkSize() {
+    public int getIncrementalSnapshotChunkSize() {
         return incrementalSnapshotChunkSize;
     }
 
@@ -870,6 +887,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean shouldProvideTransactionMetadata() {
         return shouldProvideTransactionMetadata;
+    }
+
+    public boolean skipMessagesWithoutChange() {
+        return skipMessagesWithoutChange;
     }
 
     public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {

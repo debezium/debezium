@@ -170,7 +170,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
      */
     protected ChangeRecordEmitter<MongoDbPartition> getChangeRecordEmitter(MongoDbPartition partition,
                                                                            OffsetContext offsetContext, Object[] row) {
-        return new MongoDbSnapshotRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0]);
+        return new MongoDbSnapshotRecordEmitter(partition, offsetContext, clock, (BsonDocument) row[0], connectorConfig);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -465,7 +465,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             Object[] firstRow = null;
 
             for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))
-                    .limit(connectorConfig.getIncrementalSnashotChunkSize())) {
+                    .limit(connectorConfig.getIncrementalSnapshotChunkSize())) {
                 rows++;
                 final Object[] row = new Object[]{ doc };
                 if (firstRow == null) {

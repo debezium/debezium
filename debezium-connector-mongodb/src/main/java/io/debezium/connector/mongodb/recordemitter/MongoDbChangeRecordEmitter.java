@@ -17,6 +17,7 @@ import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.mongodb.MongoDbCollectionSchema;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
@@ -48,8 +49,8 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
     }
 
     public MongoDbChangeRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock,
-                                      ChangeStreamDocument<BsonDocument> changeStreamEvent) {
-        super(partition, offsetContext, clock);
+                                      ChangeStreamDocument<BsonDocument> changeStreamEvent, MongoDbConnectorConfig connectorConfig) {
+        super(partition, offsetContext, clock, connectorConfig);
         this.changeStreamEvent = changeStreamEvent;
     }
 
