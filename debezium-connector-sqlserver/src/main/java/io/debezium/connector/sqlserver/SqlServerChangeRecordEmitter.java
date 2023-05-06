@@ -27,16 +27,13 @@ public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter 
     private final Object[] data;
     private final Object[] dataNext;
 
-    private final boolean skipMessagesWithoutChange;
-
     public SqlServerChangeRecordEmitter(Partition partition, OffsetContext offset, int operation, Object[] data, Object[] dataNext, Clock clock,
-                                        boolean skipMessagesWithoutChange) {
-        super(partition, offset, clock);
+                                        SqlServerConnectorConfig connectorConfig) {
+        super(partition, offset, clock, connectorConfig);
 
         this.operation = operation;
         this.data = data;
         this.dataNext = dataNext;
-        this.skipMessagesWithoutChange = skipMessagesWithoutChange;
     }
 
     @Override
@@ -75,10 +72,5 @@ public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter 
             default:
                 return null;
         }
-    }
-
-    @Override
-    protected boolean skipMessagesWithoutChange() {
-        return skipMessagesWithoutChange;
     }
 }

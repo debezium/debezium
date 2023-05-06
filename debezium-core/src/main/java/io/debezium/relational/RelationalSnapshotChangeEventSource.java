@@ -611,7 +611,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(P partition, O offset, TableId tableId,
                                                             Object[] row, Instant timestamp) {
         offset.event(tableId, timestamp);
-        return new SnapshotChangeRecordEmitter<>(partition, offset, row, getClock());
+        return new SnapshotChangeRecordEmitter<>(partition, offset, row, getClock(), connectorConfig);
     }
 
     /**

@@ -183,7 +183,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      */
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(P partition, T dataCollectionId,
                                                             OffsetContext offsetContext, Object[] row) {
-        return new SnapshotChangeRecordEmitter<>(partition, offsetContext, row, clock);
+        return new SnapshotChangeRecordEmitter<>(partition, offsetContext, row, clock, connectorConfig);
     }
 
     protected void deduplicateWindow(DataCollectionId dataCollectionId, Object key) {
@@ -208,7 +208,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected abstract void emitWindowClose(P partition, OffsetContext offsetContext) throws SQLException, InterruptedException;
 
     protected String buildChunkQuery(Table table, Optional<String> additionalCondition) {
-        return buildChunkQuery(table, connectorConfig.getIncrementalSnashotChunkSize(), additionalCondition);
+        return buildChunkQuery(table, connectorConfig.getIncrementalSnapshotChunkSize(), additionalCondition);
     }
 
     protected String buildChunkQuery(Table table, int limit, Optional<String> additionalCondition) {

@@ -19,8 +19,8 @@ public class SnapshotChangeRecordEmitter<P extends Partition> extends Relational
 
     private final Object[] row;
 
-    public SnapshotChangeRecordEmitter(P partition, OffsetContext offset, Object[] row, Clock clock) {
-        super(partition, offset, clock);
+    public SnapshotChangeRecordEmitter(P partition, OffsetContext offset, Object[] row, Clock clock, RelationalDatabaseConnectorConfig connectorConfig) {
+        super(partition, offset, clock, connectorConfig);
 
         this.row = row;
     }
