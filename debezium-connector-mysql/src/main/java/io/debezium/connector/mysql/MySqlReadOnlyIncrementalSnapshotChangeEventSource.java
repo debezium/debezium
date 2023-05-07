@@ -96,6 +96,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     public void init(MySqlPartition partition, OffsetContext offsetContext) {
         super.init(partition, offsetContext);
 
+        kafkaSignal.init(connectorConfig);
         Long signalOffset = getContext().getSignalOffset();
         if (signalOffset != null) {
             kafkaSignal.seek(signalOffset);
