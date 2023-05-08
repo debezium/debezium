@@ -33,6 +33,7 @@ import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
+import io.debezium.connector.oracle.logminer.LogMinerQueryBuilder;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
@@ -78,6 +79,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private final Tables.TableFilter tableFilter;
 
     protected final Counters counters;
+    protected final String sqlQuery;
 
     private Scn currentOffsetScn = Scn.NULL;
     private Map<Integer, Scn> currentOffsetCommitScns = new HashMap<>();
@@ -103,6 +105,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         this.counters = new Counters();
         this.dmlParser = new LogMinerDmlParser();
         this.selectLobParser = new SelectLobParser();
+        this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
     }
 
     protected OracleConnectorConfig getConfig() {
@@ -232,6 +235,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
             }
         }
+    }
+
+    /**
+     * Get the LogMiner query that will be used to fetch results.
+     *
+     * @return the SQL query to use, never {@code null}
+     */
+    protected String getQueryString() {
+        return sqlQuery;
     }
 
     /**

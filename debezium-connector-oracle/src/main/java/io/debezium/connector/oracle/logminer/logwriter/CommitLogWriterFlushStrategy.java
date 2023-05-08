@@ -15,6 +15,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.util.Strings;
 
 /**
  * A {@link LogWriterFlushStrategy} that uses a transaction commit to force the provided
@@ -32,6 +33,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     private static final String DELETE_FLUSH_TABLE = "DELETE FROM %s";
 
     private final String flushTableName;
+    private final String databasePdbName;
     private final OracleConnection connection;
     private final boolean closeConnectionOnClose;
 
@@ -46,6 +48,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      */
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, OracleConnection connection) {
         this.flushTableName = connectorConfig.getLogMiningFlushTableName();
+        this.databasePdbName = connectorConfig.getPdbName();
         this.connection = connection;
         this.closeConnectionOnClose = false;
         createFlushTableIfNotExists();
@@ -63,6 +66,7 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      */
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) throws SQLException {
         this.flushTableName = connectorConfig.getLogMiningFlushTableName();
+        this.databasePdbName = connectorConfig.getPdbName();
         this.connection = new OracleConnection(jdbcConfig);
         this.connection.setAutoCommit(false);
         this.closeConnectionOnClose = true;
@@ -89,10 +93,18 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     @Override
     public void flush(Scn currentScn) {
         try {
+            if (!Strings.isNullOrEmpty(databasePdbName)) {
+                connection.setSessionToPdb(databasePdbName);
+            }
             connection.execute(String.format(UPDATE_FLUSH_TABLE, flushTableName) + currentScn);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to flush Oracle LogWriter (LGWR) buffers to disk", e);
+        }
+        finally {
+            if (!Strings.isNullOrEmpty(databasePdbName)) {
+                connection.resetSessionToCdb();
+            }
         }
     }
 
@@ -102,6 +114,10 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
      */
     private void createFlushTableIfNotExists() {
         try {
+            if (!Strings.isNullOrBlank(databasePdbName)) {
+                connection.setSessionToPdb(databasePdbName);
+            }
+
             if (!connection.isTableExists(flushTableName)) {
                 connection.executeWithoutCommitting(String.format(CREATE_FLUSH_TABLE, flushTableName));
             }
@@ -115,6 +131,11 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to create flush table", e);
+        }
+        finally {
+            if (!Strings.isNullOrEmpty(databasePdbName)) {
+                connection.resetSessionToCdb();
+            }
         }
     }
 

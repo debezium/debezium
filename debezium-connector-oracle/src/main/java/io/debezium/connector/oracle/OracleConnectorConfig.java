@@ -324,12 +324,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("When set to 'false', the default, LOB fields will not be captured nor emitted. When set to 'true', the connector " +
                     "will capture LOB fields and emit changes for those fields like any other column type.");
 
+    public static final Field LOG_MINING_USERNAME_INCLUDE_LIST = Field.create("log.mining.username.include.list")
+            .withDisplayName("List of users to include from LogMiner query")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated list of usernames to include from LogMiner query.");
+
     public static final Field LOG_MINING_USERNAME_EXCLUDE_LIST = Field.create("log.mining.username.exclude.list")
             .withDisplayName("List of users to exclude from LogMiner query")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 19))
+            .withValidation(OracleConnectorConfig::validateUsernameExcludeList)
             .withDescription("Comma separated list of usernames to exclude from LogMiner query.");
 
     public static final Field LOG_MINING_ARCHIVE_DESTINATION_NAME = Field.create("log.mining.archive.destination.name")
@@ -480,6 +488,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "Recently committed transactions near the flashback query SCN won't be included in the snapshot nor streaming." + System.lineSeparator() +
                     "skip - Skips gathering any in-progress transactions.");
 
+    public static final Field LOG_MINING_QUERY_FILTER_MODE = Field.create("log.mining.query.filter.mode")
+            .withDisplayName("Specifies how the filter configuration is applied to the LogMiner database query")
+            .withEnum(LogMiningQueryFilterMode.class, LogMiningQueryFilterMode.NONE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies how the filter configuration is applied to the LogMiner database query. " + System.lineSeparator() +
+                    "none - The query does not apply any schema or table filters, all filtering is at runtime by the connector." + System.lineSeparator() +
+                    "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
+                    "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
+
     public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
             .withDisplayName("Runs the connector in read-only mode")
             .withType(Type.BOOLEAN)
@@ -540,6 +558,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_TRANSACTION_RETENTION_MS,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
+                    LOG_MINING_USERNAME_INCLUDE_LIST,
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
@@ -561,7 +580,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SESSION_MAX_MS,
                     LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
                     LOG_MINING_READ_ONLY,
-                    LOG_MINING_FLUSH_TABLE_NAME)
+                    LOG_MINING_FLUSH_TABLE_NAME,
+                    LOG_MINING_QUERY_FILTER_MODE)
             .create();
 
     /**
@@ -607,6 +627,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean archiveLogOnlyMode;
     private final Duration archiveLogOnlyScnPollTime;
     private final boolean lobEnabled;
+    private final Set<String> logMiningUsernameIncludes;
     private final Set<String> logMiningUsernameExcludes;
     private final String logMiningArchiveDestinationName;
     private final LogMiningBufferType logMiningBufferType;
@@ -621,6 +642,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final TransactionSnapshotBoundaryMode logMiningTransactionSnapshotBoundaryMode;
     private final Boolean logMiningReadOnly;
     private final String logMiningFlushTableName;
+    private final LogMiningQueryFilterMode logMiningQueryFilterMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -662,6 +684,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = resolveLogMiningTransactionRetentionDuration(config);
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+        this.logMiningUsernameIncludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_INCLUDE_LIST), String::new);
         this.logMiningUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningArchiveDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
@@ -677,6 +700,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningTransactionSnapshotBoundaryMode = TransactionSnapshotBoundaryMode.parse(config.getString(LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE));
         this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
         this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
+        this.logMiningQueryFilterMode = LogMiningQueryFilterMode.parse(config.getString(LOG_MINING_QUERY_FILTER_MODE));
     }
 
     private static String toUpperCase(String property) {
@@ -1266,6 +1290,69 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
+    public enum LogMiningQueryFilterMode implements EnumeratedValue {
+        /**
+         * This filter mode does not add any predicates to the LogMiner query, all filtering of
+         * change data is done at runtime in the connector's Java code. This is the default
+         * mode.
+         */
+        NONE("none"),
+
+        /**
+         * This filter mode adds predicates to the LogMiner query, using standard SQL in-clause
+         * semantics. This mode expects that the include/exclude connector properties specify
+         * schemas and tables without regular expressions.
+         *
+         * This option may be the best performing option when there is substantially more data in
+         * the redo logs compared to the data wanting to be captured at the trade-off that the
+         * connector configuration is a bit more verbose with include/exclude filters.
+         */
+        IN("in"),
+
+        /**
+         * This filter mode adds predicates to the LogMiner query, using the Oracle REGEXP_LIKE
+         * operator. This mode supports the include/exclude connector properties specifying
+         * regular expressions.
+         *
+         * For the best performance, it's generally a good idea to limit the number of REGEXP_LIKE
+         * operators in the query as it's treated similar to the LIKE operator which often does
+         * not perform well on large data sets. The number of REGEXP_LIKE operators can be reduced
+         * by specifying complex regular expressions where a single expression can potentially
+         * match multiple schemas or tables.
+         */
+        REGEX("regex");
+
+        private final String value;
+
+        LogMiningQueryFilterMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogMiningQueryFilterMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogMiningQueryFilterMode mode : LogMiningQueryFilterMode.values()) {
+                if (mode.getValue().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            return null;
+        }
+    }
+
     /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
@@ -1455,6 +1542,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return User names to include from the LogMiner query
+     */
+    public Set<String> getLogMiningUsernameIncludes() {
+        return logMiningUsernameIncludes;
+    }
+
+    /**
      * @return User names to exclude from the LogMiner query
      */
     public Set<String> getLogMiningUsernameExcludes() {
@@ -1544,6 +1638,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public String getLogMiningFlushTableName() {
         return logMiningFlushTableName;
+    }
+
+    /**
+     * @return how the LogMiner query include/exclude filters are applied to the query.
+     */
+    public LogMiningQueryFilterMode getLogMiningQueryFilterMode() {
+        return logMiningQueryFilterMode;
     }
 
     @Override
@@ -1673,4 +1774,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
         return Field.isRequired(config, field, problems);
     }
+
+    public static int validateUsernameExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
+        final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(TABLE_EXCLUDE_LIST, excludeList,
+                    String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
+            return 1;
+        }
+        return 0;
+    }
+
 }
