@@ -1320,6 +1320,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4782[A|B]")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "regex")
                     .build();
 
             start(OracleConnector.class, config);
