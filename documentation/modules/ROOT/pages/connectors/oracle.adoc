@@ -548,6 +548,37 @@ The following example shows a typical transaction event message:
 }
 ----
 
+[[oracle-logminer-query-modes]]
+=== Query Modes
+
+The {prodname} Oracle connector integrates with Oracle LogMiner by default.
+This integration requires a specialized set of steps which includes generating a complex JDBC SQL query to ingest the changes recorded in the transaction logs as change events.
+The `V$LOGMNR_CONTENTS` view used by the JDBC SQL query does not have any indices to improve the query's performance, and so there are different query modes that can be used that control how the SQL query is generated as a way to improve the query's execution.
+
+The xref:oracle-property-log-mining-query-filter-mode[`log.mining.query.filter.mode`] connector property can be configured with one of the following to influence how the JDBC SQL query is generated:
+
+
+`none`:: (Default) This mode creates a JDBC query that only filters based on the different operation types, such as inserts, updates, or deletes, at the database level.
+When filtering the data based on the schema, table, or username include/exclude lists, this is done during the processing loop within the connector. +
+ +
+This mode is often useful when capturing a small number of tables from a database that is not heavily saturated with changes.
+The generated query is quite simple, and focuses primarily on reading as quickly as possible with low database overhead.
+
+`in`:: This mode creates a JDBC query that filters not only operation types at the database level, but also schema, table, and username include/exclude lists.
+The query's predicates are generated using a SQL in-clause based on the values specified in the include/exclude list configuration properties. +
+ +
+This mode is often useful when capturing a large number of tables from a database that is heavily saturated with changes.
+The generated query is much more complex than the `none` mode, and focuses on reducing network overhead and performing as much filtering at the database level as possible. +
+ +
+Finally, **do not** specify regular expressions as part of schema and table include/exclude configuration properties.
+Using regular expressions will cause the connector to not match changes based on these configuration properties, causing changes to be missed.
+
+`regex`:: This mode creates a JDBC query that filters not only operation types at the database level, but also schema, table, and username include/exclude lists.
+However, unlike the `in` mode, this mode generates a SQL query using the Oracle `REGEXP_LIKE` operator using a conjunction or disjunction depending on whether include or excluded values are specified. +
+ +
+This mode is often useful when capturing a variable number of tables that can be identified using a small number of regular expressions.
+The generated query is much more complex than any other mode, and focuses on reducing network overhead and performing as much filtering at the database level as possible. +
+
 // Type: concept
 // ModuleID: how-the-debezium-oracle-connector-uses-event-buffering
 // Title: How the {prodname} Oracle connector uses event buffering
@@ -3102,6 +3133,18 @@ This also enables tracking DDL changes against captured tables, so if the schema
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
 If the captured table(s) schema changes infrequently or never, this is the ideal choice.
 
+|[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
+|`none`
+|Specifies the mining query mode that controls how the Oracle LogMiner query is built. +
+ +
+`none`:: The query is generated without doing any schema, table, or username filtering in the query. +
+ +
+`in`:: The query is generated using a standard SQL in-clause to filter schema, table, and usernames on the database side.
+The schema, table, and username configuration include/exclude lists should not specify any regular expressions as the query is built using the values directly. +
+ +
+`regex`:: The query is generated using Oracle's `REGEXP_LIKE` operator to filter schema and table names on the database side, along with usernames using a SQL in-clause.
+The schema and table configuration include/exclude lists can safely specify regular expressions.
+
 |[[oracle-property-log-mining-buffer-type]]<<oracle-property-log-mining-buffer-type, `+log.mining.buffer.type+`>>
 |`memory`
 |The buffer type controls how the connector manages buffering transaction data. +
@@ -3112,8 +3155,8 @@ When this option is active, the buffer state is not persisted across restarts.
 Following a restart, recreate the buffer from the SCN value of the current offset. +
 ifdef::community[]
  +
-`infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk.
-+
+`infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk. +
+ +
 `infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
 
 
@@ -3226,6 +3269,11 @@ Any transaction that exceeds this configured value is discarded entirely, and th
  +
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
+
+|[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.include.list+`>>
+|No default
+|List of database users to include from the LogMiner query.
+It can be useful to set this property if you want the capturing process to include changes from the specified users.
 
 |[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.exclude.list+`>>
 |No default
