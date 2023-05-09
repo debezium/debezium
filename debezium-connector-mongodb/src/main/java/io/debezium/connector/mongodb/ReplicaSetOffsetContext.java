@@ -10,8 +10,13 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
+import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoChangeStreamCursor;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
@@ -33,6 +38,8 @@ import io.debezium.spi.schema.DataCollectionId;
  */
 @ThreadSafe
 public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReplicaSetOffsetContext.class);
 
     private final MongoDbOffsetContext offsetContext;
     private final String replicaSetName;
@@ -106,6 +113,19 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.initEvent(replicaSetName, cursor);
     }
 
+    public void initFromOpTimeIfNeeded(MongoClient client) {
+        if (lastResumeToken() != null) {
+            return;
+        }
+        LOGGER.info("Initializing offset for replica-set {} from operation time", replicaSetName);
+
+        var database = client.getDatabase("admin");
+        var result = database.runCommand(new Document("ping", 1), BsonDocument.class);
+        var timestamp = result.getTimestamp("operationTime");
+
+        sourceInfo.noEvent(replicaSetName, timestamp);
+    }
+
     public void noEvent(MongoChangeStreamCursor<?> cursor) {
         sourceInfo.noEvent(replicaSetName, cursor);
     }
@@ -121,6 +141,10 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
     public BsonDocument lastResumeTokenDoc() {
         final String data = sourceInfo.lastResumeToken(replicaSetName);
         return (data == null) ? null : ResumeTokens.fromData(data);
+    }
+
+    public BsonTimestamp lastTimestamp() {
+        return sourceInfo.lastTimestamp(replicaSetName);
     }
 
     @Override
