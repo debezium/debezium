@@ -152,12 +152,12 @@ public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getTimeType(Source source, boolean key, int precision) {
-        return "DATETIME2";
+        return "TIME";
     }
 
     @Override
     protected String getTimeWithTimezoneType() {
-        return "DATETIME";
+        return "DATETIMEOFFSET";
     }
 
     @Override

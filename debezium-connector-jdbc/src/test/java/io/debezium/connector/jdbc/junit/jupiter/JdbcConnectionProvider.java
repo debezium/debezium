@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.jdbc.junit.jupiter;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
@@ -32,6 +35,10 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
 
     public String getPassword() {
         return container.getPassword();
+    }
+
+    public String getContainerName() {
+        return container.getContainerName().substring(1); // starts with slash?
     }
 
     @Override
@@ -62,6 +69,27 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
         }
     }
 
+    protected void queryContainer(String header, List<String> commands) throws Exception {
+        // CHECKSTYLE:OFF
+        System.out.println(header);
+        System.out.println("------------------------------------------------------------------------------------------");
+        if (commands.size() > 4) {
+            final Process proc = Runtime.getRuntime().exec(commands.toArray(new String[]{}));
+            final BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            final BufferedReader stdError = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+            String s = null;
+            while ((s = stdInput.readLine()) != null) {
+                System.out.println(s);
+            }
+            while ((s = stdError.readLine()) != null) {
+                System.out.println(s);
+            }
+            proc.waitFor();
+            System.out.println("");
+        }
+        // CHECKSTYLE:ON
+    }
+
     protected JdbcDatabaseContainer<?> getContainer() {
         return container;
     }
@@ -76,8 +104,8 @@ public abstract class JdbcConnectionProvider implements AutoCloseable {
         return connection;
     }
 
-    protected boolean isInitialized() {
-        return connection != null;
+    protected boolean isInitialized() throws SQLException {
+        return connection != null && !connection.isClosed();
     }
 
     @FunctionalInterface

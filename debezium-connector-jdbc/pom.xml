@@ -301,7 +301,7 @@
                     <groups>${test.tags}</groups>
                     <systemPropertyVariables>
                         <source.time_zone>UTC</source.time_zone>
-                        <sink.time_zone>America/Los_Angeles</sink.time_zone>
+                        <sink.time_zone>Europe/Vienna</sink.time_zone>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

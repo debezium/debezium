@@ -24,8 +24,9 @@ public interface Type {
      * Allows a type to perform initialization/configuration tasks based on user configs.
      *
      * @param config the JDBC sink connector's configuration, should not be {@code null}
+     * @param dialect the database dialect, should not be {@code null}
      */
-    void configure(JdbcSinkConnectorConfig config);
+    void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect);
 
     /**
      * Returns the names that this type will be mapped as.

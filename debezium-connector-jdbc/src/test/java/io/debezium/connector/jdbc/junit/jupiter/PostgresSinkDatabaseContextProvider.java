@@ -35,7 +35,8 @@ public class PostgresSinkDatabaseContextProvider extends AbstractSinkDatabaseCon
                 new PostgreSQLContainer<>(IMAGE_NAME)
                         .withNetwork(Network.newNetwork())
                         .withDatabaseName("test")
-                        .withEnv("TZ", TestHelper.getSinkTimeZone()));
+                        .withEnv("TZ", TestHelper.getSinkTimeZone())
+                        .withEnv("PGTZ", TestHelper.getSinkTimeZone()));
     }
 
     @Override
