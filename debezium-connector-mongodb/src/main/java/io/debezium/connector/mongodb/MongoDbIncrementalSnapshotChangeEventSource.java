@@ -28,6 +28,7 @@ import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -72,13 +73,16 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private final CollectionId signallingCollectionId;
 
+    protected final NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService;
+
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                                        EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
                                                        MongoDbSchema collectionSchema,
                                                        Clock clock,
                                                        SnapshotProgressListener<MongoDbPartition> progressListener,
-                                                       DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
+                                                       DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
+                                                       NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService) {
         this.connectorConfig = config;
         this.replicaSets = replicaSets;
         this.connections = connections;
@@ -89,6 +93,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.dataListener = dataChangeEventListener;
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
                 : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
+        this.notificationService = notificationService;
     }
 
     @Override

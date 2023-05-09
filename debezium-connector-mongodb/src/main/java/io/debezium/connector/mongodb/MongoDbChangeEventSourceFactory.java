@@ -20,6 +20,7 @@ import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -90,7 +91,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     public Optional<IncrementalSnapshotChangeEventSource<MongoDbPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                                 MongoDbOffsetContext offsetContext,
                                                                                                                                                 SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
-                                                                                                                                                DataChangeEventListener<MongoDbPartition> dataChangeEventListener) {
+                                                                                                                                                DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
+                                                                                                                                                NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         if (replicaSets.size() > 1) {
             LOGGER.info("Only ReplicaSet deployments and Sharded Cluster with connection.mode=sharded are supported by incremental snapshot");
             return Optional.empty();
@@ -104,7 +106,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
+                dataChangeEventListener,
+                notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 

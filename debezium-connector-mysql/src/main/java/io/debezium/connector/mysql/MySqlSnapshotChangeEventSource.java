@@ -238,7 +238,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
                     final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
                     snapshotContext.offset.event(tableId, getClock().currentTime());
-                    dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
+                    dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
                 }
 
                 // Make schema available for snapshot source
@@ -541,7 +541,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
             final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
             snapshotContext.offset.event(tableId, getClock().currentTime());
-            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, tableId, (receiver) -> receiver.schemaChangeEvent(event));
+            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }
 
         // Make schema available for snapshot source

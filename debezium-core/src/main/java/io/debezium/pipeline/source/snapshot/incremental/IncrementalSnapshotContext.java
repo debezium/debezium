@@ -66,4 +66,7 @@ public interface IncrementalSnapshotContext<T> {
     void stopSnapshot();
 
     boolean removeDataCollectionFromSnapshot(String dataCollectionId);
+
+    List<DataCollection<T>> getDataCollections();
+
 }

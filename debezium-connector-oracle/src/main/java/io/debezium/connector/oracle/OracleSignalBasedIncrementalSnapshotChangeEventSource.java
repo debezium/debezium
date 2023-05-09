@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -33,8 +34,9 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
                                                                  DatabaseSchema<?> databaseSchema,
                                                                  Clock clock,
                                                                  SnapshotProgressListener<OraclePartition> progressListener,
-                                                                 DataChangeEventListener<OraclePartition> dataChangeEventListener) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
+                                                                 DataChangeEventListener<OraclePartition> dataChangeEventListener,
+                                                                 NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.pdbName = ((OracleConnectorConfig) config).getPdbName();
         this.connection = (OracleConnection) jdbcConnection;
     }

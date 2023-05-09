@@ -381,7 +381,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         return Optional.empty();
     }
 
-    public void dispatchSchemaChangeEvent(P partition, T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
+    public void dispatchSchemaChangeEvent(P partition, OffsetContext offsetContext, T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter)
+            throws InterruptedException {
         if (dataCollectionId != null && !filter.isIncluded(dataCollectionId)) {
             if (historizedSchema == null || historizedSchema.storeOnlyCapturedTables()) {
                 LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
@@ -389,8 +390,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             }
         }
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
+
         if (incrementalSnapshotChangeEventSource != null) {
-            incrementalSnapshotChangeEventSource.processSchemaChange(partition, dataCollectionId);
+            incrementalSnapshotChangeEventSource.processSchemaChange(partition, offsetContext, dataCollectionId);
         }
     }
 

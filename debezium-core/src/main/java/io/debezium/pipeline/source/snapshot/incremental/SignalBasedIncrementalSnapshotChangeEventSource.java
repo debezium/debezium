@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -36,8 +37,9 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            EventDispatcher<P, T> dispatcher, DatabaseSchema<?> databaseSchema,
                                                            Clock clock,
                                                            SnapshotProgressListener<P> progressListener,
-                                                           DataChangeEventListener<P> dataChangeEventListener) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
+                                                           DataChangeEventListener<P> dataChangeEventListener,
+                                                           NotificationService<P, ? extends OffsetContext> notificationService) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
                 + " VALUES (?, ?, null)";
     }
@@ -67,7 +69,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
     }
 
     @Override
-    protected void emitWindowClose(Partition partition) throws SQLException {
+    protected void emitWindowClose(Partition partition, OffsetContext offsetContext) throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting close window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-close");

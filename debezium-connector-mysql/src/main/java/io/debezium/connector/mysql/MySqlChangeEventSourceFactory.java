@@ -15,6 +15,7 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -86,7 +87,9 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     public Optional<IncrementalSnapshotChangeEventSource<MySqlPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                               MySqlOffsetContext offsetContext,
                                                                                                                                               SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
-                                                                                                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
+                                                                                                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
+                                                                                                                                              NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
+
         if (configuration.isReadOnlyConnection()) {
             if (connectionFactory.mainConnection().isGtidModeEnabled()) {
                 return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource<>(
@@ -96,7 +99,8 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                         schema,
                         clock,
                         snapshotProgressListener,
-                        dataChangeEventListener));
+                        dataChangeEventListener,
+                        notificationService));
             }
             throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
         }
@@ -112,6 +116,6 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener));
+                dataChangeEventListener, notificationService));
     }
 }

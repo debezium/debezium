@@ -58,7 +58,7 @@ public class SchemaChanges<P extends Partition> implements SignalAction<P> {
         for (TableChanges.TableChange tableChange : serializer.deserialize(changes, useCatalogBeforeSchema)) {
             if (dispatcher.getHistorizedSchema() != null) {
                 LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
-                dispatcher.dispatchSchemaChangeEvent(signalPayload.partition, tableChange.getId(), emitter -> {
+                dispatcher.dispatchSchemaChangeEvent(signalPayload.partition, signalPayload.offsetContext, tableChange.getId(), emitter -> {
                     emitter.schemaChangeEvent(SchemaChangeEvent.ofTableChange(
                             tableChange,
                             signalPayload.partition.getSourcePartition(),
