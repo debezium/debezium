@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.jdbc.dialect.oracle;
 
-import java.time.ZonedDateTime;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+import java.util.Optional;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
@@ -51,6 +56,16 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
 
     private OracleDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+    }
+
+    @Override
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.of("SELECT DBTIMEZONE, SESSIONTIMEZONE FROM DUAL");
+    }
+
+    @Override
+    protected String getDatabaseTimeZoneQueryResult(ResultSet rs) throws SQLException {
+        return rs.getString(1) + " (database), " + rs.getString(2) + " (session)";
     }
 
     @Override
@@ -105,23 +120,28 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getFormattedDate(ZonedDateTime value) {
+    public String getFormattedDate(TemporalAccessor value) {
         return String.format(TO_DATE, super.getFormattedDate(value));
     }
 
     @Override
-    public String getFormattedTime(ZonedDateTime value) {
-        return String.format(TO_TIMESTAMP_FF9, DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value));
+    public String getFormattedTime(TemporalAccessor value) {
+        // Oracle maps AbstractTimeType(s) as DATE columns
+        // The value parsing may provide a LocalTime object, cast it to LocalDateTime based on EPOCH
+        if (value instanceof LocalTime) {
+            value = ((LocalTime) value).atDate(LocalDate.EPOCH);
+        }
+        return String.format(TO_TIMESTAMP_FF9, DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value));
     }
 
     @Override
-    public String getFormattedDateTime(ZonedDateTime value) {
+    public String getFormattedDateTime(TemporalAccessor value) {
         return String.format(TO_TIMESTAMP_FF6, DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value));
     }
 
     @Override
-    public String getFormattedTimestamp(ZonedDateTime value) {
-        return String.format(TO_TIMESTAMP_FF6, super.getFormattedTimestamp(value));
+    public String getFormattedTimestamp(TemporalAccessor value) {
+        return String.format(TO_TIMESTAMP_FF6, DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value));
     }
 
     @Override

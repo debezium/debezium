@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.dialect.sqlserver;
 
+import java.util.Optional;
+
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.SQLServerDialect;
@@ -46,11 +48,21 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.of("SELECT CURRENT_TIMEZONE()");
+    }
+
+    @Override
     protected void registerTypes() {
         super.registerTypes();
 
         registerType(BitType.INSTANCE);
         registerType(XmlType.INSTANCE);
+    }
+
+    @Override
+    public String getTimeQueryBinding() {
+        return "cast(? as time(7))";
     }
 
     @Override

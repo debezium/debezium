@@ -5,16 +5,13 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
-import java.sql.Types;
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
-
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTemporalType;
+import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.Date;
 
 /**
@@ -22,7 +19,7 @@ import io.debezium.time.Date;
  *
  * @author Chris Cranford
  */
-public class DateType extends AbstractTemporalType {
+public class DateType extends AbstractDateType {
 
     public static final DateType INSTANCE = new DateType();
 
@@ -32,13 +29,8 @@ public class DateType extends AbstractTemporalType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return dialect.getTypeName(Types.DATE);
-    }
-
-    @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDate(toZonedDateTime((Integer) value));
+        return dialect.getFormattedDate(DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue()));
     }
 
     @Override
@@ -46,15 +38,12 @@ public class DateType extends AbstractTemporalType {
         if (value == null) {
             query.setParameter(index, null);
         }
-        else if (value instanceof Integer) {
-            query.setParameter(index, toZonedDateTime((Integer) value));
+        else if (value instanceof Number) {
+            query.setParameter(index, DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue()));
         }
         else {
             throwUnexpectedValue(value);
         }
     }
 
-    private ZonedDateTime toZonedDateTime(Integer value) {
-        return LocalDate.ofEpochDay(value.longValue()).atStartOfDay(getDatabaseTimeZone().toZoneId());
-    }
 }

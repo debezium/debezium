@@ -151,7 +151,7 @@ public class JdbcSinkPipelineToDb2IT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getTimeType(Source source, boolean key, int precision) {
-        return "TIMESTAMP";
+        return "TIME";
     }
 
     @Override

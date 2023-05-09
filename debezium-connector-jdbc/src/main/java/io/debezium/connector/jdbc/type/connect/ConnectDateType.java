@@ -5,26 +5,21 @@
  */
 package io.debezium.connector.jdbc.type.connect;
 
-import java.sql.Types;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-
 import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTemporalType;
+import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.util.DateTimeUtils;
 
 /**
  * An implementation of {@link Type} for {@link Date} values.
  *
  * @author Chris Cranford
  */
-public class ConnectDateType extends AbstractTemporalType {
+public class ConnectDateType extends AbstractDateType {
 
     public static final ConnectDateType INSTANCE = new ConnectDateType();
 
@@ -34,13 +29,8 @@ public class ConnectDateType extends AbstractTemporalType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return dialect.getTypeName(Types.DATE);
-    }
-
-    @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDate(toZonedDateTime((java.util.Date) value));
+        return dialect.getFormattedDate(DateTimeUtils.toLocalDateFromDate((java.util.Date) value));
     }
 
     @Override
@@ -49,15 +39,11 @@ public class ConnectDateType extends AbstractTemporalType {
             query.setParameter(index, null);
         }
         else if (value instanceof java.util.Date) {
-            query.setParameter(index, toZonedDateTime((java.util.Date) value));
+            query.setParameter(index, DateTimeUtils.toLocalDateFromDate((java.util.Date) value));
         }
         else {
             throwUnexpectedValue(value);
         }
     }
 
-    private ZonedDateTime toZonedDateTime(java.util.Date date) {
-        return LocalDate.ofInstant(Instant.ofEpochMilli(date.getTime()), ZoneOffset.UTC)
-                .atStartOfDay(getDatabaseTimeZone().toZoneId());
-    }
 }

@@ -5,13 +5,18 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.MySQLDialect;
 
@@ -59,8 +64,29 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         }
     }
 
+    private final boolean connectionTimeZoneSet;
+
     private MySqlDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+
+        try (StatelessSession session = sessionFactory.openStatelessSession()) {
+            this.connectionTimeZoneSet = session.doReturningWork((connection) -> connection.getMetaData().getURL().contains("connectionTimeZone="));
+        }
+    }
+
+    @Override
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.of("SELECT @@global.time_zone, @@session.time_zone");
+    }
+
+    @Override
+    protected String getDatabaseTimeZoneQueryResult(ResultSet rs) throws SQLException {
+        return rs.getString(1) + " (global), " + rs.getString(2) + " (system)";
+    }
+
+    @Override
+    public boolean isConnectionTimeZoneSet() {
+        return connectionTimeZoneSet;
     }
 
     @Override
@@ -77,7 +103,6 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         registerType(TinyIntType.INSTANCE);
         registerType(YearType.INSTANCE);
         registerType(JsonType.INSTANCE);
-        registerType(ZonedTimestampWithoutTimezoneType.INSTANCE);
         registerType(MapToJsonType.INSTANCE);
     }
 
@@ -87,17 +112,17 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getFormattedTime(ZonedDateTime value) {
-        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value));
+    public String getFormattedTime(TemporalAccessor value) {
+        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_TIME.format(value));
     }
 
     @Override
-    public String getFormattedDateTime(ZonedDateTime value) {
+    public String getFormattedDateTime(TemporalAccessor value) {
         return String.format("'%s'", ISO_LOCAL_DATE_TIME_WITH_SPACE.format(value));
     }
 
     @Override
-    public String getFormattedTimestamp(ZonedDateTime value) {
+    public String getFormattedTimestamp(TemporalAccessor value) {
         return String.format("'%s'", ISO_LOCAL_DATE_TIME_WITH_SPACE.format(value));
     }
 

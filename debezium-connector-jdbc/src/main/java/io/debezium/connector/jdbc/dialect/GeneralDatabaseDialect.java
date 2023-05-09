@@ -9,9 +9,10 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,13 +20,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.Size;
@@ -91,6 +95,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, Type> typeRegistry = new HashMap<>();
+    private final boolean jdbcTimeZone;
 
     public GeneralDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         this.connectorConfig = config;
@@ -100,7 +105,12 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         this.tableNamingStrategy = connectorConfig.getTableNamingStrategy();
         this.columnNamingStrategy = connectorConfig.getColumnNamingStrategy();
 
+        final String jdbcTimeZone = config.getHibernateConfiguration().getProperty(AvailableSettings.JDBC_TIME_ZONE);
+        this.jdbcTimeZone = !Strings.isNullOrEmpty(jdbcTimeZone);
+
         registerTypes();
+
+        LOGGER.info("Database TimeZone: {}", getDatabaseTimeZone(sessionFactory));
     }
 
     @Override
@@ -353,7 +363,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public int bindValue(FieldDescriptor field, NativeQuery<?> query, int startIndex, Object value) {
-        LOGGER.trace("Bind field '{}' at position {}: {}", field.getName(), startIndex, value);
+        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, field.getType().getClass().getName(), value);
         field.bind(query, startIndex, value);
         return 1;
     }
@@ -372,6 +382,16 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public int getMaxVarbinaryLength() {
         return dialect.getMaxVarbinaryLength();
+    }
+
+    @Override
+    public boolean isConnectionTimeZoneSet() {
+        return false;
+    }
+
+    @Override
+    public boolean isJdbcTimeZoneSet() {
+        return jdbcTimeZone;
     }
 
     @Override
@@ -454,12 +474,12 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getFormattedDate(ZonedDateTime value) {
+    public String getFormattedDate(TemporalAccessor value) {
         return String.format("'%s'", DATE_FORMATTER.format(value));
     }
 
     @Override
-    public String getFormattedTime(ZonedDateTime value) {
+    public String getFormattedTime(TemporalAccessor value) {
         return String.format("'%s'", DateTimeFormatter.ISO_TIME.format(value));
     }
 
@@ -469,17 +489,17 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getFormattedDateTime(ZonedDateTime value) {
+    public String getFormattedDateTime(TemporalAccessor value) {
         return String.format("'%s'", DateTimeFormatter.ISO_DATE_TIME.format(value));
     }
 
     @Override
-    public String getFormattedDateTimeWithNanos(ZonedDateTime value) {
+    public String getFormattedDateTimeWithNanos(TemporalAccessor value) {
         return getFormattedDateTime(value);
     }
 
     @Override
-    public String getFormattedTimestamp(ZonedDateTime value) {
+    public String getFormattedTimestamp(TemporalAccessor value) {
         return String.format("'%s'", DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value));
     }
 
@@ -490,6 +510,36 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected String getTypeName(int jdbcType, int length) {
         return getTypeName(jdbcType, Size.length(length));
+    }
+
+    protected String getDatabaseTimeZone(SessionFactory sessionFactory) {
+        final Optional<String> query = getDatabaseTimeZoneQuery();
+        if (query.isPresent()) {
+            try (StatelessSession session = sessionFactory.openStatelessSession()) {
+                return session.doReturningWork((connection) -> {
+                    try (Statement st = connection.createStatement()) {
+                        try (ResultSet rs = st.executeQuery(query.get())) {
+                            if (rs.next()) {
+                                return getDatabaseTimeZoneQueryResult(rs);
+                            }
+                        }
+                    }
+                    return "N/A";
+                });
+            }
+            catch (Exception e) {
+                // ignored
+            }
+        }
+        return "N/A";
+    }
+
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.empty();
+    }
+
+    protected String getDatabaseTimeZoneQueryResult(ResultSet rs) throws SQLException {
+        return rs.getString(1);
     }
 
     protected void registerTypes() {
@@ -535,7 +585,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     protected void registerType(Type type) {
-        type.configure(connectorConfig);
+        type.configure(connectorConfig, this);
         for (String key : type.getRegistrationKeys()) {
             final Type existing = typeRegistry.put(key, type);
             if (existing != null) {
