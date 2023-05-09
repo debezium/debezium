@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -72,17 +73,16 @@ class ChangeStreamPipelineFactory {
         return new ChangeStreamPipeline(
                 // Materialize a "namespace" field so that we can do qualified collection name matching per
                 // the configuration requirements
+                // We can't use $addFields nor $set as there is no way to unset the filed for AWS DocumentDB
                 // Note that per the docs, if `$ns` doesn't exist, `$concat` will return `null`
-                addFields("namespace", concat("$ns.db", ".", "$ns.coll")),
-
+                Aggregates.replaceRoot(new BasicDBObject(Map.of(
+                        "namespace", concat("$ns.db", ".", "$ns.coll"),
+                        "event", "$$ROOT"))),
                 // Filter the documents
                 matchFilter,
 
                 // This is required to prevent driver `ChangeStreamDocument` deserialization issues:
-                // > Caused by: org.bson.codecs.configuration.CodecConfigurationException:
-                // > Failed to decode 'ChangeStreamDocument'. Decoding 'namespace' errored with:
-                // > readStartDocument can only be called when CurrentBSONType is DOCUMENT, not when CurrentBSONType is STRING.
-                addFields("namespace", "$$REMOVE"));
+                Aggregates.replaceRoot("$event"));
     }
 
     private ChangeStreamPipeline createUserPipeline() {
@@ -96,10 +96,10 @@ class ChangeStreamPipelineFactory {
         // https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment
         var dbFilters = Optional.<Bson> empty();
         if (filterConfig.getDbIncludeList() != null) {
-            dbFilters = Optional.of(Filters.regex("ns.db", filterConfig.getDbIncludeList().replaceAll(",", "|"), "i"));
+            dbFilters = Optional.of(Filters.regex("event.ns.db", filterConfig.getDbIncludeList().replaceAll(",", "|"), "i"));
         }
         else if (filterConfig.getDbExcludeList() != null) {
-            dbFilters = Optional.of(Filters.regex("ns.db", "(?!" + filterConfig.getDbExcludeList().replaceAll(",", "|") + ")", "i"));
+            dbFilters = Optional.of(Filters.regex("event.ns.db", "(?!" + filterConfig.getDbExcludeList().replaceAll(",", "|") + ")", "i"));
         }
 
         // Collection filters
@@ -158,7 +158,7 @@ class ChangeStreamPipelineFactory {
             includedOperations.remove(OperationType.DELETE);
         }
 
-        return Optional.of(Filters.in("operationType", includedOperations.stream()
+        return Optional.of(Filters.in("event.operationType", includedOperations.stream()
                 .map(OperationType::getValue)
                 .collect(toList())));
     }
@@ -201,9 +201,4 @@ class ChangeStreamPipelineFactory {
     private static Bson concat(Object... expressions) {
         return new BasicDBObject("$concat", List.of(expressions));
     }
-
-    private static Bson addFields(String name, Object expression) {
-        return new BasicDBObject("$addFields", new BasicDBObject(name, expression));
-    }
-
 }
