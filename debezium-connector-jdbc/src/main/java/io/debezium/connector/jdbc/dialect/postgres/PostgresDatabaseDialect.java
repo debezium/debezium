@@ -7,8 +7,9 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+import java.util.Optional;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
@@ -110,13 +111,18 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getFormattedDateTimeWithNanos(ZonedDateTime value) {
+    public String getFormattedDateTimeWithNanos(TemporalAccessor value) {
         return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value));
     }
 
     @Override
-    public String getFormattedTime(ZonedDateTime value) {
-        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value));
+    public String getFormattedTime(TemporalAccessor value) {
+        return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_TIME.format(value));
+    }
+
+    @Override
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.of("SELECT CURRENT_SETTING('TIMEZONE')");
     }
 
     @Override

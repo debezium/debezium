@@ -5,6 +5,15 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.OffsetTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
+
+import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -157,7 +166,7 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getTimeType(Source source, boolean key, int precision) {
-        return "DATETIME";
+        return "TIME";
     }
 
     @Override
@@ -178,5 +187,43 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected Timestamp getTimestamp(ResultSet rs, int index) throws SQLException {
+        if (isConnectionTimeZoneSet()) {
+            // We need to deal with the adjustment of time if the "connectionTimeZone" setting is applied.
+            return rs.getTimestamp(index, Calendar.getInstance(getCurrentSinkTimeZone()));
+        }
+        return super.getTimestamp(rs, index);
+    }
+
+    @Override
+    protected ZonedDateTime getTimestampAsZonedDateTime(ResultSet rs, int index) throws SQLException {
+        if (isConnectionTimeZoneSet()) {
+            // We need to make some adjustments due to "connectionTimeZone" setting being applied.
+            return getTimestamp(rs, index).toLocalDateTime()
+                    .atZone(ZoneId.systemDefault())
+                    .withZoneSameInstant(getCurrentSinkTimeZone().toZoneId());
+        }
+        return super.getTimestampAsZonedDateTime(rs, index);
+    }
+
+    @Override
+    protected OffsetTime getTimeAsOffsetTime(ResultSet rs, int index) throws SQLException {
+        if (isConnectionTimeZoneSet()) {
+            return getTimestamp(rs, index).toLocalDateTime()
+                    .atZone(ZoneId.systemDefault())
+                    .withZoneSameInstant(getCurrentSinkTimeZone().toZoneId())
+                    .toOffsetDateTime()
+                    .toOffsetTime();
+        }
+        return super.getTimeAsOffsetTime(rs, index);
+    }
+
+    private boolean isConnectionTimeZoneSet() {
+        return getCurrentSinkConfig().getHibernateConfiguration()
+                .getProperty(AvailableSettings.URL)
+                .contains("connectionTimeZone=");
     }
 }

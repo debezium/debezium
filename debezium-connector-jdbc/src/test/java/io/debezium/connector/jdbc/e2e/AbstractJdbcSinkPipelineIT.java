@@ -15,16 +15,22 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -33,7 +39,6 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
@@ -80,6 +85,9 @@ import io.debezium.util.Strings;
 public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     private final TableNamingStrategy tableNamingStrategy = new DefaultTableNamingStrategy();
+
+    private static final ZoneId SOURCE_ZONE_ID = TimeZone.getTimeZone(TestHelper.getSourceTimeZone()).toZoneId();
+    private static final ZoneId SINK_ZONE_ID = TimeZone.getTimeZone(TestHelper.getSinkTimeZone()).toZoneId();
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE }, reason = "No BIT data type support")
@@ -1539,8 +1547,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         assertDataType(source,
                 sink,
                 "date",
-                List.of(dateValue(source, 3, 1, 2023), dateValue(source, 12, 31, 2021)),
-                List.of(Date.valueOf("2023-03-01"), Date.valueOf("2021-12-31")),
+                List.of(dateValue(source, 3, 1, 2023), dateValue(source, 5, 10, 2021)),
+                List.of(Date.valueOf("2023-03-01"), Date.valueOf("2021-05-10")),
                 (record) -> {
                     // todo: Should this behavior be aligned?
                     // While Oracle returns the JDBC type name as "DATE", it explicitly maps the sql type
@@ -1580,17 +1588,26 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 break;
         }
 
+        switch (sink.getType()) {
+            case MYSQL:
+            case ORACLE:
+            case DB2:
+                // TIME is only seconds precision
+                nanoSeconds = 0;
+                break;
+        }
+
         assertDataType(source,
                 sink,
                 "time",
                 List.of("'01:02:03.123456'", "'14:15:16.123456'"),
-                List.of(OffsetDateTime.of(1970, 1, 1, 1, 2, 3, nanoSeconds, ZoneOffset.UTC),
-                        OffsetDateTime.of(1970, 1, 1, 14, 15, 16, nanoSeconds, ZoneOffset.UTC)),
+                List.of(OffsetTime.of(1, 2, 3, nanoSeconds, getCurrentSinkTimeOffset()),
+                        OffsetTime.of(14, 15, 16, nanoSeconds, getCurrentSinkTimeOffset())),
                 (record) -> {
                     assertColumn(sink, record, "id", getTimeType(source, true, 6));
                     assertColumn(sink, record, "data", getTimeType(source, false, 6));
                 },
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimeAsOffsetTime);
     }
 
     @TestTemplate
@@ -1600,33 +1617,34 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final String ts0 = "'01:02:03.123456'";
         final String ts1 = "'14:15:16.456789'";
 
-        final List<OffsetTime> expectedValues;
-        if (SourceType.SQLSERVER.is(source.getType())) {
-            final boolean connect = source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT;
+        final boolean isConnect = source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT;
+
+        int nanoSeconds0 = 123000000;
+        int nanoSeconds1 = isConnect ? 456000000 : 456789000;
+        if (source.getType().is(SourceType.SQLSERVER)) {
             if (source.getOptions().useSnapshot()) {
                 // todo: See DBZ-6222
-                // SQL Server rounds TIME(n) to the nearest millisecond during snapshot, see second value
-                int nanoSeconds = connect ? 456000000 : 456789000;
-                expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                        OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC));
+                // SQL Server rounds TIME(n) to the nearest millisecond during snapshot.
+                nanoSeconds1 = isConnect ? 456000000 : 456789000;
             }
             else {
-                // SQL Server rounds TIME(n) to the nearest microsecond during streaming, see second value
-                expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                        OffsetTime.of(14, 15, 16, 457000000, ZoneOffset.UTC));
+                // SQL Server rounds TIME(n) to the nearest microsecond during streaming.
+                nanoSeconds1 = 457000000;
             }
         }
-        else if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT) {
-            // There is always a loss of precision on time(p) where p > 3 using connect precision
-            expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                    OffsetTime.of(14, 15, 16, 456000000, ZoneOffset.UTC));
-        }
-        else {
-            expectedValues = List.of(OffsetTime.of(1, 2, 3, 123000000, ZoneOffset.UTC),
-                    OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC));
+
+        if (sink.getType().is(SinkType.ORACLE, SinkType.MYSQL, SinkType.DB2)) {
+            nanoSeconds0 = 0;
+            nanoSeconds1 = 0;
         }
 
-        assertDataTypes(source,
+        final List<OffsetTime> expectedValues = List.of(
+                OffsetTime.of(1, 2, 3, nanoSeconds0, getCurrentSinkTimeOffset()),
+                OffsetTime.of(14, 15, 16, nanoSeconds1, getCurrentSinkTimeOffset()),
+                OffsetTime.of(1, 2, 3, nanoSeconds0, getCurrentSinkTimeOffset()),
+                OffsetTime.of(14, 15, 16, nanoSeconds1, getCurrentSinkTimeOffset()));
+
+        assertDataTypes2(source,
                 sink,
                 List.of("time(3)", "time(6)"),
                 List.of(ts0, ts1),
@@ -1637,217 +1655,203 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data0", getTimeType(source, false, 3));
                     assertColumn(sink, record, "data1", getTimeType(source, false, 6));
                 },
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
+                this::getTimeAsOffsetTime);
     }
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE }, reason = "No TIME(n) data type support")
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES }, reason = "Max TIME(n) precision is 6")
     @WithTemporalPrecisionMode
-    @Disabled("DBZ-6222 - SQL Server presently does not emit TIME(n) fields with micro or or nano second precision properly")
+    @Disabled("See DBZ-6222 and the comment inline")
     public void testNanoTimeDataType(Source source, Sink sink) throws Exception {
-        assertDataType(source,
+        // todo: see DBZ-6222
+        // SQL Server does not emit TIME(n) fields with micro nor nano second precision correctly.
+        // The received value during streaming is 51316457000000, which is rounded.
+        assertDataTypeNonKeyOnly(source,
                 sink,
                 "time(7)",
-                List.of("'01:02:03.123456789'", "'14:15:16.456789012'"),
-                List.of(OffsetTime.of(1, 2, 3, 123456700, ZoneOffset.UTC), OffsetTime.of(14, 15, 16, 456789000, ZoneOffset.UTC)),
-                (record) -> {
-                    assertColumn(sink, record, "id", getTimeType(source, true, 7));
-                    assertColumn(sink, record, "data", getTimeType(source, false, 7));
-                },
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
+                List.of("'14:15:16.456789012'"),
+                List.of(OffsetTime.of(14, 15, 16, 456789000, getCurrentSinkTimeOffset())),
+                (record) -> assertColumn(sink, record, "data", getTimeType(source, false, 7)),
+                this::getTimeAsOffsetTime);
     }
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.SQLSERVER }, reason = "TIMESTAMP is an internal type and isn't the same as TIMESTAMP(n)")
+    @SkipWhenSource(value = { SourceType.MYSQL }, reason = "MySQL emits timestamps as ZonedTimestamp types, tested separately")
     @WithTemporalPrecisionMode
-    @SuppressWarnings("DataFlowIssue")
     public void testTimestampDataType(Source source, Sink sink) throws Exception {
-        final List<String> values;
-        if (SourceType.ORACLE.is(source.getType())) {
-            values = List.of("TO_TIMESTAMP('2023-03-01 01:02:03.123456', 'YYYY-MM-DD HH24:MI:SS.FF6')",
-                    "TO_TIMESTAMP('2022-12-31 14:15:16.456789', 'YYYY-MM-DD HH24:MI:SS.FF6')");
+        final List<ZonedDateTime> timeValues = List.of(
+                ZonedDateTime.of(2023, 5, 10, 16, 17, 18, 123456000, ZoneOffset.UTC),
+                ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC));
+
+        final List<String> values = toTimestampStrings(source, timeValues);
+
+        final List<ZonedDateTime> expectedValues = new ArrayList<>();
+        if (TemporalPrecisionMode.CONNECT == source.getOptions().getTemporalPrecisionMode()) {
+            // There is always a loss of precision on timestamp(n) where n > 3 using connect precision mode
+            expectedValues.add(timeValues.get(0).with(ChronoField.NANO_OF_SECOND, 123000000).withZoneSameLocal(SINK_ZONE_ID));
+            expectedValues.add(timeValues.get(1).with(ChronoField.NANO_OF_SECOND, 456000000).withZoneSameLocal(SINK_ZONE_ID));
         }
         else {
-            values = List.of("'2023-03-01 01:02:03.123456'", "'2022-12-31 14:15:16.456789'");
+            expectedValues.addAll(timeValues.stream().map(v -> v.withZoneSameLocal(SINK_ZONE_ID)).collect(Collectors.toList()));
         }
 
-        final List<OffsetDateTime> expectedValues;
-        if (SourceType.MYSQL.is(source.getType())) {
-            // ZonedTimestamp does not appear to include any precision beyond seconds for TIMESTAMP
-            expectedValues = List.of(OffsetDateTime.of(2023, 3, 1, 1, 2, 3, 0, ZoneOffset.UTC),
-                    OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 0, ZoneOffset.UTC));
-        }
-        else if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT) {
-            // There is always a loss of precision on time(p) where p > 3 using connect precision
-            expectedValues = List.of(OffsetDateTime.of(2023, 3, 1, 1, 2, 3, 123000000, ZoneOffset.UTC),
-                    OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456000000, ZoneOffset.UTC));
-        }
-        else {
-            expectedValues = List.of(OffsetDateTime.of(2023, 3, 1, 1, 2, 3, 123456000, ZoneOffset.UTC),
-                    OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC));
-        }
-
-        if (SourceType.MYSQL.is(source.getType()) && SinkType.ORACLE.is(sink.getType())) {
-            // MySQL emits "timestamp" as a ZonedTimestamp and this implies a "timestamp with time zone"
-            // column; which Oracle does not permit to exist as a primary key. In this use case, only
-            // test the data mapping as a non-primary key column.
-            assertDataTypeNonKeyOnly(source,
-                    sink,
-                    "timestamp",
-                    List.of(values.get(1)),
-                    List.of(expectedValues.get(1)),
-                    (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
-        }
-        else {
-            assertDataType(source,
-                    sink,
-                    "timestamp",
-                    values,
-                    expectedValues,
-                    (record) -> {
-                        if (SourceType.MYSQL.is(source.getType())) {
-                            // MySQL emits these as ZonedTimestamp
-                            assertColumn(sink, record, "id", getTimestampWithTimezoneType(source, true, 6));
-                            assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6));
-                        }
-                        else {
-                            assertColumn(sink, record, "id", getTimestampType(source, true, 6));
-                            assertColumn(sink, record, "data", getTimestampType(source, false, 6));
-                        }
-                    },
-                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
-        }
+        assertDataType(source,
+                       sink,
+                       "timestamp",
+                       values,
+                       expectedValues,
+                       (record) -> {
+                           assertColumn(sink, record, "id", getTimestampType(source, true, 6));
+                           assertColumn(sink, record, "data", getTimestampType(source, false, 6));
+                       },
+                       this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.SQLSERVER }, reason = "No TIMESTAMP(n) data type support")
+    @SkipWhenSource(value = { SourceType.MYSQL }, reason = "MySQL emits timestamps as ZonedTimestamp types, tested separately")
     @WithTemporalPrecisionMode
-    @SuppressWarnings("DataFlowIssue")
     public void testTimestampWithPrecisionDataType(Source source, Sink sink) throws Exception {
-        String value = "'2022-12-31 14:15:16.456789'";
-        if (SourceType.ORACLE.is(source.getType())) {
-            value = String.format("TO_TIMESTAMP(%s,'YYYY-MM-DD HH24:MI:SS.FF6')", value);
-        }
+        final ZonedDateTime timeValue = ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC);
+        final String value = toTimestampStrings(source, List.of(timeValue)).get(0);
 
-        // 6 values, for timestamp(1) through timestamp(6)
-        final List<String> values = List.of(value, value, value, value, value, value);
-
-        // 6 expected values
-        final List<OffsetDateTime> expectedValues = new ArrayList<>();
-        expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 500000000, ZoneOffset.UTC)); // timestamp(1)
-        expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 460000000, ZoneOffset.UTC)); // timestamp(2)
-        expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 457000000, ZoneOffset.UTC)); // timestamp(3)
-        if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT && !source.getType().is(SourceType.MYSQL)) {
-            // Connect precision is lost above 3.
-            // MySQL source skipped because TIMESTAMP(4)-TIMESTAMP(6) emitted as ZonedTimestamp (non-Connect type)
-            // This is because timestamp in MySQL is timestamp with time zone.
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456000000, ZoneOffset.UTC)); // timestamp(4)
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456000000, ZoneOffset.UTC)); // timestamp(5)
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456000000, ZoneOffset.UTC)); // timestamp(6)
+        final List<ZonedDateTime> expectedValues = new ArrayList<>();
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 500000000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(1)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 460000000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(2)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 457000000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(3)
+        if (TemporalPrecisionMode.CONNECT == source.getOptions().getTemporalPrecisionMode()) {
+            // There is always a loss of precision on timestamp(n) where n > 3 using connect precision mode
+            final long nanos = 456000000;
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, nanos).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(4)
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, nanos).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(5)
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, nanos).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(6)
         }
         else {
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456800000, ZoneOffset.UTC)); // timestamp(4)
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456790000, ZoneOffset.UTC)); // timestamp(5)
-            expectedValues.add(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC)); // timestamp(6)
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456800000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(4)
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456790000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(5)
+            expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456789000).withZoneSameLocal(SINK_ZONE_ID)); // timestamp(6)
         }
 
-        if (SourceType.MYSQL.is(source.getType()) && SinkType.ORACLE.is(sink.getType())) {
-            // Oracle does not permit using timestamp(n) with time zone as a primary key column, which MySQL
-            // emits because it uses ZonedTimestamp for "timestamp" columns. In this case, we will instead
-            // only assert values in the non-key fields.
-            assertDataTypesNonKeyOnly(source,
-                    sink,
-                    List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
-                    values,
-                    expectedValues,
-                    (record) -> {
-                        // MySQL timestamp(n) is timestamp with timezone.
-                        // So these get emitted as ZonedTimestamp and need to be handled as such here.
-                        assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 1));
-                        assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 2));
-                        assertColumn(sink, record, "data2", getTimestampWithTimezoneType(source, false, 3));
-                        assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
-                        assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
-                        assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
-                    },
-                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
-        }
-        else {
-            assertDataTypes(source,
-                    sink,
-                    List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
-                    values,
-                    expectedValues,
-                    (record) -> {
-                        if (SourceType.MYSQL.is(source.getType())) {
-                            // MySQL timestamp(n) is timestamp with timezone.
-                            // So these get emitted as ZonedTimestamp and need to be handled as such here.
-                            assertColumn(sink, record, "id0", getTimestampWithTimezoneType(source, true, 1));
-                            assertColumn(sink, record, "id1", getTimestampWithTimezoneType(source, true, 2));
-                            assertColumn(sink, record, "id2", getTimestampWithTimezoneType(source, true, 3));
-                            assertColumn(sink, record, "id3", getTimestampWithTimezoneType(source, true, 4));
-                            assertColumn(sink, record, "id4", getTimestampWithTimezoneType(source, true, 5));
-                            assertColumn(sink, record, "id5", getTimestampWithTimezoneType(source, true, 6));
-                            assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 1));
-                            assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 2));
-                            assertColumn(sink, record, "data2", getTimestampWithTimezoneType(source, false, 3));
-                            assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
-                            assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
-                            assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
-                        }
-                        else {
-                            assertColumn(sink, record, "id0", getTimestampType(source, true, 1));
-                            assertColumn(sink, record, "id1", getTimestampType(source, true, 2));
-                            assertColumn(sink, record, "id2", getTimestampType(source, true, 3));
-                            assertColumn(sink, record, "id3", getTimestampType(source, true, 4));
-                            assertColumn(sink, record, "id4", getTimestampType(source, true, 5));
-                            assertColumn(sink, record, "id5", getTimestampType(source, true, 6));
-                            assertColumn(sink, record, "data0", getTimestampType(source, false, 1));
-                            assertColumn(sink, record, "data1", getTimestampType(source, false, 2));
-                            assertColumn(sink, record, "data2", getTimestampType(source, false, 3));
-                            assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
-                            assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
-                            assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
-                        }
-                    },
-                    (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
-        }
+        assertDataTypes(source,
+            sink,
+            List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
+            List.of(value, value, value, value, value, value),
+            expectedValues,
+            (record) -> {
+                assertColumn(sink, record, "id0", getTimestampType(source, true, 1));
+                assertColumn(sink, record, "id1", getTimestampType(source, true, 2));
+                assertColumn(sink, record, "id2", getTimestampType(source, true, 3));
+                assertColumn(sink, record, "id3", getTimestampType(source, true, 4));
+                assertColumn(sink, record, "id4", getTimestampType(source, true, 5));
+                assertColumn(sink, record, "id5", getTimestampType(source, true, 6));
+                assertColumn(sink, record, "data0", getTimestampType(source, false, 1));
+                assertColumn(sink, record, "data1", getTimestampType(source, false, 2));
+                assertColumn(sink, record, "data2", getTimestampType(source, false, 3));
+                assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
+                assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
+                assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
+            },
+            this::getTimestampAsZonedDateTime);
+    }
+
+
+    @TestTemplate
+    @ForSource(value = { SourceType.MYSQL }, reason = "MySQL emits TIMESTAMP(p) as ZonedTimestamp")
+    @WithTemporalPrecisionMode
+    public void testTimestampDataTypeAsZonedTimestampType(Source source, Sink sink) throws Exception {
+        final List<ZonedDateTime> timeValues = List.of(
+                ZonedDateTime.of(2023, 5, 10, 16, 17, 18, 123456000, ZoneOffset.UTC),
+                ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC));
+
+        // Convert provided timestamps to source time zone before being converted to strings.
+        final List<String> values = toTimestampStrings(source, timeValues.stream()
+                .map(v -> v.withZoneSameInstant(SOURCE_ZONE_ID))
+                .collect(Collectors.toList()));
+
+        // Truncate nanoseconds to 0, MySQL does not emit ZonedTimestamp with fractional seconds
+        final List<ZonedDateTime> expectedValues = timeValues.stream()
+                        .map(v -> v.with(ChronoField.NANO_OF_SECOND, 0))
+                        .collect(Collectors.toList());
+
+        // MySQL emits "timestamp" as a ZonedTimestamp and this implies a "timestamp with time zone"
+        // column; which Oracle does not permit to exist as a primary key. In this use case, only
+        // test the data mapping as a non-primary key column.
+        assertDataTypesNonKeyOnly(source,
+            sink,
+            List.of("timestamp", "timestamp"),
+            values,
+            expectedValues,
+            (record) -> {
+                assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
+                assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
+            },
+            (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
 
     @TestTemplate
+    @ForSource(value = { SourceType.MYSQL }, reason = "MySQL emits TIMESTAMP(p) as ZonedTimestamp")
+    @WithTemporalPrecisionMode
+    public void testTimestampWithPrecisionDataTypeAsZonedTimestampType(Source source, Sink sink) throws Exception {
+        final ZonedDateTime timeValue = ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC);
+        final String value = toTimestampStrings(source, List.of(timeValue.withZoneSameInstant(SOURCE_ZONE_ID))).get(0);
+
+        final List<ZonedDateTime> expectedValues = new ArrayList<>();
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 500000000)); // timestamp(1)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 460000000)); // timestamp(2)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 457000000)); // timestamp(3)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456800000)); // timestamp(4)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456790000)); // timestamp(5)
+        expectedValues.add(timeValue.with(ChronoField.NANO_OF_SECOND, 456789000)); // timestamp(6)
+
+        // MySQL emits "timestamp" as a ZonedTimestamp and this implies a "timestamp with time zone"
+        // column; which Oracle does not permit to exist as a primary key. In this use case, only
+        // test the data mapping as a non-primary key column.
+        assertDataTypesNonKeyOnly(source,
+            sink,
+            List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
+            List.of(value, value, value, value, value, value),
+            expectedValues,
+            (record) -> {
+                assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 1));
+                assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 2));
+                assertColumn(sink, record, "data2", getTimestampWithTimezoneType(source, false, 3));
+                assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
+                assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
+                assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
+            },
+            (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+    }
+    
+    @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No TIMESTAMPTZ data type support")
     @WithTemporalPrecisionMode
-    @SuppressWarnings("DataFlowIssue")
     public void testTimestampTzDataType(Source source, Sink sink) throws Exception {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
+        final ZonedDateTime timeValue = ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC);
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "timestamptz",
-                List.of("'2022-12-31 14:15:16.456789Z'"),
-                List.of(OffsetDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC)),
+                toTimestampWithTimeZoneStrings(source, List.of(timeValue)),
+                List.of(timeValue.withZoneSameInstant(SINK_ZONE_ID)),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampWithTimeZoneAsZonedDateTime);
     }
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.SQLSERVER }, reason = "No TIMESTAMP(n) WITH TIME ZONE data type support")
     @WithTemporalPrecisionMode
-    @SuppressWarnings("DataFlowIssue")
     public void testTimestampWithTimeZoneDataType(Source source, Sink sink) throws Exception {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
-        String value = "'2022-12-31 14:15:16.456789 -02:00'";
-        if (SourceType.ORACLE.is(source.getType())) {
-            value = String.format("TO_TIMESTAMP_TZ(%s,'YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM')", value);
-        }
+        final ZonedDateTime timeValue = ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC);
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "timestamp(6) with time zone",
-                List.of(value),
-                List.of(OffsetDateTime.of(2022, 12, 31, 16, 15, 16, 456789000, ZoneOffset.UTC)),
+                toTimestampWithTimeZoneStrings(source, List.of(timeValue)),
+                List.of(timeValue.withZoneSameInstant(SINK_ZONE_ID)),
                 (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampWithTimeZoneAsZonedDateTime);
     }
 
     @TestTemplate
@@ -1879,11 +1883,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
 
         final int nanoSeconds;
-        if (sink.getType().is(SinkType.SQLSERVER)) {
-            // SQL Server maps to DATETIME, has a max millisecond precision (.xxx), rounded.
-            nanoSeconds = 457000000;
-        }
-        else if (sink.getType().is(SinkType.DB2)) {
+        if (sink.getType().is(SinkType.DB2)) {
             // DB2 maps to TIME, which only seems to have second precision (.0000000).
             // Additionally DB2 does not support a TIME WITH TIME ZONE data type.
             nanoSeconds = 0;
@@ -1898,7 +1898,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(value),
                 List.of(OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC)),
                 (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType()),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC).toOffsetTime());
+                (rs, index) -> getTimestampWithTimeZoneAsZonedDateTime(rs, index).withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime().toOffsetTime());
     }
 
     @TestTemplate
@@ -1906,7 +1906,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @WithTemporalPrecisionMode
     public void testDateTimeDataType(Source source, Sink sink) throws Exception {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
-        final String value = "'2023-03-01 14:15:16.456'";
+        String value1 = "'2023-05-10 16:00:00.456'";
+        String value2 = "'2023-01-10 16:00:00.456'";
 
         final int precision;
         if (SourceType.MYSQL.is(source.getType()) && source.getOptions().isColumnTypePropagated()) {
@@ -1918,13 +1919,17 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         // DATETIME emitted as Timestamp, that uses second-based precision
         final int nanosOfSeconds = source.getType().is(SourceType.MYSQL) ? 0 : 457000000;
-        assertDataTypeNonKeyOnly(source,
+        assertDataTypesNonKeyOnly(source,
                 sink,
-                "datetime",
-                List.of(value),
-                List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, nanosOfSeconds, ZoneOffset.UTC)),
-                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, precision)),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                List.of("datetime", "datetime"),
+                List.of(value1, value2),
+                List.of(toZonedDateTimeAtSinkOffset(2023, 5, 10, 16, 0, 0, nanosOfSeconds),
+                        toZonedDateTimeAtSinkOffset(2023, 1, 10, 16, 0, 0, nanosOfSeconds)),
+                (record) -> {
+                    assertColumn(sink, record, "data0", getTimestampType(source, false, precision));
+                    assertColumn(sink, record, "data1", getTimestampType(source, false, precision));
+                },
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -1940,13 +1945,13 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of(value, value, value, value, value, value);
 
         final boolean connect = TemporalPrecisionMode.CONNECT.equals(source.getOptions().getTemporalPrecisionMode());
-        final List<OffsetDateTime> expectedValues = List.of(
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 500000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 460000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 457000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456800000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456790000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456789000, ZoneOffset.UTC));
+        final List<ZonedDateTime> expectedValues = List.of(
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 500000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 460000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 457000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456800000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456790000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456789000));
 
         assertDataTypesNonKeyOnly(source,
                 sink,
@@ -1961,7 +1966,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
                 },
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -1980,9 +1985,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 sink,
                 "datetime2",
                 List.of(value),
-                List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, nanosOfSeconds, ZoneOffset.UTC)),
+                List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, nanosOfSeconds)),
                 (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -2004,14 +2009,14 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
 
         final boolean connect = TemporalPrecisionMode.CONNECT.equals(source.getOptions().getTemporalPrecisionMode());
-        final List<OffsetDateTime> expectedValues = List.of(
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 500000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 460000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 457000000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456800000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456790000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456789000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, connect ? 456000000 : dateTime7NanoSeconds, ZoneOffset.UTC));
+        final List<ZonedDateTime> expectedValues = List.of(
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 500000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 460000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 457000000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456800000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456790000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456789000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : dateTime7NanoSeconds));
 
         assertDataTypesNonKeyOnly(source,
                 sink,
@@ -2027,7 +2032,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
                     assertColumn(sink, record, "data6", getTimestampType(source, false, 6));
                 },
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -2058,6 +2063,11 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         final List<String> values = List.of(value, value, value, value, value, value, value);
 
+        int precisionNanos7 = 456789000;
+        if (sink.getType().is(SinkType.SQLSERVER) && source.getOptions().isColumnTypePropagated()) {
+            precisionNanos7 = 456789100;
+        }
+
         final List<OffsetDateTime> expectedValues = List.of(
                 OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 500000000, ZoneOffset.UTC),
                 OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 460000000, ZoneOffset.UTC),
@@ -2065,7 +2075,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456800000, ZoneOffset.UTC),
                 OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456790000, ZoneOffset.UTC),
                 OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456789000, ZoneOffset.UTC),
-                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456789000, ZoneOffset.UTC));
+                OffsetDateTime.of(2023, 3, 1, 14, 15, 16, precisionNanos7, ZoneOffset.UTC));
 
         assertDataTypesNonKeyOnly(source,
                 sink,
@@ -2094,9 +2104,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 sink,
                 "smalldatetime", // minute precision
                 List.of(value),
-                List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 0, 0, ZoneOffset.UTC)),
+                List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 0, 0)),
                 (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
-                (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -2616,8 +2626,65 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         return false;
     }
 
+    private static List<String> toTimestampStrings(Source source, List<ZonedDateTime> values) {
+        final List<String> results = new ArrayList<>();
+        for (ZonedDateTime value : values) {
+            final String formattedValue = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").format(value);
+            if (source.getType().is(SourceType.ORACLE)) {
+                results.add(String.format("TO_TIMESTAMP('%s', 'YYYY-MM-DD HH24:MI:SS.FF6')", formattedValue));
+            }
+            else {
+                results.add(String.format("'%s'", formattedValue));
+            }
+        }
+        return results;
+    }
+
+    private static List<String> toTimestampWithTimeZoneStrings(Source source, List<ZonedDateTime> values) {
+        final List<String> results = new ArrayList<>();
+        for (ZonedDateTime value : values) {
+            final String formattedValue = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSXXXXX").format(value);
+            if (source.getType().is(SourceType.ORACLE)) {
+                results.add(String.format("TO_TIMESTAMP_TZ('%s', 'YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM')", formattedValue));
+            }
+            else {
+                results.add(String.format("'%s'", formattedValue));
+            }
+        }
+        return results;
+    }
+
+    protected ZonedDateTime toZonedDateTimeAtSinkOffset(int year, int month, int day, int hour, int min, int sec, int nanos) {
+        return LocalDate.of(year, month, day).atTime(hour, min, sec, nanos).atZone(SINK_ZONE_ID);
+    }
+
     protected Timestamp getTimestamp(ResultSet rs, int index) throws SQLException {
-        return rs.getTimestamp(index, Calendar.getInstance(getCurrentSinkTimeZone()));
+        return rs.getTimestamp(index);
+    }
+
+    protected ZonedDateTime getTimestampWithTimeZoneAsZonedDateTime(ResultSet rs, int index) throws SQLException {
+        return getTimestamp(rs, index).toLocalDateTime()
+                .atZone(ZoneOffset.systemDefault())
+                .withZoneSameInstant(SINK_ZONE_ID);
+    }
+
+    protected ZonedDateTime getTimestampAsZonedDateTime(ResultSet rs, int index) throws SQLException {
+        return getTimestamp(rs, index).toLocalDateTime().atZone(SINK_ZONE_ID);
+    }
+
+    protected OffsetTime getTimeAsOffsetTime(ResultSet rs, int index) throws SQLException {
+        System.out.println(getTimestamp(rs, index) + " " + getTimestamp(rs, index).getNanos());
+        return getTimestamp(rs, index).toLocalDateTime()
+                .toLocalTime()
+                .atOffset(getCurrentSinkTimeOffset());
+    }
+
+    protected ZoneOffset getCurrentSinkTimeOffset() {
+        return getCurrentSinkTimeOffset(Instant.EPOCH);
+    }
+
+    protected ZoneOffset getCurrentSinkTimeOffset(Instant instant) {
+        return instant.atZone(SINK_ZONE_ID).getOffset();
     }
 
     protected List<String> bitValues(Source source, String... values) {
@@ -2769,6 +2836,12 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         assertDataTypes(source, sink, typeNames, values, expectedValues, null, columnAssert, columnReader);
     }
 
+    protected <T, U> void assertDataTypes2(Source source, Sink sink, List<String> typeNames, List<T> values, List<U> expectedValues,
+                                           DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
+            throws Exception {
+        assertDataTypes2(source, sink, typeNames, values, expectedValues, null, columnAssert, columnReader);
+    }
+
     protected <T, U> void assertDataTypeNonKeyOnly(Source source, Sink sink, String typeName, List<T> values, List<U> expectedValues,
                                                    DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
             throws Exception {
@@ -2912,6 +2985,32 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         consumeAndAssert(sink, columnAssert, totalExpectedValues, columnReader);
     }
 
+    @SuppressWarnings("SameParameterValue")
+    protected <T, U> void assertDataTypes2(Source source, Sink sink, List<String> typeNames, List<T> values, List<U> expectedValues,
+                                           ConfigurationAdjuster configAdjuster, DataTypeColumnAssert columnAssert,
+                                           ColumnReader<U> columnReader)
+            throws Exception {
+        final String tableName = source.randomTableName();
+
+        final List<T> totalValues = new ArrayList<>();
+        for (int i = 0; i < 2; ++i) {
+            totalValues.addAll(values);
+        }
+
+        final String createSql = createTableFromTypes(source, tableName, true, typeNames, values);
+        final String insertSql = String.format("INSERT INTO %s VALUES (%s)", tableName, Strings.join(",", totalValues));
+
+        registerSourceConnector(source, typeNames, tableName, configAdjuster, createSql, insertSql);
+
+        Properties sinkProperties = getDefaultSinkConfig(sink);
+        sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        startSink(source, sinkProperties, tableName);
+
+        consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
+    }
+
     protected boolean isLobTypeName(String typeName) {
         return typeName.equalsIgnoreCase("CLOB") || typeName.equalsIgnoreCase("NCLOB") || typeName.equalsIgnoreCase("BLOB");
     }
@@ -2966,6 +3065,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             source.streamTable(tableName);
             source.execute(insertSql);
         }
+
+        if (TestHelper.shouldQueryDatabaseState()) {
+            source.queryContainerTable(tableName);
+        }
     }
 
     protected void registerSourceConnector(Source source, List<String> typeName, String tableName,
@@ -3015,9 +3118,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     protected <U> void consumeAndAssert(Sink sink, DataTypeColumnAssert columnAssert, List<U> expectedValues, ColumnReader<U> columnReader) throws Exception {
         final SinkRecord record = consumeSinkRecord();
+        final String tableName = getSinkTable(record, sink);
+
+        if (TestHelper.shouldQueryDatabaseState()) {
+            sink.queryContainerTable(tableName);
+        }
+
         columnAssert.assertColumn(record);
 
-        sink.assertRows(getSinkTable(record, sink), rs -> {
+        sink.assertRows(tableName, rs -> {
             for (int i = 0; i < expectedValues.size(); ++i) {
                 final String description = String.format("Column %s read failed.", rs.getMetaData().getColumnName(i + 1));
                 assertThat(columnReader.read(rs, i + 1)).as(description).isEqualTo(expectedValues.get(i));

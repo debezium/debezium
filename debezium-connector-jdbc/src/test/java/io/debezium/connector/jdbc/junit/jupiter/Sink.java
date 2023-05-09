@@ -11,7 +11,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import org.assertj.db.api.AbstractColumnAssert;
@@ -156,6 +158,52 @@ public class Sink extends JdbcConnectionProvider {
         catch (SQLException e) {
             throw new AssertionError("Failed to assert rows", e);
         }
+    }
+
+    public void queryContainerTable(String tableName) throws Exception {
+        List<String> commands = new ArrayList<>();
+        commands.add("docker");
+        commands.add("exec");
+        commands.add("-i");
+        commands.add("--tty=false");
+        commands.add(getContainerName());
+
+        switch (getType()) {
+            case MYSQL:
+                commands.add("mysql");
+                commands.add("--user=" + getUsername());
+                commands.add("--password=" + getPassword());
+                commands.add("test");
+                commands.add("-e");
+                commands.add("SELECT * FROM " + tableName);
+                break;
+            case POSTGRES:
+                commands.add("psql");
+                commands.add("-U");
+                commands.add(getUsername());
+                commands.add("-w");
+                commands.add("test");
+                commands.add("-c");
+                commands.add("show time zone; select * from public." + tableName);
+                break;
+            case ORACLE:
+                commands.add("bash");
+                commands.add("-c");
+                commands.add("echo \"select * from " + tableName + ";\" | sqlplus debezium/dbz@ORCLPDB1");
+                break;
+            case SQLSERVER:
+                commands.add("/opt/mssql-tools/bin/sqlcmd");
+                commands.add("-U");
+                commands.add(getUsername());
+                commands.add("-P");
+                commands.add(getPassword());
+                commands.add("-d");
+                commands.add("testDB");
+                commands.add("-Q");
+                commands.add("select * from " + tableName + ";");
+                break;
+        }
+        queryContainer("Source", commands);
     }
 
     @SafeVarargs

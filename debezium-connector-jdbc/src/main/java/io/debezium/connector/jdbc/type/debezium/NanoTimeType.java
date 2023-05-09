@@ -6,19 +6,14 @@
 package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalTime;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
-import org.hibernate.query.Query;
-import org.hibernate.type.StandardBasicTypes;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.NanoTime;
 
 /**
@@ -26,7 +21,7 @@ import io.debezium.time.NanoTime;
  *
  * @author Chris Cranford
  */
-public class NanoTimeType extends AbstractTimeType {
+public class NanoTimeType extends AbstractDebeziumTimeType {
 
     public static final NanoTimeType INSTANCE = new NanoTimeType();
 
@@ -49,36 +44,18 @@ public class NanoTimeType extends AbstractTimeType {
         // precision best aligns with the potential of up to 6.
         if (precision > 0) {
             precision = Math.min(precision, dialect.getMaxTimePrecision());
-            return dialect.getTypeName(Types.TIMESTAMP, Size.precision(precision));
+            return dialect.getTypeName(Types.TIME, Size.precision(precision));
         }
 
         // We use the max dialect precision here as nanosecond precision is only permissible by specific
         // dialects and this handles situations of rounding values to the nearest precision of the value is
         // sourced from a source with a higher dialect.
-        return dialect.getTypeName(Types.TIMESTAMP, Size.precision(dialect.getMaxTimePrecision()));
+        return dialect.getTypeName(Types.TIME, Size.precision(dialect.getMaxTimePrecision()));
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTime(toZonedDateTime((long) value));
+    protected LocalTime getLocalTime(Number value) {
+        return DateTimeUtils.toLocalTimeFromDurationNanoseconds(value.longValue());
     }
 
-    @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
-        if (value == null) {
-            query.setParameter(index, null);
-        }
-        else if (value instanceof Long) {
-            final ZonedDateTime zdt = toZonedDateTime((long) value);
-            query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITHOUT_TIMEZONE);
-        }
-        else {
-            throwUnexpectedValue(value);
-        }
-    }
-
-    private ZonedDateTime toZonedDateTime(long value) {
-        final Duration duration = Duration.of(value, ChronoUnit.NANOS);
-        return Instant.EPOCH.plus(duration.toNanos(), ChronoUnit.NANOS).atZone(getDatabaseTimeZone().toZoneId());
-    }
 }

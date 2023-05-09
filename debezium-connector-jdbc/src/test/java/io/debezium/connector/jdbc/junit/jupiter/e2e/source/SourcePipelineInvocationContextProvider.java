@@ -166,7 +166,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             for (Boolean flatten : getExtractNewRecordStateValues(method)) {
                 for (Boolean propagateColumnTypes : getPropagateColumnTypeValues(method)) {
                     for (TemporalPrecisionMode temporalPrecisionMode : getTemporalPrecisionModes(method, sourceType)) {
-                        builder.add(createInvocationContext(sourceType, flatten, propagateColumnTypes, temporalPrecisionMode, postgresExtension));
+                        builder.add(createInvocationContext(context, sourceType, flatten, propagateColumnTypes, temporalPrecisionMode, postgresExtension));
                         streamEmpty = false;
                     }
                 }
@@ -252,18 +252,18 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         return false;
     }
 
-    private TestTemplateInvocationContext createInvocationContext(SourceType sourceType, boolean flatten, boolean propagateTypes,
-                                                                  TemporalPrecisionMode temporalPrecisionMode, String postgresExtension) {
+    private TestTemplateInvocationContext createInvocationContext(ExtensionContext context, SourceType sourceType, boolean flatten,
+                                                                  boolean propagateTypes, TemporalPrecisionMode temporalPrecisionMode,
+                                                                  String postgresExtension) {
         final SourceConnectorOptions sourceOptions = new SourceConnectorOptions() {
             @Override
             public boolean useSnapshot() {
-                // By default, we specifically test with streaming mode.
-                return false;
+                return TestHelper.isSourceSnapshot();
             }
 
             @Override
             public boolean useDefaultValues() {
-                return false;
+                return TestHelper.isDefaultValuesEnabled();
             }
 
             @Override
@@ -293,8 +293,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
             @Override
             public List<Extension> getAdditionalExtensions() {
+                final Method method = context.getRequiredTestMethod();
+                final Class testClass = context.getRequiredTestClass();
                 return Arrays.asList(
                         (BeforeEachCallback) context -> {
+                            LOGGER.info("Running test {}.{}: {}", testClass.getName(), method.getName(), getDisplayName(0));
                             if (!sourceContainer.isRunning()) {
                                 sourceContainer.start();
                             }
@@ -313,6 +316,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                             }
 
                             source.close();
+
+                            if (context.getExecutionException().isPresent()) {
+                                LOGGER.error("Test {}.{}: {} failed with exception:", testClass.getName(), method.getName(),
+                                             getDisplayName(0), context.getExecutionException().get());
+                            }
                         },
                         new ParameterResolver() {
                             @Override
@@ -365,6 +373,9 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withPassword(MYSQL_PASSWORD)
                         .withNetworkAliases(sourceType.getValue())
                         .withEnv("TZ", TestHelper.getSourceTimeZone());
+                if (TestHelper.isConnectionTimeZoneUsed()) {
+                    container.withUrlParam("connectionTimeZone", TestHelper.getSourceTimeZone());
+                }
                 containers.put(sourceType, container);
             }
             else if (SourceType.POSTGRES.equals(sourceType)) {
@@ -374,7 +385,8 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withUsername(POSTGRES_USERNAME)
                         .withPassword(POSTGRES_PASSWORD)
                         .withNetworkAliases(sourceType.getValue())
-                        .withEnv("TZ", TestHelper.getSourceTimeZone());
+                        .withEnv("TZ", TestHelper.getSourceTimeZone())
+                        .withEnv("PGTZ", TestHelper.getSourceTimeZone());
                 containers.put(sourceType, container);
             }
             else if (SourceType.SQLSERVER.equals(sourceType)) {

@@ -16,6 +16,7 @@ import org.hibernate.query.Query;
 import org.hibernate.type.StandardBasicTypes;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.dialect.sqlserver.SqlServerDatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTime;
@@ -47,13 +48,13 @@ public class ZonedTimeType extends AbstractTimeType {
         // such columns, and it only supports second-based precision. By using TIMESTAMP, the
         // precision best aligns with the potential of up to 6.
         if (precision > 0) {
-            return dialect.getTypeName(Types.TIME_WITH_TIMEZONE, Size.precision(precision));
+            return dialect.getTypeName(getJdbcType(dialect), Size.precision(precision));
         }
 
         // We use the max dialect precision here as nanosecond precision is only permissible by specific
         // dialects and this handles situations of rounding values to the nearest precision of the value is
         // sourced from a source with a higher dialect.
-        return dialect.getTypeName(Types.TIME_WITH_TIMEZONE, Size.precision(dialect.getMaxTimePrecision()));
+        return dialect.getTypeName(getJdbcType(dialect), Size.precision(dialect.getMaxTimePrecision()));
     }
 
     @Override
@@ -67,13 +68,33 @@ public class ZonedTimeType extends AbstractTimeType {
             query.setParameter(index, null);
         }
         else if (value instanceof String) {
-            final OffsetTime offsetTime = OffsetTime.parse((String) value, ZonedTime.FORMATTER);
-            final ZonedDateTime zdt = offsetTime.atDate(LocalDate.EPOCH).toInstant().atZone(getDatabaseTimeZone().toZoneId());
-            query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
+            final ZonedDateTime zdt = OffsetTime.parse((String) value, ZonedTime.FORMATTER).atDate(LocalDate.now()).toZonedDateTime();
+            if (getDialect().isJdbcTimeZoneSet()) {
+                query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
+            }
+            else {
+                if (getDialect().isConnectionTimeZoneSet()) {
+                    query.setParameter(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()));
+                }
+                else if (getDialect() instanceof SqlServerDatabaseDialect) {
+                    query.setParameter(index, zdt.toLocalDateTime());
+                }
+                else {
+                    query.setParameter(index, zdt);
+                }
+            }
         }
         else {
             throwUnexpectedValue(value);
         }
     }
 
+    private int getJdbcType(DatabaseDialect dialect) {
+        if (dialect instanceof SqlServerDatabaseDialect) {
+            // SQL Server does not support time with time zone, but to align the behavior with other dialects,
+            // we will directly map to a TIMESTAMP with TIME ZONE so that SQL Server is mapped to DATETIMEOFFSET.
+            return Types.TIMESTAMP_WITH_TIMEZONE;
+        }
+        return Types.TIME_WITH_TIMEZONE;
+    }
 }

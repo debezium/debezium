@@ -22,10 +22,19 @@ public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContex
 
     @SuppressWarnings("resource")
     public MySqlSinkDatabaseContextProvider() {
-        super(SinkType.MYSQL, new MySQLContainer<>(IMAGE_NAME)
-                .withNetwork(Network.newNetwork())
-                .withDatabaseName("test")
-                .withEnv("TZ", TestHelper.getSinkTimeZone()));
+        super(SinkType.MYSQL, createContainer());
     }
 
+    private static MySQLContainer createContainer() {
+        MySQLContainer container = new MySQLContainer<>(IMAGE_NAME)
+                .withNetwork(Network.newNetwork())
+                .withDatabaseName("test")
+                .withUsername("mysqluser")
+                .withPassword("debezium")
+                .withEnv("TZ", TestHelper.getSinkTimeZone());
+        if (TestHelper.isConnectionTimeZoneUsed()) {
+            container.withUrlParam("connectionTimeZone", TestHelper.getSinkTimeZone());
+        }
+        return container;
+    }
 }

@@ -27,9 +27,11 @@ public abstract class AbstractType implements Type {
     private static final String SCHEMA_PARAMETER_COLUMN_SIZE = "__debezium.source.column.length";
     private static final String SCHEMA_PARAMETER_COLUMN_PRECISION = "__debezium.source.column.scale";
 
+    private DatabaseDialect dialect;
+
     @Override
-    public void configure(JdbcSinkConnectorConfig config) {
-        // no-op
+    public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+        this.dialect = dialect;
     }
 
     @Override
@@ -65,6 +67,10 @@ public abstract class AbstractType implements Type {
     @Override
     public void bind(Query<?> query, int index, Schema schema, Object value) {
         query.setParameter(index, value);
+    }
+
+    protected DatabaseDialect getDialect() {
+        return dialect;
     }
 
     protected Optional<String> getSourceColumnType(Schema schema) {
