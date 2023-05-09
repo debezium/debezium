@@ -42,7 +42,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
@@ -58,7 +58,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     // the one and only task we start in the test suite
     private static final int TASK_ID = 0;
 
-    protected static MongoDbReplicaSet mongo;
+    protected static MongoDbDeployment mongo;
 
     protected Configuration config;
     protected MongoDbTaskContext context;
@@ -80,7 +80,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     @BeforeClass
     public static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
-        mongo = MongoDbDatabaseProvider.mongoDbReplicaSet();
+        mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
         mongo.start();
     }
 

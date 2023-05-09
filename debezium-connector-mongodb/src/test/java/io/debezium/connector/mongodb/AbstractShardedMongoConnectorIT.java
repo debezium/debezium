@@ -13,6 +13,7 @@ import java.util.Map;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
@@ -26,6 +27,8 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
+import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
+import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -45,6 +48,7 @@ public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
 
     @BeforeClass
     public static void beforeAll() {
+        Assume.assumeTrue(MongoDbDatabaseVersionResolver.getPlatform().equals(MongoDbPlatform.MONGODB_DOCKER));
         DockerUtils.enableFakeDnsIfRequired();
         mongo = MongoDbDatabaseProvider.mongoDbShardedCluster();
         mongo.start();
