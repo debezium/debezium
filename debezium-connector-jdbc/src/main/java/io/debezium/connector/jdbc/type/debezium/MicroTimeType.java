@@ -5,18 +5,10 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalTime;
 
-import org.apache.kafka.connect.data.Schema;
-import org.hibernate.query.Query;
-import org.hibernate.type.StandardBasicTypes;
-
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.MicroTime;
 
 /**
@@ -24,7 +16,7 @@ import io.debezium.time.MicroTime;
  *
  * @author Chris Cranford
  */
-public class MicroTimeType extends AbstractTimeType {
+public class MicroTimeType extends AbstractDebeziumTimeType {
 
     public static final MicroTimeType INSTANCE = new MicroTimeType();
 
@@ -34,25 +26,8 @@ public class MicroTimeType extends AbstractTimeType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTime(toZonedDateTime((long) value));
+    protected LocalTime getLocalTime(Number value) {
+        return DateTimeUtils.toLocalTimeFromDurationMicroseconds(value.longValue());
     }
 
-    @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
-        if (value == null) {
-            query.setParameter(index, null);
-        }
-        else if (value instanceof Long) {
-            query.setParameter(index, toZonedDateTime((long) value), StandardBasicTypes.ZONED_DATE_TIME_WITHOUT_TIMEZONE);
-        }
-        else {
-            throwUnexpectedValue(value);
-        }
-    }
-
-    private ZonedDateTime toZonedDateTime(long value) {
-        final Duration duration = Duration.of(value, ChronoUnit.MICROS);
-        return Instant.EPOCH.plus(duration.toNanos(), ChronoUnit.NANOS).atZone(getDatabaseTimeZone().toZoneId());
-    }
 }

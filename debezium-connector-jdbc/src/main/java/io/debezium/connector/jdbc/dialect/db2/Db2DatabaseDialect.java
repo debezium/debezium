@@ -8,6 +8,8 @@ package io.debezium.connector.jdbc.dialect.db2;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.TemporalAccessor;
+import java.util.Optional;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.DB2Dialect;
@@ -59,11 +61,15 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    protected Optional<String> getDatabaseTimeZoneQuery() {
+        return Optional.of("SELECT CURRENT TIMEZONE FROM sysibm.sysdummy1");
+    }
+
+    @Override
     protected void registerTypes() {
         super.registerTypes();
 
         registerType(BytesType.INSTANCE);
-        registerType(ZonedTimestampWithoutTimezoneType.INSTANCE);
     }
 
     @Override
@@ -127,17 +133,17 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getFormattedTime(ZonedDateTime value) {
+    public String getFormattedTime(TemporalAccessor value) {
         return String.format("'%s'", DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value));
     }
 
     @Override
-    public String getFormattedDateTime(ZonedDateTime value) {
+    public String getFormattedDateTime(TemporalAccessor value) {
         return String.format("'%s'", ISO_LOCAL_DATE_TIME_WITH_SPACE.format(value));
     }
 
     @Override
-    public String getFormattedTimestamp(ZonedDateTime value) {
+    public String getFormattedTimestamp(TemporalAccessor value) {
         return String.format("'%s'", ISO_LOCAL_DATE_TIME_WITH_SPACE.format(value));
     }
 

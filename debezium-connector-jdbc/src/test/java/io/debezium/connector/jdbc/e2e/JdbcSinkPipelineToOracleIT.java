@@ -172,8 +172,7 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getTimeType(Source source, boolean key, int precision) {
-        // Since precision data is not passed for keys; we'll use the default timestamp precision.
-        return String.format("TIMESTAMP(%d)", key || !source.getOptions().isColumnTypePropagated() ? 6 : precision);
+        return "DATE";
     }
 
     @Override

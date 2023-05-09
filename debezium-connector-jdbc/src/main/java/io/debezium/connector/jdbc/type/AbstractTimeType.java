@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.type;
 
 import java.sql.Types;
+import java.time.LocalTime;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
@@ -32,9 +33,9 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
         // such columns, and it only supports second-based precision.
         if (precision > 0 && precision <= dialect.getDefaultTimestampPrecision()) {
-            return dialect.getTypeName(Types.TIMESTAMP, Size.precision(precision));
+            return dialect.getTypeName(Types.TIME, Size.precision(precision));
         }
-        return dialect.getTypeName(Types.TIMESTAMP);
+        return dialect.getTypeName(Types.TIME);
     }
 
     protected int getTimePrecision(Schema schema) {

@@ -232,8 +232,10 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", "kafka:9092");
                 sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-mysql");
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
-                sourceConfig.with("database.connectionTimeZone", TestHelper.getSourceTimeZone());
-                sourceConfig.with("database.serverTimeZone", TestHelper.getSourceTimeZone());
+                if (TestHelper.isConnectionTimeZoneUsed()) {
+                    sourceConfig.with("driver.connectionTimeZone", TestHelper.getSourceTimeZone());
+                    sourceConfig.with("driver.serverTimeZone", TestHelper.getSourceTimeZone());
+                }
                 if (source.getOptions().isColumnTypePropagated()) {
                     sourceConfig.with("column.propagate.source.type", "test.*");
                 }
