@@ -965,6 +965,11 @@ withStatement
   : WITH RECURSIVE? commonTableExpressions (',' commonTableExpressions)*
   ;
 
+tableStatement
+  :TABLE tableName orderByClause? limitClause?
+  ;
+  
+
 updateStatement
     : singleUpdateStatement | multipleUpdateStatement
     ;
