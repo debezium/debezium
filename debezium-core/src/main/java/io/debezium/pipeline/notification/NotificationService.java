@@ -62,7 +62,7 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
      * @param notification the notification to send
      * @param offsets the offset to send together with Kafka {@link SourceRecord}
      */
-    public void notify(Notification notification, Offsets<P, O> offsets) {
+    public void notify(Notification notification, Offsets<P, ? extends OffsetContext> offsets) {
 
         this.notificationChannels.stream()
                 .filter(isEnabled())

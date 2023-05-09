@@ -13,9 +13,11 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -42,8 +44,9 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
                                                                    DatabaseSchema<?> databaseSchema,
                                                                    Clock clock,
                                                                    SnapshotProgressListener<PostgresPartition> progressListener,
-                                                                   DataChangeEventListener<PostgresPartition> dataChangeEventListener) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
+                                                                   DataChangeEventListener<PostgresPartition> dataChangeEventListener,
+                                                                   NotificationService<PostgresPartition, ? extends OffsetContext> notificationService) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;
     }

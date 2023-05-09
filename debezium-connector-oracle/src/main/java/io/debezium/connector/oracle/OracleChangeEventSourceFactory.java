@@ -11,6 +11,7 @@ import io.debezium.config.Configuration;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -71,7 +72,8 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     public Optional<IncrementalSnapshotChangeEventSource<OraclePartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                                OracleOffsetContext offsetContext,
                                                                                                                                                SnapshotProgressListener<OraclePartition> snapshotProgressListener,
-                                                                                                                                               DataChangeEventListener<OraclePartition> dataChangeEventListener) {
+                                                                                                                                               DataChangeEventListener<OraclePartition> dataChangeEventListener,
+                                                                                                                                               NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
@@ -89,6 +91,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener));
+                dataChangeEventListener,
+                notificationService));
     }
 }

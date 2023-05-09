@@ -14,6 +14,7 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -89,7 +90,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     public Optional<IncrementalSnapshotChangeEventSource<PostgresPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
                                                                                                                                                  PostgresOffsetContext offsetContext,
                                                                                                                                                  SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
-                                                                                                                                                 DataChangeEventListener<PostgresPartition> dataChangeEventListener) {
+                                                                                                                                                 DataChangeEventListener<PostgresPartition> dataChangeEventListener,
+                                                                                                                                                 NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
@@ -102,7 +104,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
+                dataChangeEventListener,
+                notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

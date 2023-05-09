@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -250,6 +251,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
         return dataCollectionsToSnapshot.removeAll(Arrays.asList(new DataCollection<T>(collectionId)));
+    }
+
+    @Override
+    public List<DataCollection<T>> getDataCollections() {
+        return new ArrayList<>(dataCollectionsToSnapshot);
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

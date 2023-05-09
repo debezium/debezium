@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -49,6 +50,7 @@ import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
 
@@ -1088,6 +1090,93 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertEquals(expectedCount, dbChanges.size());
         assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
                 .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void testNotification() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+
+        sendAdHocSnapshotSignal();
+
+        List<SourceRecord> records = new ArrayList<>();
+        String topicName = topicName();
+
+        List<SourceRecord> notifications = new ArrayList<>();
+        consumeRecords(100, record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+            if ("io.debezium.notification".equals(record.topic())) {
+                notifications.add(record);
+            }
+        });
+
+        sendPauseSignal();
+
+        consumeAvailableRecords(record -> {
+            if (topicName.equalsIgnoreCase(record.topic())) {
+                records.add(record);
+            }
+            if ("io.debezium.notification".equals(record.topic())) {
+                notifications.add(record);
+            }
+        });
+
+        sendResumeSignal();
+
+        SourceRecords sourceRecords = consumeRecordsByTopicUntil(incrementalSnapshotCompleted());
+
+        records.addAll(sourceRecords.recordsForTopic(topicName()));
+        notifications.addAll(sourceRecords.recordsForTopic("io.debezium.notification"));
+
+        List<Integer> values = records.stream()
+                .map(r -> ((Struct) r.value()))
+                .map(getRecordValue())
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < ROW_COUNT - 1; i++) {
+            assertThat(values.get(i)).isEqualTo(i);
+        }
+
+        assertCorrectIncrementalSnapshotNotification(notifications);
+    }
+
+    private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
+        return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("type").equals("COMPLETED");
+    }
+
+    private void assertCorrectIncrementalSnapshotNotification(List<SourceRecord> notifications) {
+        List<Struct> incrementalSnapshotNotification = notifications.stream().map(s -> ((Struct) s.value()))
+                .filter(s -> s.getString("aggregate_type").equals("Incremental Snapshot"))
+                .collect(Collectors.toList());
+
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("STARTED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("PAUSED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("RESUMED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("IN_PROGRESS"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED"))).isTrue();
+        assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("COMPLETED"))).isTrue();
+
+        Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
+        assertThat(inProgress.getMap("additional_data"))
+                .containsEntry("current_collection_in_progress", tableDataCollectionId())
+                .containsEntry("maximum_key", "1000")
+                .containsEntry("last_processed_key", "1");
+
+        Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
+        assertThat(completed.getMap("additional_data"))
+                .containsEntry("total_rows_scanned", "1000");
+    }
+
+    private Function<Struct, Integer> getRecordValue() {
+        return s -> s.getStruct("after").getInt32(valueFieldName());
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {

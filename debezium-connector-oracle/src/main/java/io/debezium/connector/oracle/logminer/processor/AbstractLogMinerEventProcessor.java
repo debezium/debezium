@@ -687,7 +687,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             offsetContext.setEventScn(row.getScn());
             offsetContext.setRedoThread(row.getThread());
             offsetContext.setRsId(row.getRsId());
-            dispatcher.dispatchSchemaChangeEvent(partition,
+            dispatcher.dispatchSchemaChangeEvent(partition, offsetContext,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
                             getConfig(),
@@ -1020,7 +1020,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         LOGGER.info("Table '{}' is new and will now be captured.", tableId);
         offsetContext.event(tableId, Instant.now());
-        dispatcher.dispatchSchemaChangeEvent(partition,
+        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext,
                 tableId,
                 new OracleSchemaChangeEventEmitter(connectorConfig,
                         partition,

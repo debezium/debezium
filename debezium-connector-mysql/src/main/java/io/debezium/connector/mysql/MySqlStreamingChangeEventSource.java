@@ -602,7 +602,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                             new MySqlChangeRecordEmitter(partition, offsetContext, clock, Operation.TRUNCATE, null, null, connectorConfig.skipMessagesWithoutChange()));
                 }
-                eventDispatcher.dispatchSchemaChangeEvent(partition, tableId, (receiver) -> {
+                eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
                     try {
                         receiver.schemaChangeEvent(schemaChangeEvent);
                     }

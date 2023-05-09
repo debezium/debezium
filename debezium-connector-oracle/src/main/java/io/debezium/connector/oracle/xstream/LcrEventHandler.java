@@ -182,6 +182,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             LOGGER.info("Table {} will be captured.", tableId);
             dispatcher.dispatchSchemaChangeEvent(
                     partition,
+                    offsetContext,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
                             connectorConfig,
@@ -255,6 +256,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 partition,
+                offsetContext,
                 tableId,
                 new OracleSchemaChangeEventEmitter(
                         connectorConfig,

@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -87,8 +88,9 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              DatabaseSchema<?> databaseSchema,
                                                              Clock clock,
                                                              SnapshotProgressListener<MySqlPartition> progressListener,
-                                                             DataChangeEventListener<MySqlPartition> dataChangeEventListener) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener);
+                                                             DataChangeEventListener<MySqlPartition> dataChangeEventListener,
+                                                             NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         kafkaSignal = new KafkaSignalChannel();
     }
 
@@ -112,7 +114,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
-            readChunk(partition);
+            readChunk(partition, offsetContext);
         }
         else if (!window.isEmpty() && getContext().deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
@@ -133,7 +135,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         while (getContext().snapshotRunning() && getContext().reachedHighWatermark(currentGtid)) {
             getContext().closeWindow();
             sendWindowEvents(partition, offsetContext);
-            readChunk(partition);
+            readChunk(partition, offsetContext);
             if (currentGtid == null && getContext().watermarksChanged()) {
                 return;
             }
@@ -149,7 +151,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
-            readChunk(partition);
+            readChunk(partition, offsetContext);
         }
     }
 
@@ -162,7 +164,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
-            readChunk(partition);
+            readChunk(partition, offsetContext);
         }
     }
 
@@ -210,10 +212,10 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    protected void emitWindowClose(MySqlPartition partition) throws InterruptedException {
+    protected void emitWindowClose(MySqlPartition partition, OffsetContext offsetContext) throws InterruptedException {
         updateHighWatermark();
         if (getContext().serverUuidChanged()) {
-            rereadChunk(partition);
+            rereadChunk(partition, offsetContext);
         }
     }
 

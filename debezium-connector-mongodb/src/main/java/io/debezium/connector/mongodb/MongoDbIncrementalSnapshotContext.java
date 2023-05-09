@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -244,6 +245,11 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) CollectionId.parse(dataCollectionId);
         return dataCollectionsToSnapshot.remove(new DataCollection<T>(collectionId));
+    }
+
+    @Override
+    public List<DataCollection<T>> getDataCollections() {
+        return new ArrayList<>(dataCollectionsToSnapshot);
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {

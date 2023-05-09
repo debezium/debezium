@@ -371,7 +371,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             LOGGER.info("Migration skipped, no table schema changes detected.");
             return;
         }
-        dispatcher.dispatchSchemaChangeEvent(partition, newTable.getSourceTableId(),
+        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, newTable.getSourceTableId(),
                 new SqlServerSchemaChangeEventEmitter(partition, offsetContext, newTable, tableSchema, schema,
                         SchemaChangeEventType.ALTER));
         newTable.setSourceTable(tableSchema);
@@ -443,6 +443,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         Instant.now());
                 dispatcher.dispatchSchemaChangeEvent(
                         partition,
+                        offsetContext,
                         currentTable.getSourceTableId(),
                         new SqlServerSchemaChangeEventEmitter(
                                 partition,
