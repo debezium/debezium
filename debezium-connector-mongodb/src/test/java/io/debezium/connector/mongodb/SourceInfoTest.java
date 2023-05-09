@@ -122,16 +122,16 @@ public class SourceInfoTest {
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(hasOffset);
 
         Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
-        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(timestamp.getTime());
-        assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(timestamp.getInc());
+        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
+        assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
         String resumeToken = source.lastResumeToken(REPLICA_SET_NAME);
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
         source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "test", "names"), 0L);
         Struct struct = source.struct();
-        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(timestamp.getTime() * 1000L);
-        assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(timestamp.getInc());
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
+        assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("test");
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("names");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
@@ -168,7 +168,7 @@ public class SourceInfoTest {
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaNameWithoutEvent() {
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, CURSOR_TIMESTAMP, null);
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, null);
     }
 
     @Test
@@ -190,7 +190,7 @@ public class SourceInfoTest {
         source.startInitialSync(REPLICA_SET_NAME);
 
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, CURSOR_TIMESTAMP, "true");
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, "true");
     }
 
     @Test

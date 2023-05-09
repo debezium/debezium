@@ -198,22 +198,24 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private boolean isValidResumeToken(MongoDbPartition partition, ReplicaSet replicaSet, BsonDocument token) {
-        try {
-            try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
-                return mongo.execute("Checking change stream", client -> {
-                    ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
-                    stream.resumeAfter(token);
+        if (token == null) {
+            return false;
+        }
 
-                    try (var ignored = stream.cursor()) {
-                        LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
-                        return false;
-                    }
-                    catch (MongoCommandException | MongoChangeStreamException e) {
-                        LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
-                        return true;
-                    }
-                });
-            }
+        try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
+            return mongo.execute("Checking change stream", client -> {
+                ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
+                stream.resumeAfter(token);
+
+                try (var ignored = stream.cursor()) {
+                    LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
+                    return false;
+                }
+                catch (MongoCommandException | MongoChangeStreamException e) {
+                    LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
+                    return true;
+                }
+            });
         }
         catch (InterruptedException e) {
             throw new DebeziumException("Interrupted while creating snapshotting task", e);
@@ -237,6 +239,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = stream.cursor()) {
                 rsOffsetCtx.initEvent(cursor);
             }
+            rsOffsetCtx.initFromOpTimeIfNeeded(client);
         });
     }
 
