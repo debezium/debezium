@@ -804,6 +804,7 @@ modify_index_partition
         | COALESCE
         | UPDATE BLOCK REFERENCES
         | UNUSABLE
+        | shrink_clause
         )
     ;
 
