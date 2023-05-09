@@ -429,10 +429,8 @@ The schema history provides information about the structure that is in effect wh
 By default, the connector captures the schema of all tables, not just the subset of tables that are designated for capture in the connector configuration.
 For tables that are not designated for capture, the snapshot captures only the schema structure.
 It does not capture any table data.
-For information about modifying the default behavior so that {prodname} captures the schema history only for the tables from which the connector captures change events, see the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property. 
-
-The schema data collected for non-captured tables might become necessary in the future, if you eventually configure {prodname} to capture data from tables that were not included in the initial snapshot.
-In such a case, as long as the tables existed when connector performed the initial snapshot, the connector has immediate access to the structural information that it needs to begin capturing data from the tables.
+The schema data for non-captured tables is useful if you later decide that you want {prodname} to capture data from those tables.
+For information about modifying the default behavior so that {prodname} captures the schema history only for the tables from which the connector captures change events, see the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property.
 
 |7
 |Release the global read lock obtained in Step 3.
