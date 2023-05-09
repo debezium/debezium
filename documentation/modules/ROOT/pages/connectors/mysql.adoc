@@ -373,54 +373,113 @@ For more information, see xref:mysql-schema-history-topic[schema history topic].
 [[mysql-snapshots]]
 === Snapshots
 
-When a {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database. The following flow describes how the connector creates this snapshot. This flow is for the default snapshot mode, which is `initial`.
-For information about other snapshot modes, see the xref:mysql-property-snapshot-mode[MySQL connector `snapshot.mode` configuration property].
+When a {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database.
+This snapshot enables the connector to establish a baseline for the current state of the database.
 
-.Workflow for performing an initial snapshot with a global read lock
+{prodname} can use different modes when it runs a snapshot.
+The snapshot mode is determined by the xref:mysql-property-snapshot-mode[`snapshot.mode`] configuration property.
+The default value of the property is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+
+The connector completes a series of tasks when it performs the snapshot.
+The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
+The {prodname} MySQL connector completes different step when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
+
+[id="initial-snapshot-workflow-with-global-read-lock"]
+==== Initial snapshots that use a global read lock
+The following workflow lists the steps that {prodname} takes to create a snapshot with a global read lock.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+
+.Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with a global read lock
 [cols="1,9",options="header",subs="+attributes"]
 |===
 |Step |Action
 
 |1
-a| Grabs a global read lock that blocks _writes_ by other database clients. +
- +
-The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas. The connector keeps the global read lock while it reads the binlog position, and releases the lock as described in a later step.
+a|Establish a connection to the database.
 
 |2
-a|Starts a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
+|Determine the tables to be captured.
+By default, the connector captures all non-system tables.
+To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:mysql-property-table-include-list[`table.include.list`] or xref:mysql-property-table-exclude-list[`table.exclude.list`].
 
 |3
-a|Reads the current binlog position.
+|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients. +
+
+The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas.
+The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
 
 |4
-a|Reads the schema of the databases and tables for which the connector is configured to capture changes.
+a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
+ +
+[NOTE]
+====
+The use of these isolation semantics can slow the progress of the snapshot.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:"mysql-incremental-snapshots[incremental snapshot] instead.
+====
 
 |5
-a|Releases the global read lock. Other database clients can now write to the database.
+|Read the current binlog position.
 
 |6
-a|If applicable, writes the DDL changes to the schema change topic, including all necessary `DROP...` and `CREATE...` DDL statements.
+|Capture the structure of tables in the database.
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+
+The schema history provides information about the structure that is in effect when a change event occurs.
+By default, the connector captures the schema of all tables, not just the subset of tables that are designated for capture in the connector configuration.
+For tables that are not designated for capture, the snapshot captures only the schema structure.
+It does not capture any table data.
+For information about modifying the default behavior so that {prodname} captures the schema history only for the tables from which the connector captures change events, see the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property. 
+
+The schema data collected for non-captured tables might become necessary in the future, if you eventually configure {prodname} to capture data from tables that were not included in the initial snapshot.
+In such a case, as long as the tables existed when connector performed the initial snapshot, the connector has immediate access to the structural information that it needs to begin capturing data from the tables.
 
 |7
-a|Scans the database tables. For each row, the connector emits `CREATE` events to the relevant table-specific Kafka topics.
-
-|8
-a|Commits the transaction.
+|Release the global read lock obtained in Step 3.
+Other database clients can now write to the database.
 
 |9
-a|Records the completed snapshot in the connector offsets.
+a|At the LSN position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+. Confirms that the table being scanned was created before the start of the snapshot.
+   If it was not, the snapshot skips that table.
+   After the snapshot is complete, and the connector starts emitting change events, the connector produces change events for any tables that were created during the snapshot.
+. Produces a `read` event for each row that is captured in a table.
+   All `read` events contain the same LSN position, which is the LSN position that was obtained in step 5.
+. Emits each `read` event to the Kafka topic for the source table.
+. Releases data table locks, if applicable.
+
+|10
+|Commit the transaction.
+
+|11
+|Record the completed snapshot in the connector offsets.
 
 |===
 
-Connector restarts::
-If the connector fails, stops, or is rebalanced while performing the _initial snapshot_, then after the connector restarts, it performs a new snapshot. After that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates.
-+
-If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:mysql-when-things-go-wrong[behavior when things go wrong].
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
 
-Global read locks not allowed::
-Some environments do not allow global read locks. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method. This requires the database user for the {prodname} connector to have `LOCK TABLES` privileges.
-+
-.Workflow for performing an initial snapshot with table-level locks
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 5 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+If the connector stops for long enough, the binlog files that record the connector's position can expire.
+If the database purges the expired binlog files, the connector's position is lost, which causes the connector to revert to the _initial snapshot_ for its starting position.
+For more tips on troubleshooting the {prodname} MySQL connector, see xref:mysql-when-things-go-wrong[behavior when things go wrong].
+
+[id="initial-snapshot-workflow-with-table-level-locks"]
+==== Initial snapshots that use table-level locks
+
+In some database environments administrators do not permit global read locks.
+If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks when it performs snapshots.
+For the connector to perform a snapshot that uses table-level locks, the database account that the {prodname} connector uses to connect to MySQL must have `LOCK TABLES` privileges.
+
+.Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with table-level locks
+The following workflow lists the steps that {prodname} takes to create a snapshot with table-level read locks.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:default-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+
+[id="snapshot-workflow-with-table-level-locks"]
 [cols="1,9",options="header",subs="+attributes"]
 |===
 |Step |Action
