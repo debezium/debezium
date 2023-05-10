@@ -78,7 +78,8 @@ CONNECTORS_PER_VERSION = [
     '1.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess'],
     '2.0' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess'],
     '2.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner'],
-    '2.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc']
+    '2.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc'],
+    '2.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -427,10 +428,17 @@ node('Slave') {
                 }
             }
             ADDITIONAL_REPOSITORIES.each { id, repo ->
+                // Additional repositories (like Debezium Server) can have their own BOM
+                def repoBom = "debezium-${id}-bom/pom.xml"
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+                    }
+                    if (fileExists(repoBom)) {
+                        modifyFile(repoBom) {
+                            it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+                        }
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
@@ -443,6 +451,11 @@ node('Slave') {
                 dir(id) {
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+                    }
+                    if (fileExists(repoBom)) {
+                        modifyFile(repoBom) {
+                            it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+                        }
                     }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
