@@ -3320,6 +3320,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4367")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "User-defined types not supported")
     public void shouldCaptureChangesForTransactionsAcrossSnapshotBoundaryWithoutReemittingDDLChanges() throws Exception {
         OracleConnection secondConnection = TestHelper.testConnection();
         TestHelper.dropTable(connection, "DBZ4367");
@@ -5121,6 +5122,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-6355")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "User-defined types not supported")
     public void testBacklogTransactionShouldNotBeAbandon() throws Exception {
         TestHelper.dropTable(connection, "dbz6355");
         try {

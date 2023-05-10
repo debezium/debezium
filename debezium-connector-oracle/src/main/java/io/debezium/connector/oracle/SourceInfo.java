@@ -115,7 +115,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     public String tableSchema() {
-        return tableIds.isEmpty() ? null
+        return (tableIds == null || tableIds.isEmpty()) ? null
                 : tableIds.stream()
                         .filter(x -> x != null)
                         .map(TableId::schema)
@@ -124,7 +124,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     public String table() {
-        return tableIds.isEmpty() ? null
+        return (tableIds == null || tableIds.isEmpty()) ? null
                 : tableIds.stream()
                         .filter(x -> x != null)
                         .map(TableId::table)
@@ -154,6 +154,6 @@ public class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected String database() {
-        return tableIds.iterator().next().catalog();
+        return (tableIds != null) ? tableIds.iterator().next().catalog() : null;
     }
 }
