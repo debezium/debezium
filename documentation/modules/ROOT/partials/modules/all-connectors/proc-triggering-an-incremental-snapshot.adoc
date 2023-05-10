@@ -36,11 +36,11 @@ end::nosql-based-snapshot[]
 
 .Prerequisites
 
-* {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled]. +
+* {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled]. +
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
-.Procedure
+.Procedure using source signaling channel
 
 tag::sql-based-snapshot[]
 

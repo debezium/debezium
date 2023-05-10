@@ -1,0 +1,34 @@
+.Procedure using kafka signaling channel
+
+You can send a message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka topic] to add the ad hoc incremental snapshot request to the signaling {data-collection}:
+
+The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
+
+The value is a JSON object with `type` and `data` fields.
+
+The signal type is `stop-snapshot` and the `data` field must have the following fields:
+
+.Execute snapshot data fields
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| An optional array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
+The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|===
+
+An example of the stop-snapshot Kafka message:
+
+----
+Key = `test_connector`
+
+Value = `{"type":"stop-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
