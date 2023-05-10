@@ -3355,10 +3355,14 @@ By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
+
+|[[oracle-property-signal-enabled-channels]]<<oracle-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
 
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`

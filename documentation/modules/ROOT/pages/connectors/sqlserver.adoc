@@ -2618,9 +2618,13 @@ By default, truncate operations are skipped (not emitted by this connector).
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
+
+|[[sqlserver-property-signal-enabled-channels]]<<sqlserver-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
 
 |[[sqlserver-property-incremental-snapshot-allow-schema-changes]]<<sqlserver-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`

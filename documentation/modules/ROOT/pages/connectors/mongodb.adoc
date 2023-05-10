@@ -1720,12 +1720,16 @@ A value of `0` indicates using the server/driver default wait timeout.
 
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<databaseName>_._<collectionName>_` +
 ifdef::product[]
 Signaling is a Technology Preview feature for the {prodname} MongoDB connector.
 endif::product[]
+
+|[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
 
 |[[mongodb-property-incremental-snapshot-chunk-size]]<<mongodb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
