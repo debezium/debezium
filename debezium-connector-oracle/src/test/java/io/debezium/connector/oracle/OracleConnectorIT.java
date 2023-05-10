@@ -5152,21 +5152,31 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             // Insert streaming record as in-progress transaction
             // Guarantees that we flush offsets.
             // It is expected that this will be discarded due to retention policy of 1 minute.
-            connection.executeWithoutCommitting("INSERT INTO dbz6355 (id,name) values (2, 'Minnie Mouse')");
+            try (OracleConnection otherConnection = TestHelper.testConnection()) {
+                otherConnection.executeWithoutCommitting("INSERT INTO dbz6355 (id,name) values (2, 'Minnie Mouse')");
 
-            LOGGER.info("Waiting {}ms for second change to age; should not be captured.", 70_000L);
-            Thread.sleep(70_000L);
+                LOGGER.info("Waiting {}ms for second change to age; should not be captured.", 70_000L);
+                Thread.sleep(70_000L);
 
-            // Restart the connector after downtime
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
+                // Restart the connector after downtime
+                start(OracleConnector.class, config);
+                assertConnectorIsRunning();
 
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+                waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // Commit in progress transaction
-            connection.commit();
+                // Get the number of fetching queries up to this point.
+                final Long fetchingQueryCount = getStreamingMetric("FetchingQueryCount");
 
-            connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
+                connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
+
+                // Fetch for a few mining iterations to guarantee that the abandonment process has fired
+                Awaitility.waitAtMost(Duration.ofSeconds(60)).until(() -> {
+                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchingQueryCount");
+                });
+
+                // Commit in progress transaction
+                otherConnection.commit();
+            }
 
             // Get only record
             records = consumeRecordsByTopic(1);
