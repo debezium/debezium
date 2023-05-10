@@ -967,7 +967,7 @@ withStatement
   ;
 
 tableStatement
-  :TABLE tableName orderByClause? limitClause?
+  : TABLE tableName orderByClause? limitClause?
   ;
   
 
