@@ -198,6 +198,7 @@ ShuranZhang,Shuran Zhang
 Henko,Henrik Schnell
 caicancai,蔡灿材
 eizners,Sergey Eizner
+twthorn,Thomas Thornton
 tthorn,Thomas Thornton
 hiscat,My Lang Pangzi
 bpaquet,Bertrand Paquet
@@ -208,3 +209,4 @@ benw-at-birdie,Ben White
 miguelbirdie,Miguel Angel Sotomayor
 umachi,Hidetomi Umaki
 sclarkson-zoomcare,Stephen Clarkson
+gongchanghua,Gong Chang Hua
