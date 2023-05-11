@@ -1935,6 +1935,8 @@ showStatement
           rowCount=decimalLiteral
         )                                                           #showProfile
     | SHOW SLAVE STATUS (FOR CHANNEL STRING_LITERAL)?               #showSlaveStatus
+    // MariaDB userstat plugin
+    | SHOW (USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS) # showUserstatPlugin
     ;
 
 // details
@@ -1985,6 +1987,8 @@ cacheIndexStatement
 flushStatement
     : FLUSH flushFormat=(NO_WRITE_TO_BINLOG | LOCAL)?
       flushOption (',' flushOption)*
+    // MariaDB userstat plugin
+    | FLUSH (USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS)
     ;
 
 killStatement
@@ -2809,7 +2813,7 @@ keywordsCanBeId
     | BINLOG_MONITOR | BINLOG_REPLAY | CURRENT_ROLE | CYCLE | ENCRYPTED | ENCRYPTION_KEY_ID | FEDERATED_ADMIN
     | INCREMENT | LASTVAL | LOCKED | MAXVALUE | MINVALUE | NEXTVAL | NOCACHE | NOCYCLE | NOMAXVALUE | NOMINVALUE
     | PERSISTENT | PREVIOUS | READ_ONLY_ADMIN | REPLICA | REPLICATION_MASTER_ADMIN | RESTART | SEQUENCE | SETVAL
-    | SKIP_ | STATEMENT | UUID | VIA | MONITOR | READ_ONLY| REPLAY
+    | SKIP_ | STATEMENT | UUID | VIA | MONITOR | READ_ONLY| REPLAY | USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS
     ;
 
 functionNameBase
