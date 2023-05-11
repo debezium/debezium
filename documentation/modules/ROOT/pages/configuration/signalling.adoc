@@ -250,7 +250,7 @@ Declare you implementation in the `META-INF/services/io.debezium.pipeline.signal
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
 
-NOTE: To use a converter with multiple connectors, you must place a copy of the converter JAR file in each connector subdirectory.
+NOTE: To use a signaling channel with multiple connectors, you must place a copy of the signaling channel JAR file in each connector subdirectory.
 
 // Type: procedure
 [id="configuring-a-connectors-to-use-a-custom-signaling-channel"]

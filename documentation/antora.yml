@@ -47,6 +47,7 @@ asciidoc:
     link-prefix: 'xref'
     link-serdes: 'integrations/serdes.adoc'
     link-signalling: 'configuration/signalling.adoc'
+    link-notification: 'configuration/notification.adoc'
     link-smt-predicates: 'transformations/applying-transformations-selectively.adoc'
     link-sqlserver-connector: 'connectors/sqlserver.adoc'
     link-transformations: 'transformations/index.adoc'
