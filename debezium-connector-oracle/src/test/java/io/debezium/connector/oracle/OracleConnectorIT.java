@@ -88,6 +88,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -95,6 +96,8 @@ import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Integration test for the Debezium Oracle connector.
@@ -5203,6 +5206,26 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz6355");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-6439")
+    public void shouldGetTableMetadataOnlyForCapturedTables() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        LogInterceptor logInterceptor = new LogInterceptor(JdbcConnection.class);
+        logInterceptor.setLoggerLevel(JdbcConnection.class, Level.DEBUG);
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        stopConnector();
+
+        assertThat(logInterceptor.containsMessage("1 table(s) will be scanned")).isTrue();
     }
 
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {

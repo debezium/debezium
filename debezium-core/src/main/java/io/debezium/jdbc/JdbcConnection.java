@@ -1175,6 +1175,7 @@ public class JdbcConnection implements AutoCloseable {
                 }
             }
         }
+        LOGGER.debug("{} table(s) will be scanned", tableIds.size());
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
