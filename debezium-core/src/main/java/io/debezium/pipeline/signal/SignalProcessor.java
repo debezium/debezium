@@ -92,7 +92,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     public void start() {
 
         LOGGER.info("SignalProcessor started. Scheduling it every {}ms", connectorConfig.getSignalPollInterval().toMillis());
-        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, 1, TimeUnit.NANOSECONDS);
+        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
     }
 
     public void stop() throws InterruptedException {
@@ -127,7 +127,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
         executeWithSemaphore(() -> {
             LOGGER.trace("SignalProcessor processing");
-            signalChannelReaders.parallelStream()
+            signalChannelReaders.stream()
                     .filter(isEnabled())
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
