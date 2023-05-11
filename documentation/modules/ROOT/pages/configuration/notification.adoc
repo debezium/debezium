@@ -1,0 +1,246 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-notification"]
+= {prodname} notifications
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+The {prodname} notification mechanism provides a way to get status information of the connector.
+The notifications can be sent to different channels:
+
+* SinkNotificationChannel: notification is sent through the Connect API to a configured topic.
+* LogNotificationChannel: notification is simply logged.
+* Custom: you can xref:debezium-notification-custom-channel[implement your custom channel] to receive notification from {prodname}.
+
+
+// Type: concept
+// Title: Debezium notification format
+[id="debezium-notification-format"]
+== Debezium notification format
+
+The notification message contains the following information
+
+|===
+|Property |Description
+
+|id
+|UUID to identify the notification
+
+|aggregate_type
+|the type of the aggregate root to which the notification is related; the idea is based on the same concept of domain-driven design, that exported events should refer to an aggregate.
+
+|type
+|the type of the event. Give more detail about the `aggregate_type`
+
+|additional_data
+|A Map<String,String> with detailed information about the notification.
+|===
+
+// Type: concept
+// Title: Available notifications
+[id="debezium-available-notifications"]
+=== Available notifications
+
+Debezium emits notification for:
+
+* Status of the initial snapshot
+* Monitoring the progress of the incremental snapshot
+
+==== Status of the initial snapshot
+
+This is the notification for initial snapshot status
+
+[source, json]
+----
+{
+    "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
+    "aggregate_type": "Initial Snapshot",
+    "type": "COMPLETED" <1>
+}
+----
+<1> The type can be `COMPLETED`, `ABORTED`, `SKIPPED`.
+
+==== Monitoring the progress of the incremental snapshot
+
+These are the notifications for the incremental snapshot
+
+|===
+|Status|Payload
+
+|Start
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Incremental Snapshot",
+      "type":"STARTED",
+      "additional_data":{
+         "connector_name":"my-connector",
+         "data_collections":"table1, table2"
+      }
+}
+----
+|Paused
+a|[source, json]
+----
+{
+      "id":"068d07a5-d16b-4c4a-b95f-8ad061a69d51",
+      "aggregate_type":"Incremental Snapshot",
+      "type":"PAUSED",
+      "additional_data":{
+         "connector_name":"my-connector",
+         "data_collections":"table1, table2"
+      }
+}
+----
+|Resumed
+a|[source, json]
+----
+ {
+   "id":"a9468204-769d-430f-96d2-b0933d4839f3",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"RESUMED",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collections":"table1, table2"
+   }
+}
+----
+|Stopped
+a|[source, json]
+----
+{
+   "id":"83fb3d6c-190b-4e40-96eb-f8f427bf482c",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"ABORTED",
+   "additional_data":{
+      "connector_name":"my-connector"
+   }
+}
+----
+|Processing chunk
+a|[source, json]
+----
+{
+   "id":"d02047d6-377f-4a21-a4e9-cb6e817cf744",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"IN_PROGRESS",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collections":"table1, table2",
+      "current_collection_in_progress":"table1",
+      "maximum_key":"100",
+      "last_processed_key":"50"
+   }
+}
+----
+|Snapshot completed for a table
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"TABLE_SCAN_COMPLETED",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collection":"table1",
+      "total_rows_scanned":"100"
+   }
+}
+----
+|Completed
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"COMPLETED",
+   "additional_data":{
+      "connector_name":"my-connector"
+   }
+}
+----
+|===
+
+// Type: procedure
+// Title: Enable Debezium notifications
+[id="debezium-enable-notifications"]
+=== Enable Debezium notifications
+
+To enable Debezium to emit notifications you need to specify the list of notification channels that you want to enable through the configuration property `notification.enabled.channels`.
+Built-in notification channels are: `sink` and `log`. In case `sink` notification channel is enabled you need to define also the `notification.sink.topic.name` configuration property with the name of the topic where the notification will be sent.
+
+// Type: procedure
+// Title: Provide custom signaling channel
+[id="debezium-notification-custom-channel"]
+== Provide custom notification channel
+
+Custom notification channels are Java classes that implement the `io.debezium.pipeline.notification.channels.NotificationChannel` service provider interface (SPI).
+
+[source,java,indent=0]
+----
+public interface NotificationChannel {
+
+    String name(); // <1>
+
+    void init(CommonConnectorConfig config); // <2>
+
+    void send(Notification notification); // <3>
+
+    void close(); // <4>
+}
+----
+<1> The name of the channel, used in `notification.enabled.channels` to enable the channel.
+<2> Initialize specific configuration/variables/connections required by the channel
+<3> Send the notification on the channel. This method is called by {prodname} to notify its status.
+<4> Close all allocated resources. Called when the connector is stopped.
+
+// Type: concept
+[id="debezium-core-module-dependency"]
+=== {prodname} Core module dependency
+
+A custom converter Java project has compile dependency on the {prodname} Core module.
+These compile dependencies must be included in your project's `pom.xml`, as shown in the following example:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-core</artifactId>
+    <version>${version.debezium}</version> // <1>
+</dependency>
+----
+<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+Declare you implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
+
+// Type: procedure
+[id="deploying-a-debezium-custom-notification-channel"]
+=== Deploying a custom notification channel
+
+.Prerequisites
+* You have a custom notification channel Java program.
+
+.Procedure
+* To use a notification channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+ +
+For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
+To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
+
+NOTE: To use a notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
+
+// Type: procedure
+[id="configuring-a-connectors-to-use-a-custom-notification-channel"]
+=== Configuring a connector to use a custom notification channel
+
+You need to add the name of the custom notification channel to the configuration property `notification.enabled.channels`.
+

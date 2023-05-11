@@ -2626,6 +2626,10 @@ Use the following format to specify the collection name: +
 |source
 | List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
 
+|[[sqlserver-property-notification-enabled-channels]]<<sqlserver-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of channels names that are enabled. Available channel: `sink`, `log`. See how to {link-prefix}:{link-notification}#debezium-notification-custom-channel[Provide custom notification channel]
+
 |[[sqlserver-property-incremental-snapshot-allow-schema-changes]]<<sqlserver-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +

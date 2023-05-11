@@ -3364,6 +3364,10 @@ Use the following format to specify the collection name: +
 |source
 | List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
 
+|[[oracle-property-notification-enabled-channels]]<<oracle-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of channels names that are enabled. Available channel: `sink`, `log`. See how to {link-prefix}:{link-notification}#debezium-notification-custom-channel[Provide custom notification channel]
+
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.

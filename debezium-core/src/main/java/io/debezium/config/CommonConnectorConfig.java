@@ -666,7 +666,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription("List of notification channels names that is enabled.");
+            .withDescription("List of notification channels names that are enabled.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
