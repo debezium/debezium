@@ -147,7 +147,7 @@ public class SignalProcessorTest {
     }
 
     @Test
-    public void shouldIgnoreUnparseableData() {
+    public void shouldIgnoreUnparseableData() throws InterruptedException {
 
         final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
@@ -166,10 +166,12 @@ public class SignalProcessorTest {
                 .atMost(40, TimeUnit.SECONDS)
                 .untilAsserted(
                         () -> assertThat(log.containsMessage("Signal 'log1' has been received but the data '{\"message: \"signallog\"}' cannot be parsed")).isTrue());
+
+        signalProcess.stop();
     }
 
     @Test
-    public void shouldRegisterAdditionalAction() {
+    public void shouldRegisterAdditionalAction() throws InterruptedException {
 
         final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
 
@@ -193,6 +195,8 @@ public class SignalProcessorTest {
         Awaitility.await()
                 .atMost(40, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(called.intValue()).isEqualTo(5));
+
+        signalProcess.stop();
     }
 
     protected CommonConnectorConfig baseConfig() {
