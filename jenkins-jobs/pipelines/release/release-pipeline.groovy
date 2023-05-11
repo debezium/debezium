@@ -362,9 +362,6 @@ node('Slave') {
                 if (findVersion(JIRA_VERSION) == null) {
                     error "Requested release does not exist"
                 }
-                if (findVersion(PRODUCT_RELEASE) == null) {
-                    error "Requested product release does not exist"
-                }
 
                 unresolvedIssues = unresolvedIssuesFromJira()
                 issuesWithoutComponents = issuesWithoutComponentsFromJira()
