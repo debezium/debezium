@@ -177,7 +177,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     snapshotContext.tables,
                     null,
                     schema,
-                    null,
+                    connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false);
         }
