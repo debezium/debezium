@@ -5116,6 +5116,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-6355")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner only")
     public void testBacklogTransactionShouldNotBeAbandon() throws Exception {
         TestHelper.dropTable(connection, "dbz6355");
         try {
