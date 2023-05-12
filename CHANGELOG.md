@@ -2,6 +2,45 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.2.1.Final
+May 12nd 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12406660)
+
+### New features since 2.2.0.Final
+
+* log.mining.transaction.retention.hours should reference last offset and not sysdate [DBZ-6355](https://issues.redhat.com/browse/DBZ-6355)
+* Fix existing bug in information schema query in the Spanner connector [DBZ-6385](https://issues.redhat.com/browse/DBZ-6385)
+* change logging level of skip.messages.without.change [DBZ-6391](https://issues.redhat.com/browse/DBZ-6391)
+* Include redo/archive log metadata on ORA-01291 exceptions [DBZ-6436](https://issues.redhat.com/browse/DBZ-6436)
+
+
+### Breaking changes since 2.2.0.Final
+
+None
+
+
+### Fixes since 2.2.0.Final
+
+* Toasted varying character array and date array are not correcly processed [DBZ-6122](https://issues.redhat.com/browse/DBZ-6122)
+* Using pg_replication_slot_advance which is not supported by PostgreSQL10. [DBZ-6353](https://issues.redhat.com/browse/DBZ-6353)
+* 'CREATE TABLE t (c NATIONAL CHAR)' parsing failed [DBZ-6357](https://issues.redhat.com/browse/DBZ-6357)
+* Toasted hstore are not correcly processed [DBZ-6379](https://issues.redhat.com/browse/DBZ-6379)
+* Snapshotting does not work for hstore in Map mode [DBZ-6384](https://issues.redhat.com/browse/DBZ-6384)
+* Oracle DDL shrink space for table partition can not be parsed [DBZ-6386](https://issues.redhat.com/browse/DBZ-6386)
+* PostgreSQL connector task fails to resume streaming because replication slot is active [DBZ-6396](https://issues.redhat.com/browse/DBZ-6396)
+* MySql in debezium-parser-ddl :The inserted sql statement reports an error [DBZ-6401](https://issues.redhat.com/browse/DBZ-6401)
+* MongoDB connector crashes on invalid resume token [DBZ-6402](https://issues.redhat.com/browse/DBZ-6402)
+* New SMT HeaderToValue not working [DBZ-6411](https://issues.redhat.com/browse/DBZ-6411)
+* Debezium Server 2.2.0.Final BOM refers to debezium-build-parent 2.2.0-SNAPSHOT  [DBZ-6437](https://issues.redhat.com/browse/DBZ-6437)
+* Oracle Connector failed parsing DDL Statement [DBZ-6442](https://issues.redhat.com/browse/DBZ-6442)
+* Oracle DDL shrink space for index partition can not be parsed [DBZ-6446](https://issues.redhat.com/browse/DBZ-6446)
+
+
+### Other changes since 2.2.0.Final
+
+* Base the "replaceable" build numbers in legacy deployment instructions on `debezium-build-number` attribute [DBZ-6371](https://issues.redhat.com/browse/DBZ-6371)
+
+
+
 ## 2.2.0.Final
 April 20th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12406487)
 
