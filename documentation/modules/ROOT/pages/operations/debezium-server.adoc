@@ -657,6 +657,10 @@ i.e. after this value is reached, the wait time will not increase further by the
 |`10000`
 |The max timeout for individual publish requests to Cloud Pub/Sub.
 
+|[[wait-message-computation-timeout-ms]]<<wait-message-computation-timeout-ms, `debezium.sink.pubsub.wait.message.computation.timeout.ms`>>
+|`5000`
+|The max wait time for retrieve of publish requests results to Cloud Pub/Sub.
+
 |[[address]]<<address, `debezium.sink.pubsub.address`>>
 |
 |The address of the pubsub emulator.
@@ -720,6 +724,10 @@ This feature can be disabled.
 |`default`
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pub/Sub Lite so a surrogate key must be used.
+
+|[[pubsublite-wait-message-computation-timeout-ms]]<<pubsublite-wait-message-computation-timeout-ms, `debezium.sink.pubsublite.wait.message.computation.timeout.ms`>>
+|`5000`
+|The max wait time for retrieve of publish requests results to Cloud Pub/Sub.
 
 |===
 
