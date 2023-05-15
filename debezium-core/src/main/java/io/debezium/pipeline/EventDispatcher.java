@@ -481,10 +481,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 final Struct envelope = (Struct) event.getRecord().value();
                 if (envelope.schema().field(Envelope.FieldName.SOURCE) != null) {
                     final Struct source = envelope.getStruct(Envelope.FieldName.SOURCE);
-                    final SnapshotRecord snapshot = SnapshotRecord.fromSource(source);
-                    if (snapshot == SnapshotRecord.TRUE) {
-                        SnapshotRecord.LAST.toSource(source);
-                    }
+                    SnapshotRecord.LAST.toSource(source);
                 }
                 queue.enqueue(event);
                 bufferedEvent = null;

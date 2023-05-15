@@ -375,7 +375,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertReadRecord(record, expectedValuesByTopicName);
             assertSourceInfo(record);
 
-            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST_IN_DATA_COLLECTION);
+            assertRecordOffsetAndSnapshotSource(record, SnapshotRecord.LAST);
         });
     }
 
