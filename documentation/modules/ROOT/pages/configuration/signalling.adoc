@@ -120,7 +120,7 @@ You create a signaling table by submitting a standard SQL DDL query to the sourc
 
 .Prerequisites
 
-* You have sufficient access privileges to create a table on the target database.
+* You have sufficient access privileges to create a table on the source database.
 
 .Procedure
 
