@@ -29,6 +29,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 
@@ -169,6 +170,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
+        // however, for users interested only in captured tables, we need to pass also table filter
+        final Tables.TableFilter tableFilter = connectorConfig.storeOnlyCapturedTables() ? connectorConfig.getTableFilters().dataCollectionFilter() : null;
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -177,7 +180,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     snapshotContext.tables,
                     null,
                     schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
+                    tableFilter,
                     null,
                     false);
         }
