@@ -97,6 +97,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
+    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                                   JdbcConnection connection) throws SQLException {
+        if (connectorConfig.getPdbName() != null) {
+            ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
+        }
+    }
+
+    @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx)
             throws Exception {
         return jdbcConnection.getAllTableIds(ctx.catalogName);

@@ -202,6 +202,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             for (int i = 1; i < snapshotMaxThreads; i++) {
                 JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
                 conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
+                connectionPoolConnectionCreated(ctx, conn);
                 connectionPool.add(conn);
                 if (firstQuery.isPresent()) {
                     conn.execute(firstQuery.get());
@@ -223,6 +224,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * Executes steps which have to be taken just after the database connection is created.
      */
     protected void connectionCreated(RelationalSnapshotContext<P, O> snapshotContext) throws Exception {
+    }
+
+    /**
+     * Executes steps which have to be taken just after a connection pool connection is created.
+     */
+    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
     }
 
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
