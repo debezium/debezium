@@ -105,6 +105,12 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         return self();
     }
 
+    public DebeziumContainer enableJolokia() {
+        withEnv("ENABLE_JOLOKIA", "true");
+        withExposedPorts(8778);
+        return self();
+    }
+
     public static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
     }
