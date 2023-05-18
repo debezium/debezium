@@ -17,8 +17,8 @@ import fixture5.annotations.FixtureContext;
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { SqlDatabaseController.class })
 public class OcpPostgreSql extends OcpDatabaseFixture<SqlDatabaseController> {
 
-    public static final String DB_DEPLOYMENT_PATH = "/database-resources/postgresql/deployment.yaml";
-    public static final String DB_SERVICE_PATH = "/database-resources/postgresql/service.yaml";
+    public static final String DB_DEPLOYMENT_PATH = "/database-resources/postgresql/primary/deployment.yaml";
+    public static final String DB_SERVICE_PATH = "/database-resources/postgresql/primary/service.yaml";
 
     public OcpPostgreSql(ExtensionContext.Store store) {
         super(SqlDatabaseController.class, store);

@@ -60,7 +60,6 @@ public class ConnectorFactories {
                 .put("database.user", ConfigProperties.DATABASE_POSTGRESQL_DBZ_USERNAME)
                 .put("database.password", ConfigProperties.DATABASE_POSTGRESQL_DBZ_PASSWORD)
                 .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
-                .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
                 .put("slot.name", "debezium")
                 .put("plugin.name", "pgoutput")
                 .addOperationRouterForTable("u", "customers");
