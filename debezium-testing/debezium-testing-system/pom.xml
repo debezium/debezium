@@ -37,6 +37,8 @@
     <docker.image.mysql>quay.io/debezium/example-mysql-master:latest</docker.image.mysql>
     <docker.image.mysql.replica>quay.io/debezium/example-mysql-replica:latest</docker.image.mysql.replica>
     <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
+    <docker.image.postgresql.replica>quay.io/debezium/postgres:15</docker.image.postgresql.replica>
+
     <docker.image.mongo>quay.io/debezium/example-mongodb:latest</docker.image.mongo>
     <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
     <docker.image.db2>quay.io/rh_integration/dbz-db2-cdc:latest</docker.image.db2>
@@ -55,7 +57,8 @@
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
     <ocp.image.mysql.replica>${docker.image.mysql.replica}</ocp.image.mysql.replica>
-    <ocp.image.postgresql>quay.io/debezium/example-postgres-ocp:latest</ocp.image.postgresql>
+    <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
+    <ocp.image.postgresql.replica>${docker.image.postgresql.replica}</ocp.image.postgresql.replica>
     <ocp.image.mongo>${docker.image.mongo}</ocp.image.mongo>
     <ocp.image.sqlserver>${docker.image.sqlserver}</ocp.image.sqlserver>
     <ocp.image.db2>${docker.image.db2}</ocp.image.db2>
