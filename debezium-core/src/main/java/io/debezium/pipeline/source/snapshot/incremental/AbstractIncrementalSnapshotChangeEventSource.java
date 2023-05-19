@@ -11,36 +11,31 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.Key.KeyMapper;
@@ -68,17 +63,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         implements IncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
-    public static final String INCREMENTAL_SNAPSHOT = "Incremental Snapshot";
-
-    public enum SnapshotStatus {
-        STARTED,
-        PAUSED,
-        RESUMED,
-        ABORTED,
-        IN_PROGRESS,
-        TABLE_SCAN_COMPLETED,
-        COMPLETED
-    }
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
@@ -133,9 +117,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
             progressListener.snapshotPaused(partition);
-            String dataCollections = context.getDataCollections().stream().map(DataCollection::getId).map(DataCollectionId::identifier).collect(Collectors.joining(","));
-            notificationService.notify(buildNotificationWith(SnapshotStatus.PAUSED, Map.of("data_collections", dataCollections), offsetContext),
-                    Offsets.of(partition, offsetContext));
+            notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
         }
     }
 
@@ -145,9 +127,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
             progressListener.snapshotResumed(partition);
-            String dataCollections = context.getDataCollections().stream().map(DataCollection::getId).map(DataCollectionId::identifier).collect(Collectors.joining(","));
-            notificationService.notify(buildNotificationWith(SnapshotStatus.RESUMED, Map.of("data_collections", dataCollections), offsetContext),
-                    Offsets.of(partition, offsetContext));
+            notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
             readChunk(partition, offsetContext);
         }
     }
@@ -393,35 +373,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 }
                 if (createDataEventsForTable(partition)) {
 
-                    String dataCollections = context.getDataCollections().stream()
-                            .map(DataCollection::getId)
-                            .map(DataCollectionId::identifier).collect(
-                                    Collectors.joining(","));
-
                     if (window.isEmpty()) {
                         LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                                 currentTableId);
 
-                        notificationService.notify(buildNotificationWith(SnapshotStatus.TABLE_SCAN_COMPLETED,
-                                Map.of(
-                                        "data_collections", dataCollections,
-                                        "total_rows_scanned", String.valueOf(totalRowsScanned)),
-                                offsetContext),
-                                Offsets.of(partition, offsetContext));
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned);
 
                         tableScanCompleted(partition);
                         nextDataCollection(partition, offsetContext);
                     }
                     else {
 
-                        notificationService.notify(buildNotificationWith(SnapshotStatus.IN_PROGRESS,
-                                Map.of(
-                                        "data_collections", dataCollections,
-                                        "current_collection_in_progress", context.currentDataCollectionId().getId().identifier(),
-                                        "maximum_key", context.maximumKey().orElse(new Object[0])[0].toString(),
-                                        "last_processed_key", context.chunkEndPosititon()[0].toString()),
-                                offsetContext),
-                                Offsets.of(partition, offsetContext));
+                        notificationService.incrementalSnapshotNotificationService().notifyInProgress(context, partition, offsetContext);
                         break;
                     }
                 }
@@ -507,17 +470,21 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
-            notificationService.notify(buildNotificationWith(SnapshotStatus.COMPLETED,
-                    Map.of(), offsetContext),
-                    Offsets.of(partition, offsetContext));
+            notificationService.incrementalSnapshotNotificationService().notifyCompleted(context, partition, offsetContext);
+            context.unsetCorrelationId();
         }
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
+    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
+
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        final P partition = signalPayload.partition;
+        final String correlationId = signalPayload.id;
+
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
 
@@ -526,14 +493,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", dataCollectionIds, expandedDataCollectionIds);
         }
 
-        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(expandedDataCollectionIds, additionalCondition, surrogateKey);
+        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds, additionalCondition,
+                surrogateKey);
         if (shouldReadChunk) {
+
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
                     .map(DataCollection::getId).collect(Collectors.toList());
             progressListener.snapshotStarted(partition);
 
-            notificationService.notify(buildNotificationWith(SnapshotStatus.STARTED, Map.of("data_collections", monitoredDataCollections.stream()
-                    .map(DataCollectionId::identifier).collect(Collectors.joining(","))), offsetContext), Offsets.of(partition, offsetContext));
+            notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
 
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
             readChunk(partition, offsetContext);
@@ -559,7 +527,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
                     progressListener.snapshotAborted(partition);
 
-                    notificationService.notify(buildNotificationWith(SnapshotStatus.ABORTED, Map.of(), offsetContext), Offsets.of(partition, offsetContext));
+                    notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext);
                 }
                 catch (InterruptedException e) {
                     LOGGER.warn("Failed to stop snapshot successfully.", e);
@@ -601,35 +569,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                 }
 
-                notificationService.notify(buildNotificationWith(SnapshotStatus.ABORTED,
-                        Map.of("data_collections", String.join(",", expandedDataCollectionIds)), offsetContext),
-                        Offsets.of(partition, offsetContext));
+                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, expandedDataCollectionIds);
             }
         }
         else {
             LOGGER.warn("No active incremental snapshot, stop ignored");
         }
-    }
-
-    private static Notification buildNotificationWith(SnapshotStatus type, Map<String, String> additionalData, OffsetContext offsetContext) {
-
-        Map<String, String> fullMap = new HashMap<>(additionalData);
-
-        String connectorName;
-        try {
-            connectorName = offsetContext.getSourceInfo().getString(BaseSourceInfo.SERVER_NAME_KEY);
-        }
-        catch (DataException e) {
-            connectorName = "<none>";
-        }
-        fullMap.put("connector_name", connectorName);
-
-        return Notification.Builder.builder()
-                .withId(UUID.randomUUID().toString())
-                .withAggregateType(INCREMENTAL_SNAPSHOT)
-                .withType(type.name())
-                .withAdditionalData(fullMap)
-                .build();
     }
 
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {

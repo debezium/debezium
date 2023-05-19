@@ -123,7 +123,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2").create();
-        context.addDataCollectionNamesToSnapshot(List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
+        context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
         assertThat(source.buildChunkQuery(table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
@@ -202,7 +202,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2").create();
-        context.addDataCollectionNamesToSnapshot(List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
+        context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
         assertThat(source.buildChunkQuery(table, Optional.empty()))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk2\" LIMIT 1024");
     }
@@ -250,7 +250,7 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
-        context.addDataCollectionNamesToSnapshot(List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
+        context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), Optional.empty(), Optional.of("pk2"));
         assertThat(source.buildMaxPrimaryKeyQuery(table, Optional.empty()))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk2\" DESC LIMIT 1");
     }
