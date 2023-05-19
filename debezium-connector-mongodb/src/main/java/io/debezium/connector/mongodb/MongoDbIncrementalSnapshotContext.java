@@ -58,6 +58,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
 
+    public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
+
     /**
      * @code(true) if window is opened and deduplication should be executed
      */
@@ -89,6 +91,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private Table schema;
 
     private boolean schemaVerificationPassed;
+
+    private String correlationId;
 
     /**
      * Determines if the incremental snapshot was paused or not.
@@ -217,6 +221,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
@@ -225,7 +230,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> _additionalCondition,
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> _additionalCondition,
                                                                     Optional<String> surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(x -> new DataCollection<T>((T) CollectionId.parse(x)))
@@ -238,6 +243,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @Override
     public void stopSnapshot() {
         this.dataCollectionsToSnapshot.clear();
+        this.correlationId = null;
     }
 
     @Override
@@ -250,6 +256,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @Override
     public List<DataCollection<T>> getDataCollections() {
         return new ArrayList<>(dataCollectionsToSnapshot);
+    }
+
+    @Override
+    public void unsetCorrelationId() {
+        this.correlationId = null;
+    }
+
+    @Override
+    public String getCorrelationId() {
+        return this.correlationId;
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
@@ -266,6 +282,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         if (dataCollectionsStr != null) {
             context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
+        context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
     }
 

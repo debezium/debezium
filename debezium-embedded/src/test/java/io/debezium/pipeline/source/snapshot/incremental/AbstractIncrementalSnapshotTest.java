@@ -1164,6 +1164,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED"))).isTrue();
         assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("COMPLETED"))).isTrue();
 
+        assertThat(incrementalSnapshotNotification.stream().map(s -> s.getString("id"))
+                .distinct()
+                .collect(Collectors.toList())).contains("ad-hoc");
+
         Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
         assertThat(inProgress.getMap("additional_data"))
                 .containsEntry("current_collection_in_progress", tableDataCollectionId())
