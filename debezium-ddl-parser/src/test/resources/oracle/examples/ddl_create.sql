@@ -532,6 +532,22 @@ CREATE TABLE "PRODUCT"."TOKENSTORE" (
      USING INDEX  ENABLE)
      DEFAULT COLLATION "USING_NLS_COMP";
 CREATE TABLE "P_BL050044".CMP4$231516 organization heap tablespace "PT_LOB" lob (FILE_XML, FILE_IMG_F, FILE_IMG_R) store as (tablespace "PT_LOB" enable storage in row nocache nologging) compress for all operations nologging as select /*+ DYNAMIC_SAMPLING(0) */ * FROM "P_BL050044".CMP3$231516 mytab;
+
+CREATE TABLE "BOSIT"."SETRAN"
+   (    "TXNUM" VARCHAR2(100),
+        "TXDATE" DATE,
+        "ACCTNO" VARCHAR2(20),
+        "TXCD" VARCHAR2(4),
+        "NAMT" NUMBER DEFAULT 0,
+        "CAMT" VARCHAR2(50),
+        "REF" VARCHAR2(50),
+        "DELTD" VARCHAR2(1),
+        "AUTOID" NUMBER(20,0) DEFAULT 0,
+        "ACCTREF" VARCHAR2(20),
+        "TLTXCD" VARCHAR2(4),
+        "BKDATE" DATE,
+        "TRDESC" VARCHAR2(1000)
+   )  DISABLE LOGICAL REPLICATION ;
 -- Create index
 create index hr.name on hr.table (id,data) tablespace ts;
 create unique index idx_eshp_auction_file_history_id on eshp_auction_file_history(history_id);
