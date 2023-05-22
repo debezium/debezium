@@ -114,7 +114,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (context.snapshotRunning() && !context.isSnapshotPaused()) {
             context.pauseSnapshot();
             progressListener.snapshotPaused(partition);
-            notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
+            notifyReplicaSets((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                    .notifyPaused(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext), offsetContext);
         }
     }
 
@@ -124,7 +125,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         if (context.snapshotRunning() && context.isSnapshotPaused()) {
             context.resumeSnapshot();
             progressListener.snapshotResumed(partition);
-            notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
+            notifyReplicaSets(
+                    (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                            .notifyResumed(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
+                    offsetContext);
             window.clear();
             context.revertChunk();
             readChunk(partition, offsetContext);
@@ -308,14 +312,20 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentDataCollectionId);
 
-                    notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned);
+                    notifyReplicaSets(
+                            (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                                    .notifyTableScanCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext, totalRowsScanned),
+                            offsetContext);
 
                     collectionScanCompleted(partition);
                     nextDataCollection(partition, offsetContext);
                 }
                 else {
 
-                    notificationService.incrementalSnapshotNotificationService().notifyInProgress(context, partition, offsetContext);
+                    notifyReplicaSets(
+                            (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                                    .notifyInProgress(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
+                            offsetContext);
                     break;
                 }
             }
@@ -336,7 +346,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
-            notificationService.incrementalSnapshotNotificationService().notifyCompleted(context, partition, offsetContext);
+            notifyReplicaSets(
+                    (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                            .notifyCompleted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
+                    offsetContext);
             context.unsetCorrelationId();
         }
     }
@@ -388,11 +401,25 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
             progressListener.snapshotStarted(partition);
 
-            notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
+            notifyReplicaSets(
+                    (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                            .notifyStarted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
+                    offsetContext);
 
             progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()
                     .map(x -> x.getId()).collect(Collectors.toList()));
             readChunk(partition, offsetContext);
+        }
+    }
+
+    public void notifyReplicaSets(ReplicaSetNotifier<CollectionId> notifier, OffsetContext offsetContext) {
+
+        MongoDbOffsetContext mongoDbOffsetContext = getMongoDbOffsetContext(offsetContext);
+
+        for (ReplicaSet rs : replicaSets.all()) {
+            ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(rs);
+            ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(rs);
+            notifier.apply(context, replicaSetPartition, replicaSetOffsetContext);
         }
     }
 
@@ -414,7 +441,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
                     progressListener.snapshotAborted(partition);
 
-                    notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext);
+                    notifyReplicaSets((incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService
+                            .incrementalSnapshotNotificationService().notifyAborted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext),
+                            offsetContext);
                 }
                 catch (InterruptedException e) {
                     LOGGER.warn("Failed to stop snapshot successfully.", e);
@@ -443,7 +472,12 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     }
                 }
 
-                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, dataCollectionIds);
+                List<String> finalDataCollectionIds = dataCollectionIds;
+                notifyReplicaSets(
+                        (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
+                                .notifyAborted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext,
+                                        finalDataCollectionIds),
+                        offsetContext);
             }
         }
         else {
