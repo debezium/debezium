@@ -383,7 +383,7 @@ You can customize the way that the connector creates snapshots by changing the v
 
 The connector completes a series of tasks when it performs the snapshot.
 The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
-The {prodname} MySQL connector completes different step when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
+The {prodname} MySQL connector completes different steps when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
 
 [id="initial-snapshot-workflow-with-global-read-lock"]
 ==== Initial snapshots that use a global read lock
@@ -422,21 +422,26 @@ If the snapshot takes too long to complete, consider using a different isolation
 |Read the current binlog position.
 
 |6
-|Capture the structure of tables in the database.
+a|Capture the structure of tables in the database.
 The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
 
 The schema history provides information about the structure that is in effect when a change event occurs.
-By default, the connector captures the schema of all tables, not just the subset of tables that are designated for capture in the connector configuration.
-For tables that are not designated for capture, the snapshot captures only the schema structure.
-It does not capture any table data.
-The schema data for non-captured tables is useful if you later decide that you want {prodname} to capture data from those tables.
-For information about modifying the default behavior so that {prodname} captures the schema history only for the tables from which the connector captures change events, see the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property.
+ +
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database.
+That is, the connector does not limit schema capture to only the subset of tables that the connector configuration designates for capture via its `include` and `exclude` properties.
+For those tables that are not designated for capture, the initial snapshot captures only the schema structure; it does not capture any table data.
+
+By saving the schema information for non-captured tables, the snapshot makes it easier for {prodname} to capture data from those tables, if you later decide to.
+You can modify the default behavior and configure {prodname} to capture the schema history only for tables from which the connector is configured to captures change events, by changing the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property.
+====
 
 |7
 |Release the global read lock obtained in Step 3.
 Other database clients can now write to the database.
 
-|9
+|8
 a|At the LSN position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
   During the scan, the connector completes the following tasks:
 
@@ -448,10 +453,10 @@ a|At the LSN position that the connector read in Step 5, the connector begins to
 . Emits each `read` event to the Kafka topic for the source table.
 . Releases data table locks, if applicable.
 
-|10
+|9
 |Commit the transaction.
 
-|11
+|10
 |Record the completed snapshot in the connector offsets.
 
 |===
