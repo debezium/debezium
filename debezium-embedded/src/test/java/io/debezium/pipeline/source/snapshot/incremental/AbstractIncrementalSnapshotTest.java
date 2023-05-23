@@ -1095,9 +1095,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     @Test
     public void testNotification() throws Exception {
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
-                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+        startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
+
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
@@ -1147,6 +1148,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertCorrectIncrementalSnapshotNotification(notifications);
     }
 
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 1;
+    }
+
     private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
         return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
                 ((Struct) record.value()).getString("type").equals("COMPLETED");
@@ -1172,7 +1177,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertThat(inProgress.getMap("additional_data"))
                 .containsEntry("current_collection_in_progress", tableDataCollectionId())
                 .containsEntry("maximum_key", "1000")
-                .containsEntry("last_processed_key", "1");
+                .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()));
 
         Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
         assertThat(completed.getMap("additional_data"))

@@ -126,4 +126,9 @@ public class IncrementalSnapshotWithRecompileIT extends AbstractIncrementalSnaps
     protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
         TestHelper.waitForCdcTransactionPropagation(connection, TestHelper.TEST_DATABASE_1, expectedTransactions);
     }
+
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 250;
+    }
 }
