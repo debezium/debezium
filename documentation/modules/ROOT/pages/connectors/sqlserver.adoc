@@ -122,27 +122,66 @@ endif::product[]
 === Snapshots
 
 SQL Server CDC is not designed to store a complete history of database changes.
-For the {prodname} SQL Server connector to establish a baseline for the current state of the database,
-it uses a process called _snapshotting_.
+For the {prodname} SQL Server connector to establish a baseline for the current state of the database, it uses a process called _snapshotting_.
+The initial snapshot captures the structure and data of the tables in the database.
 
-You can configure how the connector creates snapshots.
-By default, the connector's snapshot mode is set to `initial`.
-Based on this `initial` snapshot mode, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
-This initial snapshot captures the structure and data for any tables that match the criteria defined by the `include` and `exclude` properties that are configured for the connector (for example, `table.include.list`, `column.include.list`, `table.exclude.list`, and so forth).
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the completes the snapshot by using a modified version of this workflow.
 
-When the connector creates a snapshot, it completes the following tasks:
+.Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
-1. Determines the tables to be captured.
-2. Obtains a lock on the SQL Server tables for which CDC is enabled to prevent structural changes from occurring during creation of the snapshot.
-The level of the lock is determined by `snapshot.isolation.mode` configuration option.
-3. Reads the maximum log sequence number (LSN) position in the server's transaction log.
-4. Captures the structure of all relevant tables.
-5. Releases the locks obtained in Step 2, if necessary. In most cases, locks are held for only a short period of time.
-6. Scans the SQL Server source tables and schemas to be captured based on the LSN position that was read in Step 3, generates a `READ` event for each row in the table, and writes the events to the Kafka topic for the table.
-7. Records the successful completion of the snapshot in the connector offsets.
+1.  Establish a connection to the database.
+
+2.  Determine the tables to be captured.
+   By default, the connector captures all non-system tables.
+   To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:sqlserver-property-table-include-list[`table.include.list`] or xref:sqlserver-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a lock on the SQL Server tables for which CDC is enabled to prevent structural changes from occurring during creation of the snapshot.
+   The level of the lock is determined by the xref:sqlserver-property-snapshot-isolation-mode[`snapshot.isolation.mode`] configuration property.
+
+4. Read the maximum log sequence number (LSN) position in the server's transaction log.
+
+5. Capture the structure of all non-system tables.
+The connector persists this information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+However, for tables that are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+There is a benefit to persisting schema information for tables that you did not include in the initial snapshot.
+When {prodname} has information about the structure of all existing tables, it can readily capture events from any existing table should you later decide that is needed.
+If you're certain that it won't be necessary to capture data from other tables in the future, you can modify the default behavior by changing the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `true`.
+====
+
+6. Release the locks obtained in Step 3, if necessary.
+
+7. At the LSN position read in Step 4, the connector scans the tables to be captured.
+   During the scan, the connector completes the following tasks:
+
+.. Confirms that the table being scanned was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a _read_ event for each row that is captured from a table.
+   All _read_ events contain the same LSN position, which is the LSN position that was obtained in step 4.
+
+.. Emits each _read_ event to the Kafka topic for the table.
+
+8. Records the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the tables that are enabled for CDC.
 From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
 
 // Type: concept
 // ModuleID: debezium-sqlserver-ad-hoc-snapshots
