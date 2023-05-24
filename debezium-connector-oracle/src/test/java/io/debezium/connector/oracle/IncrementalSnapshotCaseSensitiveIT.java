@@ -180,6 +180,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         return "ALTER TABLE " + tableName + " ADD col3 INTEGER DEFAULT 0";
     }
 
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 250;
+    }
+
     @Test
     public void snapshotPreceededBySchemaChange() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
