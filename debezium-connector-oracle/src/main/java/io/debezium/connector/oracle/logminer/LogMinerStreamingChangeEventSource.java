@@ -685,9 +685,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             if (prevEndScn != null) {
                 final Scn deltaScn = currentScn.subtract(prevEndScn);
                 if (deltaScn.compareTo(Scn.valueOf(connectorConfig.getLogMiningScnGapDetectionGapSizeMin())) > 0) {
-                    Optional<OffsetDateTime> prevEndScnTimestamp = connection.getScnToTimestamp(prevEndScn);
+                    Optional<Instant> prevEndScnTimestamp = connection.getScnToTimestamp(prevEndScn);
                     if (prevEndScnTimestamp.isPresent()) {
-                        Optional<OffsetDateTime> currentScnTimestamp = connection.getScnToTimestamp(currentScn);
+                        Optional<Instant> currentScnTimestamp = connection.getScnToTimestamp(currentScn);
                         if (currentScnTimestamp.isPresent()) {
                             long timeDeltaMs = ChronoUnit.MILLIS.between(prevEndScnTimestamp.get(), currentScnTimestamp.get());
                             if (timeDeltaMs < connectorConfig.getLogMiningScnGapDetectionTimeIntervalMaxMs()) {
