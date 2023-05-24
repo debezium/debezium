@@ -83,20 +83,61 @@ Typically, the redo logs on an Oracle server are configured to not retain the co
 As a result, the {prodname} Oracle connector cannot retrieve the entire history of the database from the logs.
 To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
 
-You can customize the way that the connector creates snapshots by setting the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] connector configuration property.
-By default, the connector's snapshot mode is set to `initial`.
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changig the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the completes the snapshot by using a modified version of this workflow.
 
 [[default-workflow-for-performing-an-initial-snapshot]]
-.Default connector workflow for creating an initial snapshot
+.Default workflow that the Oracle connector uses to perform an initial snapshot
 When the snapshot mode is set to the default, the connector completes the following tasks to create a snapshot:
 
-1. Determines the tables to be captured.
-2. Obtains a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot. {prodname} holds the locks for only a short time.
-3. Reads the current system change number (SCN) position from the server's redo log.
-4. Captures the structure of all relevant tables.
-5. Releases the locks obtained in Step 2.
-6. Scans all of the relevant database tables and schemas as valid at the SCN position that was read in Step 3 (`SELECT * FROM ... AS OF SCN 123`), generates a `READ` event for each row, and then writes the event records to the table-specific Kafka topic.
-7. Records the successful completion of the snapshot in the connector offsets.
+1. Establish a connection to the database.
+
+2. Determine the tables to be captured.
+By default, the connector captures all non-system tables.
+To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:oracle-property-table-include-list[`table.include.list`] or xref:oracle-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtains a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
+   {prodname} holds the locks for only a short time.
+
+4. Reads the current system change number (SCN) position from the server's redo log.
+
+5. Captures the structure of all database tables.
+The connector persists this information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+However, for tables that are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+There is a benefit to persisting schema information for tables that you did not include in the initial snapshot.
+When {prodname} has information about the structure of all existing tables, it can readily capture events from any existing table should you later decide that is needed.
+If you're certain that it won't be necessary to capture data from other tables in the future, you can modify the default behavior by changing the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `true`.
+====
+
+6. Releases the locks obtained in Step 3.
+Other database clients can now write to the database.
+
+7. At the SCN position that was read in Step 4, the connectors scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
+During the scan, the connector completes the following tasks:
+
+.. Confirms that the table being scanned was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+All `read` events contain the same SCN position, which is the SCN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the source table.
+
+.. Releases data table locks, if applicable.
+
+8. Records the successful completion of the snapshot in the connector offsets.
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
 
 After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
 After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 3 so that it does not miss any updates.
