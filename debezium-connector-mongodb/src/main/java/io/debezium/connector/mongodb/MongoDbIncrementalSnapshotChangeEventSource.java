@@ -5,13 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import com.mongodb.client.FindIterable;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
@@ -22,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Projections;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
@@ -67,9 +73,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     protected IncrementalSnapshotContext<CollectionId> context = null;
-    protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
+    protected final Map<Struct, Object[]> window = new ConcurrentHashMap<>();
     private MongoPrimary primary;
     private CollectionId signallingCollectionId;
+
+    private final ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
@@ -90,6 +98,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.dataListener = dataChangeEventListener;
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
                 : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
+        this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
+                "incremental-snapshot-" + replicaSets.all().get(0).replicaSetName(), connectorConfig.getIncrementalSnapshotThreads());
     }
 
     @Override
@@ -328,52 +338,59 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         LOGGER.debug("Exporting data chunk from collection '{}' (total {} collections)", currentCollection.id(), context.dataCollectionsToBeSnapshottedCount());
 
         primary.executeBlocking("chunk query key for '" + currentCollection.id() + "'", primary -> {
+            final int theads = connectorConfig.getIncrementalSnapshotThreads();
+            final int chunkSize = connectorConfig.getIncrementalSnashotChunkSize();
+
             final MongoDatabase database = primary.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
-            final Document maxKeyPredicate = new Document();
-            final Document maxKeyOp = new Document();
-            maxKeyOp.put("$lte", context.maximumKey().get()[0]);
-            maxKeyPredicate.put(DOCUMENT_ID, maxKeyOp);
-
-            Document predicate = maxKeyPredicate;
-
-            if (context.chunkEndPosititon() != null) {
-                final Document chunkEndPredicate = new Document();
-                final Document chunkEndOp = new Document();
-                chunkEndOp.put("$gt", context.chunkEndPosititon()[0]);
-                chunkEndPredicate.put(DOCUMENT_ID, chunkEndOp);
-                predicate = new Document();
-                predicate.put("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
-            }
-
-            LOGGER.debug("\t For collection '{}' using query: '{}', key: '{}', maximum key: '{}'", currentCollection.id(),
+            Document predicate = constructQueryPredicate(context.chunkEndPosititon(), context.maximumKey().get());
+            LOGGER.debug("\t For collection '{}' using query: '{}', key: '{}', maximum key: '{}' to get all _id fields", currentCollection.id(),
                     predicate.toJson(), context.chunkEndPosititon(), context.maximumKey().get());
 
             long rows = 0;
-            Timer logTimer = getTableScanLogTimer();
-
             Object[] lastRow = null;
             Object[] firstRow = null;
+            List<Future<?>> futureList = new ArrayList<>();
+            Object[] lastChunkKey = context.chunkEndPosititon();
 
-            for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))
-                    .limit(connectorConfig.getIncrementalSnashotChunkSize())) {
+            for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1)).projection(Projections.include(DOCUMENT_ID))
+                    .limit(chunkSize * theads)) {
                 rows++;
                 final Object[] row = new Object[]{ doc };
                 if (firstRow == null) {
                     firstRow = row;
                 }
-                final Struct keyStruct = currentCollection.keyFromDocumentOplog(doc);
-                window.put(keyStruct, row);
-                if (logTimer.expired()) {
-                    long stop = clock.currentTimeInMillis();
-                    LOGGER.debug("\t Exported {} records for collection '{}' after {}", rows, currentCollection.id(),
-                            Strings.duration(stop - exportStart));
-                    logTimer = getTableScanLogTimer();
-                }
-
                 lastRow = row;
+
+                if (rows % chunkSize == 0) {
+                    final Object[] chunkStartKey = lastChunkKey;
+                    final Object[] chunkEndKey = keyFromRow(lastRow);
+                    futureList.add(this.incrementalSnapshotThreadPool.submit(() -> {
+                        queryChunk(collection, chunkStartKey, chunkEndKey);
+                    }));
+                    lastChunkKey = chunkEndKey;
+                }
             }
+
+            // in case the last iteration doesn't have enough data, do it once again for the rest of the rows
+            if (rows % chunkSize != 0) {
+                final Object[] chunkStartKey = lastChunkKey;
+                final Object[] chunkEndKey = keyFromRow(lastRow);
+                futureList.add(this.incrementalSnapshotThreadPool.submit(() -> {
+                    queryChunk(collection, chunkStartKey, chunkEndKey);
+                }));
+            }
+
+            try {
+                for (Future<?> future : futureList) {
+                    future.get(); // Wait for the tasks to complete
+                }
+            }
+            catch (InterruptedException | ExecutionException e) {
+                throw new InterruptedException(e.toString());
+            }
+
             final Object[] firstKey = keyFromRow(firstRow);
             final Object[] lastKey = keyFromRow(lastRow);
             if (context.isNonInitialChunk()) {
@@ -391,6 +408,52 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     currentCollection.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
             incrementTableRowsScanned(rows);
         });
+    }
+
+    private void queryChunk(MongoCollection<BsonDocument> collection, Object[] startKey, Object[] endKey) {
+        Document predicate = constructQueryPredicate(startKey, endKey);
+        LOGGER.debug("\t For collection chunk, '{}' using query: '{}', key: '{}', maximum key: '{}'", currentCollection.id(),
+                predicate.toJson(), startKey, endKey);
+
+        long rows = 0;
+        long exportStart = clock.currentTimeInMillis();
+        Timer logTimer = getTableScanLogTimer();
+
+        for (BsonDocument doc : collection.find(predicate).sort(new Document(DOCUMENT_ID, 1))) {
+            rows++;
+            final Object[] row = new Object[]{ doc };
+            final Struct keyStruct = currentCollection.keyFromDocumentOplog(doc);
+            window.put(keyStruct, row);
+            if (logTimer.expired()) {
+                long stop = clock.currentTimeInMillis();
+                LOGGER.debug("\t Exported {} records for collection '{}' after {}", rows, currentCollection.id(),
+                        Strings.duration(stop - exportStart));
+                logTimer = getTableScanLogTimer();
+            }
+        }
+    }
+
+    private Document constructQueryPredicate(Object[] startKey, Object[] endKey) {
+        final Document maxKeyPredicate = new Document();
+        final Document maxKeyOp = new Document();
+
+        if (endKey != null) {
+            maxKeyOp.put("$lte", endKey[0]);
+            maxKeyPredicate.put(DOCUMENT_ID, maxKeyOp);
+        }
+
+        Document predicate = maxKeyPredicate;
+
+        if (startKey != null) {
+            final Document chunkEndPredicate = new Document();
+            final Document chunkEndOp = new Document();
+            chunkEndOp.put("$gt", startKey[0]);
+            chunkEndPredicate.put(DOCUMENT_ID, chunkEndOp);
+            predicate = new Document();
+            predicate.put("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
+        }
+
+        return predicate;
     }
 
     private void incrementTableRowsScanned(long rows) {

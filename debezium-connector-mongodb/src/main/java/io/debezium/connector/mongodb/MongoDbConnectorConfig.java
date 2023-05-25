@@ -588,6 +588,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("Allow $cmd collection when capture.mode=oplog.");
 
+    public static final Field INCREMENTAL_SNAPSHOT_THREADS = Field.create("incremental.snapshot.threads")
+            .withDisplayName("Incremental snapshot threads")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The number of threads for incremental snapshots to query mongodb. If this is more than 1, a window size is will be equal to threads * chunk.")
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger);
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
@@ -656,6 +664,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     LOGICAL_NAME,
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
+                    INCREMENTAL_SNAPSHOT_THREADS,
                     CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
@@ -706,6 +715,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
     private final String stripeAuditFilterPattern;
+    private final int incrementalSnapshotThreads;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -722,6 +732,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+        this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -839,6 +850,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public boolean getAllowCmdCollection() {
         LOGGER.debug("isChangeStreams: {} disableOperationFilter {}", captureMode.isChangeStreams(), allowCmdCollection);
         return !captureMode.isChangeStreams() && allowCmdCollection;
+    }
+
+    public int getIncrementalSnapshotThreads() {
+        return incrementalSnapshotThreads;
     }
 
     public int getCursorMaxAwaitTime() {
