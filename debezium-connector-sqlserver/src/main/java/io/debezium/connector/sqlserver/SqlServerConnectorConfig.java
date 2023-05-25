@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -308,6 +309,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("Add OPTION(RECOMPILE) on each SELECT statement during the incremental snapshot process. "
                     + "This prevents parameter sniffing but can cause CPU pressure on the source database.");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(SqlServerSourceInfoStructMaker.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -456,7 +460,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new SqlServerSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SqlServerConnectorConfig.SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     private static class SystemTablesPredicate implements TableFilter {
