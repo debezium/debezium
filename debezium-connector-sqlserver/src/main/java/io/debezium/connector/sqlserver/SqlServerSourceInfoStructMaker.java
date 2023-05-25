@@ -14,10 +14,10 @@ import io.debezium.relational.TableId;
 
 public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    private final Schema schema;
+    private Schema schema;
 
-    public SqlServerSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
-        super(connector, version, connectorConfig);
+    public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
+        super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.sqlserver.Source")
                 .field(SourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)

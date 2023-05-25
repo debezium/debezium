@@ -26,11 +26,12 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
 
     public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder("true,last,false,incremental").defaultValue("false").optional().build();
 
-    private final String version;
-    private final String connector;
-    private final String serverName;
+    private String version;
+    private String connector;
+    private String serverName;
 
-    public AbstractSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
+    @Override
+    public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
         this.connector = Objects.requireNonNull(connector);
         this.version = Objects.requireNonNull(version);
         this.serverName = connectorConfig.getLogicalName();

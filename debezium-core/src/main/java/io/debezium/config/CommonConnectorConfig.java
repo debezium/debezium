@@ -683,6 +683,13 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("List of notification channels names that are enabled.");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = Field.create("sourceinfo.struct.maker")
+            .withDisplayName("Source info struct maker class")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The name of the SourceInfoStructMaker class that returns SourceInfo schema and struct.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -708,7 +715,8 @@ public abstract class CommonConnectorConfig {
                     SIGNAL_ENABLED_CHANNELS,
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
-                    SinkNotificationChannel.NOTIFICATION_TOPIC)
+                    SinkNotificationChannel.NOTIFICATION_TOPIC,
+                    SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     private final Configuration config;
@@ -1146,4 +1154,18 @@ public abstract class CommonConnectorConfig {
         }
         return 0;
     }
+
+    public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker(Field sourceInfoStructMakerField, String connector, String version,
+                                                                                            CommonConnectorConfig connectorConfig) {
+        String sourceInfoStructMakerName = config.getString(sourceInfoStructMakerField);
+        SourceInfoStructMaker sourceInfoStructMaker = config.getInstance(sourceInfoStructMakerField, SourceInfoStructMaker.class);
+        if (sourceInfoStructMaker == null) {
+            throw new ConnectException("Unable to instantiate the source info struct maker class " + sourceInfoStructMakerName);
+        }
+        LOGGER.info("Loading the custom source info struct maker plugin: {}", sourceInfoStructMakerName);
+
+        sourceInfoStructMaker.init(connector, version, connectorConfig);
+        return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
+    }
+
 }
