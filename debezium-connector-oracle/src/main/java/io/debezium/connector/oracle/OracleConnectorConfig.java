@@ -527,6 +527,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningFlushTableName)
             .withDescription("The name of the flush table used by the connector, defaults to LOG_MINING_FLUSH.");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(OracleSourceInfoStructMaker.class.getName());
+
     public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
             .withDescription(
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size, defaults to '2000'.")
@@ -1406,7 +1409,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new OracleSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override

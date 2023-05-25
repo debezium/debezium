@@ -580,6 +580,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "or whether the address(es) in 'hosts' should be used as is ('false'). "
                     + "The default is 'true'.");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(MongoDbSourceInfoStructMaker.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -792,7 +795,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {
