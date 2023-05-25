@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -611,6 +612,43 @@ public abstract class AbstractConnectorTest implements Testing {
     protected SourceRecords consumeRecordsByTopic(int numRecords) throws InterruptedException {
         SourceRecords records = new SourceRecords();
         consumeRecords(numRecords, records::add);
+        return records;
+    }
+
+    /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     * The initial records are skipped until the condition is satisfied.
+     * This is most useful in corner cases when there can be a duplicate records between snapshot
+     * and streaming switch.
+     *
+     * @param numRecords the number of records that should be consumed
+     * @param tripCondition condition to satisfy to stop skipping records
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsButSkipUntil(int recordsToRead, BiPredicate<Struct, Struct> tripCondition) throws InterruptedException {
+        final var records = new SourceRecords();
+        final var skipRecords = new AtomicBoolean(true);
+        consumeRecords(recordsToRead, record -> {
+            if (skipRecords.get()) {
+                if (tripCondition.test((Struct) record.key(), (Struct) record.value())) {
+                    skipRecords.set(false);
+                }
+                else {
+                    Testing.print("Skipped record");
+                    print(record);
+                    Testing.debug("Skipped record");
+                    debug(record);
+                }
+            }
+            if (!skipRecords.get()) {
+                records.add(record);
+            }
+        });
+        recordsToRead -= records.allRecordsInOrder().size();
+        if (recordsToRead > 0) {
+            consumeRecords(recordsToRead, records::add);
+        }
         return records;
     }
 
