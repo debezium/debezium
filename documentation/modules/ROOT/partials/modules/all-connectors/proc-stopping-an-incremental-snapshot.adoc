@@ -15,7 +15,7 @@ The query that you submit specifies the snapshot operation of `incremental`, and
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
-.Procedure using source signaling channel
+.Using a source signaling channel to stop an incremental snapshot
 tag::sql-based-snapshot[]
 
 . Send a SQL query to stop the ad hoc incremental snapshot to the signaling {data-collection}:

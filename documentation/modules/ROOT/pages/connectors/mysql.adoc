@@ -3035,11 +3035,22 @@ Use the following format to specify the collection name: +
 
 |[[mysql-property-signal-enabled-channels]]<<mysql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
-| List of channels names that are enabled. Available channel: `source`, `kafka`. See how to {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[Provide custom signaling channel]
+|List of the signaling channel names that are enabled for the connector. 
+By default, the following channels are available: 
+* `source`
+* `kafka` 
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
 
 |[[mysql-property-notification-enabled-channels]]<<mysql-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
-| List of channels names that are enabled. Available channel: `sink`, `log`. See how to {link-prefix}:{link-notification}#debezium-notification-custom-channel[Provide custom notification channel]
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available: 
+
+* `sink`
+* `log`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
 |[[mysql-property-incremental-snapshot-allow-schema-changes]]<<mysql-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
