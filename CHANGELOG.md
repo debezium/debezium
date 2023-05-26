@@ -2,6 +2,48 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.0.Beta1
+May 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12407588)
+
+### New features since 2.3.0.Alpha1
+
+* Testsuite should deploy PostgreSQL with Primary-Secondary streaming replication [DBZ-3202](https://issues.redhat.com/browse/DBZ-3202)
+* PostgreSQL: Set Replica Identity when the connector starts [DBZ-6112](https://issues.redhat.com/browse/DBZ-6112)
+* Correlate incremental snapshot notifications ids with execute signal [DBZ-6447](https://issues.redhat.com/browse/DBZ-6447)
+* [MariaDB] Add support for userstat plugin keywords [DBZ-6459](https://issues.redhat.com/browse/DBZ-6459)
+* Add a header provider string [DBZ-6489](https://issues.redhat.com/browse/DBZ-6489)
+
+
+### Breaking changes since 2.3.0.Alpha1
+
+* JDBC offset storage: Change encoding from UTF-16 to UTF-8 [DBZ-6476](https://issues.redhat.com/browse/DBZ-6476)
+
+
+### Fixes since 2.3.0.Alpha1
+
+* Debezium Server stops sending events to Google Cloud Pub/Sub [DBZ-5175](https://issues.redhat.com/browse/DBZ-5175)
+* Snapshot step 5 - Reading structure of captured tables time too long  [DBZ-6439](https://issues.redhat.com/browse/DBZ-6439)
+* Oracle parallel snapshots do not properly set PDB context when using multitenancy [DBZ-6457](https://issues.redhat.com/browse/DBZ-6457)
+* Debezium Server cannot recover from Google Pub/Sub errors [DBZ-6461](https://issues.redhat.com/browse/DBZ-6461)
+* DDL statement couldn't be parsed: AUTHENTICATION_POLICY_ADMIN [DBZ-6479](https://issues.redhat.com/browse/DBZ-6479)
+* Db2 connector can fail with NPE on notification sending [DBZ-6485](https://issues.redhat.com/browse/DBZ-6485)
+* BigDecimal fails when queue memory size limit is in place [DBZ-6490](https://issues.redhat.com/browse/DBZ-6490)
+* ORACLE table can not be captrued, got runtime.NoViableAltException [DBZ-6492](https://issues.redhat.com/browse/DBZ-6492)
+* Signal poll interval has incorrect default value [DBZ-6496](https://issues.redhat.com/browse/DBZ-6496)
+* Oracle JDBC driver 23.x throws ORA-18716 - not in any time zone [DBZ-6502](https://issues.redhat.com/browse/DBZ-6502)
+* Alpine postgres images should use llvm/clang 15 explicitly [DBZ-6506](https://issues.redhat.com/browse/DBZ-6506)
+* ExtractNewRecordState SMT in combination with HeaderToValue SMT results in Unexpected field name exception [DBZ-6486](https://issues.redhat.com/browse/DBZ-6486)
+
+
+### Other changes since 2.3.0.Alpha1
+
+* Verify MongoDB Connector with AWS DocumentDB [DBZ-6419](https://issues.redhat.com/browse/DBZ-6419)
+* Enable set log level in tests [DBZ-6460](https://issues.redhat.com/browse/DBZ-6460)
+* Check OOME on CI tests [DBZ-6462](https://issues.redhat.com/browse/DBZ-6462)
+* Signaling data collection document should refer to source database [DBZ-6470](https://issues.redhat.com/browse/DBZ-6470)
+
+
+
 ## 2.3.0.Alpha1
 May 11st 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12406007)
 
