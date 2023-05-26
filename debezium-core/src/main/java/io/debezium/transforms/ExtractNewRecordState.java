@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -30,7 +31,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
@@ -272,8 +272,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 }
                 continue;
             }
-            headers.add(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue),
-                    fieldReference.getSchema(originalRecordValue.schema()));
+            Optional<Schema> schema = fieldReference.getSchema(originalRecordValue.schema());
+            schema.ifPresent(value -> headers.add(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue), value));
         }
 
         return headers;
@@ -296,11 +296,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         for (FieldReference fieldReference : additionalFields) {
-            try {
+            Optional<Schema> schema = fieldReference.getSchema(originalRecordValue.schema());
+            if (schema.isPresent()) {
                 updatedValue = updateValue(fieldReference, updatedValue, originalRecordValue);
-            }
-            catch (DataException e) {
-                LOGGER.debug("Field {} not found in the record {}. Skipping it", fieldReference.field, originalRecordValue);
             }
         }
 
@@ -399,19 +397,17 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         // Update the schema with the new fields
         for (FieldReference fieldReference : additionalFields) {
-            try {
-                builder = updateSchema(fieldReference, builder, originalRecordValue.schema());
-            }
-            catch (IllegalArgumentException e) {
-                LOGGER.warn("Field {} not found in the record {}. Skipping it", fieldReference.field, originalRecordValue);
+            Optional<Schema> fieldSchema = fieldReference.getSchema(originalRecordValue.schema());
+            if (fieldSchema.isPresent()) {
+                builder = updateSchema(fieldReference, builder, fieldSchema.get());
             }
         }
 
         return builder.build();
     }
 
-    private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema originalRecordSchema) {
-        return builder.field(fieldReference.getNewField(), fieldReference.getSchema(originalRecordSchema));
+    private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema fieldSchema) {
+        return builder.field(fieldReference.getNewField(), fieldSchema);
     }
 
     private Struct updateValue(FieldReference fieldReference, Struct updatedValue, Struct struct) {
@@ -523,7 +519,15 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     : originalRecordValue.getWithoutDefault(field);
         }
 
-        Schema getSchema(Schema originalRecordSchema) {
+        Optional<Schema> getSchema(Schema originalRecordSchema) {
+
+            Optional<org.apache.kafka.connect.data.Field> extractedField = getField(originalRecordSchema);
+            return extractedField.map(value -> SchemaUtil.copySchemaBasics(value.schema()).optional().build());
+
+        }
+
+        private Optional<org.apache.kafka.connect.data.Field> getField(Schema originalRecordSchema) {
+
             Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
 
             org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
@@ -531,12 +535,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             if (schemaField == null) {
                 LOGGER.debug("Field {} not found in {}. Trying in main payload", field, struct);
                 if (!isInSchema(originalRecordSchema)) {
-                    throw new IllegalArgumentException("Unexpected field name: " + field);
+                    return Optional.empty();
                 }
                 schemaField = originalRecordSchema.field(field);
             }
 
-            return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
+            return Optional.of(schemaField);
         }
 
         private boolean isInSchema(Schema originalRecordSchema) {
