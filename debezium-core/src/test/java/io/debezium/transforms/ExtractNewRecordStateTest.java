@@ -880,7 +880,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
         try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             String fieldPrefix = "";
-            props.put(ADD_FIELDS, "op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER, changes:META_SRC_CHANGED");
+            props.put(ADD_FIELDS, "notExisting,op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER, changes:META_SRC_CHANGED");
             props.put(ADD_FIELDS_PREFIX, fieldPrefix);
             transform.configure(props);
 
@@ -893,6 +893,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "source_lsn")).isEqualTo(1234);
             assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
             assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "META_SRC_CHANGED")).isEqualTo(List.of("name"));
+            assertThat((unwrapped.valueSchema().field("notExisting"))).isNull();
         }
     }
 
