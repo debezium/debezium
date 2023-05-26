@@ -1,12 +1,12 @@
-.Procedure using kafka signaling channel
+.Using the Kafka signaling channel to stop an incremental snapshot
 
-You can send a message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka topic] to add the ad hoc incremental snapshot request to the signaling {data-collection}:
+You can send a signal message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka signaling topic] to stop an ad hoc incremental snapshot.
 
 The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
 
-The value is a JSON object with `type` and `data` fields.
+The value of the message is a JSON object with `type` and `data` fields.
 
-The signal type is `stop-snapshot` and the `data` field must have the following fields:
+The signal type is `stop-snapshot`, and the `data` field must have the following fields:
 
 .Execute snapshot data fields
 [cols="2,2,6",options="header"]
@@ -15,17 +15,18 @@ The signal type is `stop-snapshot` and the `data` field must have the following 
 
 |`type`
 |`incremental`
-| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+| The type of the snapshot to be executed. 
+Currently {prodname} supports only the `incremental` type.  +
 See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| An optional array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
-The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+| An optional array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
+Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |===
 
-An example of the stop-snapshot Kafka message:
+The following example shows a typical `stop-snapshot` Kafka message:
 
 ----
 Key = `test_connector`

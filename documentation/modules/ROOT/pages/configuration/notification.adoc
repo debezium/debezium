@@ -14,50 +14,48 @@ toc::[]
 == Overview
 endif::community[]
 
-The {prodname} notification mechanism provides a way to get status information of the connector.
-The notifications can be sent to different channels:
+{prodname} notifications provide a mechanism to obtain status information about the connector.
+Notifications can be sent to the following channels:
 
-* SinkNotificationChannel: notification is sent through the Connect API to a configured topic.
-* LogNotificationChannel: notification is simply logged.
-* Custom: you can xref:debezium-notification-custom-channel[implement your custom channel] to receive notification from {prodname}.
+SinkNotificationChannel:: Notifications are sent through the Connect API to a configured topic.
+LogNotificationChannel:: Notification are appended to the log.
+Custom:: Notifications are sent to a xref:debezium-notification-custom-channel[custom channel] that you implement.
 
 
 // Type: concept
-// Title: Debezium notification format
 [id="debezium-notification-format"]
 == Debezium notification format
 
-The notification message contains the following information
+Notification messages contain the following information:
 
 |===
 |Property |Description
 
 |id
-|UUID to identify the notification
+|A unique identifier that is assigned to the notification. For incremental snapshot notifications, the `id` is the same sent with the `execute-snapshot` signal.
 
 |aggregate_type
-|the type of the aggregate root to which the notification is related; the idea is based on the same concept of domain-driven design, that exported events should refer to an aggregate.
+|The data type of the aggregate root to which a notification is related.
+In domain-driven design, exported events should always refer to an aggregate.
 
 |type
-|the type of the event. Give more detail about the `aggregate_type`
+|Provides status information about the event specified in the `aggregate_type` field.
 
 |additional_data
 |A Map<String,String> with detailed information about the notification.
+For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
 |===
 
 // Type: concept
-// Title: Available notifications
 [id="debezium-available-notifications"]
 === Available notifications
 
-Debezium emits notification for:
+{prodname} notifications deliver information about the progress of xref:debezium-notifications-about-the-status-of-an-initial-snapshot[initial snapshots] or xref:debezium-notifications-about-the-progress-of-incremental-snapshot[incremental snapshots].
 
-* Status of the initial snapshot
-* Monitoring the progress of the incremental snapshot
 
-==== Status of the initial snapshot
+==== Status of an initial snapshot
 
-This is the notification for initial snapshot status
+The following example shows a typical notification that provides the status of an initial snapshot:
 
 [source, json]
 ----
@@ -67,11 +65,15 @@ This is the notification for initial snapshot status
     "type": "COMPLETED" <1>
 }
 ----
-<1> The type can be `COMPLETED`, `ABORTED`, `SKIPPED`.
+<1> The type field can contain one of the following values:
 
-==== Monitoring the progress of the incremental snapshot
+* `COMPLETED`
+* `ABORTED`
+* `SKIPPED`
+[id="debezium-notifications-about-the-progress-of-incremental-snapshots"]
+==== {prodname} notifications about the progress of incremental snapshots
 
-These are the notifications for the incremental snapshot
+The following table shows examples of the different payloads that might be present in notifications that report the status of incremental snapshots:
 
 |===
 |Status|Payload
@@ -172,20 +174,31 @@ a|[source, json]
 |===
 
 // Type: procedure
-// Title: Enable Debezium notifications
-[id="debezium-enable-notifications"]
-=== Enable Debezium notifications
+[id="enabling-debezium-notifications"]
+=== Enabling {prodname} notifications
 
-To enable Debezium to emit notifications you need to specify the list of notification channels that you want to enable through the configuration property `notification.enabled.channels`.
-Built-in notification channels are: `sink` and `log`. In case `sink` notification channel is enabled you need to define also the `notification.sink.topic.name` configuration property with the name of the topic where the notification will be sent.
+To enable Debezium to emit notifications, specify a list of notification channels by setting the `notification.enabled.channels` configuration property.
+By default, the following notification channels are available:
+
+* `sink`
+* `log`
+
+ To use the `sink` notification channel,  you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+
+// Type: concept
+[id="debezium-notification-custom-channel"]
+== Custom notification channels
+
+Notification mechanism has been built to be extensible. You can implement more channels where receive notification in an easy way.
+You need to set up a java project and add {prodname} Core dependency, implement your notification channel and deploy it. Then you just need to enable your custom channel.
+
 
 // Type: procedure
-// Title: Provide custom signaling channel
-[id="debezium-notification-custom-channel"]
-== Provide custom notification channel
+[id="debezium-configuring-custom-notification-channels"]
+=== Configuring custom notification channels
 
 Custom notification channels are Java classes that implement the `io.debezium.pipeline.notification.channels.NotificationChannel` service provider interface (SPI).
-
+For example:
 [source,java,indent=0]
 ----
 public interface NotificationChannel {
@@ -199,17 +212,20 @@ public interface NotificationChannel {
     void close(); // <4>
 }
 ----
-<1> The name of the channel, used in `notification.enabled.channels` to enable the channel.
-<2> Initialize specific configuration/variables/connections required by the channel
-<3> Send the notification on the channel. This method is called by {prodname} to notify its status.
-<4> Close all allocated resources. Called when the connector is stopped.
+<1> The name of the channel.
+To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
+<2> Initializes specific configuration, variables, or connections that the channel requires.
+<3> Sends the notification on the channel. 
+{prodname} calls this method to report its status.
+<4> Closes all allocated resources. 
+{prodname} calls this method when the connector is stopped.
 
 // Type: concept
 [id="debezium-core-module-dependency"]
-=== {prodname} Core module dependency
+=== {prodname} core module dependencies
 
-A custom converter Java project has compile dependency on the {prodname} Core module.
-These compile dependencies must be included in your project's `pom.xml`, as shown in the following example:
+A custom notification channel Java project has compile dependencies on the {prodname} core module.
+You must include these compile dependencies in your project's `pom.xml` file, as shown in the following example:
 
 [source,xml]
 ----
@@ -221,7 +237,7 @@ These compile dependencies must be included in your project's `pom.xml`, as show
 ----
 <1> `${version.debezium}` represents the version of the {prodname} connector.
 
-Declare you implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
+Declare your implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
 
 // Type: procedure
 [id="deploying-a-debezium-custom-notification-channel"]
@@ -236,11 +252,11 @@ Declare you implementation in the `META-INF/services/io.debezium.pipeline.notifi
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
 To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
 
-NOTE: To use a notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
+NOTE: To use a custom notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
 
 // Type: procedure
 [id="configuring-a-connectors-to-use-a-custom-notification-channel"]
 === Configuring a connector to use a custom notification channel
 
-You need to add the name of the custom notification channel to the configuration property `notification.enabled.channels`.
+Add the name of the custom notification channel to the `notification.enabled.channels` configuration property. 
 

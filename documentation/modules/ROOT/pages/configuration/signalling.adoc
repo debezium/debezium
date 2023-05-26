@@ -15,12 +15,12 @@ toc::[]
 endif::community[]
 
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
-To trigger a connector to perform a specified action, you can use different channels:
+To use signals to trigger a connector to perform a specified action, you can configure the connector use the following channels:
 
-* SourceSignalChannel: you can issue a SQL command to add a signal message to a specialized signaling table, also referred to as a signaling data collection.
-The signaling table, which you create on the source database, is designated exclusively for communicating with {prodname}.
-* KafkaSignalChannel: you can issue a message to a configurable Kafka topic.
-* Custom: you can xref:debezium-signaling-enabling-custom-signaling-channel[implement your custom channel] to provide signals to {prodname}
+SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling {data-collection}.
+The signaling {data-collection}, which you create on the source database, is designated exclusively for communicating with {prodname}.
+KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
+Custom:: You submit signals to a xref:debezium-custom-signaling-channel[custom channel] that you implement.
 
 When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the channel, it reads the signal, and initiates the requested operation.
 
@@ -33,8 +33,8 @@ Signaling is available for use with the following {prodname} connectors:
 * PostgreSQL
 * SQL Server
 
-You can define which channel is enabled with `signal.enabled.channels` configuration property. It's a list of channels names that are enabled, the built-in channels are: `source`  and `kafka`.
-The `source` channel is enabled by default since it is required for incremental snapshot signals.
+You can specify which channel is enabled by setting the `signal.enabled.channels` configuration property. The property lists the names of the channels that are enabled. By default, {prodname} provides the following channels: `source`  and `kafka`.
+The `source` channel is enabled by default, because it is required for incremental snapshot signals.
 
 
 // Type: procedure
@@ -151,18 +151,19 @@ CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT N
 ----
 
 // Type: procedure
-// Title: Enabling {prodname} kafka signaling channel
+// Title: Enabling the {prodname} Kafka signaling channel
 [id="debezium-signaling-enabling-kafka-signaling-channel"]
 == Enabling Kafka signaling channel
 
-You can enable Kafka signaling channel adding it to the `signal.enabled.channels` configuration property and configuring the `signal.kafka.topic` property with the name of the topic where you will send signals.
+You can enable the Kafka signaling channel by adding it to the `signal.enabled.channels` configuration property, and then adding the name of the topic that receives signals to the `signal.kafka.topic` property.
 
 === Message format
+
 The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
 
 The value is a JSON object with `type` and `data` fields.
 
-When signal type is `execute-snapshot`, the `data` field must have the following fields:
+When the signal type is set to `execute-snapshot`, the `data` field must include the fields that are listed in the following table:
 
 .Execute snapshot data fields
 [cols="2,2,6",options="header"]
@@ -171,21 +172,20 @@ When signal type is `execute-snapshot`, the `data` field must have the following
 
 |`type`
 |`incremental`
-| The type of the snapshot to be executed. Currently only `incremental` is supported. +
-See the next section for more details.
+| The type of the snapshot to run. 
+Currently {prodname} supports only the `incremental` type.
 
 |`data-collections`
 |_N/A_
-| An array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
-The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
+| An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
+Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |`additional-condition`
 |_N/A_
-| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}(s).
+| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot.
 |===
 
-An example of the execute-snapshot Kafka message:
+The following example shows a typical `execute-snapshot` Kafka message:
 
 ----
 Key = `test_connector`
@@ -193,12 +193,20 @@ Key = `test_connector`
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 ----
 
+// Type: concept
+[id="debezium-custom-signaling-channel"]
+== Custom signaling channel
+Signaling mechanism has been built to be extensible. You can implement more channels to send signal to {prodname}.
+You need to set up a java project and add {prodname} Core dependency, implement your signaling channel and deploy it. Then you just need to enable your custom channel.
+
 // Type: procedure
-// Title: Provide custom signaling channel
+// Title: Providing a custom {prodname} signaling channel
+// ModuleID: debezium-signaling-providing-a custom-signaling-channel
 [id="debezium-signaling-enabling-custom-signaling-channel"]
-== Provide custom signaling channel
+=== Provide custom signaling channel
 
 Custom signaling channels are Java classes that implement the `io.debezium.pipeline.signal.channels.SignalChannelReader` service provider interface (SPI).
+For example:
 
 [source,java,indent=0]
 ----
@@ -213,17 +221,20 @@ public interface SignalChannelReader {
     void close(); // <4>
 }
 ----
-<1> The name of the reader, used in `signal.enabled.channels` to enable the channel.
-<2> Initialize specific configuration/variables/connections required by the channel
-<3> Read signal form the channel. This method is called by `SignalProcessor` class to retrieve the signal to process.
-<4> Close all allocated resources. Called when the connector is stopped.
+<1> The name of the reader. 
+To enable {prodname} to use the channel, specify this name in the connector's `signal.enabled.channels` property.
+<2> Initializes specific configuration, variables, or connections that the channel requires.
+<3> Reads signal from the channel. 
+The `SignalProcessor` class calls this method to retrieve the signal to process.
+<4> Closes all allocated resources. 
+{prodname} calls this methods when the connector is stopped.
 
 // Type: concept
-[id="debezium-core-module-dependency"]
-=== {prodname} Core module dependency
+[id="debezium-signaling-core-module-dependencies"]
+=== {prodname} core module dependencies
 
-A custom converter Java project has compile dependency on the {prodname} Core module.
-These compile dependencies must be included in your project's `pom.xml`, as shown in the following example:
+A custom signaling channel Java project has compile dependencies on the {prodname} core module.
+You must include these compile dependencies in your project's `pom.xml` file, as shown in the following example:
 
 [source,xml]
 ----
@@ -235,7 +246,7 @@ These compile dependencies must be included in your project's `pom.xml`, as show
 ----
 <1> `${version.debezium}` represents the version of the {prodname} connector.
 
-Declare you implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
+Declare your implementation in the `META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader` file.
 
 // Type: procedure
 [id="deploying-a-debezium-custom-signaling-channel"]
@@ -245,18 +256,17 @@ Declare you implementation in the `META-INF/services/io.debezium.pipeline.signal
 * You have a custom signaling channel Java program.
 
 .Procedure
-* To use a signaling channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+* To use a custom signaling channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
  +
 For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
-To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
 
-NOTE: To use a signaling channel with multiple connectors, you must place a copy of the signaling channel JAR file in each connector subdirectory.
+NOTE: To use a custom signaling channel with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
 
 // Type: procedure
 [id="configuring-a-connectors-to-use-a-custom-signaling-channel"]
 === Configuring a connector to use a custom signaling channel
 
-You need to add the name of the custom signaling channel to the configuration property `signal.enabled.channels`.
+Add the name of the custom signaling channel to the `signal.enabled.channels` configuration property.
 
 // Type: concept
 // ModuleID: debezium-signaling-types-of-signal-actions

@@ -26,7 +26,7 @@ For example, to include a data collection that exists in the `*public*` database
 ** A signaling data collection exists on the source database.
 ** The signaling data collection is specified in the xref:{context}-property-signal-data-collection[`signal.data.collection`] property.
 
-.Procedure using source signaling channel
+.Using a source signaling channel to trigger an incremental snapshot
 
 . Insert a snapshot signal document into the signaling {data-collection}:
 +
