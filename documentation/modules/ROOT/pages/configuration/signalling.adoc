@@ -15,7 +15,7 @@ toc::[]
 endif::community[]
 
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
-To use signals to trigger a connector to perform a specified action, you can configure the connector use the following channels:
+To use signals to trigger a connector to perform a specified action, you can configure the connector to use one or more of the following channels:
 
 SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling {data-collection}.
 The signaling {data-collection}, which you create on the source database, is designated exclusively for communicating with {prodname}.
@@ -196,8 +196,14 @@ Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table
 // Type: concept
 [id="debezium-custom-signaling-channel"]
 == Custom signaling channel
-Signaling mechanism has been built to be extensible. You can implement more channels to send signal to {prodname}.
-You need to set up a java project and add {prodname} Core dependency, implement your signaling channel and deploy it. Then you just need to enable your custom channel.
+The signaling mechanism is designed to be extensible. 
+You can implement channels as needed to send signals to {prodname} in a manner that works best in your environment.
+
+Adding a signaling channel involves several steps:
+
+1. xref:debezium-signaling-enabling-custom-signaling-channel[Create a Java project for the channel] to implement the channel, and xref:debezium-signaling-core-module-dependencies[add `{prodname} Core` as a dependency].
+2. xref:deploying-a-debezium-custom-signaling-channel[Deploy the custom signaling channel].
+3. xref:configuring-connectors-to-use-a-custom-signaling-channel[Enable connectors to use the custom signaling channel by modifying the connector configuration].
 
 // Type: procedure
 // Title: Providing a custom {prodname} signaling channel
@@ -263,8 +269,8 @@ For example, in a typical deployment, the {prodname} connector files are stored 
 NOTE: To use a custom signaling channel with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
 
 // Type: procedure
-[id="configuring-a-connectors-to-use-a-custom-signaling-channel"]
-=== Configuring a connector to use a custom signaling channel
+[id="configuring-connectors-to-use-a-custom-signaling-channel"]
+=== Configuring connectors to use a custom signaling channel
 
 Add the name of the custom signaling channel to the `signal.enabled.channels` configuration property.
 
@@ -356,7 +362,7 @@ endif::community[]
 |Key | Value
 
 |test_connector
-|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=foo"}}`
+|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=MyBrand"}}`
 
 |===
 
