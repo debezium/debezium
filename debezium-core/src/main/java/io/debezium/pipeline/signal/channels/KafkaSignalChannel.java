@@ -105,7 +105,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
         String type = document.getString("type");
         Document data = document.getDocument("data");
 
-        return Optional.of(new SignalRecord(id, type, data.toString(), record.offset(), Map.of(CHANNEL_OFFSET, record.offset())));
+        return Optional.of(new SignalRecord(id, type, data.toString(), Map.of(CHANNEL_OFFSET, record.offset())));
     }
 
     private static Optional<Document> parseJson(String value) {

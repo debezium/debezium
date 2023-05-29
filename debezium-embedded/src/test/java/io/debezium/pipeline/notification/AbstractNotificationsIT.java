@@ -7,9 +7,14 @@ package io.debezium.pipeline.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.management.ManagementFactory;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannelMXBean;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -21,6 +26,18 @@ import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+
+import javax.management.AttributeNotFoundException;
+import javax.management.InstanceNotFoundException;
+import javax.management.IntrospectionException;
+import javax.management.JMX;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanException;
+import javax.management.MBeanInfo;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import javax.management.ReflectionException;
 
 public abstract class AbstractNotificationsIT<T extends SourceConnector> extends AbstractConnectorTest {
 
@@ -61,7 +78,8 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     public void notificationNotSentIfNoChannelIsConfigured() {
         // Testing.Print.enable();
 
-        startConnector(config -> config.with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"));
+        startConnector(config ->
+                config.with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"));
         assertConnectorIsRunning();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
@@ -81,5 +99,60 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         Assertions.assertThat(logInterceptor.containsErrorMessage(
                 "Connector configuration is not valid. The 'notification.sink.topic.name' value is invalid: Notification topic name must be provided when kafka notification channel is enabled"))
                 .isTrue();
+    }
+
+    @Test
+    public void notificationCorrectlySentOnJmx()
+            throws ReflectionException, MalformedObjectNameException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException,
+            MBeanException {
+
+        // Testing.Print.enable();
+
+        startConnector(config -> config
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx"));
+
+        assertConnectorIsRunning();
+
+        List<Notification> notifications = readNotificationFromJmx();
+
+        assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0))
+                .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
+                .hasFieldOrPropertyWithValue("type", "Status " + snapshotStatusResult());
+
+        resetNotifications();
+
+        notifications = readNotificationFromJmx();
+        assertThat(notifications).hasSize(0);
+    }
+
+    private List<Notification> readNotificationFromJmx()
+            throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException, MBeanException {
+
+        ObjectName notificationBean = new ObjectName("debezium.Postgres:type=notifications, server=test_server");
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        MBeanInfo mBeanInfo = server.getMBeanInfo(notificationBean);
+
+        List<String> attributesNames = Arrays.stream(mBeanInfo.getAttributes()).map(MBeanAttributeInfo::getName).collect(Collectors.toList());
+        assertThat(attributesNames).contains("Notifications");
+
+        JmxNotificationChannelMXBean proxy =
+                JMX.newMXBeanProxy(
+                        server,
+                        notificationBean,
+                        JmxNotificationChannelMXBean.class);
+
+        return proxy.getNotifications();
+    }
+
+    private void resetNotifications()
+            throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, IntrospectionException, AttributeNotFoundException, MBeanException {
+
+        ObjectName notificationBean = new ObjectName("debezium.Postgres:type=notifications, server=test_server");
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        server.invoke(notificationBean, "reset", new Object[]{}, new String[]{});
+
     }
 }

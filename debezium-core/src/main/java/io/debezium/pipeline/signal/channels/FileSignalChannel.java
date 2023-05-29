@@ -138,7 +138,7 @@ public class FileSignalChannel implements SignalChannelReader {
         String id = signalJson.get("id").asText();
         String type = signalJson.get("type").asText();
         String data = signalJson.get("data").toString();
-        return new SignalRecord(id, type, data, channelOffset, additionalData);
+        return new SignalRecord(id, type, data, additionalData);
     }
 
     @Override

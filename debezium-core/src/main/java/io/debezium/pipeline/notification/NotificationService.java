@@ -19,6 +19,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.SchemaFactory;
 
+import static io.debezium.function.Predicates.not;
+
 /**
  * This service can be used to send notification to available and enabled channels
  */
@@ -63,10 +65,16 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
     /**
      * This method permits to send a notification together with offsets.
      * This make sense only for channels that implements For {@link ConnectChannel}
+     * A notification is sent also to non {@link ConnectChannel}
      * @param notification the notification to send
      * @param offsets the offset to send together with Kafka {@link SourceRecord}
      */
     public void notify(Notification notification, Offsets<P, ? extends OffsetContext> offsets) {
+
+        this.notificationChannels.stream()
+                .filter(isEnabled())
+                .filter(not(isConnectChannel()))
+                .forEach(channel -> channel.send(notification));
 
         this.notificationChannels.stream()
                 .filter(isEnabled())
