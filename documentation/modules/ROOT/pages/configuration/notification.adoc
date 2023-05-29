@@ -183,14 +183,20 @@ By default, the following notification channels are available:
 * `sink`
 * `log`
 
- To use the `sink` notification channel,  you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+ To use the `sink` notification channel, you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
 
 // Type: concept
 [id="debezium-notification-custom-channel"]
 == Custom notification channels
 
-Notification mechanism has been built to be extensible. You can implement more channels where receive notification in an easy way.
-You need to set up a java project and add {prodname} Core dependency, implement your notification channel and deploy it. Then you just need to enable your custom channel.
+The notification mechanism is designed to be extensible. 
+You can implement channels as needed to deliver notifications in a manner that works best in your environment.
+Adding a notification channel involves several steps:
+
+1. xref:debezium-configuring-custom-notification-channels[Create a Java project for the channel] to implement the channel, and xref:debezium-core-module-dependency[add `{prodname} Core` as a dependency].
+2. xref:deploying-a-debezium-custom-notification-channel[Deploy the notification channel].
+3. xref:configuring-connectors-to-use-a-custom-notification-channel[Enable connectors to use the custom notification channel by modifying the connector configuration].
+
 
 
 // Type: procedure
@@ -255,8 +261,8 @@ To use a signaling channel with a connector, add the converter JAR file to the c
 NOTE: To use a custom notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
 
 // Type: procedure
-[id="configuring-a-connectors-to-use-a-custom-notification-channel"]
-=== Configuring a connector to use a custom notification channel
+[id="configuring-connectors-to-use-a-custom-notification-channel"]
+=== Configuring connectors to use a custom notification channel
 
 Add the name of the custom notification channel to the `notification.enabled.channels` configuration property. 
 
