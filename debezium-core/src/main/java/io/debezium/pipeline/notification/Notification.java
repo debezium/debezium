@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.notification;
 
+import java.beans.ConstructorProperties;
 import java.util.Map;
 import java.util.Objects;
 
@@ -20,6 +21,7 @@ public class Notification {
     private final String type;
     private final Map<String, String> additionalData;
 
+    @ConstructorProperties({"id", "aggregateType", "type", "additionalData"})
     public Notification(String id, String aggregateType, String type, Map<String, String> additionalData) {
         this.id = id;
         this.aggregateType = aggregateType;

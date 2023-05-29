@@ -29,7 +29,7 @@ public class SignalRecord {
     private final String data;
     private final Map<String, Object> additionalData;
 
-    public SignalRecord(String id, String type, String data, Long channelOffset, Map<String, Object> additionalData) {
+    public SignalRecord(String id, String type, String data, Map<String, Object> additionalData) {
         this.id = id;
         this.type = type;
         this.data = data;
@@ -40,7 +40,7 @@ public class SignalRecord {
 
         final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
 
-        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], null, Map.of()));
+        return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], Map.of()));
     }
 
     public String getId() {
