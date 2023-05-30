@@ -166,10 +166,10 @@ If you're certain that it won't be necessary to capture data from other tables i
 If the table was created after the snapshot began, the connector skips the table.
 After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
 
-.. Produces a _read_ event for each row that is captured from a table.
-   All _read_ events contain the same LSN position, which is the LSN position that was obtained in step 4.
+.. Produces a `read` event for each row that is captured from a table.
+   All `read` events contain the same LSN position, which is the LSN position that was obtained in step 4.
 
-.. Emits each _read_ event to the Kafka topic for the table.
+.. Emits each `read` event to the Kafka topic for the table.
 
 8. Records the successful completion of the snapshot in the connector offsets.
 
