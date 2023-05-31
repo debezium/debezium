@@ -81,7 +81,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
     private final String showMasterStmt = "SHOW MASTER STATUS";
-    private final KafkaSignalChannel kafkaSignal;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
@@ -92,18 +91,25 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
                                                              NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        kafkaSignal = new KafkaSignalChannel();
     }
 
     @Override
     public void init(MySqlPartition partition, OffsetContext offsetContext) {
         super.init(partition, offsetContext);
 
-        kafkaSignal.init(connectorConfig);
-        Long signalOffset = getContext().getSignalOffset();
-        if (signalOffset != null) {
-            kafkaSignal.seek(signalOffset);
+        if (isKafkaChannelEnabled()) {
+
+            restoreOffset();
         }
+    }
+
+    private void restoreOffset() {
+
+        dispatcher.getSignalProcessor().restoreKafkaOffset(getContext().getSignalOffset());
+    }
+
+    private boolean isKafkaChannelEnabled() {
+        return connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
     }
 
     @Override

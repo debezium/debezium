@@ -157,7 +157,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
         else {
@@ -193,7 +193,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = transactionMonitor;
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
         else {
@@ -214,6 +214,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(this),
                 PauseIncrementalSnapshot.NAME, new PauseIncrementalSnapshot<>(this),
                 ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(this));
+    }
+
+    public SignalProcessor<P, ?> getSignalProcessor() {
+        return signalProcessor;
     }
 
     private SignalAction<P> getSchemaChangeAction(CommonConnectorConfig connectorConfig) {

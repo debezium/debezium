@@ -48,6 +48,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     public static final String CHANNEL_OFFSET = "channelOffset";
+    public static final String CHANNEL_NAME = "kafka";
 
     private String topicName;
     private String connectorName;
@@ -126,7 +127,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public String name() {
-        return "kafka";
+        return CHANNEL_NAME;
     }
 
     @Override
