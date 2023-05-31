@@ -253,6 +253,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 processor.get().stop();
             }
 
+            if (notificationService != null) {
+                notificationService.stop();
+            }
             eventDispatcher.close();
         }
         finally {

@@ -7,5 +7,5 @@ package io.debezium.pipeline.signal.channels.jmx;
 
 public interface JmxSignalChannelMXBean {
 
-    void trigger(String id, String type, String data);
+    void signal(String id, String type, String data);
 }

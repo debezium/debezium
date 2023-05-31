@@ -5,9 +5,9 @@
  */
 package io.debezium.pipeline.notification.channels.jmx;
 
-import io.debezium.pipeline.notification.Notification;
-
 import java.util.List;
+
+import io.debezium.pipeline.notification.Notification;
 
 public interface JmxNotificationChannelMXBean {
 

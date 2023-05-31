@@ -6,6 +6,7 @@
 package io.debezium.pipeline.signal.channels.jmx;
 
 import static io.debezium.pipeline.JmxUtils.registerMXBean;
+import static io.debezium.pipeline.JmxUtils.unregisterBean;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     private static final String CHANNEL_NAME = "jmx";
 
     private static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
+    private CommonConnectorConfig connectorConfig;
 
     @Override
     public String name() {
@@ -34,7 +36,9 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     @Override
     public void init(CommonConnectorConfig connectorConfig) {
 
-        registerMXBean(this, connectorConfig, "signals");
+        this.connectorConfig = connectorConfig;
+
+        registerMXBean(this, connectorConfig, "management", "signals");
 
         LOGGER.info("Registration for Signaling MXBean with the platform server is successfully");
 
@@ -56,10 +60,11 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     @Override
     public void close() {
 
+        unregisterBean(connectorConfig, "management", "signals");
     }
 
     @Override
-    public void trigger(String id, String type, String data) {
+    public void signal(String id, String type, String data) {
 
         SIGNALS.add(new SignalRecord(id, type, data, Map.of()));
     }

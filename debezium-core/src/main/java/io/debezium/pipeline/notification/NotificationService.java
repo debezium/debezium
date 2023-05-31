@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.notification;
 
+import static io.debezium.function.Predicates.not;
+
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -18,8 +20,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.SchemaFactory;
-
-import static io.debezium.function.Predicates.not;
 
 /**
  * This service can be used to send notification to available and enabled channels
@@ -92,5 +92,12 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
 
     private Predicate<? super NotificationChannel> isConnectChannel() {
         return channel -> channel instanceof ConnectChannel;
+    }
+
+    public void stop() {
+
+        this.notificationChannels.stream()
+                .filter(isEnabled())
+                .forEach(NotificationChannel::close);
     }
 }

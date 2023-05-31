@@ -38,12 +38,22 @@ public class NotificationsIT extends AbstractNotificationsIT<PostgresConnector> 
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
     }
 
     @Override
+    protected String connector() {
+        return "postgres";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER;
+    }
+
+    @Override
     protected String snapshotStatusResult() {
-        return "SKIPPED";
+        return "COMPLETED";
     }
 }

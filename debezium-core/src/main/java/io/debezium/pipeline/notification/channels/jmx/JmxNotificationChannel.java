@@ -5,23 +5,34 @@
  */
 package io.debezium.pipeline.notification.channels.jmx;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.pipeline.notification.Notification;
-import io.debezium.pipeline.notification.channels.NotificationChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static io.debezium.pipeline.JmxUtils.registerMXBean;
+import static io.debezium.pipeline.JmxUtils.unregisterBean;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static io.debezium.pipeline.JmxUtils.registerMXBean;
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationBroadcasterSupport;
 
-public class JmxNotificationChannel implements NotificationChannel, JmxNotificationChannelMXBean {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.notification.Notification;
+import io.debezium.pipeline.notification.channels.NotificationChannel;
+
+public class JmxNotificationChannel extends NotificationBroadcasterSupport implements NotificationChannel, JmxNotificationChannelMXBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JmxNotificationChannel.class);
     private static final String CHANNEL_NAME = "jmx";
+    private static final String DEBEZIUM_NOTIFICATION_TYPE = "debezium.notification";
 
     private static final List<Notification> NOTIFICATIONS = new ArrayList<>();
+
+    private final AtomicLong notificationSequence = new AtomicLong(0);
+
+    private CommonConnectorConfig connectorConfig;
 
     @Override
     public String name() {
@@ -31,7 +42,9 @@ public class JmxNotificationChannel implements NotificationChannel, JmxNotificat
     @Override
     public void init(CommonConnectorConfig connectorConfig) {
 
-        registerMXBean(this, connectorConfig, "notifications");
+        this.connectorConfig = connectorConfig;
+
+        registerMXBean(this, connectorConfig, "management", "notifications");
 
         LOGGER.info("Registration for Notification MXBean with the platform server is successfully");
 
@@ -41,11 +54,32 @@ public class JmxNotificationChannel implements NotificationChannel, JmxNotificat
     public void send(Notification notification) {
 
         NOTIFICATIONS.add(notification);
+
+        sendNotification(buildJmxNotification(notification));
+    }
+
+    private javax.management.Notification buildJmxNotification(Notification notification) {
+
+        javax.management.Notification n = new javax.management.Notification(
+                DEBEZIUM_NOTIFICATION_TYPE,
+                this,
+                notificationSequence.getAndIncrement(),
+                System.currentTimeMillis(),
+                composeMessage(notification));
+
+        n.setUserData(notification.toString());
+
+        return n;
+    }
+
+    private String composeMessage(Notification notification) {
+        return String.format("%s generated a notification", notification.getAggregateType());
     }
 
     @Override
     public void close() {
 
+        unregisterBean(connectorConfig, "management", "notifications");
     }
 
     @Override
@@ -57,5 +91,19 @@ public class JmxNotificationChannel implements NotificationChannel, JmxNotificat
     public void reset() {
 
         NOTIFICATIONS.clear();
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+
+        String[] types = new String[]{
+                DEBEZIUM_NOTIFICATION_TYPE
+        };
+
+        String name = Notification.class.getName();
+        String description = "Notification emitted by Debezium about its status";
+        MBeanNotificationInfo info = new MBeanNotificationInfo(types, name, description);
+
+        return new MBeanNotificationInfo[]{ info };
     }
 }

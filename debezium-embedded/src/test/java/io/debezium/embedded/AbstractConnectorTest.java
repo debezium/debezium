@@ -1218,10 +1218,14 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
-        waitForSnapshotEvent(connector, server, "SnapshotCompleted");
+        waitForSnapshotEvent(connector, server, "SnapshotCompleted", null, null);
     }
 
-    private static void waitForSnapshotEvent(String connector, String server, String event) throws InterruptedException {
+    public static void waitForSnapshotToBeCompleted(String connector, String server, String task, String database) throws InterruptedException {
+        waitForSnapshotEvent(connector, server, "SnapshotCompleted", task, database);
+    }
+
+    private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         Awaitility.await()
@@ -1230,7 +1234,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server), event));
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server, task, database), event));
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
@@ -1270,6 +1274,15 @@ public abstract class AbstractConnectorTest implements Testing {
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server);
+    }
+
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database) throws MalformedObjectNameException {
+
+        if (task != null && database != null) {
+            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + ",task=" + task + ",database=" + database);
+        }
+
+        return getSnapshotMetricsObjectName(connector, server);
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
