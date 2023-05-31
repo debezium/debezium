@@ -26,6 +26,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.actions.SignalAction;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -89,6 +90,15 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         previousOffsets = Offsets.of(Collections.singletonMap(previousOffsets.getTheOnlyPartition(), offset));
     }
 
+    public void restoreKafkaOffset(Long signalOffset) {
+
+        KafkaSignalChannel kafkaSignal = getSignalChannel(KafkaSignalChannel.class);
+
+        if (signalOffset != null) {
+            kafkaSignal.seek(signalOffset);
+        }
+    }
+
     public void start() {
 
         LOGGER.info("SignalProcessor started. Scheduling it every {}ms", connectorConfig.getSignalPollInterval().toMillis());
@@ -140,7 +150,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         executeWithSemaphore(() -> {
             LOGGER.trace("Processing source signals");
             signalChannelReaders.stream()
-                    .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
+                    .filter(isSignal(SourceSignalChannel.class))
                     .filter(isEnabled())
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
@@ -195,13 +205,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
-    public SourceSignalChannel getSourceSignalChannel() {
-        return (SourceSignalChannel) signalChannelReaders.stream()
-                .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
-                .findFirst().get();
+    public <T extends SignalChannelReader> T getSignalChannel(Class<T> channel) {
+        return channel.cast(signalChannelReaders.stream()
+                .filter(isSignal(channel))
+                .findFirst().get());
     }
 
-    private static Predicate<SignalChannelReader> isSignal(String signalName) {
-        return channel -> channel.name().equals(signalName);
+    private static <T extends SignalChannelReader> Predicate<SignalChannelReader> isSignal(Class<T> channelClass) {
+        return channel -> channel.getClass().equals(channelClass);
     }
 }
