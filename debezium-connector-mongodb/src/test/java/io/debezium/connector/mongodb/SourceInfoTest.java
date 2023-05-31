@@ -269,6 +269,7 @@ public class SourceInfoTest {
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("txnNumber", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("stripeAudit", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);
