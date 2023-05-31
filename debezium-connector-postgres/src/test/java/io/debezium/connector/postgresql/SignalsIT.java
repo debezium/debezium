@@ -231,9 +231,10 @@ public class SignalsIT extends AbstractConnectorTest {
 
     private void sendLogSignalWithJmx(String id, String type, String data)
             throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, MBeanException {
-        ObjectName objectName = new ObjectName("debezium.Postgres:type=signals, server=test_server");
+
+        ObjectName objectName = new ObjectName("debezium.postgres:type=management, context=signals, server=test_server");
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
-        server.invoke(objectName, "trigger", new Object[]{ id, type, data }, new String[]{ String.class.getName(), String.class.getName(), String.class.getName() });
+        server.invoke(objectName, "signal", new Object[]{ id, type, data }, new String[]{ String.class.getName(), String.class.getName(), String.class.getName() });
     }
 }
