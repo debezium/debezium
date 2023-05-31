@@ -56,6 +56,7 @@ public class Timestamp {
 
     /**
      * Get the number of milliseconds past epoch of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
+     * Get local timezone form environment variable, for example LOCAL_TIMEZONE="+08:00"
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}.
      *
@@ -74,7 +75,12 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
 
-        return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        String localTimezone = System.getenv("LOCAL_TIMEZONE");
+        if(localTimezone != null){
+            return dateTime.toInstant(ZoneOffset.of(timezone)).toEpochMilli();
+        }else{
+            return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        }
     }
 
     private Timestamp() {
