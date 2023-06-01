@@ -7,7 +7,7 @@ endif::community[]
 In an incremental snapshot, instead of capturing the full state of a database all at once, as in an initial snapshot, {prodname} captures each {data-collection} in phases, in a series of configurable chunks.
 You can specify the {data-collection}s that you want the snapshot to capture and the xref:{context}-property-incremental-snapshot-chunk-size[size of each chunk].
 The chunk size determines the number of rows that the snapshot collects during each fetch operation on the database.
-The default chunk size for incremental snapshots is 1 KB.
+The default chunk size for incremental snapshots is 1024 rows.
 
 As an incremental snapshot proceeds, {prodname} uses watermarks to track its progress, maintaining a record of each {data-collection} row that it captures.
 This phased approach to capturing data provides the following advantages over the standard initial snapshot process:
