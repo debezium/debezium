@@ -105,7 +105,11 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private void restoreOffset() {
 
-        dispatcher.getSignalProcessor().restoreKafkaOffset(getContext().getSignalOffset());
+        KafkaSignalChannel kafkaSignal = dispatcher.getSignalProcessor().getSignalChannel(KafkaSignalChannel.class);
+
+        if (getContext().getSignalOffset() != null) {
+            kafkaSignal.reset(getContext().getSignalOffset());
+        }
     }
 
     private boolean isKafkaChannelEnabled() {

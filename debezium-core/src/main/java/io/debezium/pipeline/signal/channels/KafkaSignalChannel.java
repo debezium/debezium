@@ -147,6 +147,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
         signalsConsumer.assign(Collect.arrayListOf(new TopicPartition(topicName, 0)));
     }
 
+    @Override
+    public void reset(Object reference) {
+
+        signalsConsumer.seek(new TopicPartition(topicName, 0), ((Long) reference) + 1);
+    }
+
     private static Configuration buildKafkaConfiguration(String signalName, Configuration signalConfig) {
 
         return signalConfig.subset(CONSUMER_PREFIX, true).edit()

@@ -26,7 +26,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.signal.actions.SignalAction;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -88,15 +87,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     public void setContext(O offset) {
         previousOffsets = Offsets.of(Collections.singletonMap(previousOffsets.getTheOnlyPartition(), offset));
-    }
-
-    public void restoreKafkaOffset(Long signalOffset) {
-
-        KafkaSignalChannel kafkaSignal = getSignalChannel(KafkaSignalChannel.class);
-
-        if (signalOffset != null) {
-            kafkaSignal.seek(signalOffset);
-        }
     }
 
     public void start() {
