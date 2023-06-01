@@ -9,6 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -41,6 +44,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
+import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -55,6 +59,7 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     public static final String EXCLUDED_TABLE = "b";
     @Rule
     public TestRule skipTest = new SkipTestDependingOnGtidModeRule();
+    private final Path signalsFile = Paths.get("src", "test", "resources").resolve("debezium_signaling_file.txt");
 
     @Before
     public void before() throws SQLException {
@@ -220,6 +225,29 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     }
 
     @Test
+    public void inserts4PksWithSignalFile() throws Exception {
+        // Testing.Print.enable();
+
+        populate4PkTable();
+        startConnector(c -> c.with(FileSignalChannel.SIGNAL_FILE, signalsFile.toString())
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "file"));
+
+        sendExecuteSnapshotFileSignal(DATABASE.qualifiedTableName("a4"));
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                DATABASE.topicForTable("a4"),
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
     public void insertsWithoutPks() throws Exception {
         // Testing.Print.enable();
 
@@ -324,6 +352,16 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
         for (int i = beforeResume + 1; i < ROW_COUNT; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
+    }
+
+    private void sendExecuteSnapshotFileSignal(String fullTableNames) throws IOException {
+
+        String signalValue = String.format(
+                "{\"id\":\"12345\",\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
+                fullTableNames);
+
+        java.nio.file.Files.write(signalsFile, signalValue.getBytes());
+
     }
 
     protected void populate4PkTable() throws SQLException {
