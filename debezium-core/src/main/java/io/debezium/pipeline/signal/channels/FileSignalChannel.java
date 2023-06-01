@@ -7,7 +7,11 @@ package io.debezium.pipeline.signal.channels;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +45,7 @@ import io.debezium.pipeline.signal.SignalRecord;
  *
  */
 public class FileSignalChannel implements SignalChannelReader {
+
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
     public static final Field SIGNAL_FILE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "file")
             .withDisplayName("Signal file name")
@@ -68,6 +73,17 @@ public class FileSignalChannel implements SignalChannelReader {
                 .build();
         this.signalFile = new File(signalConfig.getString(SIGNAL_FILE));
         LOGGER.info("Reading '{}' file for signals", signalFile.getAbsolutePath());
+    }
+
+    @Override
+    public void reset(Object reference) {
+
+        try (FileChannel file = FileChannel.open(Paths.get(signalFile.getPath()), StandardOpenOption.WRITE)) {
+            file.truncate(0);
+        }
+        catch (IOException e) {
+            LOGGER.error("Unable to truncate file '{}'", signalFile.getAbsolutePath());
+        }
     }
 
     @Override

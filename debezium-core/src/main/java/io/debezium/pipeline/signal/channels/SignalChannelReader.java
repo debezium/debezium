@@ -17,6 +17,7 @@ import io.debezium.pipeline.signal.SignalRecord;
  * Implementations must:
  * define the name of the reader in {@link #name()},
  * initialize specific configuration/variables/connections in the {@link #init(CommonConnectorConfig connectorConfig)} method,
+ * implement reset logic for specific channel in the {@link #reset(Object)} method if you need to reset already processed signals,
  * provide a list of signal record in the {@link #read()} method. It is called by {@link SignalProcessor} in a thread loop
  * Close all allocated resources int the {@link #close()} method.
  *
@@ -26,6 +27,9 @@ public interface SignalChannelReader {
     String name();
 
     void init(CommonConnectorConfig connectorConfig);
+
+    default <T> void reset(T reference) {
+    }
 
     List<SignalRecord> read();
 
