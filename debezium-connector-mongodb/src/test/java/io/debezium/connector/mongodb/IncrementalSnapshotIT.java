@@ -55,6 +55,8 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
     private static final String DOCUMENT_ID = "_id";
 
+    private static final int INCREMENTAL_SNAPSHOT_THREADS = 7; // use a prime number in tests to cover the cases where the last chunk is less than the chunk size.
+
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
             .toAbsolutePath();
 
@@ -427,6 +429,58 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 x -> x.getValue() >= 2000, null);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 2000));
+        }
+    }
+
+    @Test
+    public void multiThreadingSnapshot() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection();
+        startConnector(x -> x.with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, INCREMENTAL_SNAPSHOT_THREADS));
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
+        }
+    }
+
+    @Test
+    public void multiThreadSnapshotWithRestart() throws Exception {
+        // Testing.Print.enable();
+
+        final Configuration config = config().with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, INCREMENTAL_SNAPSHOT_THREADS).build();
+        final Configuration configForRestart = config().with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, INCREMENTAL_SNAPSHOT_THREADS + 2).build();
+
+        populateDataCollection();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final AtomicInteger recordCounter = new AtomicInteger();
+        final AtomicBoolean restarted = new AtomicBoolean();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, x -> true,
+                x -> {
+                    if (recordCounter.addAndGet(x.size()) > 50 && !restarted.get()) {
+                        stopConnector();
+                        assertConnectorNotRunning();
+
+                        start(connectorClass(), configForRestart);
+                        waitForConnectorToStart();
+                        restarted.set(true);
+                    }
+                });
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i));
         }
     }
 
