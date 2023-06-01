@@ -2539,7 +2539,7 @@ upgrade_table_clause
     ;
     
 truncate_table
-    : TRUNCATE TABLE tableview_name PURGE? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
+    : TRUNCATE TABLE tableview_name ((PRESERVE | PURGE) MATERIALIZED VIEW LOG)? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
     ;
 
 drop_table
