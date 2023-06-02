@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -247,6 +248,27 @@ public class SourceInfoTest {
                 .append("ns", new BsonString("dbA.collectA"));
         source.opLogEvent("rs", event);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+    }
+
+    @Test
+    public void wallTimeIsPresent() {
+        // Non-transactional event.
+        final BsonDocument event = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", event);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(1987654321123L);
+        // Transactional event.
+        final BsonDocument masterEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("wall", new BsonDateTime(1987654321123L))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        final BsonDocument oplogEvent = new BsonDocument().append("ts", new BsonTimestamp(100, 2))
+                .append("h", new BsonInt64(Long.valueOf(1987654321)))
+                .append("ns", new BsonString("dbA.collectA"));
+        source.opLogEvent("rs", oplogEvent, masterEvent, 0);
+        assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(1987654321123L);
     }
 
     @Test
