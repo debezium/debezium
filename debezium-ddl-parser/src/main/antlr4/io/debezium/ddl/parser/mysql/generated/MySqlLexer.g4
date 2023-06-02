@@ -1333,7 +1333,7 @@ DOT_ID:                              '.' ID_LITERAL;
 
 ID:                                  ID_LITERAL;
 // DOUBLE_QUOTE_ID:                  '"' ~'"'+ '"';
-REVERSE_QUOTE_ID:                    '`' ~'`'+ '`';
+REVERSE_QUOTE_ID:                    BQUOTA_STRING;
 STRING_USER_NAME:                    (
                                        SQUOTA_STRING | DQUOTA_STRING
                                        | BQUOTA_STRING | ID_LITERAL
@@ -1381,7 +1381,7 @@ fragment EXPONENT_NUM_PART:          'E' [-+]? DEC_DIGIT+;
 fragment ID_LITERAL:                 [A-Z_$0-9\u0080-\uFFFF]*?[A-Z_$\u0080-\uFFFF]+?[A-Z_$0-9\u0080-\uFFFF]*;
 fragment DQUOTA_STRING:              '"' ( '\\'. | '""' | ~('"'| '\\') )* '"';
 fragment SQUOTA_STRING:              '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\'';
-fragment BQUOTA_STRING:              '`' ( '\\'. | '``' | ~('`'|'\\'))* '`';
+fragment BQUOTA_STRING:              '`' ( ~'`' | '``' )* '`';
 fragment HEX_DIGIT:                  [0-9A-F];
 fragment DEC_DIGIT:                  [0-9];
 fragment BIT_STRING_L:               'B' '\'' [01]+ '\'';
