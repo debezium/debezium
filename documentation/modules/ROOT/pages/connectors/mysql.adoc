@@ -552,10 +552,10 @@ a|Record the successful completion of the snapshot in the connector offsets.
 
 |===
 
-// ModuleID: description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
-[id="{context}-understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
 ==== Understanding why initial snapshots capture the schema history for all tables
 
 When a connector runs an initial snapshot, it captures two types of information:
@@ -566,27 +566,20 @@ Schema data::
 DDL statements that describe changes that occur to the structure of tables.
 
 By default, the snapshot captures schema data for every table that is present in the database, not only from tables that are designated for capture.
-For tables that are not designated for capture, the snapshot does not capture any table data; it captures only the table structure.
-Schema data is persisted to the both the internal schema history topic, and to the configured schema change topic.
+For tables that are not designated for capture, the snapshot captures only the table structure.
+It does not capture any table data.
+The captured schema data is persisted to the both the internal schema history topic, and to the schema change topic, if one is configured.
 
-Users who notice that an intial snapshot captures schema information for non-captured tables might question whether an error occurred.
-But the capture of schema information for all tables is very much by design.
+Users might be surprised to see that an intial snapshot captured schema information for non-captured tables, and might assume that an error occurred.
+But inital snapshots capture schema information for all tables by design.
 By persisting schema data for tables that are not part of the original capture set, the connector prepares itself to readily capture event data from these tables should that later become necessary.
 
-The database schema can change at any time.
-For this reason, it's important for {prodname} to be able to identify the schema that is in effect for a table at the time that any event occurs.
+Because the database schema can change at any time, {prodname} must be able to identify the schema that is in effect for a table at the time that any event occurs.
 Then, if the connector later stops, when it resumes reading from the binlog, it can correlate event information with information from the schema history topic to ensure that it applies the correct schema to each event.
 
-//   Should we add information about what to do if you change the default to exclude schema for non-captured tables, but then you later want to capture data from such a table?
-//    you may have to perform additional manual steps to add the new table's schema to the schema history topic in the future for actions
-//   Fro example, take a new (schema) snapshot, which requires the snapshotted table's schema to exist in the schema history topic prior to taking the incremental snapshot.
-//   remove/clean schema history topic and set snapshot.mode to schema_only_recovery
-//   schema_only_recovery should can only be used if you can guarantee that the tables you were previously capturing have had no schema changes made to them between now and the point in the past where the connector was still reading changes from.
-//   chema history recovery takes the current JDBC structures of the tables and publishes those to the history topic.
-//   If we then begin to read the binlog from the last read offset and the structure of a table differs from what is in the schema history now, that could be cause for schema inconsistencies, so it's important to be careful when using recovery that you know the table's haven't had any DDL changes.
-//   Delete the existing history topic, and then use schema_only_recovery to repopulate it=, so yo can ensure that the history topic of the captured table exists.
-//   Rebuild the history topic by re-deploying the connector using the snapshot.mode schema_only_recovery to make things work fine, if not, we do get errors like this:
-//   Caused by: io.debezium.DebeziumException: Encountered change event for table dbName.yourTableName whose schema isn't known to this connector
+If you exclude schema capture for non-captured tables, and you later want to capture data from such a table, an exception results due to the unknown schema.
+Additional manual steps are required to add the new table's schema to the schema history topic.
+
 In general, it's best to leave the default configuration in place.
 But you are sure that you have no future need to capture data from any existing tables, you can exclude non-captured tables from schema capture.
 For more information, see the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property.
