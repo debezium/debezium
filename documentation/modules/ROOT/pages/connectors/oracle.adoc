@@ -242,6 +242,34 @@ To configure custom topic names, you specify regular expressions in the logical 
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
+// ModuleID: how-debezium-oracle-connectors-handle-database-schema-changes
+// Title: How {prodname} Oracle connectors handle database schema changes
+[[oracle-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of changes that occur after a schema change, Oracle includes in the binlog not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
+As the connector reads the binlog and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
+The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
+In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
+
+When the connector restarts after either a crash or a graceful stop, it starts reading the binlog from a specific position, that is, from a specific point in time.
+The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
+
+This database schema history topic is for connector use only.
+Optionally, the connector can also xref:oracle-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+When the Oracle connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
+The connector needs to be configured to capture change to these helper tables.
+If consumers do not need the records generated for helper tables, then a single message transform can be applied to filter them out.
+
+For more information, see xref:oracle-topic-names[default names for topics] that receive {prodname} event records.
+
+// Type: concept
 // ModuleID: how-debezium-oracle-connectors-expose-database-schema-changes
 // Title: How {prodname} Oracle connectors expose database schema changes
 [[oracle-schema-change-topic]]
