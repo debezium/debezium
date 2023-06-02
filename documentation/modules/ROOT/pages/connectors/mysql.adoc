@@ -112,9 +112,10 @@ Because these hosted options do not allow a global read lock, table-level locks 
 
 When a database client queries a database, the client uses the database’s current schema.
 However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
-Also, a connector cannot just use the current schema because the connector might be processing events that are relatively old that were recorded before the tables' schemas were changed.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
 
-To ensure correct processing of changes that occur after a schema change, MySQL includes in the binlog not only the row-level changes to the data, but also the DDL statements that are applied to the database.
+To ensure correct processing of changes that occur after a schema change, MySQL includes in the binlog not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
 As the connector reads the binlog and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
 The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
 In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
@@ -550,6 +551,7 @@ Other database clients can now write to any previously locked tables.
 a|Record the successful completion of the snapshot in the connector offsets.
 
 |===
+
 // ModuleID: description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
 // Title: Description of why initial snapshots capture the schema history for all tables
 // Type: concept
