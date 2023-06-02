@@ -731,19 +731,21 @@ alterSpecification
     | IMPORT TABLESPACE                                             #alterByImportTablespace
     | FORCE                                                         #alterByForce
     | validationFormat=(WITHOUT | WITH) VALIDATION                  #alterByValidate
-    | ADD PARTITION ifNotExists?                                    // ifNotExists is MariaDB-specific only
-        '('
-          partitionDefinition (',' partitionDefinition)*
-        ')'                                                         #alterByAddPartition
+    | ADD COLUMN? ifNotExists?                                      // ifNotExists is MariaDB-specific only
+        '(' createDefinition (',' createDefinition)* ')'            #alterByAddDefinitions
+    | alterPartitionSpecification                                   #alterPartition
+    ;
+
+alterPartitionSpecification
+    : ADD PARTITION ifNotExists?                                    // ifNotExists is MariaDB-specific only
+      '(' partitionDefinition (',' partitionDefinition)* ')'        #alterByAddPartition
     | DROP PARTITION ifExists? uidList                              #alterByDropPartition // here ifExists is MariaDB-specific only
     | DISCARD PARTITION (uidList | ALL) TABLESPACE                  #alterByDiscardPartition
     | IMPORT PARTITION (uidList | ALL) TABLESPACE                   #alterByImportPartition
     | TRUNCATE PARTITION (uidList | ALL)                            #alterByTruncatePartition
     | COALESCE PARTITION decimalLiteral                             #alterByCoalescePartition
     | REORGANIZE PARTITION uidList
-        INTO '('
-          partitionDefinition (',' partitionDefinition)*
-        ')'                                                         #alterByReorganizePartition
+      INTO '(' partitionDefinition (',' partitionDefinition)* ')'   #alterByReorganizePartition
     | EXCHANGE PARTITION uid WITH TABLE tableName
       (validationFormat=(WITH | WITHOUT) VALIDATION)?               #alterByExchangePartition
     | ANALYZE PARTITION (uidList | ALL)                             #alterByAnalyzePartition
@@ -753,10 +755,7 @@ alterSpecification
     | REPAIR PARTITION (uidList | ALL)                              #alterByRepairPartition
     | REMOVE PARTITIONING                                           #alterByRemovePartitioning
     | UPGRADE PARTITIONING                                          #alterByUpgradePartitioning
-    | ADD COLUMN? ifNotExists?                                      // ifNotExists is MariaDB-specific only
-        '(' createDefinition (',' createDefinition)* ')'            #alterByAddDefinitions
     ;
-
 
 //    Drop statements
 
@@ -2172,12 +2171,14 @@ collationName
     : uid | STRING_LITERAL;
 
 engineName
-    : ARCHIVE | BLACKHOLE | CSV | FEDERATED | INNODB | MEMORY
-    | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFORMANCE_SCHEMA
-    | TOKUDB
+    : engineNameBase
     | ID
-    | STRING_LITERAL | REVERSE_QUOTE_ID
-    | CONNECT
+    | STRING_LITERAL
+    ;
+
+engineNameBase
+    : ARCHIVE | BLACKHOLE | CONNECT | CSV | FEDERATED | INNODB | MEMORY
+    | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFORMANCE_SCHEMA | TOKUDB
     ;
 
 // MariaDB
@@ -2213,15 +2214,16 @@ authPlugin
 uid
     : simpleId
     //| DOUBLE_QUOTE_ID
-    | REVERSE_QUOTE_ID
+    //| REVERSE_QUOTE_ID
     | CHARSET_REVERSE_QOUTE_STRING
+    | STRING_LITERAL
     ;
 
 simpleId
     : ID
     | charsetNameBase
     | transactionLevelBase
-    | engineName
+    | engineNameBase
     | privilegesBase
     | intervalTypeBase
     | dataTypeBase
