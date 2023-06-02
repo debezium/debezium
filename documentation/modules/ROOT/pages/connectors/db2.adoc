@@ -168,12 +168,12 @@ If you're certain that it won't be necessary to capture data from other tables i
 ====
 
 6. Release any locks obtained in Step 3.
-  Other database clients can now write to the database.
+  Other database clients can now write to any previously locked tables.
 
 7. At the LSN position read in Step 4, the connector scans the tables that are designated for capture.
   During the scan, the connector completes the following tasks:
 
-.. Confirms that the table being scanned was created before the snapshot began.
+.. Confirms that the table was created before the snapshot began.
   If the table was created after the snapshot began, the connector skips the table.
   After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
 

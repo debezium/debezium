@@ -470,8 +470,9 @@ After the connector completes the initial snapshot, it continues streaming from 
 
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
 
-If the connector stops for long enough, the binlog files that record the connector's position can expire.
-If the database purges the expired binlog files, the connector's position is lost, which causes the connector to revert to the _initial snapshot_ for its starting position.
+After the connector restarts, if the logs have been pruned, the connector's position in the logs might no longer available.
+The connector then fails, and returns an error that indicates that a new snapshot is required.
+To configure the connector to automatically initiate a snapshot in this situation, set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `when_needed`.
 For more tips on troubleshooting the {prodname} MySQL connector, see xref:mysql-when-things-go-wrong[behavior when things go wrong].
 
 // Type: concept
@@ -543,6 +544,7 @@ a|Commit the transaction.
 
 |9
 |Release the table-level locks.
+Other database clients can now write to any previously locked tables.
 
 |10
 a|Record the successful completion of the snapshot in the connector offsets.
