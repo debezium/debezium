@@ -62,13 +62,13 @@ import io.debezium.util.Testing;
 public class SnapshotSourceIT extends AbstractConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
+    protected final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-    private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
-    private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
-    private final UniqueDatabase CONFLICT_NAMES_DATABASE = new UniqueDatabase("logical_server_name", "mysql_dbz_6533");
+    protected final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
+    protected final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
+    protected final UniqueDatabase CONFLICT_NAMES_DATABASE = new UniqueDatabase("logical_server_name", "mysql_dbz_6533");
 
-    private Configuration config;
+    protected Configuration config;
 
     @Rule
     public SkipTestRule skipRule = new SkipTestRule();

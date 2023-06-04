@@ -82,6 +82,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
+    protected Queue<JdbcConnection> connectionPool;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
@@ -105,7 +106,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         Connection connection = null;
         Exception exceptionWhileSnapshot = null;
-        Queue<JdbcConnection> connectionPool = null;
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
 
@@ -122,6 +122,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
+            // Init jdbc connection pool for reading table schema and data
+            connectionPool = createConnectionPool(ctx);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
@@ -134,11 +136,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
             readTableStructure(context, ctx, previousOffset);
-
-            if (snapshottingTask.snapshotData()) {
-                LOGGER.info("Snapshot step 5.a - Creating connection pool");
-                connectionPool = createConnectionPool(ctx);
-            }
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
