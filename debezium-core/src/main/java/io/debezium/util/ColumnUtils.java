@@ -24,9 +24,7 @@ public class ColumnUtils {
         int greatestColumnPosition = 0;
         for (Column column : table.columns()) {
             sourceTableColumns.put(column.name(), column);
-            greatestColumnPosition = greatestColumnPosition < column.position()
-                    ? column.position()
-                    : greatestColumnPosition;
+            greatestColumnPosition = Math.max(greatestColumnPosition, column.position());
         }
         return new MappedColumns(sourceTableColumns, greatestColumnPosition);
     }
@@ -59,9 +57,7 @@ public class ColumnUtils {
                         + table
                         + ". This might be caused by DBZ-4350");
             }
-            greatestColumnPosition = greatestColumnPosition < columns[i].position()
-                    ? columns[i].position()
-                    : greatestColumnPosition;
+            greatestColumnPosition = Math.max(greatestColumnPosition, columns[i].position());
         }
         return new ColumnArray(columns, greatestColumnPosition);
     }
