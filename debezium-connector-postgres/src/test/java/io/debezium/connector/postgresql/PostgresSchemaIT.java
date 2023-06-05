@@ -172,7 +172,7 @@ public class PostgresSchemaIT {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
             assertTableSchema("public.custom_table", "lt", Ltree.builder().optional().build());
-            assertTableSchema("public.custom_table", "i", Schema.BYTES_SCHEMA);
+            assertTableSchema("public.custom_table", "i", Schema.STRING_SCHEMA);
         }
     }
 
