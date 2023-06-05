@@ -70,6 +70,7 @@ The following example shows a typical notification that provides the status of a
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
+
 [id="debezium-notifications-about-the-progress-of-incremental-snapshots"]
 ==== {prodname} notifications about the progress of incremental snapshots
 
