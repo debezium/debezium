@@ -195,6 +195,11 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
+    /**
+     * The method permits to get specified SignalChannelReader instance from the available SPI implementations
+     * @param channel the class of the channel to get
+     * @return the specified instance from the available SPI implementations
+     */
     public <T extends SignalChannelReader> T getSignalChannel(Class<T> channel) {
         return channel.cast(signalChannelReaders.stream()
                 .filter(isSignal(channel))
