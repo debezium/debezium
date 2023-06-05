@@ -168,6 +168,8 @@ public class ReplicationMessageColumnValueResolver {
             case "int4range":
             case "numrange":
             case "int8range":
+            case "ltree":
+            case "isbn":
                 return value.asString();
 
             // catch-all for other known/builtin PG types

@@ -1271,7 +1271,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record = records.get(0);
         VerifyRecord.isValidInsert(record, PK_FIELD, 1);
-        final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
+        final String isbn = new String(((Struct) record.value()).getStruct("after").getString("aa"));
         assertThat(isbn).isEqualTo("0-393-04002-X");
 
         TestHelper.assertNoOpenTransactions();

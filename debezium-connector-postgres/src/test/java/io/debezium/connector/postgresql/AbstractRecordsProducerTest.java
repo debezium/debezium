@@ -918,7 +918,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         final Schema ltreeSchema = Ltree.builder().optional().build();
         final Schema ltreeArraySchema = SchemaBuilder.array(ltreeSchema).optional().build();
         return Arrays.asList(new SchemaAndValueField("lt", ltreeSchema, "Top.Collections.Pictures.Astronomy.Galaxies"),
-                new SchemaAndValueField("i", Schema.BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
+                new SchemaAndValueField("i", Schema.STRING_SCHEMA, "0-393-04002-X"),
                 new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
                 new SchemaAndValueField("lt_array", ltreeArraySchema, Arrays.asList("Ship.Frigate", "Ship.Destroyer")));
     }

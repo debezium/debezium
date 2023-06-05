@@ -46,6 +46,7 @@ public class TypeRegistry {
     public static final String TYPE_NAME_CITEXT = "citext";
     public static final String TYPE_NAME_HSTORE = "hstore";
     public static final String TYPE_NAME_LTREE = "ltree";
+    public static final String TYPE_NAME_ISBN = "isbn";
 
     public static final String TYPE_NAME_HSTORE_ARRAY = "_hstore";
     public static final String TYPE_NAME_GEOGRAPHY_ARRAY = "_geography";
@@ -108,6 +109,7 @@ public class TypeRegistry {
     private int citextOid = Integer.MIN_VALUE;
     private int hstoreOid = Integer.MIN_VALUE;
     private int ltreeOid = Integer.MIN_VALUE;
+    private int isbnOid = Integer.MIN_VALUE;
 
     private int hstoreArrayOid = Integer.MIN_VALUE;
     private int geometryArrayOid = Integer.MIN_VALUE;
@@ -160,6 +162,9 @@ public class TypeRegistry {
         }
         else if (TYPE_NAME_LTREE_ARRAY.equals(type.getName())) {
             ltreeArrayOid = type.getOid();
+        }
+        else if (TYPE_NAME_ISBN.equals(type.getName())) {
+            isbnOid = type.getOid();
         }
     }
 
@@ -260,6 +265,14 @@ public class TypeRegistry {
     }
 
     /**
+     *
+     * @return OID for {@code ISBN} type of this PostgreSQL instance
+     */
+    public int isbnOid() {
+        return isbnOid;
+    }
+
+    /**
     *
     * @return OID for array of {@code HSTORE} type of this PostgreSQL instance
     */
@@ -320,7 +333,7 @@ public class TypeRegistry {
             while (rs.next()) {
                 PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
 
-                // If the type does have have a base type, we can build/add immediately.
+                // If the type does have a base type, we can build/add immediately.
                 if (!builder.hasParentType()) {
                     addType(builder.build());
                     continue;
@@ -401,6 +414,10 @@ public class TypeRegistry {
             }
         }
         return null;
+    }
+
+    public int isbn() {
+        return isbnOid;
     }
 
     /**

@@ -176,6 +176,21 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    public void shouldGenerateSnapshotsForCustomDatatypesWithIncludeUnknownFalse() throws Exception {
+        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+
+        // then start the producer and validate all records are there
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.custom_table", schemasAndValuesForCustomTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
+    @Test
     public void shouldGenerateSnapshotAndContinueStreaming() throws Exception {
         // PostGIS must not be used
         TestHelper.dropAllSchemas();
