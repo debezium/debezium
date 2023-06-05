@@ -492,7 +492,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The maximum size of chunk for incremental snapshotting")
+            .withDescription("The maximum size of chunk (number of documents/rows) for incremental snapshotting")
             .withDefault(1024)
             .withValidation(Field::isNonNegativeInteger);
 
