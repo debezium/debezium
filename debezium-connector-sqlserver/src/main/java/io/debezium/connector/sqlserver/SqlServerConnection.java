@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
 import io.debezium.annotation.VisibleForTesting;
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -132,7 +131,7 @@ public class SqlServerConnection extends JdbcConnection {
         super(config, createConnectionFactory(config, useSingleDatabase), OPENING_QUOTING_CHARACTER, CLOSING_QUOTING_CHARACTER);
 
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
-        this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
+        this.queryFetchSize = config().getInteger(SqlServerConnectorConfig.QUERY_FETCH_SIZE);
 
         if (hasSkippedOperations(skippedOperations)) {
             Set<String> skippedOps = new HashSet<>();

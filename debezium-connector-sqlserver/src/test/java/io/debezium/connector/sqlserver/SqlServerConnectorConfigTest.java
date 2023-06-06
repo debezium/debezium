@@ -86,6 +86,15 @@ public class SqlServerConnectorConfigTest {
         assertEquals(connectionUrl(connectorConfig), "jdbc:sqlserver://${hostname}\\instance:${port}");
     }
 
+    @Test
+    public void validQueryFetchSize() throws Exception {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                        .build());
+        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
+    }
+
     private Configuration.Builder defaultConfig() {
         return Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "server")
