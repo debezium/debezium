@@ -184,6 +184,35 @@ public class PartitionRoutingTest {
         assertThat(transformedUpdateRecord).isNotEqualTo(updateRecord);
     }
 
+    @Test
+    public void byDefaultJavaHashIsUsed() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.id, change.product",
+                "partition.topic.num", 100));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "orange"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isEqualTo(39);
+    }
+
+    @Test
+    public void murmurHashWillBeUsed() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.id, change.product",
+                "partition.topic.num", 100,
+                "partition.hash.function", "murmur"));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "orange"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isEqualTo(65);
+    }
+
     private SourceRecord buildSourceRecord(Struct row, Envelope.Operation operation) {
 
         SchemaBuilder sourceSchemaBuilder = SchemaBuilder.struct()

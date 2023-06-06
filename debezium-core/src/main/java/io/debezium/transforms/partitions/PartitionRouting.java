@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -26,9 +27,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
+import io.debezium.util.MurmurHash3;
 
 /**
  * This SMT allow to use payload fields to calculate the destination partition.
@@ -39,10 +42,51 @@ import io.debezium.transforms.SmtManager;
 public class PartitionRouting<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRouting.class);
+    private static final MurmurHash3 MURMUR_HASH_3 = MurmurHash3.getInstance();
     public static final String NESTING_SEPARATOR = "\\.";
     public static final String CHANGE_SPECIAL_FIELD = "change";
     public static final String FIELD_PAYLOAD_FIELD_CONF = "partition.payload.fields";
     public static final String FIELD_TOPIC_PARTITION_NUM_CONF = "partition.topic.num";
+    public static final String FIELD_HASH_FUNCTION = "partition.hash.function";
+
+    public enum HashFunction implements EnumeratedValue {
+        /**
+         * Hash function to be used when computing hash of the fields of the record.
+         */
+
+        JAVA("java", Object::hashCode),
+        MURMUR("murmur", MurmurHash3.getInstance()::hash);
+
+        private final String name;
+        private final Function<Object, Integer> hash;
+
+        HashFunction(String value, Function<Object, Integer> hash) {
+            this.name = value;
+            this.hash = hash;
+        }
+
+        @Override
+        public String getValue() {
+            return name;
+        }
+
+        public Function<Object, Integer> getHash() {
+            return hash;
+        }
+
+        public static HashFunction parse(String value) {
+            if (value == null) {
+                return JAVA;
+            }
+            value = value.trim().toLowerCase();
+            for (HashFunction option : HashFunction.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return JAVA;
+        }
+    }
 
     static final Field PARTITION_PAYLOAD_FIELDS_FIELD = Field.create(FIELD_PAYLOAD_FIELD_CONF)
             .withDisplayName("List of payload fields to use for compute partition.")
@@ -65,9 +109,18 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             .withDescription("Number of partition for the topic on which this SMT act. Use TopicNameMatches predicate to filter records by topic")
             .required();
 
+    static final Field HASH_FUNCTION_FIELD = Field.create(FIELD_HASH_FUNCTION)
+            .withDisplayName("Hash function")
+            .withType(ConfigDef.Type.STRING)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Hash function to be used when computing hash of the fields which would determine number of the destination partition.")
+            .withDefault("java")
+            .optional();
+
     private SmtManager<R> smtManager;
     private List<String> payloadFields;
     private int partitionNumber;
+    private HashFunction hashFc;
 
     @Override
     public ConfigDef config() {
@@ -75,7 +128,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
         ConfigDef config = new ConfigDef();
         // group does not manage validator definition. Validation will not work here.
         return Field.group(config, "partitions",
-                PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD);
+                PARTITION_PAYLOAD_FIELDS_FIELD, TOPIC_PARTITION_NUM_FIELD, HASH_FUNCTION_FIELD);
     }
 
     @Override
@@ -89,6 +142,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
         payloadFields = config.getList(PARTITION_PAYLOAD_FIELDS_FIELD);
         partitionNumber = config.getInteger(TOPIC_PARTITION_NUM_FIELD);
+        hashFc = HashFunction.parse(config.getString(HASH_FUNCTION_FIELD));
     }
 
     @Override
@@ -182,12 +236,15 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
                 originalRecord.headers());
     }
 
-    private int computePartition(Integer partitionNumber, List<Object> values) {
+    protected int computePartition(Integer partitionNumber, List<Object> values) {
+        int totalHashCode = values.stream().map(hashFc.getHash()).reduce(0, Integer::sum);
         // hashCode can be negative due to overflow. Since Math.abs(Integer.MIN_INT) will still return a negative number
         // we use bitwise operation to remove the sign
-
-        Integer totalHashCode = values.stream().map(Object::hashCode).reduce(0, Integer::sum);
-        return (totalHashCode & Integer.MAX_VALUE) % partitionNumber;
+        int normalizedHash = totalHashCode & Integer.MAX_VALUE;
+        if (normalizedHash == Integer.MAX_VALUE) {
+            normalizedHash = 0;
+        }
+        return normalizedHash % partitionNumber;
     }
 
     @Override
