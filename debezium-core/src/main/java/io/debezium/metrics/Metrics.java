@@ -31,12 +31,6 @@ import io.debezium.util.Collect;
 @ThreadSafe
 public abstract class Metrics {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Metrics.class);
-
-    // Total 1 minute attempting to retry metrics registration in case of errors
-    private static final int REGISTRATION_RETRIES = 12;
-    private static final Duration REGISTRATION_RETRY_DELAY = Duration.ofSeconds(5);
-
     private final ObjectName name;
     private volatile boolean registered = false;
 
