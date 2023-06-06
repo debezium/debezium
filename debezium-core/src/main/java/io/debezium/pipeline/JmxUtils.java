@@ -6,56 +6,113 @@
 package io.debezium.pipeline;
 
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
-import javax.management.MBeanRegistrationException;
+import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 public class JmxUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JmxUtils.class);
     private static final String JMX_OBJECT_NAME_FORMAT = "debezium.%s:type=%s, context=%s, server=%s";
 
-    public static void registerMXBean(Object mxBean, CommonConnectorConfig connectorConfig, String type, String context) {
+    // Total 1 minute attempting to retry metrics registration in case of errors
+    private static final int REGISTRATION_RETRIES = 12;
+    private static final Duration REGISTRATION_RETRY_DELAY = Duration.ofSeconds(5);
 
-        String jmxObjectName = getJmxObjectName(type, context, connectorConfig);
+    public static void registerMXBean(ObjectName objectName, Object mxBean) {
+
         try {
-            ObjectName objectName = new ObjectName(jmxObjectName);
-            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-            if (!server.isRegistered(objectName)) {
-                server.registerMBean(mxBean, objectName);
+
+            final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+            if (mBeanServer == null) {
+                LOGGER.info("JMX not supported, bean '{}' not registered", objectName);
+                return;
+            }
+            // During connector restarts it is possible that Kafka Connect does not manage
+            // the lifecycle perfectly. In that case it is possible the old metric MBean is still present.
+            // There will be multiple attempts executed to register new MBean.
+            for (int attempt = 1; attempt <= REGISTRATION_RETRIES; attempt++) {
+                try {
+                    mBeanServer.registerMBean(mxBean, objectName);
+                    break;
+                }
+                catch (InstanceAlreadyExistsException e) {
+                    if (attempt < REGISTRATION_RETRIES) {
+                        LOGGER.warn(
+                                "Unable to register metrics as an old set with the same name exists, retrying in {} (attempt {} out of {})",
+                                REGISTRATION_RETRY_DELAY, attempt, REGISTRATION_RETRIES);
+                        final Metronome metronome = Metronome.sleeper(REGISTRATION_RETRY_DELAY, Clock.system());
+                        metronome.pause();
+                    }
+                    else {
+                        LOGGER.error("Failed to register metrics MBean, metrics will not be available");
+                    }
+                }
             }
         }
-        catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-            e.printStackTrace();
+        catch (JMException | InterruptedException e) {
+            throw new RuntimeException("Unable to register the MBean '" + objectName + "'", e);
         }
     }
 
-    public static void unregisterBean(CommonConnectorConfig connectorConfig, String type, String context) {
+    public static void registerMXBean(Object mxBean, CommonConnectorConfig connectorConfig, String type, String context) {
 
-        String jmxObjectName = getJmxObjectName(type, context, connectorConfig);
+        String jmxObjectName = getManagementJmxObjectName(type, context, connectorConfig);
         try {
             ObjectName objectName = new ObjectName(jmxObjectName);
-            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-            if (server.isRegistered(objectName)) {
-                server.unregisterMBean(objectName);
+
+            registerMXBean(objectName, mxBean);
+        }
+        catch (MalformedObjectNameException e) {
+            throw new RuntimeException("Unable to register the MBean '" + jmxObjectName + "'", e);
+        }
+
+    }
+
+    public static void unregisterMXBean(ObjectName objectName) {
+        try {
+            final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+            if (mBeanServer == null) {
+                LOGGER.debug("JMX not supported, bean '{}' not registered", objectName);
+                return;
+            }
+            try {
+                mBeanServer.unregisterMBean(objectName);
+            }
+            catch (InstanceNotFoundException e) {
+                LOGGER.info("Unable to unregister metrics MBean '{}' as it was not found", objectName);
             }
         }
-        catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+        catch (JMException e) {
+            throw new RuntimeException("Unable to unregister the MBean '" + objectName + "'", e);
+        }
+    }
+
+    public static void unregisterMXBean(CommonConnectorConfig connectorConfig, String type, String context) {
+
+        String jmxObjectName = getManagementJmxObjectName(type, context, connectorConfig);
+        try {
+            ObjectName objectName = new ObjectName(jmxObjectName);
+            unregisterMXBean(objectName);
+        }
+        catch (MalformedObjectNameException e) {
             LOGGER.info("Unable to unregister metrics MBean '{}' as it was not found", jmxObjectName);
         }
     }
 
-    private static String getJmxObjectName(String type, String context, CommonConnectorConfig connectorConfig) {
+    private static String getManagementJmxObjectName(String type, String context, CommonConnectorConfig connectorConfig) {
         return String.format(JMX_OBJECT_NAME_FORMAT, connectorConfig.getContextName().toLowerCase(), type, context, connectorConfig.getLogicalName());
     }
 }

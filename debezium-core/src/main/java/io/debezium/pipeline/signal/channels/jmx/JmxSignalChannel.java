@@ -6,7 +6,7 @@
 package io.debezium.pipeline.signal.channels.jmx;
 
 import static io.debezium.pipeline.JmxUtils.registerMXBean;
-import static io.debezium.pipeline.JmxUtils.unregisterBean;
+import static io.debezium.pipeline.JmxUtils.unregisterMXBean;
 
 import java.util.List;
 import java.util.Map;
@@ -60,7 +60,7 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     @Override
     public void close() {
 
-        unregisterBean(connectorConfig, "management", "signals");
+        unregisterMXBean(connectorConfig, "management", "signals");
     }
 
     @Override
