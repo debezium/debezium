@@ -5,7 +5,6 @@
  */
 package io.debezium.metrics;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -14,8 +13,6 @@ import javax.management.ObjectName;
 
 import org.apache.kafka.common.utils.Sanitizer;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
