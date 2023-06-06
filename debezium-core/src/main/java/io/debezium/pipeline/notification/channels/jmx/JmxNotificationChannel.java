@@ -6,7 +6,7 @@
 package io.debezium.pipeline.notification.channels.jmx;
 
 import static io.debezium.pipeline.JmxUtils.registerMXBean;
-import static io.debezium.pipeline.JmxUtils.unregisterBean;
+import static io.debezium.pipeline.JmxUtils.unregisterMXBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,7 +79,7 @@ public class JmxNotificationChannel extends NotificationBroadcasterSupport imple
     @Override
     public void close() {
 
-        unregisterBean(connectorConfig, "management", "notifications");
+        unregisterMXBean(connectorConfig, "management", "notifications");
     }
 
     @Override
