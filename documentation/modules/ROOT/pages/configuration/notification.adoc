@@ -17,8 +17,9 @@ endif::community[]
 {prodname} notifications provide a mechanism to obtain status information about the connector.
 Notifications can be sent to the following channels:
 
-SinkNotificationChannel:: Notifications are sent through the Connect API to a configured topic.
-LogNotificationChannel:: Notification are appended to the log.
+SinkNotificationChannel:: sends notifications through the Connect API to a configured topic.
+LogNotificationChannel:: notifications are appended to the log.
+JmxNotificationChannel:: notifications are exposes as an attribute in a JMX bean
 Custom:: Notifications are sent to a xref:debezium-notification-custom-channel[custom channel] that you implement.
 
 
@@ -183,8 +184,29 @@ By default, the following notification channels are available:
 
 * `sink`
 * `log`
+* `jmx`
 
  To use the `sink` notification channel, you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+
+// Type: procedure
+[id="access-debezium-jmx-notifications"]
+=== Access to {prodname} JMX notifications
+
+To access to notification provided through JMX bean you need to:
+
+* xref:operations/monitoring.adoc[enable JMX MBeanServer] to expose the notification bean
+* add `jmx` to the `notification.enabled.channels` configuration property.
+* connect with your preferred client to MBeanServer
+
+Notifications are exposed in the bean named `debezium.<connector-type>.management.notifications.<server>` through the `Notifications` attribute.
+
+The image below shows the notification about the start of the incremental snapshot
+
+image::jmx-notification-attribute.png[JMX notification attribute]
+
+You can also `reset` the notifications calling the `reset` operation on the bean.
+
+The notifications are also exposed as a JMX notification with type `debezium.notification`. You can link:https://www.ibm.com/docs/en/streams/4.1.1?topic=streams-processing-jmx-api-notifications[subscribe to receive these notifications] in your application.
 
 // Type: concept
 [id="debezium-notification-custom-channel"]
