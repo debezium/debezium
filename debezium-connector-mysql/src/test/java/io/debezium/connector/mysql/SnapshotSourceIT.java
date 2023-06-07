@@ -665,7 +665,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() throws Exception {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
-                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest,connector_test_ro_(.*).orders_with_postfix")
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -674,7 +674,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Poll for records ...
         // Testing.Print.enable();
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
-        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest");
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest", "orders_with_postfix");
         SourceRecords sourceRecords = consumeRecordsByTopic(9 + 9 + 5 + 1);
         sourceRecords.allRecordsInOrder().forEach(record -> {
             VerifyRecord.isValid(record);
