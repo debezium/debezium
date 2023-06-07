@@ -3091,7 +3091,7 @@ The default behavior is that the buffer state is always retained between restart
 Set to `true` only in testing or development environments.
 endif::community[]
 
-|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.xs+`>>
+|[[oracle-property-log-mining-session-max-ms]]<<oracle-property-log-mining-session-max-ms, `+log.mining.session.max.ms+`>>
 |`0`
 |The maximum number of milliseconds that a LogMiner session can be active before a new session is used. +
  +
