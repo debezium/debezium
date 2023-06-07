@@ -7,7 +7,15 @@ SNAPSHOT_VERSION=$(curl -s https://raw.githubusercontent.com/$DEBEZIUM_REPOSITOR
 
 docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 docker login -u ${QUAYIO_CREDENTIALS%:*} -p ${QUAYIO_CREDENTIALS#*:} quay.io
+
+# connect
 docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/connect:nightly connect/snapshot
 docker push quay.io/debezium/connect:nightly
 docker tag quay.io/debezium/connect:nightly debezium/connect:nightly
 docker push debezium/connect:nightly
+
+# server
+docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/server:nightly server/snapshot
+docker push quay.io/debezium/server:nightly
+docker tag quay.io/debezium/server:nightly debezium/server:nightly
+docker push debezium/server:nightly
