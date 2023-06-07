@@ -92,3 +92,21 @@ CREATE TABLE dbz_342_timetest (
 INSERT INTO dbz_342_timetest VALUES ('517:51:04.777', '-13:14:50', '-733:00:00.0011', '-1:59:59.0011', '-838:59:58.999999');
 
 CREATE DATABASE IF NOT EXISTS emptydb;
+
+-- Create orders_postfix table to test table ordering in snapshot
+CREATE TABLE orders_postfix (
+                        order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        order_date DATE NOT NULL,
+                        purchaser INTEGER NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        product_id INTEGER NOT NULL,
+                        FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
+                        FOREIGN KEY ordered_product (product_id) REFERENCES Products(id)
+) AUTO_INCREMENT = 10001;
+
+INSERT INTO orders_postfix
+VALUES (default, '2016-01-16', 1001, 1, 102),
+       (default, '2016-01-17', 1002, 2, 105),
+       (default, '2016-02-18', 1004, 3, 109),
+       (default, '2016-02-19', 1002, 2, 106),
+       (default, '2016-02-21', 1003, 1, 107);
