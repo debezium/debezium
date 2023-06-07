@@ -17,9 +17,10 @@ endif::community[]
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
 To use signals to trigger a connector to perform a specified action, you can configure the connector to use one or more of the following channels:
 
-SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling {data-collection}.
-The signaling {data-collection}, which you create on the source database, is designated exclusively for communicating with {prodname}.
+SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling data-collection.
+The signaling data-collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
 KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
+JmxSignalChannel:: You submit signal through the `signal` JMX operation.
 Custom:: You submit signals to a xref:debezium-custom-signaling-channel[custom channel] that you implement.
 
 When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the channel, it reads the signal, and initiates the requested operation.
@@ -192,6 +193,51 @@ Key = `test_connector`
 
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
 ----
+
+// Type: procedure
+// Title: Enabling the {prodname} JMX signaling channel
+[id="debezium-signaling-enabling-jmx-signaling-channel"]
+== Enabling JMX signaling channel
+
+You can enable the JMX signaling channel by adding `jmx` to the `signal.enabled.channels` configuration property.
+
+Then you need xref:operations/monitoring.adoc[to enable JMX MBeanServer] to expose the signaling bean.
+
+=== Send signal
+
+First of all, you need to connect to the `MBeanServer` through your preferred tool (i.e. jconsole, JDK Mission Control) , then you need to search for a bean named `debezium.<connector-type>.management.signals.<server>`
+
+This bean expose the `signal` operation that take in input three parameters:
+
+p0:: id of the signal
+p1:: type of the signal for example `execute-snapshot`
+p2:: json data field that contains additional information for the specific signal type.
+
+When the signal type is set to `execute-snapshot`, the `data` field must include the fields that are listed in the following table:
+
+.Execute snapshot data fields
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to run.
+Currently {prodname} supports only the `incremental` type.
+
+|`data-collections`
+|_N/A_
+| An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
+Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|`additional-condition`
+|_N/A_
+| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot.
+|===
+
+The following image shows how to send signal from `jconsole`
+
+image::jmx-signal-operation.png[]
 
 // Type: concept
 [id="debezium-custom-signaling-channel"]
