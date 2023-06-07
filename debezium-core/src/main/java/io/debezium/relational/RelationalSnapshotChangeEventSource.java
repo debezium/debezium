@@ -235,7 +235,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
+                .filter(tid -> pattern.asMatchPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
                 .sorted();
     }
 
