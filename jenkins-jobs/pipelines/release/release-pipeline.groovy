@@ -516,6 +516,12 @@ node('Slave') {
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
                 }
             }
+            echo "Modifying Server snapshot Dockerfile"
+            dir("$IMAGES_DIR/server/snapshot") {
+                modifyFile('Dockerfile') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
+                }
+            }
             echo "Modifying UI Dockerfile"
             dir("$IMAGES_DIR") {
                 modifyFile("ui/$IMAGE_TAG/Dockerfile") {
