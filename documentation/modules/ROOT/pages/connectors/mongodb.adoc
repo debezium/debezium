@@ -1730,10 +1730,12 @@ endif::product[]
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
 | List of the signaling channel names that are enabled for the connector. 
-By default, the following channels are available: 
+By default, the following channels are available:
 
 * `source`
-* `kafka` 
+* `kafka`
+* `file`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
 
@@ -1744,6 +1746,7 @@ By default, the following channels are available:
 
 * `sink`
 * `log`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
@@ -1786,6 +1789,21 @@ _topic.prefix_._topic.transaction_ +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector Sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector Sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-mongodb-connector-performance

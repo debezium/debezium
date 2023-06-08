@@ -3428,9 +3428,12 @@ Use the following format to specify the collection name: +
 |[[postgresql-property-signal-enabled-channels]]<<postgresql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
 | List of the signaling channel names that are enabled for the connector. 
-By default, the following channels are available: 
+By default, the following channels are available:
+
 * `source`
-* `kafka` 
+* `kafka`
+* `file`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
 
@@ -3441,6 +3444,7 @@ By default, the following channels are available:
 
 * `sink`
 * `log`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
@@ -3512,6 +3516,15 @@ The connector also supports _pass-through_ configuration properties that are use
 
 Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. The PostgreSQL connector does use the {link-kafka-docs}.html#consumerconfigs[new consumer configuration properties].
 
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector Sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-postgresql-connector-performance

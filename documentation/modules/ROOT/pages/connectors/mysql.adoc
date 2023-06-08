@@ -3036,9 +3036,12 @@ Use the following format to specify the collection name: +
 |[[mysql-property-signal-enabled-channels]]<<mysql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
 |List of the signaling channel names that are enabled for the connector. 
-By default, the following channels are available: 
+By default, the following channels are available:
+
 * `source`
-* `kafka` 
+* `kafka`
+* `file`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
 
@@ -3049,6 +3052,7 @@ By default, the following channels are available:
 
 * `sink`
 * `log`
+* `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
@@ -3145,38 +3149,12 @@ include::{partialsdir}/modules/all-connectors/ref-connector-configuration-databa
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 
-When the MySQL connector is configured as read-only, the alternative for the signaling table is the signals Kafka topic.
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-{prodname} provides a set of `signal.*` properties that control how the connector interacts with the Kafka signals topic.
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector Sink notifications configuration properties
 
-The following table describes the `signal` properties.
-
-.Kafka signals configuration properties
-[cols="33%a,17%a,50%a",options="header",subs="+attributes"]
-|===
-|Property |Default |Description
-|[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
-|No default
-|The name of the Kafka topic that the connector monitors for ad hoc signals.
-
-|[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
-|No default
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
-
-|[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
-|`100`
-|An integer value that specifies the maximum number of milliseconds the connector should wait when polling signals. The default is 100ms.
-
-|===
-
-[id="debezium-{context}-connector-pass-through-signals-kafka-consumer-configuration-properties"]
-==== {prodname} connector pass-through signals Kafka consumer client configuration properties
-
-The {prodname} connector provides for pass-through configuration of the signals Kafka consumer.
-Pass-through signals properties begin with the prefix `signals.consumer.*`.
-For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
-
-As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database schema history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties
