@@ -437,6 +437,9 @@ node('Slave') {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                         }
                     }
+                    if(id == "operator") {
+                        sh "mvn clean install -Pstable,k8update -DskipTests -DskipITs"
+                    }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
                     if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
@@ -453,6 +456,9 @@ node('Slave') {
                         modifyFile(repoBom) {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                         }
+                    }
+                    if(id == "operator") {
+                        sh "mvn clean install -Pk8update -DskipTests -DskipITs"
                     }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
