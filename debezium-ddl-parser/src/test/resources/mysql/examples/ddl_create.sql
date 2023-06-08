@@ -31,7 +31,7 @@ create table table_with_character_set_eq (id int, data varchar(50)) character se
 create table table_with_character_set (id int, data varchar(50)) character set default;
 create table table_with_visible_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC) VISIBLE);
 create table table_with_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC));
-create table table_with_keyword_as_column_name (geometry int);
+create table table_with_keyword_as_column_name (geometry int, national int);
 create table transactional_table(name varchar(255), class_id int, id int) transactional=1;
 create table transactional(name varchar(255), class_id int, id int);
 create table add_test(col1 varchar(255), col2 int, col3 int);
