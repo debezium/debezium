@@ -1,0 +1,10 @@
+The following table describes the `notification` properties.
+
+.Sink notification configuration properties
+[cols="33%a,17%a,50%a",options="header",subs="+attributes"]
+|===
+|Property |Default |Description
+|[[{context}-property-notification-sink-topic-name]]<<{context}-property-notification-sink-topic-name, `+notification.sink.topic.name+`>>
+|No default
+|The name of the topic for the notifications. This is required in case 'sink' is in the list of enabled channels.
+|===
