@@ -95,7 +95,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
     echo "Additional repository $repository will be used"
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'ui']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'ui']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
@@ -477,6 +477,7 @@ node('Slave') {
             }
             echo "MD5 sums calculated: ${sums}"
             def serverSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-server-dist/$RELEASE_VERSION/debezium-server-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
+            def operatorSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-operator/$RELEASE_VERSION/debezium-operator-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['SCRIPTING'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['KCRESTEXT'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-connect-rest-extension/$RELEASE_VERSION/debezium-connect-rest-extension-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             dir("$IMAGES_DIR/connect/$IMAGE_TAG") {
@@ -518,6 +519,25 @@ node('Slave') {
             }
             echo "Modifying Server snapshot Dockerfile"
             dir("$IMAGES_DIR/server/snapshot") {
+                modifyFile('Dockerfile') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
+                }
+            }
+            echo "Modifying Operator Dockerfile"
+            dir("$IMAGES_DIR/operator/$IMAGE_TAG") {
+                def operatorStagingRepoId = ADDITIONAL_REPOSITORIES['operator']?.mavenRepoId
+                if (operatorStagingRepoId == null) {
+                    operatorStagingRepoId = STAGING_REPO_ID
+                }
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$operatorStagingRepoId/\"")
+                            .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                            .replaceFirst('OPERATOR_MD5=\\S+', "OPERATOR_MD5=$operatorSum")
+                }
+            }
+            echo "Modifying Operator snapshot Dockerfile"
+            dir("$IMAGES_DIR/operator/snapshot") {
                 modifyFile('Dockerfile') {
                     it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
                 }
@@ -600,6 +620,12 @@ node('Slave') {
                 }
             }
             dir("$IMAGES_DIR/server/$IMAGE_TAG") {
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
+                }
+            }
+            dir("$IMAGES_DIR/operator/$IMAGE_TAG") {
                 modifyFile('Dockerfile') {
                     it
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
