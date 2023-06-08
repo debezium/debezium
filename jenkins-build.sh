@@ -11,7 +11,7 @@ release_version=$(mvn -q \
 git_sha=$(git rev-parse --short HEAD)
 
 echo "Building Debezium version $release_version."
-mvn clean install -Passembly -DskipITs -DskipTests -pl debezium-bom,debezium-core,debezium-connector-mongodb
+mvn clean install -Passembly -DskipITs -pl debezium-bom,debezium-core,debezium-connector-mongodb
 
 if [[ "${GIT_BRANCH:-}" == "master" ]] || [[ "${GIT_BRANCH:-}" == *_FORCE_DEPLOY ]]; then
     echo "Publishing Debezium version $release_version to Artifactory."
