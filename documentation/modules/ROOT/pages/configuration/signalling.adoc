@@ -17,10 +17,10 @@ endif::community[]
 The {prodname} signaling mechanism provides a way to modify the behavior of a connector, or to trigger a one-time action, such as initiating an xref:debezium-signaling-ad-hoc-snapshots[ad hoc snapshot] of a table.
 To use signals to trigger a connector to perform a specified action, you can configure the connector to use one or more of the following channels:
 
-SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling data-collection.
-The signaling data-collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
+SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling data collection.
+The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
 KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
-JmxSignalChannel:: You submit signal through the `signal` JMX operation.
+JmxSignalChannel:: You submit signals through the JMX `signal` operation.
 Custom:: You submit signals to a xref:debezium-custom-signaling-channel[custom channel] that you implement.
 
 When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-record[logging record] or xref:debezium-signaling-example-of-an-ad-hoc-signal-record[ad hoc snapshot record] is added to the channel, it reads the signal, and initiates the requested operation.
@@ -197,24 +197,25 @@ Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table
 // Type: procedure
 // Title: Enabling the {prodname} JMX signaling channel
 [id="debezium-signaling-enabling-jmx-signaling-channel"]
-== Enabling JMX signaling channel
+== Enabling a JMX signaling channel
 
-You can enable the JMX signaling channel by adding `jmx` to the `signal.enabled.channels` configuration property.
+You can enable the JMX signaling by adding `jmx` to the `signal.enabled.channels` configuration property, and then {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[enabling the JMX MBean Server] to expose the signaling bean.
 
-Then you need xref:operations/monitoring.adoc[to enable JMX MBeanServer] to expose the signaling bean.
+\\ Title: Using a JMX signaling channel to send signals to {prodname}
+[id="debezium-signaling-using-a-jmx-signaling-channel-to-sends-signals"]
+=== Sending JMX signals
 
-=== Send signal
+.Procedure
+1. Use your preferred JMX client (for example. JConsole or JDK Mission Control) to connect to the MBean server.
+2. Search for the Mbean `debezium.__<connector-type>__.management.signals.__<server>__`.
+The Mbean exposes `signal` operations that accept the following input parameters:
 
-First of all, you need to connect to the `MBeanServer` through your preferred tool (i.e. jconsole, JDK Mission Control) , then you need to search for a bean named `debezium.<connector-type>.management.signals.<server>`
-
-This bean expose the `signal` operation that take in input three parameters:
-
-p0:: id of the signal
-p1:: type of the signal for example `execute-snapshot`
-p2:: json data field that contains additional information for the specific signal type.
-
-When the signal type is set to `execute-snapshot`, the `data` field must include the fields that are listed in the following table:
-
+p0:: The id of the signal.
+p1:: The type of the signal, for example, `execute-snapshot`.
+p2:: A JSON data field that contains additional information about the specified signal type.
++
+Send an `execute-snapshot` signal by providing value for the input parameters. + In the JSON data field, include the information that is listed in the following table:
++
 .Execute snapshot data fields
 [cols="2,2,6",options="header"]
 |===
@@ -234,9 +235,9 @@ Specify the names by using the same format as is required for the xref:{context}
 |_N/A_
 | An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot.
 |===
-
-The following image shows how to send signal from `jconsole`
-
++
+The following image shows an example of how to use JConsole to send a signal:
++
 image::jmx-signal-operation.png[]
 
 // Type: concept
