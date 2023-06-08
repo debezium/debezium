@@ -19,3 +19,10 @@ docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/
 docker push quay.io/debezium/server:nightly
 docker tag quay.io/debezium/server:nightly debezium/server:nightly
 docker push debezium/server:nightly
+
+
+# operator
+docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/operator:nightly operator/snapshot
+docker push quay.io/debezium/operator:nightly
+docker tag quay.io/debezium/operator:nightly debezium/operator:nightly
+docker push debezium/operator:nightly
