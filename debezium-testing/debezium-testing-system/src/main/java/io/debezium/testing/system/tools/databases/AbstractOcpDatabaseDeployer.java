@@ -29,11 +29,11 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseDeployer.class);
     protected final OpenShiftClient ocp;
-    private final OpenShiftUtils ocpUtils;
+    protected final OpenShiftUtils ocpUtils;
     protected final String project;
-    private final Secret pullSecret;
-    private Deployment deployment;
-    private List<Service> services;
+    protected final Secret pullSecret;
+    protected Deployment deployment;
+    protected List<Service> services;
 
     public AbstractOcpDatabaseDeployer(
                                        String project,

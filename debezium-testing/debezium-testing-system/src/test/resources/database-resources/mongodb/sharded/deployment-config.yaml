@@ -1,0 +1,58 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: mongo-config
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+      deployment: mongo-config
+  template:
+    metadata:
+      name: mongo-config
+      labels:
+        app: mongo
+        deployment: mongo-config
+        role: config
+    spec:
+      volumes:
+      - name: mongo-volume-1
+        emptyDir: {}
+      containers:
+      - resources: {}
+        name: mongo
+        ports:
+        - containerPort: 27019
+          protocol: TCP
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: mongo-volume-1
+          mountPath: /data/db
+        livenessProbe:
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 27019
+          timeoutSeconds: 1
+        readinessProbe:
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 27019
+          timeoutSeconds: 1
+        terminationMessagePolicy: File
+        terminationMessagePath: /dev/termination-log
+        image: quay.io/mmedek/mongo:latest
+        command:
+        - '/usr/bin/mongod'
+        - '--configsvr'
+        - '--replSet'
+        - 'cfgrs'
+        - '--dbpath'
+        - '/data/db'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: Recreate
