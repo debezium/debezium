@@ -173,13 +173,13 @@ When the signal type is set to `execute-snapshot`, the `data` field must include
 
 |`type`
 |`incremental`
-| The type of the snapshot to run. 
+| The type of the snapshot to run.
 Currently {prodname} supports only the `incremental` type.
 
 |`data-collections`
 |_N/A_
 | An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
-Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+Specify the names by using the same format as is required for the `signal.data.collection` configuration option.
 
 |`additional-condition`
 |_N/A_
@@ -243,7 +243,7 @@ image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` sig
 // Type: concept
 [id="debezium-custom-signaling-channel"]
 == Custom signaling channel
-The signaling mechanism is designed to be extensible. 
+The signaling mechanism is designed to be extensible.
 You can implement channels as needed to send signals to {prodname} in a manner that works best in your environment.
 
 Adding a signaling channel involves several steps:
@@ -274,12 +274,12 @@ public interface SignalChannelReader {
     void close(); // <4>
 }
 ----
-<1> The name of the reader. 
+<1> The name of the reader.
 To enable {prodname} to use the channel, specify this name in the connector's `signal.enabled.channels` property.
 <2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Reads signal from the channel. 
+<3> Reads signal from the channel.
 The `SignalProcessor` class calls this method to retrieve the signal to process.
-<4> Closes all allocated resources. 
+<4> Closes all allocated resources.
 {prodname} calls this methods when the connector is stopped.
 
 // Type: concept
