@@ -1,3 +1,6 @@
+-- Initial pause to ensure that SQL Server job start is completed (CI timing)
+WAITFOR DELAY '00:00:15';
+
 -- Create the test database
 CREATE DATABASE testDB;
 
