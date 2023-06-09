@@ -6,5 +6,6 @@ The following table describes the `notification` properties.
 |Property |Default |Description
 |[[{context}-property-notification-sink-topic-name]]<<{context}-property-notification-sink-topic-name, `+notification.sink.topic.name+`>>
 |No default
-|The name of the topic for the notifications. This is required in case 'sink' is in the list of enabled channels.
+|The name of the topic that receives notifications from {prodname}. 
+This property is required when you configure the xref:{context}-property-notification-enabled-channels[`notification.enabled.channels`] property to include `sink` as one of the enabled notification channels.
 |===
