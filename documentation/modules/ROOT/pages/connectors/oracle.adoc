@@ -2647,7 +2647,8 @@ For example, to define a `selector` parameter that specifies the subset of colum
 
 |[[oracle-property-database-dbname]]<<oracle-property-database-dbname, `+database.dbname+`>>
 |No default
-|Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
+|Name of the database to connect to.
+In a container database environment, specify the name of the root container database (CDB), not the name of an included pluggable database (PDB).
 
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
@@ -2720,20 +2721,25 @@ You can set the following values:
   Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
-| All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+| All tables specified in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`__<databaseName>.____<schemaName>__.__<tableName>__`) of the tables to include in a snapshot.
+
+In a multitenant container database (CDB) environment, the regular expression must include the xref:oracle-property-database-pdb-name[pluggable database (PDB) name], using the format `__<pdbName>__.__<schemaName>__.__<tableName>__`.
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
 ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
 endif::community[]
-The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
+A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
 This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
 This property does not affect the behavior of incremental snapshots. +
 
-To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -3369,7 +3375,7 @@ Use the following format to specify the collection name: +
 
 |[[oracle-property-signal-enabled-channels]]<<oracle-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
-| List of the signaling channel names that are enabled for the connector. 
+| List of the signaling channel names that are enabled for the connector.
 By default, the following channels are available:
 
 * `source`
@@ -3382,7 +3388,7 @@ Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-si
 |[[oracle-property-notification-enabled-channels]]<<oracle-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 | List of notification channel names that are enabled for the connector.
-By default, the following channels are available: 
+By default, the following channels are available:
 
 * `sink`
 * `log`
