@@ -1,6 +1,6 @@
 {prodname} provides a set of `signal.*` properties that control how the connector interacts with the Kafka signals topic.
 
-The following table describes the `signal` properties.
+The following table describes the Kafka `signal` properties.
 
 .Kafka signals configuration properties
 [cols="33%a,17%a,50%a",options="header",subs="+attributes"]
@@ -12,11 +12,12 @@ The following table describes the `signal` properties.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
 |No default
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
+|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. 
+Each pair references the Kafka cluster that is used by the {prodname} Kafka Connect process.
 
 |[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
 |`100`
-|An integer value that specifies the maximum number of milliseconds the connector should wait when polling signals. The default is 100ms.
+|An integer value that specifies the maximum number of milliseconds that the connector waits when polling signals. 
 
 |===
 

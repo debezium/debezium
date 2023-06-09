@@ -199,9 +199,9 @@ Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table
 [id="debezium-signaling-enabling-jmx-signaling-channel"]
 == Enabling a JMX signaling channel
 
-You can enable the JMX signaling by adding `jmx` to the `signal.enabled.channels` configuration property, and then {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[enabling the JMX MBean Server] to expose the signaling bean.
+You can enable the JMX signaling by adding `jmx` to the `signal.enabled.channels` property in the connector configuration, and then {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[enabling the JMX MBean Server] to expose the signaling bean.
 
-\\ Title: Using a JMX signaling channel to send signals to {prodname}
+// Title: Using a JMX signaling channel to send signals to {prodname}
 [id="debezium-signaling-using-a-jmx-signaling-channel-to-sends-signals"]
 === Sending JMX signals
 
@@ -213,8 +213,8 @@ The Mbean exposes `signal` operations that accept the following input parameters
 p0:: The id of the signal.
 p1:: The type of the signal, for example, `execute-snapshot`.
 p2:: A JSON data field that contains additional information about the specified signal type.
-+
-Send an `execute-snapshot` signal by providing value for the input parameters. + In the JSON data field, include the information that is listed in the following table:
+3. Send an `execute-snapshot` signal by providing value for the input parameters. +
+In the JSON data field, include the information that is listed in the following table:
 +
 .Execute snapshot data fields
 [cols="2,2,6",options="header"]
@@ -238,7 +238,7 @@ Specify the names by using the same format as is required for the xref:{context}
 +
 The following image shows an example of how to use JConsole to send a signal:
 +
-image::jmx-signal-operation.png[]
+image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` signal]
 
 // Type: concept
 [id="debezium-custom-signaling-channel"]

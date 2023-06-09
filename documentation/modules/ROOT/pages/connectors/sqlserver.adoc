@@ -2730,7 +2730,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-configuration-databa
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector Sink notifications configuration properties
+==== {prodname} connector sink notifications configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 

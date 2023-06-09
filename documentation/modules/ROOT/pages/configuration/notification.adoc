@@ -197,20 +197,20 @@ To use the `sink` notification channel, you must also set the `notification.sink
 
 To enable {prodname} to report events that are exposed through JMX beans, complete the following configuration steps:
 
-* {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[Enable JMX MBean Server] to expose the notification bean.
-* Add `jmx` to the `notification.enabled.channels` configuration property.
-* Connect your preferred JMX client to the MBean Server.
+1. {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[Enable the JMX MBean Server] to expose the notification bean.
+2. Add `jmx` to the `notification.enabled.channels` property in the connector configuration.
+3. Connect your preferred JMX client to the MBean Server.
 
-Notifications are exposed in the bean named `debezium.__<connector-type>__.management.notifications.__<server>__` through the `Notifications` attribute.
+Notifications are exposed through the `Notifications` attribute of a bean with the name `debezium.__<connector-type>__.management.notifications.__<server>__`.
 
 The following image shows a notification that reports the start of an incremental snapshot:
 
-image::jmx-notification-attribute.png[JMX notification attribute]
+image::jmx-notification-attribute.png[Fields in the JMX `Notifications` attribute]
 
 To discard a notification, call the `reset` operation on the bean.
 
 The notifications are also exposed as a JMX notification with type `debezium.notification`.
-To enable an application to receive JMX notifications,  link:https://docs.oracle.com/javase/tutorial/jmx/notifs/index.html[subscribe the application to the notifications].
+To enable an application to listen for the JMX notifications that an MBean emits,  link:https://docs.oracle.com/javase/tutorial/jmx/notifs/index.html[subscribe the application to the notifications].
 
 // Type: concept
 [id="debezium-notification-custom-channel"]
