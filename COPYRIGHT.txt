@@ -106,6 +106,7 @@ Daan Roosen
 Daniel Petisme
 Dave Cramer
 Dave Cumberland
+David Beck
 David Chen
 David Feinblum
 David Haglund
