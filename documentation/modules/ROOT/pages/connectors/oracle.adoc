@@ -3283,7 +3283,7 @@ Any transaction that exceeds this configured value is discarded entirely, and th
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
 
-|[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.include.list+`>>
+|[[oracle-property-log-mining-username-include-list]]<<oracle-property-log-mining-username-include-list, `+log.mining.username.include.list+`>>
 |No default
 |List of database users to include from the LogMiner query.
 It can be useful to set this property if you want the capturing process to include changes from the specified users.
