@@ -3203,6 +3203,13 @@ For low volume systems, a LogMiner session may consume too much PGA memory when 
 The default behavior is to only use a new LogMiner session when a log switch is detected.
 By setting this value to something greater than `0`, this specifies the maximum number of milliseconds a LogMiner session can be active before it gets stopped and started to deallocate and reallocate PGA memory.
 
+|[[oracle-property-log-mining-restart-connection]]<<oracle-property-log-mining-restart-connection, `+log.mining.restart.connection+`>>
+|`false`
+|Specifies whether the JDBC connection will be closed and re-opened on log switches or when mining session has reached maximum lifetime threshold. +
+ +
+By default, the JDBC connection is not closed across log switches or maximum session lifetimes. +
+This should be enabled if you experience excessive Oracle SGA growth with LogMiner.
+
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
 |The minimum SCN interval size that this connector attempts to read from redo/archive logs. Active batch size is also increased/decreased by this amount for tuning connector throughput when needed.
