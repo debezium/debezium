@@ -138,8 +138,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             return;
         }
         try {
-            // We explicitly expect auto-commit to be disabled
-            jdbcConnection.setAutoCommit(false);
+
+            prepareConnection(jdbcConnection, false);
 
             this.effectiveOffset = offsetContext;
             startScn = offsetContext.getScn();
@@ -160,7 +160,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
 
-                setNlsSessionParameters(jdbcConnection);
                 checkDatabaseAndTableState(jdbcConnection, connectorConfig.getPdbName(), schema);
 
                 logOnlineRedoLogSizes(connectorConfig);
@@ -214,6 +213,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // With one mining session, it grows and maybe there is another way to flush PGA.
                             // At this point we use a new mining session
                             endMiningSession(jdbcConnection, offsetContext);
+                            if (connectorConfig.isLogMiningRestartConnection()) {
+                                prepareConnection(jdbcConnection, true);
+                            }
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
                             // log switch or restart required, re-create a new stop watch
@@ -246,6 +248,18 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             LOGGER.info("Offsets: {}", offsetContext);
         }
+    }
+
+    private void prepareConnection(OracleConnection connection, boolean closeAndReconnect) throws SQLException {
+        if (closeAndReconnect) {
+            // Close and reconnect
+            LOGGER.debug("Log switch or maximum session threshold detected, restarting Oracle JDBC connection.");
+            connection.close();
+        }
+
+        // We explicitly expect auto-commit to be disabled
+        connection.setAutoCommit(false);
+        setNlsSessionParameters(connection);
     }
 
     private void logOnlineRedoLogSizes(OracleConnectorConfig config) throws SQLException {

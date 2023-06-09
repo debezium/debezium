@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -5226,6 +5227,88 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         assertThat(logInterceptor.containsMessage("1 table(s) will be scanned")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-6499")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
+    public void shouldRestartOracleJdbcConnectionAtMaxSessionThreshold() throws Exception {
+        // In order to guarantee there are no log switches during this test, this test will preemptively
+        // perform a transaction log switch before initiating the test.
+        TestHelper.forceLogfileSwitch();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.LOG_MINING_SESSION_MAX_MS, "30000")
+                .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
+                .build();
+
+        LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Session should trigger a restart after 30 seconds of streaming
+        // After the restart has been triggered, it is safe to stop the connector
+        Awaitility.await()
+                .atMost(Duration.ofMinutes(2))
+                .until(() -> logInterceptor.containsMessage("restarting Oracle JDBC connection"));
+
+        // Give the connector a few seconds to restart the mining loop before stopping
+        Thread.sleep(5000);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-6499")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
+    public void shouldRestartOracleJdbcConnectionUponLogSwitch() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
+                .build();
+
+        LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Wait cycle
+        // 1. Waits for one mining loop, after which a Log Switch is forced.
+        // 2. Once Log Switch is forced, wait for connector to detect and write log entry.
+        // 3. Once connector has restarted the JDBC connection, wait loop exits.
+        final AtomicBoolean completedOneMiningLoop = new AtomicBoolean();
+        final AtomicBoolean logSwitchForced = new AtomicBoolean();
+        Awaitility.await()
+                .atMost(Duration.ofMinutes(2))
+                .until(() -> {
+                    if (!completedOneMiningLoop.get()) {
+                        if (!logInterceptor.containsMessage("Oracle Session UGA")) {
+                            return false;
+                        }
+                        else {
+                            completedOneMiningLoop.set(true);
+                        }
+                    }
+                    if (!logSwitchForced.get()) {
+                        logSwitchForced.set(true);
+                        TestHelper.forceLogfileSwitch();
+                        return false;
+                    }
+                    return logInterceptor.containsMessage("restarting Oracle JDBC connection");
+                });
+
+        // Give the connector a few seconds to restart the mining loop before stopping
+        Thread.sleep(5000);
+
+        stopConnector();
     }
 
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
