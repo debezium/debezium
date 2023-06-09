@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.0.CR1
+June 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12408706)
+
+### New features since 2.3.0.Beta1
+
+* Code Improvements for skip.messages.without.change [DBZ-6366](https://issues.redhat.com/browse/DBZ-6366)
+* Allow sending signals and receiving notifications via JMX [DBZ-6424](https://issues.redhat.com/browse/DBZ-6424)
+* MySql in debezium-parser-ddl does not support TABLE statement parsing [DBZ-6435](https://issues.redhat.com/browse/DBZ-6435)
+* Utilize event.processing.failure.handling.mode in Vitess replication connection [DBZ-6510](https://issues.redhat.com/browse/DBZ-6510)
+* Only use error processing mode on certain errors [DBZ-6523](https://issues.redhat.com/browse/DBZ-6523)
+* Use better hashing function for PartitionRouting [DBZ-6529](https://issues.redhat.com/browse/DBZ-6529)
+* Create PoC of Debezium Server Operator [DBZ-6493](https://issues.redhat.com/browse/DBZ-6493)
+
+
+### Breaking changes since 2.3.0.Beta1
+
+None
+
+
+### Fixes since 2.3.0.Beta1
+
+* Create OCP cluster provisioning jobs [DBZ-3129](https://issues.redhat.com/browse/DBZ-3129)
+*  io.debezium.text.ParsingException: DDL statement couldn't be parsed. Please open a Jira issue with the statement [DBZ-6507](https://issues.redhat.com/browse/DBZ-6507)
+* Oracle Connector failed parsing DDL Statement [DBZ-6508](https://issues.redhat.com/browse/DBZ-6508)
+* FileSignalChannel is not loaded [DBZ-6509](https://issues.redhat.com/browse/DBZ-6509)
+* MySqlReadOnlyIncrementalSnapshotChangeEventSource enforces Kafka dependency during initialization [DBZ-6511](https://issues.redhat.com/browse/DBZ-6511)
+* Debezium incremental snapshot chunk size documentation unclear or incorrect [DBZ-6512](https://issues.redhat.com/browse/DBZ-6512)
+* Debezium incremental snapshot chunk size documentation unclear or incorrect [DBZ-6515](https://issues.redhat.com/browse/DBZ-6515)
+* [PostgreSQL] LTree data is not being captured by streaming [DBZ-6524](https://issues.redhat.com/browse/DBZ-6524)
+* MySQL "national" keyword is not accepted as column name [DBZ-6537](https://issues.redhat.com/browse/DBZ-6537)
+
+
+### Other changes since 2.3.0.Beta1
+
+* Test Debezium on RED HAT OPENSHIFT DATABASE ACCESS - MongoDB Atlas [DBZ-5231](https://issues.redhat.com/browse/DBZ-5231)
+* Add docs on how to extend channels and notification [DBZ-6408](https://issues.redhat.com/browse/DBZ-6408)
+* Create Cron trigger for system tests [DBZ-6423](https://issues.redhat.com/browse/DBZ-6423)
+* Debezium UI Repo dependency update  [DBZ-6473](https://issues.redhat.com/browse/DBZ-6473)
+* Add Debezium Server nightly images [DBZ-6536](https://issues.redhat.com/browse/DBZ-6536)
+* Include debezium operator in release scripts [DBZ-6539](https://issues.redhat.com/browse/DBZ-6539)
+* Start publishing nightly images for Debezium Operator [DBZ-6541](https://issues.redhat.com/browse/DBZ-6541)
+* Start releasing images for Debezium Operator [DBZ-6542](https://issues.redhat.com/browse/DBZ-6542)
+
+
+
 ## 2.3.0.Beta1
 May 26th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12407588)
 
