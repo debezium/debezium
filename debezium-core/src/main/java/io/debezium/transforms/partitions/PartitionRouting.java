@@ -194,7 +194,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
             Struct lastStruct = getLastStruct(envelope, subFields);
 
-            return Optional.of(lastStruct.get(subFields[subFields.length - 1]));
+            return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
             LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, envelope);
