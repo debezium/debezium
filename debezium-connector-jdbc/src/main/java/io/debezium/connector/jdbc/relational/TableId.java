@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc.relational;
 
 import java.util.Objects;
 
+import io.debezium.util.Strings;
+
 /**
  * Describes a relational table's identifier.
  *
@@ -34,6 +36,32 @@ public class TableId {
 
     public String getTableName() {
         return tableName;
+    }
+
+    public String toFullIdentiferString() {
+        if (catalogName != null && schemaName != null) {
+            return catalogName + "." + schemaName + "." + tableName;
+        }
+        else if (schemaName != null && tableName != null) {
+            return schemaName + "." + tableName;
+        }
+        else {
+            return tableName;
+        }
+    }
+
+    public TableId toUpperCase() {
+        return new TableId(
+                Strings.isNullOrBlank(catalogName) ? catalogName : catalogName.toUpperCase(),
+                Strings.isNullOrBlank(schemaName) ? schemaName : schemaName.toUpperCase(),
+                Strings.isNullOrBlank(tableName) ? tableName : tableName.toUpperCase());
+    }
+
+    public TableId toLowerCase() {
+        return new TableId(
+                Strings.isNullOrBlank(catalogName) ? catalogName : catalogName.toLowerCase(),
+                Strings.isNullOrBlank(schemaName) ? schemaName : schemaName.toLowerCase(),
+                Strings.isNullOrBlank(tableName) ? tableName : tableName.toLowerCase());
     }
 
     @Override

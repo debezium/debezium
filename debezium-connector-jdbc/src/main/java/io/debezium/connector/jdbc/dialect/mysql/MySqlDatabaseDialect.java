@@ -111,7 +111,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");

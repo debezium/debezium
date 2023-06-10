@@ -23,22 +23,26 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.engine.jdbc.env.spi.IdentifierHelper;
+import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
+import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
@@ -84,6 +88,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final Dialect dialect;
     private final DdlTypeRegistry ddlTypeRegistry;
     private final IdentifierHelper identifierHelper;
+    private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, Type> typeRegistry = new HashMap<>();
 
@@ -92,43 +97,79 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         this.dialect = unwrapSessionFactory(sessionFactory).getJdbcServices().getDialect();
         this.ddlTypeRegistry = unwrapSessionFactory(sessionFactory).getTypeConfiguration().getDdlTypeRegistry();
         this.identifierHelper = unwrapSessionFactory(sessionFactory).getJdbcServices().getJdbcEnvironment().getIdentifierHelper();
+        this.tableNamingStrategy = connectorConfig.getTableNamingStrategy();
         this.columnNamingStrategy = connectorConfig.getColumnNamingStrategy();
 
         registerTypes();
     }
 
     @Override
-    public boolean tableExists(Connection connection, String tableName) throws SQLException {
-        if (isIdentifierUppercaseWhenNotQuoted() && !getConfig().isQuoteIdentifiers()) {
-            tableName = Strings.isNullOrBlank(tableName) ? tableName : tableName.toUpperCase();
+    public TableId getTableIdFromTopic(SinkRecord record) {
+        final NameQualifierSupport nameQualifierSupport = dialect.getNameQualifierSupport();
+
+        final String tableName = tableNamingStrategy.resolveTableName(connectorConfig, record);
+        final String[] parts = io.debezium.relational.TableId.parseParts(tableName);
+
+        if (parts.length == 3) {
+            // If the parse returns 3 elements, this will be used by default regardless of the
+            // name qualifier support dialect configuration.
+            return new TableId(parts[0], parts[1], parts[2]);
         }
-        try (ResultSet rs = connection.getMetaData().getTables(null, null, tableName, null)) {
+        else if (parts.length == 2) {
+            // If a name qualifier support configuration is available and it supports catalogs but
+            // no schemas, then the value will be injected into the database/catalog part, else it
+            // will be used as the schema bit.
+            if (nameQualifierSupport != null && nameQualifierSupport.supportsCatalogs()) {
+                if (!nameQualifierSupport.supportsSchemas()) {
+                    return new TableId(parts[0], null, parts[1]);
+                }
+            }
+            return new TableId(null, parts[0], parts[1]);
+        }
+        else if (parts.length == 1) {
+            return new TableId(null, null, parts[0]);
+        }
+        else {
+            throw new DebeziumException("Failed to parse table name into TableId: " + tableName);
+        }
+    }
+
+    @Override
+    public boolean tableExists(Connection connection, TableId tableId) throws SQLException {
+        if (isIdentifierUppercaseWhenNotQuoted() && !getConfig().isQuoteIdentifiers()) {
+            tableId.toUpperCase();
+        }
+
+        final DatabaseMetaData metadata = connection.getMetaData();
+        try (ResultSet rs = metadata.getTables(tableId.getCatalogName(), tableId.getSchemaName(), tableId.getTableName(), null)) {
             return rs.next();
         }
     }
 
     @Override
-    public TableDescriptor readTable(Connection connection, String tableName) throws SQLException {
+    public TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException {
         if (isIdentifierUppercaseWhenNotQuoted() && !getConfig().isQuoteIdentifiers()) {
-            tableName = Strings.isNullOrBlank(tableName) ? tableName : tableName.toUpperCase();
+            tableId = tableId.toUpperCase();
         }
         final TableDescriptor.Builder table = TableDescriptor.builder();
-        try (ResultSet rs = connection.getMetaData().getTables(null, null, tableName, null)) {
+
+        final DatabaseMetaData metadata = connection.getMetaData();
+        try (ResultSet rs = metadata.getTables(tableId.getCatalogName(), tableId.getSchemaName(), tableId.getTableName(), null)) {
             if (rs.next()) {
                 table.catalogName(rs.getString(1));
                 table.schemaName(rs.getString(2));
-                table.tableName(tableName);
+                table.tableName(tableId.getTableName());
 
                 final String tableType = rs.getString(4);
                 table.type(Strings.isNullOrBlank(tableType) ? "TABLE" : tableType);
             }
             else {
-                throw new IllegalStateException("Failed to find table: " + tableName);
+                throw new IllegalStateException("Failed to find table: " + tableId.toFullIdentiferString());
             }
         }
 
         final List<String> primaryKeyColumNames = new ArrayList<>();
-        try (ResultSet rs = connection.getMetaData().getPrimaryKeys(null, null, tableName)) {
+        try (ResultSet rs = metadata.getPrimaryKeys(tableId.getCatalogName(), tableId.getSchemaName(), tableId.getTableName())) {
             while (rs.next()) {
                 final String columnName = rs.getString(4);
                 primaryKeyColumNames.add(columnName);
@@ -136,7 +177,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             }
         }
 
-        try (ResultSet rs = connection.getMetaData().getColumns(null, null, tableName, null)) {
+        try (ResultSet rs = metadata.getColumns(tableId.getCatalogName(), tableId.getSchemaName(), tableId.getTableName(), null)) {
             final int resultSizeColumnSize = rs.getMetaData().getColumnCount();
             while (rs.next()) {
                 final String catalogName = rs.getString(1);
@@ -195,10 +236,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getCreateTableStatement(SinkRecordDescriptor record, String tableName) {
+    public String getCreateTableStatement(SinkRecordDescriptor record, TableId tableId) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("CREATE TABLE ");
-        builder.append(toIdentifier(tableName));
+        builder.append(getQualifiedTableName(tableId));
         builder.append(" (");
 
         // First handle key columns
@@ -240,7 +281,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     public String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("ALTER TABLE ");
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" ");
         builder.appendList(" ", missingFields, (name) -> {
             final FieldDescriptor field = record.getFields().get(name);
@@ -262,7 +303,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
 
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
 
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
@@ -285,7 +326,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     public String getUpdateStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("UPDATE ");
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" SET ");
         builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> columnNameEqualsBinding(name, record));
 
@@ -301,7 +342,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     public String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("DELETE FROM ");
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
 
         if (!record.getKeyFieldNames().isEmpty()) {
             builder.append(" WHERE ");
@@ -573,6 +614,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected boolean isIdentifierUppercaseWhenNotQuoted() {
         return false;
+    }
+
+    protected String getQualifiedTableName(TableId tableId) {
+        if (!Strings.isNullOrBlank(tableId.getSchemaName())) {
+            return toIdentifier(tableId.getSchemaName()) + "." + toIdentifier(tableId.getTableName());
+        }
+        return toIdentifier(tableId.getTableName());
     }
 
     private String columnNameEqualsBinding(String fieldName, SinkRecordDescriptor record) {
