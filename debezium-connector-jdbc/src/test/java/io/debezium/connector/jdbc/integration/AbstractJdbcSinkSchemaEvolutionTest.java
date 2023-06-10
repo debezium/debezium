@@ -26,6 +26,7 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.SinkType;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.util.Strings;
 
 /**
  * Common schema evolution tests.
@@ -36,6 +37,20 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
     public AbstractJdbcSinkSchemaEvolutionTest(Sink sink) {
         super(sink);
+    }
+
+    @Override
+    protected Map<String, String> getDefaultSinkConfig() {
+        final Map<String, String> config = super.getDefaultSinkConfig();
+        final String databaseSchemaName = getDatabaseSchemaName();
+        if (!Strings.isNullOrBlank(databaseSchemaName)) {
+            config.put(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT, databaseSchemaName + ".${topic}");
+        }
+        return config;
+    }
+
+    protected String getDatabaseSchemaName() {
+        return null;
     }
 
     @ParameterizedTest

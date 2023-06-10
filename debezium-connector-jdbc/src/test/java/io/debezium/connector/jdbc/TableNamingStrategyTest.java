@@ -16,6 +16,7 @@ import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
 
 /**
  * Tests for the {@link TableNamingStrategy} interface and implementations.
@@ -38,5 +39,14 @@ public class TableNamingStrategyTest {
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
         assertThat(strategy.resolveTableName(config, factory.createRecord("database.schema.table"))).isEqualTo("kafka_database_schema_table");
+    }
+
+    @Test
+    @FixFor("DBZ-6491")
+    public void testTableNamingStrategyWithPrependedSchema() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "SYS.${topic}"));
+        final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
+        final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
+        assertThat(strategy.resolveTableName(config, factory.createRecord("database.schema.table"))).isEqualTo("SYS.database_schema_table");
     }
 }

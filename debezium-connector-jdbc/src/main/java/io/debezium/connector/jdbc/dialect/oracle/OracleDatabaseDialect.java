@@ -80,7 +80,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("MERGE INTO ");
-        builder.append(toIdentifier(table.getId()));
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" USING (SELECT ");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
                 (name) -> columnQueryBindingFromField(name, record) + " " + columnNameFromField(name, record));

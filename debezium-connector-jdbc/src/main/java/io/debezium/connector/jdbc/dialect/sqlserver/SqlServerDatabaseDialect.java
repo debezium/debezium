@@ -72,7 +72,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("MERGE INTO ");
-        builder.append(table.getId().getTableName());
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" WITH (HOLDLOCK) AS TARGET USING (SELECT ");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
                 (name) -> columnNameFromField(name, columnQueryBindingFromField(name, record) + " AS ", record));
