@@ -12,9 +12,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+import io.debezium.util.Strings;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
@@ -127,15 +129,22 @@ public class JdbcSinkConnectorTask extends SinkTask {
      * @param record sink record, should not be {@code null}
      */
     private void markProcessed(SinkRecord record) {
-        final TopicPartition topicPartition = new TopicPartition(record.topic(), record.kafkaPartition());
+        final String topicName = getOriginalTopicName(record);
+        if (Strings.isNullOrBlank(topicName)) {
+            return;
+        }
+
+        LOGGER.info("Marking processed record for topic {}", topicName);
+
+        final TopicPartition topicPartition = new TopicPartition(topicName, record.kafkaPartition());
         final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset() + 1L);
 
         final OffsetAndMetadata existing = offsets.put(topicPartition, offsetAndMetadata);
         if (existing == null) {
-            LOGGER.trace("Advanced topic {} to offset {}.", record.topic(), record.kafkaOffset());
+            LOGGER.trace("Advanced topic {} to offset {}.", topicName, record.kafkaOffset());
         }
         else {
-            LOGGER.trace("Updated topic {} from offset {} to {}.", record.topic(), existing.offset(), record.kafkaOffset());
+            LOGGER.trace("Updated topic {} from offset {} to {}.", topicName, existing.offset(), record.kafkaOffset());
         }
     }
 
@@ -169,6 +178,23 @@ public class JdbcSinkConnectorTask extends SinkTask {
             final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset());
             offsets.put(topicPartition, offsetAndMetadata);
         }
+    }
+
+    private String getOriginalTopicName(SinkRecord record) {
+        // DBZ-6491
+        // This is a current workaround to resolve the original topic name from the broker as
+        // the value in the SinkRecord#topic may have been mutated with SMTs and would no
+        // longer represent the logical topic name on the broker.
+        //
+        // I intend to see whether the Kafka team could expose this original value on the
+        // SinkRecord contract for scenarios such as this to avoid the need to depend on
+        // connect-runtime. If so, we can drop that dependency, but since this is only a
+        // Kafka Connect implementation at this point, it's a fair workaround.
+        //
+        if (record instanceof InternalSinkRecord) {
+            return ((InternalSinkRecord) record).originalRecord().topic();
+        }
+        return  null;
     }
 
 }
