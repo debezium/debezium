@@ -21,7 +21,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.util.Strings;
+import io.debezium.connector.jdbc.relational.TableId;
 
 /**
  * A {@link DatabaseDialect} implementation for PostgreSQL.
@@ -57,28 +57,28 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public boolean tableExists(Connection connection, String tableName) throws SQLException {
+    public boolean tableExists(Connection connection, TableId tableId) throws SQLException {
         if (!getConfig().isQuoteIdentifiers()) {
             // This means that the table will be stored as lower-case
-            tableName = Strings.isNullOrBlank(tableName) ? tableName : tableName.toLowerCase();
+            tableId = tableId.toLowerCase();
         }
-        return super.tableExists(connection, tableName);
+        return super.tableExists(connection, tableId);
     }
 
     @Override
-    public TableDescriptor readTable(Connection connection, String tableName) throws SQLException {
+    public TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException {
         if (!getConfig().isQuoteIdentifiers()) {
             // This means that the table will be stored as lower-case
-            tableName = Strings.isNullOrBlank(tableName) ? tableName : tableName.toLowerCase();
+            tableId = tableId.toLowerCase();
         }
-        return super.readTable(connection, tableName);
+        return super.readTable(connection, tableId);
     }
 
     @Override
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
-        builder.append(toIdentifier(table.getId()));
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
         builder.appendLists(",", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");

@@ -26,6 +26,7 @@ import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.pipeline.sink.spi.ChangeEventSink;
 
 /**
@@ -92,21 +93,21 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private TableDescriptor checkAndApplyTableChangesIfNeeded(SinkRecord record, SinkRecordDescriptor descriptor) throws SQLException {
-        final String tableName = config.getTableNamingStrategy().resolveTableName(config, record);
-        if (!hasTable(tableName)) {
+        final TableId tableId = dialect.getTableIdFromTopic(record);
+        if (!hasTable(tableId)) {
             // Table does not exist, lets attempt to create it.
             try {
-                return createTable(tableName, descriptor);
+                return createTable(tableId, descriptor);
             }
             catch (SQLException ce) {
                 // It's possible the table may have been created in the interim, so try to alter.
-                LOGGER.warn("Table creation failed for '{}', attempting to alter the table", tableName, ce);
+                LOGGER.warn("Table creation failed for '{}', attempting to alter the table", tableId.toFullIdentiferString(), ce);
                 try {
-                    return alterTableIfNeeded(tableName, descriptor);
+                    return alterTableIfNeeded(tableId, descriptor);
                 }
                 catch (SQLException ae) {
                     // The alter failed, hard stop.
-                    LOGGER.error("Failed to alter the table '{}'.", tableName, ae);
+                    LOGGER.error("Failed to alter the table '{}'.", tableId.toFullIdentiferString(), ae);
                     throw ae;
                 }
             }
@@ -114,34 +115,34 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         else {
             // Table exists, lets attempt to alter it if necessary.
             try {
-                return alterTableIfNeeded(tableName, descriptor);
+                return alterTableIfNeeded(tableId, descriptor);
             }
             catch (SQLException ae) {
-                LOGGER.error("Failed to alter the table '{}'.", tableName, ae);
+                LOGGER.error("Failed to alter the table '{}'.", tableId.toFullIdentiferString(), ae);
                 throw ae;
             }
         }
     }
 
-    private boolean hasTable(String tableName) {
-        return session.doReturningWork((connection) -> dialect.tableExists(connection, tableName));
+    private boolean hasTable(TableId tableId) {
+        return session.doReturningWork((connection) -> dialect.tableExists(connection, tableId));
     }
 
-    private TableDescriptor readTable(String tableName) {
-        return session.doReturningWork((connection) -> dialect.readTable(connection, tableName));
+    private TableDescriptor readTable(TableId tableId) {
+        return session.doReturningWork((connection) -> dialect.readTable(connection, tableId));
     }
 
-    private TableDescriptor createTable(String tableName, SinkRecordDescriptor record) throws SQLException {
-        LOGGER.debug("Attempting to create table '{}'.", tableName);
+    private TableDescriptor createTable(TableId tableId, SinkRecordDescriptor record) throws SQLException {
+        LOGGER.debug("Attempting to create table '{}'.", tableId.toFullIdentiferString());
 
         if (NONE.equals(config.getSchemaEvolutionMode())) {
-            LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", tableName);
-            throw new SQLException("Cannot create table " + tableName + " because schema evolution is disabled");
+            LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", tableId.toFullIdentiferString());
+            throw new SQLException("Cannot create table " + tableId.toFullIdentiferString() + " because schema evolution is disabled");
         }
 
         Transaction transaction = session.beginTransaction();
         try {
-            final String createSql = dialect.getCreateTableStatement(record, tableName);
+            final String createSql = dialect.getCreateTableStatement(record, tableId);
             LOGGER.trace("SQL: {}", createSql);
             session.createNativeQuery(createSql, Object.class).executeUpdate();
             transaction.commit();
@@ -151,19 +152,19 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw e;
         }
 
-        return readTable(tableName);
+        return readTable(tableId);
     }
 
-    private TableDescriptor alterTableIfNeeded(String tableName, SinkRecordDescriptor record) throws SQLException {
-        LOGGER.debug("Attempting to alter table '{}'.", tableName);
+    private TableDescriptor alterTableIfNeeded(TableId tableId, SinkRecordDescriptor record) throws SQLException {
+        LOGGER.debug("Attempting to alter table '{}'.", tableId.toFullIdentiferString());
 
-        if (!hasTable(tableName)) {
-            LOGGER.error("Table '{}' does not exist and cannot be altered.", tableName);
-            throw new SQLException("Could not find table: " + tableName);
+        if (!hasTable(tableId)) {
+            LOGGER.error("Table '{}' does not exist and cannot be altered.", tableId.toFullIdentiferString());
+            throw new SQLException("Could not find table: " + tableId.toFullIdentiferString());
         }
 
         // Resolve table metadata from the database
-        final TableDescriptor table = readTable(tableName);
+        final TableDescriptor table = readTable(tableId);
 
         // Delegating to dialect to deal with database case sensitivity.
         Set<String> missingFields = dialect.resolveMissingFields(record, table);
@@ -179,13 +180,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (!fieldDescriptor.getSchema().isOptional() && fieldDescriptor.getSchema().defaultValue() == null) {
                 throw new SQLException(String.format(
                         "Cannot ALTER table '%s' because field '%s' is not optional but has no default value",
-                        tableName, fieldDescriptor.getName()));
+                        tableId.toFullIdentiferString(), fieldDescriptor.getName()));
             }
         }
 
         if (NONE.equals(config.getSchemaEvolutionMode())) {
-            LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", tableName);
-            throw new SQLException("Cannot alter table " + tableName + " because schema evolution is disabled");
+            LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", tableId.toFullIdentiferString());
+            throw new SQLException("Cannot alter table " + tableId.toFullIdentiferString() + " because schema evolution is disabled");
         }
 
         Transaction transaction = session.beginTransaction();
@@ -200,7 +201,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             throw e;
         }
 
-        return readTable(tableName);
+        return readTable(tableId);
     }
 
     private void write(TableDescriptor table, SinkRecordDescriptor record) throws SQLException {

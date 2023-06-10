@@ -27,4 +27,8 @@ public class JdbcSinkSchemaEvolutionIT extends AbstractJdbcSinkSchemaEvolutionTe
         super(sink);
     }
 
+    @Override
+    protected String getDatabaseSchemaName() {
+        return "public";
+    }
 }
