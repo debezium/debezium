@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.query.NativeQuery;
@@ -18,6 +19,7 @@ import org.hibernate.query.NativeQuery;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -38,24 +40,32 @@ public interface DatabaseDialect {
     DatabaseVersion getVersion();
 
     /**
+     * Resolves the table id for seink record.
+     *
+     * @param record the sink record.
+     * @return the parsed table identifier, never {@code null}.
+     */
+    TableId getTableIdFromTopic(SinkRecord record);
+
+    /**
      * Check whether the specified table exists.
      *
      * @param connection the database connection to be used, should not be {@code null}.
-     * @param tableName the table name to check for, should not be {@code null}.
+     * @param tableId the table identifier, should not be {@code null}.
      * @return true if the table exists, false otherwise
      * @throws SQLException if a database exception occurs
      */
-    boolean tableExists(Connection connection, String tableName) throws SQLException;
+    boolean tableExists(Connection connection, TableId tableId) throws SQLException;
 
     /**
      * Read the table structure data from the database.
      *
      * @param connection the database connection to be used, should not be {@code null}.
-     * @param tableName the table name to read the structure for, should not be {@code null}.
+     * @param tableId the table identifier, should not be {@code null}.
      * @return the table relational model if it exists
      * @throws SQLException if the table does not exist or a database exception occurs
      */
-    TableDescriptor readTable(Connection connection, String tableName) throws SQLException;
+    TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException;
 
     /**
      * Resolves what fields are missing from the provided table compared against the incoming record.
@@ -70,10 +80,10 @@ public interface DatabaseDialect {
      * Construct a {@code CREATE TABLE} statement specific for this dialect based on the provided record.
      *
      * @param record the current sink record being processed, should not be {@code null}
-     * @param tableName the table name to be used, should not be {@code null}
+     * @param tableId the tableidentifier to be used, should not be {@code null}
      * @return the create table SQL statement to be executed, never {@code null}
      */
-    String getCreateTableStatement(SinkRecordDescriptor record, String tableName);
+    String getCreateTableStatement(SinkRecordDescriptor record, TableId tableId);
 
     /**
      * Construct a {@code ALTER TABLE} statement specific for this dialect.

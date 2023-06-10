@@ -85,7 +85,7 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("merge into ");
-        builder.append(toIdentifier(table.getId()));
+        builder.append(getQualifiedTableName(table.getId()));
         builder.append(" using (values(");
         builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, record));
         builder.append(")) as DAT(");
