@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.notification;
 
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -120,12 +121,13 @@ public class IncrementalSnapshotNotificationServiceTest {
     @Test
     public void notifyTableScanCompleted() {
 
-        incrementalSnapshotNotificationService.notifyTableScanCompleted(incrementalSnapshotContext, partition, offsetContext, 100L);
+        incrementalSnapshotNotificationService.notifyTableScanCompleted(incrementalSnapshotContext, partition, offsetContext, 100L, SUCCEEDED);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "TABLE_SCAN_COMPLETED", Map.of(
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer",
-                "total_rows_scanned", "100"));
+                "total_rows_scanned", "100",
+                "status", "SUCCEEDED"));
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
