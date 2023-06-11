@@ -1091,6 +1091,18 @@ You can use the {prodname} connector for MongoDB with https://www.mongodb.com/at
 Note that MongoDB Atlas only supports secure connections via SSL, i.e. the xref:mongodb-property-mongodb-ssl-enabled[`+mongodb.ssl.enabled`] connector option _must_ be set to `true`.
 endif::community[]
 
+
+[[mongodb-optimal-oplog-config]]
+=== Optimal Oplog Config
+
+
+The {prodname} MongoDB connector works by obtaining changes from Oplog using change streams. As oplog is a capped collection, older entries are overwritten once maximum configured size is reached. For MongoDB connector to be able to deal with failures it is important that the oplog retention config is such that the resume point is available upon restart or retries. If the last oplog position is lost, the connector can not start again and a new connector has to be created afresh (See ).
+
+To avoid this, you can provide a higher  https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Oplog size] or preferably a Minimum Oplog Window config available since MongoDB 4.4 (i.e. time-based, entries of the last X-hours are guaranteed to be available even if oplog size cap is reached.) The later is preferable but may not always be the option as it can have impact if the cluster is reaching its capacity and there is sudden load of data. Thus you can instead choose to provide a higher Oplog size based on you workloads, ideally should be more than peak Oplog/Hour.
+
+E.g. If we have 3 GB oplog per hour and only 1 GB oplog size limit. Oplog entries will get cleared thrice an hour, which would be bad if Debezium fails during this time. Thus an oplog size of ? gb should be  optimum for such workload.
+
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
 // Title: Deployment of {prodname} MongoDB connectors
