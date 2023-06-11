@@ -5,6 +5,12 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.EMPTY;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.NO_PRIMARY_KEY;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SQL_EXCEPTION;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
+import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -356,6 +362,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                                SQL_EXCEPTION);
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
@@ -363,6 +371,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, EMPTY);
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
@@ -377,7 +386,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                                 currentTableId);
 
-                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned);
+                        notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
+                                SUCCEEDED);
 
                         tableScanCompleted(partition);
                         nextDataCollection(partition, offsetContext);
@@ -411,11 +421,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         currentTable = databaseSchema.tableFor(currentTableId);
         if (currentTable == null) {
             LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
+            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, UNKNOWN_SCHEMA);
             nextDataCollection(partition, offsetContext);
             return true;
         }
         if (getQueryColumns(currentTable).isEmpty()) {
             LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
+            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, NO_PRIMARY_KEY);
             nextDataCollection(partition, offsetContext);
             return true;
         }
