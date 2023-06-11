@@ -31,6 +31,7 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
     public static final String NONE = "<none>";
     public static final String CONNECTOR_NAME = "connector_name";
     public static final String TOTAL_ROWS_SCANNED = "total_rows_scanned";
+    public static final String STATUS = "status";
     public static final String LIST_DELIMITER = ",";
 
     private final NotificationService<P, O> notificationService;
@@ -43,6 +44,15 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
         IN_PROGRESS,
         TABLE_SCAN_COMPLETED,
         COMPLETED
+    }
+
+    public enum TableScanCompletionStatus {
+        EMPTY,
+        NO_PRIMARY_KEY,
+        SKIPPED,
+        SQL_EXCEPTION,
+        SUCCEEDED,
+        UNKNOWN_SCHEMA
     }
 
     public IncrementalSnapshotNotificationService(NotificationService<P, O> notificationService) {
@@ -96,7 +106,7 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
     }
 
     public <T extends DataCollectionId> void notifyTableScanCompleted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext,
-                                                                      long totalRowsScanned) {
+                                                                      long totalRowsScanned, TableScanCompletionStatus status) {
 
         String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
                 .map(DataCollectionId::identifier)
@@ -105,7 +115,8 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
         notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.TABLE_SCAN_COMPLETED,
                 Map.of(
                         DATA_COLLECTIONS, dataCollections,
-                        TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned)),
+                        TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned),
+                        STATUS, status.name()),
                 offsetContext),
                 Offsets.of(partition, offsetContext));
     }
