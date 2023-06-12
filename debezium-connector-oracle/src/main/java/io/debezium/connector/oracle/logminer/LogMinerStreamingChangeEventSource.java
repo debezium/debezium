@@ -139,7 +139,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
         try {
 
-            prepareConnection(jdbcConnection, false);
+            prepareConnection(false);
 
             this.effectiveOffset = offsetContext;
             startScn = offsetContext.getScn();
@@ -214,7 +214,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // At this point we use a new mining session
                             endMiningSession(jdbcConnection, offsetContext);
                             if (connectorConfig.isLogMiningRestartConnection()) {
-                                prepareConnection(jdbcConnection, true);
+                                prepareConnection(true);
                             }
                             initializeRedoLogsForMining(jdbcConnection, true, startScn);
 
@@ -250,16 +250,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void prepareConnection(OracleConnection connection, boolean closeAndReconnect) throws SQLException {
+    private void prepareConnection(boolean closeAndReconnect) throws SQLException {
         if (closeAndReconnect) {
             // Close and reconnect
             LOGGER.debug("Log switch or maximum session threshold detected, restarting Oracle JDBC connection.");
-            connection.close();
+            jdbcConnection.close();
         }
 
         // We explicitly expect auto-commit to be disabled
-        connection.setAutoCommit(false);
-        setNlsSessionParameters(connection);
+        jdbcConnection.setAutoCommit(false);
+        setNlsSessionParameters(jdbcConnection);
     }
 
     private void logOnlineRedoLogSizes(OracleConnectorConfig config) throws SQLException {
