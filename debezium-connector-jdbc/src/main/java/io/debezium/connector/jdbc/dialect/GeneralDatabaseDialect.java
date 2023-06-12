@@ -137,9 +137,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public boolean tableExists(Connection connection, TableId tableId) throws SQLException {
         if (isIdentifierUppercaseWhenNotQuoted() && !getConfig().isQuoteIdentifiers()) {
-            tableId.toUpperCase();
+            tableId = tableId.toUpperCase();
         }
-
         final DatabaseMetaData metadata = connection.getMetaData();
         try (ResultSet rs = metadata.getTables(tableId.getCatalogName(), tableId.getSchemaName(), tableId.getTableName(), null)) {
             return rs.next();
