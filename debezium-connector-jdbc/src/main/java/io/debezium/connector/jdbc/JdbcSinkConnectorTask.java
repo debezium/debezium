@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-import io.debezium.util.Strings;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -23,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.sink.spi.ChangeEventSink;
+import io.debezium.util.Strings;
 
 /**
  * The main task executing streaming from sink connector.
@@ -194,7 +194,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         if (record instanceof InternalSinkRecord) {
             return ((InternalSinkRecord) record).originalRecord().topic();
         }
-        return  null;
+        return null;
     }
 
 }
