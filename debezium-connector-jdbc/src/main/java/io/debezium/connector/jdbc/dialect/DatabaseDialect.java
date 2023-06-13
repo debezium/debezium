@@ -97,6 +97,15 @@ public interface DatabaseDialect {
     String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields);
 
     /**
+     * Gets the field delimeter used when contructing {@code ALTER TABLE} statements.
+     *
+     * @return the field delimeter for alter table SQL statement
+     */
+    default String getAlterTableStatementFieldDelimiter() {
+        return " ";
+    }
+
+    /**
      * Construct a {@code INSERT INTO} statement specific for this dialect.
      *
      * @param table the current relational table model, should not be {@code null}
