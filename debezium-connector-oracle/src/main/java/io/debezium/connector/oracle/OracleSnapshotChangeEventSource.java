@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -31,6 +32,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * A {@link StreamingChangeEventSource} for Oracle.
@@ -254,6 +256,15 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 .collect(Collectors.joining(", "));
         assert snapshotOffset != null;
         return Optional.of(String.format("SELECT %s FROM %s AS OF SCN %s", snapshotSelectColumns, quote(tableId), snapshotOffset));
+    }
+
+    @Override
+    protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
+        // Oracle expects this value to be supplied using "<database>.<schema>.<table>"; however the
+        // TableIdMapper used by the connector uses only "<schema>.<table>". This primarily targets
+        // a fix for this specific use case as a much larger refactor is likely necessary long term.
+        final TableId tableId = TableId.parse(signalingDataCollection);
+        return Strings.listOfRegex(tableId.schema() + "." + tableId.table(), Pattern.CASE_INSENSITIVE);
     }
 
     @Override

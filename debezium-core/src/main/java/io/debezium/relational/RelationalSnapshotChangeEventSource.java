@@ -232,6 +232,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
     }
 
+    protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
+        return Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE);
+    }
+
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
@@ -247,7 +251,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
         }
         if (!Strings.isNullOrBlank(signalingDataCollection)) {
-            captureTablePatterns.addAll(Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE));
+            captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
         }
         if (captureTablePatterns.size() > 0) {
             return captureTablePatterns

@@ -5311,6 +5311,52 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-6528")
+    public void shouldNotFailToStartWhenSignalDataCollectionNotDefinedWithinTableIncludeList() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz6528");
+            TestHelper.dropTable(connection, "dbz6495");
+
+            try (OracleConnection admin = TestHelper.adminConnection()) {
+                admin.setSessionToPdb(TestHelper.DATABASE);
+                TestHelper.dropTable(admin, "c##dbzuser.signals");
+                admin.execute("CREATE TABLE c##dbzuser.signals (id varchar2(64), type varchar2(32), data varchar2(2048))");
+                TestHelper.streamTable(admin, "c##dbzuser.signals");
+            }
+
+            connection.execute("CREATE TABLE dbz6528 (id numeric(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz6528");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6528")
+                    .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".C##DBZUSER.SIGNALS")
+                    .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz6528 (id,data) values (1, 'data')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6528");
+            assertThat(tableRecords).hasSize(1);
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6528");
+            try (OracleConnection admin = TestHelper.adminConnection()) {
+                admin.setSessionToPdb(TestHelper.DATABASE);
+                TestHelper.dropTable(connection, "c##dbzuser.signals");
+            }
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
