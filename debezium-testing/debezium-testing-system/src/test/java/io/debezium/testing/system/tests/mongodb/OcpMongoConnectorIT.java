@@ -14,6 +14,7 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.MongoConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMongo;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpMongoSharded;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -31,9 +32,10 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpMongo.class)
+@Fixture(OcpMongoSharded.class)
 @Fixture(MongoConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpMongoConnectorIT extends MongoTests {
+public class OcpMongoConnectorIT extends OcpMongoTests {
 
     public OcpMongoConnectorIT(KafkaController kafkaController,
                                KafkaConnectController connectController,

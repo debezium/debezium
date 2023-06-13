@@ -19,7 +19,7 @@ spec:
         role: config
     spec:
       volumes:
-      - name: mongo-volume-1
+      - name: mongo-volume-config
         emptyDir: {}
       containers:
       - resources: {}
@@ -29,7 +29,7 @@ spec:
           protocol: TCP
         imagePullPolicy: Always
         volumeMounts:
-        - name: mongo-volume-1
+        - name: mongo-volume-config
           mountPath: /data/db
         livenessProbe:
           initialDelaySeconds: 30
@@ -51,6 +51,7 @@ spec:
         - 'cfgrs'
         - '--dbpath'
         - '/data/db'
+        - '--bind_ip_all'
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

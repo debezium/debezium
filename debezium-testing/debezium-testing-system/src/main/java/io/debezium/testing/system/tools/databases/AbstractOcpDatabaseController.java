@@ -6,14 +6,10 @@
 package io.debezium.testing.system.tools.databases;
 
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-import static io.debezium.testing.system.tools.WaitConditions.scaled;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,20 +74,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
-        await()
-                .atMost(scaled(30), SECONDS)
-                .pollDelay(5, SECONDS)
-                .pollInterval(3, SECONDS)
-                .until(() -> {
-                    var pods = ocp.pods()
-                            .inNamespace(project)
-                            .list()
-                            .getItems()
-                            .stream()
-                            .filter(p -> p.getMetadata().getLabels().containsValue(name))
-                            .collect(Collectors.toList());
-                    return pods.isEmpty();
-                });
+        ocpUtils.waitForPodsDeletion(project, deployment);
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
         if (!isRunningFromOcp()) {
@@ -101,7 +84,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public String getDatabaseHostname() {
-        return getService().getMetadata().getName() + "." + project + ".svc.cluster.local";
+        return serviceHostnameFromName(getService().getMetadata().getName());
     }
 
     @Override
@@ -168,6 +151,10 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         LOGGER.info("Closing port forwards");
         portForward.close();
         portForward = null;
+    }
+
+    protected String serviceHostnameFromName(String serviceName) {
+        return serviceName + "." + project + ".svc.cluster.local";
     }
 
     private int getOriginalDatabasePort() {

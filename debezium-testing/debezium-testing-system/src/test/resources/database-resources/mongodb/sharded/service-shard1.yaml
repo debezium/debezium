@@ -8,5 +8,5 @@ spec:
     deployment: mongo-shard1r1
   ports:
     - name: db
-      port: 27017
-      targetPort: 27017
+      port: 27018
+      targetPort: 27018

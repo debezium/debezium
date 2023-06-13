@@ -6,6 +6,7 @@
 package io.debezium.testing.system.tools;
 
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
@@ -258,6 +259,21 @@ public class OpenShiftUtils {
         for (Pod p : pods) {
             client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
         }
+    }
+
+    public void waitForPodsDeletion(String project, Deployment deployment) {
+        String deploymentName = deployment.getMetadata().getName();
+        LOGGER.info("Waiting for pods to delete [" + deploymentName + "]");
+
+        await().atMost(scaled(40), SECONDS)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> client.pods()
+                        .inNamespace(project)
+                        .withLabels(Map.of("deployment", deploymentName))
+                        .list()
+                        .getItems()
+                        .isEmpty());
     }
 
     public static boolean isRunningFromOcp() {

@@ -61,12 +61,6 @@ public class OcpMongoShardedDeployer extends AbstractOcpDatabaseDeployer<OcpMong
         this.services = svcs;
 
         return getController(deployment, services, ocp);
-        // TODO deploy config
-        // TODO init configs - where?
-        // TODO deploy shards
-        // TODO init shards - where?
-        // TODO deploy mongos
-        // TODO init mongos - where?
     }
 
     @Override

@@ -25,25 +25,26 @@ spec:
             - containerPort: 27017
               protocol: TCP
           imagePullPolicy: Always
-          livenessProbe:
-            initialDelaySeconds: 30
-            tcpSocket:
-              port: 27017
-            timeoutSeconds: 1
-          readinessProbe:
-            initialDelaySeconds: 30
-            tcpSocket:
-              port: 27017
-            timeoutSeconds: 1
+#          livenessProbe:
+#            initialDelaySeconds: 30
+#            tcpSocket:
+#              port: 27017
+#            timeoutSeconds: 1
+#          readinessProbe:
+#            initialDelaySeconds: 30
+#            tcpSocket:
+#              port: 27017
+#            timeoutSeconds: 1
           terminationMessagePolicy: File
           terminationMessagePath: /dev/termination-log
           image: quay.io/mmedek/mongo:latest
+          command:
+          - 'mongos'
+          - '--configdb'
+          - 'cfgrs/mongo-config:27019'
+          - '--bind_ip_all'
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst
-      command:
-      - 'mongos'
-      - '--configdb'
-      - 'cfgrs/mongo-config:27017'
   strategy:
     type: Recreate

@@ -1,7 +1,7 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: mongo-shard1r1
+  name: mongo-shard2r1
   labels:
     app: mongo
 spec:
@@ -9,16 +9,16 @@ spec:
   selector:
     matchLabels:
       app: mongo
-      deployment: mongo-shard1r1
+      deployment: mongo-shard2r1
   template:
     metadata:
       labels:
         app: mongo
-        deployment: mongo-shard1r1
+        deployment: mongo-shard2r1
         role: shard
     spec:
       volumes:
-      - name: mongo-volume-shard1r1
+      - name: mongo-volume-shard2r1
         emptyDir: {}
       containers:
       - resources: {}
@@ -28,7 +28,7 @@ spec:
           protocol: TCP
         imagePullPolicy: Always
         volumeMounts:
-        - name: mongo-volume-shard1r1
+        - name: mongo-volume-shard2r1
           mountPath: /data/db
 #        livenessProbe:
 #          initialDelaySeconds: 30
@@ -47,7 +47,7 @@ spec:
         - 'mongod'
         - '--shardsvr'
         - '--replSet'
-        - 'shard1rs'
+        - 'shard2rs'
         - '--dbpath'
         - '/data/db'
         - '--bind_ip_all'
