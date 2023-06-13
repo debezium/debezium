@@ -20,7 +20,7 @@ CONTRIBUTORS_FILTERS="$DIR/FilteredNames.txt"
 
 cp $ALIASES $FILTERS $DIR && cd $DIR
 
-declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "debezium-connector-jdbc" "container-images")
+declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "debezium-connector-jdbc" "debezium-ui" "container-images")
 
 for REPO in "${DEBEZIUM_REPOS[@]}";
 do
