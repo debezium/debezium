@@ -157,10 +157,18 @@ a|[source, json]
    "additional_data":{
       "connector_name":"my-connector",
       "data_collection":"table1",
-      "total_rows_scanned":"100"
+      "total_rows_scanned":"100",
+      "status":"SUCCEEDED" // <1>
    }
 }
 ----
+<1> The possible values are:
+* EMPTY,
+* NO_PRIMARY_KEY,
+* SKIPPED,
+* SQL_EXCEPTION,
+* SUCCEEDED,
+* UNKNOWN_SCHEMA
 |Completed
 a|[source, json]
 ----
