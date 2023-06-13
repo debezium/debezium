@@ -292,7 +292,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         builder.append("ALTER TABLE ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" ");
-        builder.appendList(" ", missingFields, (name) -> {
+        builder.appendList(getAlterTableStatementFieldDelimiter(), missingFields, (name) -> {
             final FieldDescriptor field = record.getFields().get(name);
             final StringBuilder addColumnSpec = new StringBuilder();
             addColumnSpec.append("ADD ");
