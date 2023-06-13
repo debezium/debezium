@@ -189,7 +189,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             String[] subFields = Arrays.stream(fieldName.split(NESTING_SEPARATOR)).map(String::trim).toArray(String[]::new);
 
             if (subFields.length == 1) {
-                return Optional.of(envelope.get(subFields[0]));
+                return Optional.ofNullable(envelope.get(subFields[0]));
             }
 
             Struct lastStruct = getLastStruct(envelope, subFields);
