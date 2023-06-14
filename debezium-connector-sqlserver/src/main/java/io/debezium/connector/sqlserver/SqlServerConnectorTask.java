@@ -76,10 +76,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 
         MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new SqlServerConnection(connectorConfig.getJdbcConfig(),
+                () -> new SqlServerConnection(connectorConfig,
                         valueConverters, connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase(), connectorConfig.getOptionRecompile()));
         dataConnection = connectionFactory.mainConnection();
-        metadataConnection = new SqlServerConnection(connectorConfig.getJdbcConfig(), valueConverters,
+        metadataConnection = new SqlServerConnection(connectorConfig, valueConverters,
                 connectorConfig.getSkippedOperations(), connectorConfig.useSingleDatabase());
 
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,

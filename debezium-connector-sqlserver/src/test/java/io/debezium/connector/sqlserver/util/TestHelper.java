@@ -35,7 +35,6 @@ import io.debezium.connector.sqlserver.Lsn;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
-import io.debezium.connector.sqlserver.SqlServerJdbcConfiguration;
 import io.debezium.connector.sqlserver.SqlServerValueConverters;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -238,7 +237,8 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(defaultJdbcConfig()),
+        SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConnectorConfig().build());
+        return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                 Collections.emptySet(), false);
     }
@@ -251,31 +251,29 @@ public class TestHelper {
      * Returns a database connection that isn't explicitly connected to any database.
      */
     public static SqlServerConnection multiPartitionTestConnection() {
-        return testConnection(defaultJdbcConfig());
+        return testConnection(defaultConnectorConfig().build());
     }
 
     public static SqlServerConnection testConnection(String databaseName) {
-        JdbcConfiguration config = JdbcConfiguration.adapt(defaultJdbcConfig()
-                .edit()
+        Configuration config = defaultConnectorConfig()
                 .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
-                .build());
+                .build();
 
         return testConnection(config);
     }
 
-    public static SqlServerConnection testConnection(JdbcConfiguration config) {
-        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
+    public static SqlServerConnection testConnection(Configuration config) {
+        SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
+        return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                 Collections.emptySet(), false);
     }
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
-        JdbcConfiguration config = JdbcConfiguration.adapt(defaultJdbcConfig()
-                .edit()
+        SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConnectorConfig()
                 .with(JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
-
-        return new SqlServerConnection(SqlServerJdbcConfiguration.adapt(config),
+        return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
                 Collections.emptySet(), true, true);
     }

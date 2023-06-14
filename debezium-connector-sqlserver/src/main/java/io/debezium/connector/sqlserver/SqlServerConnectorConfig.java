@@ -361,7 +361,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int maxTransactionsPerIteration;
     private final int maxRetriesOnError;
     private final boolean optionRecompile;
-
     private final int queryFetchSize;
 
     public SqlServerConnectorConfig(Configuration config) {

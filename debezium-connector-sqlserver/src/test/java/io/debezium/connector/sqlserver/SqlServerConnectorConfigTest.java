@@ -87,12 +87,22 @@ public class SqlServerConnectorConfigTest {
     }
 
     @Test
-    public void validQueryFetchSize() throws Exception {
+    public void validQueryFetchSizeDefaults() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 defaultConfig()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
         assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
+    }
+
+    @Test
+    public void validQueryFetchSizeAvailable() {
+        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
+                defaultConfig()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                        .with(SqlServerConnectorConfig.QUERY_FETCH_SIZE, 20_000)
+                        .build());
+        assertEquals(connectorConfig.getQueryFetchSize(), 20_000);
     }
 
     private Configuration.Builder defaultConfig() {
