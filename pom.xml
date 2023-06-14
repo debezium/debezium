@@ -128,7 +128,7 @@
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
-        <version.mysql.server>5.7</version.mysql.server>
+        <version.mysql.server>8.0</version.mysql.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
