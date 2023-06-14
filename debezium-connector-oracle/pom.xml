@@ -143,7 +143,6 @@
         -->
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
-        <version.infinispan.server>14.0.2.Final</version.infinispan.server>
         <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
         <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
         <oracle.infinispan.port>11222</oracle.infinispan.port>
