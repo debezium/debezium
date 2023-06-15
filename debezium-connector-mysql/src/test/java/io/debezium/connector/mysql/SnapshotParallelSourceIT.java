@@ -48,4 +48,11 @@ public class SnapshotParallelSourceIT extends SnapshotSourceIT {
     public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() {
 
     }
+
+    @Ignore
+    @Test
+    @Override
+    public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeListWithConflictingNames() {
+
+    }
 }
