@@ -1065,7 +1065,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     // Use this connector's implementation rather than common connector's flavor
                     SKIPPED_OPERATIONS,
                     SHOULD_FLUSH_LSN_IN_SOURCE_DB)
-            .events(INCLUDE_UNKNOWN_DATATYPES)
+            .events(
+                    INCLUDE_UNKNOWN_DATATYPES,
+                    SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_MODE_CLASS,

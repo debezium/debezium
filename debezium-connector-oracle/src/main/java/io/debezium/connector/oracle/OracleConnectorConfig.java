@@ -597,6 +597,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_FLUSH_TABLE_NAME,
                     LOG_MINING_QUERY_FILTER_MODE,
                     LOG_MINING_RESTART_CONNECTION)
+            .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**

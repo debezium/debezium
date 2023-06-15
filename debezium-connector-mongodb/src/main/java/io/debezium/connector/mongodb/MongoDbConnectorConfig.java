@@ -609,7 +609,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_EXCLUDE_LIST,
                     FIELD_RENAMES,
-                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION,
+                    SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
                     CAPTURE_MODE,

@@ -914,7 +914,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     GTID_SOURCE_FILTER_DML_EVENTS,
                     BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                    INCONSISTENT_SCHEMA_HANDLING_MODE)
+                    INCONSISTENT_SCHEMA_HANDLING_MODE,
+                    SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     protected static ConfigDef configDef() {
