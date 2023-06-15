@@ -1249,6 +1249,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
                     + "values (2, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
                     + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            // DBZ-6513 negative intervals
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (3, INTERVAL '-1' YEAR, INTERVAL '-1' MONTH, "
+                    + "INTERVAL '-1' DAY, INTERVAL '-7 5:12:10.0123' DAY(1) TO SECOND)");
             connection.commit();
 
             final Configuration config = TestHelper.defaultConfig()
@@ -1265,12 +1269,12 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Verify record generated during snapshot
-            final SourceRecords snapshotRecords = consumeRecordsByTopic(2);
-            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(2);
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(3);
+            assertThat(snapshotRecords.allRecordsInOrder()).hasSize(3);
             assertThat(snapshotRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
 
             List<SourceRecord> records = snapshotRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(records).hasSize(2);
+            assertThat(records).hasSize(3);
 
             Struct after = ((Struct) records.get(0).value()).getStruct(AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
@@ -1286,37 +1290,55 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
             assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
 
+            after = ((Struct) records.get(2).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.getString("INTYM")).isEqualTo("P-1Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y-1M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M-1DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M-7DT-5H-12M-10.0123S");
+
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
-                    + "values (3, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
+                    + "values (4, INTERVAL '2' YEAR, INTERVAL '555-4' YEAR(3) TO MONTH, "
                     + "INTERVAL '3' DAY, INTERVAL '111 10:09:08.555444333' DAY(3) TO SECOND(9))");
             connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
-                    + "values (4, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
+                    + "values (5, INTERVAL '0' YEAR, INTERVAL '0' MONTH, "
                     + "INTERVAL '0' DAY, INTERVAL '0' SECOND)");
+            // DBZ-6513 negative intervals
+            connection.execute("INSERT INTO debezium.interval (id, intYM, intYM2, intDS, intDS2) "
+                    + "values (6, INTERVAL '-1' YEAR, INTERVAL '-1' MONTH, "
+                    + "INTERVAL '-1' DAY, INTERVAL '-7 5:12:10.0123' DAY(1) TO SECOND)");
             connection.commit();
 
             // Verify record generated during streaming
-            final SourceRecords streamingRecords = consumeRecordsByTopic(2);
-            assertThat(streamingRecords.allRecordsInOrder()).hasSize(2);
+            final SourceRecords streamingRecords = consumeRecordsByTopic(3);
+            assertThat(streamingRecords.allRecordsInOrder()).hasSize(3);
             assertThat(streamingRecords.topics()).contains("server1.DEBEZIUM.INTERVAL");
 
             records = streamingRecords.recordsForTopic("server1.DEBEZIUM.INTERVAL");
-            assertThat(records).hasSize(2);
+            assertThat(records).hasSize(3);
 
             after = ((Struct) records.get(0).value()).getStruct(AFTER);
-            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("ID")).isEqualTo(4);
             assertThat(after.getString("INTYM")).isEqualTo("P2Y0M0DT0H0M0S");
             assertThat(after.getString("INTYM2")).isEqualTo("P555Y4M0DT0H0M0S");
             assertThat(after.getString("INTDS")).isEqualTo("P0Y0M3DT0H0M0S");
             assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M111DT10H9M563.444333S");
 
             after = ((Struct) records.get(1).value()).getStruct(AFTER);
-            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.get("ID")).isEqualTo(5);
             assertThat(after.getString("INTYM")).isEqualTo("P0Y0M0DT0H0M0S");
             assertThat(after.getString("INTYM2")).isEqualTo("P0Y0M0DT0H0M0S");
             assertThat(after.getString("INTDS")).isEqualTo("P0Y0M0DT0H0M0S");
             assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M0DT0H0M0S");
+
+            after = ((Struct) records.get(2).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(6);
+            assertThat(after.getString("INTYM")).isEqualTo("P-1Y0M0DT0H0M0S");
+            assertThat(after.getString("INTYM2")).isEqualTo("P0Y-1M0DT0H0M0S");
+            assertThat(after.getString("INTDS")).isEqualTo("P0Y0M-1DT0H0M0S");
+            assertThat(after.getString("INTDS2")).isEqualTo("P0Y0M-7DT-5H-12M-10.0123S");
 
             assertNoRecordsToConsume();
         }
