@@ -30,6 +30,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
@@ -715,8 +716,7 @@ public abstract class CommonConnectorConfig {
                     SIGNAL_ENABLED_CHANNELS,
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
-                    SinkNotificationChannel.NOTIFICATION_TOPIC,
-                    SOURCE_INFO_STRUCT_MAKER)
+                    SinkNotificationChannel.NOTIFICATION_TOPIC)
             .create();
 
     private final Configuration config;
@@ -1157,15 +1157,15 @@ public abstract class CommonConnectorConfig {
 
     public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker(Field sourceInfoStructMakerField, String connector, String version,
                                                                                             CommonConnectorConfig connectorConfig) {
-        String sourceInfoStructMakerName = config.getString(sourceInfoStructMakerField);
-        SourceInfoStructMaker sourceInfoStructMaker = config.getInstance(sourceInfoStructMakerField, SourceInfoStructMaker.class);
+        @SuppressWarnings("unchecked")
+        final SourceInfoStructMaker<T> sourceInfoStructMaker = config.getInstance(sourceInfoStructMakerField, SourceInfoStructMaker.class);
         if (sourceInfoStructMaker == null) {
-            throw new ConnectException("Unable to instantiate the source info struct maker class " + sourceInfoStructMakerName);
+            throw new DebeziumException("Unable to instantiate the source info struct maker class " + config.getString(sourceInfoStructMakerField));
         }
-        LOGGER.info("Loading the custom source info struct maker plugin: {}", sourceInfoStructMakerName);
+        LOGGER.info("Loading the custom source info struct maker plugin: {}", sourceInfoStructMaker.getClass().getName());
 
         sourceInfoStructMaker.init(connector, version, connectorConfig);
-        return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
+        return sourceInfoStructMaker;
     }
 
 }
