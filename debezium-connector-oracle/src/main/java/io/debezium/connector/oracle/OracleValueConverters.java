@@ -746,8 +746,8 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (m.matches()) {
             final int sign = "-".equals(m.group(1)) ? -1 : 1;
             if (intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING) {
-                double seconds = (double) (sign * Integer.parseInt(m.group(5)))
-                        + (double) Integer.parseInt(Strings.pad(m.group(6), 6, '0')) / 1_000_000D;
+                double seconds = sign * ((double) (Integer.parseInt(m.group(5)))
+                        + (double) Integer.parseInt(Strings.pad(m.group(6), 6, '0')) / 1_000_000D);
                 r.deliver(Interval.toIsoString(
                         0,
                         0,
