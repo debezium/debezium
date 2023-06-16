@@ -214,20 +214,25 @@ public class LogMinerEventRow {
 
         StringBuilder result = new StringBuilder(redoSql);
         int csf = rs.getInt(CSF);
+        int operationCode = rs.getInt(OPERATION_CODE);
 
         // 0 - indicates SQL_REDO is contained within the same row
         // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
         // the next row returned by the ResultSet
         while (csf == 1) {
             rs.next();
-            if (lobLimitCounter-- == 0) {
-                LOGGER.warn("LOB value was truncated due to the connector limitation of {} MB", 40);
-                break;
+            // Combine all XML_WRITE that have a continuation signal flag
+            if (operationCode != EventType.XML_WRITE.getValue()) {
+                if (lobLimitCounter-- == 0) {
+                    LOGGER.warn("LOB value was truncated due to the connector limitation of {} MB", 40);
+                    break;
+                }
             }
 
             redoSql = rs.getString(SQL_REDO);
             result.append(redoSql);
             csf = rs.getInt(CSF);
+            operationCode = rs.getInt(OPERATION_CODE);
         }
 
         return result.toString();

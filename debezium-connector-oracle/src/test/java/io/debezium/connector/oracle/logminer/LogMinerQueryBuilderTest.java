@@ -60,7 +60,7 @@ public class LogMinerQueryBuilderTest {
 
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";
 
-    private static final String OPERATION_CODES_LOB_ENABLED = "1,2,3,6,7,9,10,11,29,34,36,255";
+    private static final String OPERATION_CODES_LOB_ENABLED = "1,2,3,6,7,9,10,11,29,34,36,68,70,71,255";
     private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,6,7,34,36,255";
 
     private static final String OPERATION_CODES_PREDICATE = "(OPERATION_CODE IN (${operationCodes})${operationDdl})";
