@@ -221,6 +221,62 @@ public class TableSchemaBuilderTest {
     }
 
     @Test
+    @FixFor("DBZ-6559")
+    public void shouldBuildCorrectSchemaNamesWhenPrefixHasInvalidChar() {
+
+        topicProperties = new Properties();
+        topicProperties.put("topic.prefix", "3prefix");
+        topicNamingStrategy = new SchemaTopicNamingStrategy(topicProperties, false);
+
+        // table id with catalog and schema
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.schema.table.Value");
+
+        // only catalog
+        table = table.edit()
+                .tableId(new TableId("testDb", null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testDb.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testDb.testTable.Value");
+
+        // only schema
+        table = table.edit()
+                .tableId(new TableId(null, "testSchema", "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testSchema.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testSchema.testTable.Value");
+
+        // neither catalog nor schema
+        table = table.edit()
+                .tableId(new TableId(null, null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testTable.Value");
+    }
+
+    @Test
     @FixFor("DBZ-2975")
     public void shouldBuildCorrectSchemaNamesInMultiPartitionMode() {
         // table id with catalog and schema
