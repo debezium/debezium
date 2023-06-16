@@ -23,6 +23,7 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -45,8 +46,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                                              MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory, PostgresSchema schema,
                                              EventDispatcher<PostgresPartition, TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener<PostgresPartition> snapshotProgressListener, SlotCreationResult slotCreatedInfo,
-                                             SlotState startingSlotInfo) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+                                             SlotState startingSlotInfo, NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.schema = schema;

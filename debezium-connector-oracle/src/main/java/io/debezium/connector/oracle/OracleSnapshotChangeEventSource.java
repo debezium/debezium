@@ -24,6 +24,7 @@ import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -49,8 +50,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
-                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+                                           SnapshotProgressListener<OraclePartition> snapshotProgressListener,
+                                           NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.databaseSchema = schema;

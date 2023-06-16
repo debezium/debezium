@@ -1154,6 +1154,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
         return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
                 ((Struct) record.value()).getString("type").equals("COMPLETED");
     }
 

@@ -51,8 +51,9 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     }
 
     @Override
-    public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener) {
-        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+    public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener,
+                                                                                                        NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
+        return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
     }
 
     @Override

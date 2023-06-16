@@ -30,6 +30,7 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
     private final List<String> enabledChannels;
 
     private final IncrementalSnapshotNotificationService<P, O> incrementalSnapshotNotificationService;
+    private final InitialSnapshotNotificationService<P, O> initialSnapshotNotificationService;
 
     public NotificationService(List<NotificationChannel> notificationChannels,
                                CommonConnectorConfig config,
@@ -48,6 +49,7 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
                 .forEach(channel -> ((ConnectChannel) channel).initConnectChannel(schemaFactory, consumer));
 
         incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this);
+        initialSnapshotNotificationService = new InitialSnapshotNotificationService<>(this, config);
     }
 
     /**
@@ -84,6 +86,10 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
 
     public IncrementalSnapshotNotificationService<P, O> incrementalSnapshotNotificationService() {
         return incrementalSnapshotNotificationService;
+    }
+
+    public InitialSnapshotNotificationService<P, O> initialSnapshotNotificationService() {
+        return initialSnapshotNotificationService;
     }
 
     private Predicate<? super NotificationChannel> isEnabled() {

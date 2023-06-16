@@ -96,12 +96,12 @@ public class ReplicaSets {
     }
 
     /**
-     * Get the ReplicaSet for the incremental snapshot
+     * Get the ReplicaSet for the snapshot
      *
      * @return in case of a ReplicaSet deployments return the only ReplicaSet available.
      * In case of a Sharded Cluster, for incremental snapshot, only the connection.mode=sharded is supported. In this case only one ReplicaSet is present.
      */
-    public ReplicaSet getIncrementalSnapshotReplicaSet() {
+    public ReplicaSet getSnapshotReplicaSet() {
         return all().get(0);
     }
 

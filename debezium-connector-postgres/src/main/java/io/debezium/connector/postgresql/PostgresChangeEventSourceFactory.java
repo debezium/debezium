@@ -59,7 +59,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener) {
+    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
+                                                                                                            NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
@@ -69,7 +70,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 clock,
                 snapshotProgressListener,
                 slotCreatedInfo,
-                startingSlotInfo);
+                startingSlotInfo,
+                notificationService);
     }
 
     @Override
