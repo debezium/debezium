@@ -6,7 +6,6 @@
 package io.debezium.connector.jdbc.type;
 
 import java.sql.Types;
-import java.time.LocalTime;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;

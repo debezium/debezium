@@ -50,15 +50,6 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
             else {
                 query.setParameter(index, localDateTime);
             }
-            // TODO: When not setting Hibernate JDBC_TIME_ZONE, this works
-//            final LocalTime localTime = getLocalTime((Number) value);
-//            final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
-//            if (getDialect().isConnectionTimeZoneSet()) {
-//                query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
-//            }
-//            else {
-//                query.setParameter(index, localDateTime);
-//            }
         }
         else {
             throwUnexpectedValue(value);
