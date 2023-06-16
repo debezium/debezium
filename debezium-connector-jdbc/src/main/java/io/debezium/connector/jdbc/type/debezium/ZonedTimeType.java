@@ -68,16 +68,16 @@ public class ZonedTimeType extends AbstractTimeType {
         }
         else if (value instanceof String) {
             final ZonedDateTime zdt = OffsetTime.parse((String) value, ZonedTime.FORMATTER).atDate(LocalDate.now()).toZonedDateTime();
-            if (getDialect().isJdbcTimeZoneSet()) {
-                query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
-            }
-            else {
-                if (getDialect().isConnectionTimeZoneSet()) {
+            if (getDialect().isTimeZoneSet()) {
+                if (getDialect().shouldBindTimeWithTimeZoneAsDatabaseTimeZone()) {
                     query.setParameter(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()));
                 }
                 else {
-                    bindWithNoTimeZoneDetails(query, index, zdt);
+                    query.setParameter(index, zdt, StandardBasicTypes.ZONED_DATE_TIME_WITH_TIMEZONE);
                 }
+            }
+            else {
+                bindWithNoTimeZoneDetails(query, index, zdt);
             }
         }
         else {

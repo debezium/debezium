@@ -85,8 +85,13 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public boolean isConnectionTimeZoneSet() {
-        return connectionTimeZoneSet;
+    public boolean isTimeZoneSet() {
+        return connectionTimeZoneSet || super.isTimeZoneSet();
+    }
+
+    @Override
+    public boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone() {
+        return true;
     }
 
     @Override

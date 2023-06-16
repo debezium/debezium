@@ -26,7 +26,7 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
         }
         else if (value instanceof Number) {
             final LocalDateTime localDateTime = getLocalDateTime(((Number) value).longValue());
-            if (getDialect().isConnectionTimeZoneSet() || getDialect().isJdbcTimeZoneSet()) {
+            if (getDialect().isTimeZoneSet()) {
                 query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
             }
             else {

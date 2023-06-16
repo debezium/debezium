@@ -51,7 +51,7 @@ public class ConnectTimeType extends AbstractTimeType {
         else if (value instanceof Date) {
             final LocalTime localTime = DateTimeUtils.toLocalTimeFromUtcDate((Date) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
-            if (getDialect().isConnectionTimeZoneSet() || getDialect().isJdbcTimeZoneSet()) {
+            if (getDialect().isTimeZoneSet()) {
                 query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
             }
             else {

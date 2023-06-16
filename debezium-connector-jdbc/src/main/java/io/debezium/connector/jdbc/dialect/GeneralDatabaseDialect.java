@@ -385,13 +385,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public boolean isConnectionTimeZoneSet() {
-        return false;
+    public boolean isTimeZoneSet() {
+        return jdbcTimeZone;
     }
 
     @Override
-    public boolean isJdbcTimeZoneSet() {
-        return jdbcTimeZone;
+    public boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone() {
+        return false;
     }
 
     @Override
