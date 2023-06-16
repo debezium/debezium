@@ -8,7 +8,6 @@ package io.debezium.pipeline;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,7 +24,6 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -114,7 +112,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
                     LOGGER.info("Context created");
 
-                    SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
+                    SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService);
                     executeChangeEventSources(taskContext, snapshotSource, previousOffsets, previousLogContext, context);
                 }
                 catch (InterruptedException e) {
@@ -150,18 +148,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
         SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
-
-        try {
-            notificationService.notify(Notification.Builder.builder()
-                    .withId(UUID.randomUUID().toString())
-                    .withAggregateType("Initial Snapshot")
-                    .withType("Status " + snapshotResult.getStatus())
-                    .build(),
-                    Offsets.of(previousOffsets.getTheOnlyPartition(), snapshotResult.getOffset()));
-        }
-        catch (UnsupportedOperationException e) {
-            LOGGER.warn("Initial Snapshot notification not currently supported for MongoDB");
-        }
 
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(snapshotResult.getOffset()));
 

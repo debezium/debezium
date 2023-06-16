@@ -36,16 +36,6 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     private final NotificationService<P, O> notificationService;
 
-    public enum SnapshotStatus {
-        STARTED,
-        PAUSED,
-        RESUMED,
-        ABORTED,
-        IN_PROGRESS,
-        TABLE_SCAN_COMPLETED,
-        COMPLETED
-    }
-
     public enum TableScanCompletionStatus {
         EMPTY,
         NO_PRIMARY_KEY,

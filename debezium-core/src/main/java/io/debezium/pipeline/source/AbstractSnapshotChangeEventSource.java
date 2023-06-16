@@ -17,9 +17,11 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.spi.schema.DataCollectionId;
@@ -45,20 +47,22 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     private final CommonConnectorConfig connectorConfig;
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener) {
+    private final NotificationService<P, O> notificationService;
+
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener,
+                                             NotificationService<P, O> notificationService) {
         this.connectorConfig = connectorConfig;
         this.snapshotProgressListener = snapshotProgressListener;
+        this.notificationService = notificationService;
+    }
+
+    protected Offsets<P, OffsetContext> getOffsets(SnapshotContext<P, O> ctx, O previousOffset, SnapshottingTask snapshottingTask) {
+        return Offsets.of(ctx.partition, previousOffset);
     }
 
     @Override
     public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset);
-        if (snapshottingTask.shouldSkipSnapshot()) {
-            LOGGER.debug("Skipping snapshotting");
-            return SnapshotResult.skipped(previousOffset);
-        }
-
-        delaySnapshotIfNeeded(context);
 
         final SnapshotContext<P, O> ctx;
         try {
@@ -69,10 +73,20 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
             throw new RuntimeException(e);
         }
 
+        Offsets<P, OffsetContext> offsets = getOffsets(ctx, previousOffset, snapshottingTask);
+        if (snapshottingTask.shouldSkipSnapshot()) {
+            LOGGER.debug("Skipping snapshotting");
+            notificationService.initialSnapshotNotificationService().notifySkipped(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
+            return SnapshotResult.skipped(previousOffset);
+        }
+
+        delaySnapshotIfNeeded(context);
+
         boolean completedSuccessfully = true;
 
         try {
             snapshotProgressListener.snapshotStarted(partition);
+            notificationService.initialSnapshotNotificationService().notifyStarted(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             return doExecute(context, previousOffset, ctx, snapshottingTask);
         }
         catch (InterruptedException e) {
@@ -92,11 +106,13 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
                 LOGGER.info("Snapshot completed");
                 completed(ctx);
                 snapshotProgressListener.snapshotCompleted(partition);
+
+                notificationService.initialSnapshotNotificationService().notifyCompleted(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             }
             else {
                 LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
                 aborted(ctx);
-                snapshotProgressListener.snapshotAborted(partition);
+                snapshotProgressListener.snapshotAborted(offsets.getTheOnlyPartition());
             }
         }
     }

@@ -63,7 +63,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
+                                                                                                          NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
@@ -72,7 +73,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                errorHandler);
+                errorHandler,
+                notificationService);
     }
 
     @Override

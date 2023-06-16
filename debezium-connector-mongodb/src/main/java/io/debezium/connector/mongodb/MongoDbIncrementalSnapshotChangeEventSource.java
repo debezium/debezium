@@ -160,7 +160,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context.sendEvent(keyFromRow(row));
 
         MongoDbOffsetContext mongoDbOffsetContext = getMongoDbOffsetContext(offsetContext);
-        ReplicaSet replicaSet = replicaSets.getIncrementalSnapshotReplicaSet();
+        ReplicaSet replicaSet = replicaSets.getSnapshotReplicaSet();
         ReplicaSetOffsetContext replicaSetOffsetContext = mongoDbOffsetContext.getReplicaSetOffsetContext(replicaSet);
         ReplicaSetPartition replicaSetPartition = mongoDbOffsetContext.getReplicaSetPartition(replicaSet);
 

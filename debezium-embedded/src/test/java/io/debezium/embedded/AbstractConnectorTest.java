@@ -1278,8 +1278,16 @@ public abstract class AbstractConnectorTest implements Testing {
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database) throws MalformedObjectNameException {
 
-        if (task != null && database != null) {
-            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + ",task=" + task + ",database=" + database);
+        Map<String, String> props = new HashMap<>();
+        props.put("task", task);
+        props.put("database", database);
+        String additionalProperties = props.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
+                .collect(Collectors.joining(","));
+
+        if (additionalProperties.length() != 0) {
+            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + "," + additionalProperties);
         }
 
         return getSnapshotMetricsObjectName(connector, server);

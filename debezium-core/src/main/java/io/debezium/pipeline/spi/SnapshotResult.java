@@ -40,6 +40,8 @@ public class SnapshotResult<O extends OffsetContext> {
     }
 
     public enum SnapshotResultStatus {
+        STARTED,
+
         COMPLETED,
         ABORTED,
         SKIPPED

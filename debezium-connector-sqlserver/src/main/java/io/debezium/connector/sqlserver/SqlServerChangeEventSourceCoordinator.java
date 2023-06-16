@@ -8,7 +8,6 @@ package io.debezium.connector.sqlserver;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,7 +21,6 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
@@ -82,13 +80,6 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
 
             previousLogContext.set(taskContext.configureLoggingContext("snapshot", partition));
             SnapshotResult<SqlServerOffsetContext> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
-
-            notificationService.notify(Notification.Builder.builder()
-                    .withId(UUID.randomUUID().toString())
-                    .withAggregateType("Initial Snapshot")
-                    .withType("Status " + snapshotResult.getStatus())
-                    .build(),
-                    Offsets.of(partition, snapshotResult.getOffset()));
 
             if (snapshotResult.isCompletedOrSkipped()) {
                 streamingOffsets.getOffsets().put(partition, snapshotResult.getOffset());
