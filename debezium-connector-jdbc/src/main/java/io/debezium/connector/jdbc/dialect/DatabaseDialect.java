@@ -154,29 +154,19 @@ public interface DatabaseDialect {
     int getMaxVarbinaryLength();
 
     /**
-     * Returns whether the connection url specifies any timezone details.
+     * Returns whether the user has specified a time zone JDBC property or whether the connector
+     * configuration property {@code database.time_zone} has been specified.
      *
-     * This is generally used by MySQL to shift the standard JDBC logic for handling timestamps so
-     * that the driver does additional conversions that differs from other JDBC compliant drivers.
-     * So it's important to know whether the driver performs such manipulations so that we know
-     * explicitly how to interpret and provide timezone and timezone-less values.
-     *
-     * @return true if {@code connectionTimeZone} or equivalent JDBC properties are given; false otherwise.
+     * @return true if the properties have been specified; false otherwise.
      */
-    boolean isConnectionTimeZoneSet();
+    boolean isTimeZoneSet();
 
     /**
-     * Returns whether the configuration specifies {@code database.time_zone}.
+     * Returns whether a time with time zone details be bound using the database time zone.
      *
-     * The {@code database.time_zone} value is used by temporal types to adjust the incoming value
-     * accordingly so that the stored and retrieved temporal values align properly regardless if
-     * the destination database is the same or different to the source. Hibernate uses this value
-     * in many cases to shift the connection time zone at the connection layer so that it operates
-     * in a similar, yet sometimes different ways than MySQL's {@code connectionTimeZone} property.
-     *
-     * @return true if {@code database.time_zone} is provided; false otherwise.
+     * @return true if the value should be shifted; false otherwise (the default).
      */
-    boolean isJdbcTimeZoneSet();
+    boolean shouldBindTimeWithTimeZoneAsDatabaseTimeZone();
 
     /**
      * Gets the maximum precision allowed for a dialect's time data type.
