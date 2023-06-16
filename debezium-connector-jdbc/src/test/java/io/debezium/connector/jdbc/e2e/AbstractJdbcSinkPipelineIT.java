@@ -39,6 +39,7 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
@@ -1698,15 +1699,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
 
         assertDataType(source,
-                       sink,
-                       "timestamp",
-                       values,
-                       expectedValues,
-                       (record) -> {
-                           assertColumn(sink, record, "id", getTimestampType(source, true, 6));
-                           assertColumn(sink, record, "data", getTimestampType(source, false, 6));
-                       },
-                       this::getTimestampAsZonedDateTime);
+                sink,
+                "timestamp",
+                values,
+                expectedValues,
+                (record) -> {
+                    assertColumn(sink, record, "id", getTimestampType(source, true, 6));
+                    assertColumn(sink, record, "data", getTimestampType(source, false, 6));
+                },
+                this::getTimestampAsZonedDateTime);
     }
 
     @TestTemplate
@@ -1735,27 +1736,26 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
 
         assertDataTypes(source,
-            sink,
-            List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
-            List.of(value, value, value, value, value, value),
-            expectedValues,
-            (record) -> {
-                assertColumn(sink, record, "id0", getTimestampType(source, true, 1));
-                assertColumn(sink, record, "id1", getTimestampType(source, true, 2));
-                assertColumn(sink, record, "id2", getTimestampType(source, true, 3));
-                assertColumn(sink, record, "id3", getTimestampType(source, true, 4));
-                assertColumn(sink, record, "id4", getTimestampType(source, true, 5));
-                assertColumn(sink, record, "id5", getTimestampType(source, true, 6));
-                assertColumn(sink, record, "data0", getTimestampType(source, false, 1));
-                assertColumn(sink, record, "data1", getTimestampType(source, false, 2));
-                assertColumn(sink, record, "data2", getTimestampType(source, false, 3));
-                assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
-                assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
-                assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
-            },
-            this::getTimestampAsZonedDateTime);
+                sink,
+                List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
+                List.of(value, value, value, value, value, value),
+                expectedValues,
+                (record) -> {
+                    assertColumn(sink, record, "id0", getTimestampType(source, true, 1));
+                    assertColumn(sink, record, "id1", getTimestampType(source, true, 2));
+                    assertColumn(sink, record, "id2", getTimestampType(source, true, 3));
+                    assertColumn(sink, record, "id3", getTimestampType(source, true, 4));
+                    assertColumn(sink, record, "id4", getTimestampType(source, true, 5));
+                    assertColumn(sink, record, "id5", getTimestampType(source, true, 6));
+                    assertColumn(sink, record, "data0", getTimestampType(source, false, 1));
+                    assertColumn(sink, record, "data1", getTimestampType(source, false, 2));
+                    assertColumn(sink, record, "data2", getTimestampType(source, false, 3));
+                    assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
+                    assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
+                    assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
+                },
+                this::getTimestampAsZonedDateTime);
     }
-
 
     @TestTemplate
     @ForSource(value = { SourceType.MYSQL }, reason = "MySQL emits TIMESTAMP(p) as ZonedTimestamp")
@@ -1772,22 +1772,22 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         // Truncate nanoseconds to 0, MySQL does not emit ZonedTimestamp with fractional seconds
         final List<ZonedDateTime> expectedValues = timeValues.stream()
-                        .map(v -> v.with(ChronoField.NANO_OF_SECOND, 0))
-                        .collect(Collectors.toList());
+                .map(v -> v.with(ChronoField.NANO_OF_SECOND, 0))
+                .collect(Collectors.toList());
 
         // MySQL emits "timestamp" as a ZonedTimestamp and this implies a "timestamp with time zone"
         // column; which Oracle does not permit to exist as a primary key. In this use case, only
         // test the data mapping as a non-primary key column.
         assertDataTypesNonKeyOnly(source,
-            sink,
-            List.of("timestamp", "timestamp"),
-            values,
-            expectedValues,
-            (record) -> {
-                assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
-                assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
-            },
-            (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+                sink,
+                List.of("timestamp", "timestamp"),
+                values,
+                expectedValues,
+                (record) -> {
+                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
+                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
+                },
+                (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
 
     @TestTemplate
@@ -1809,21 +1809,21 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         // column; which Oracle does not permit to exist as a primary key. In this use case, only
         // test the data mapping as a non-primary key column.
         assertDataTypesNonKeyOnly(source,
-            sink,
-            List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
-            List.of(value, value, value, value, value, value),
-            expectedValues,
-            (record) -> {
-                assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 1));
-                assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 2));
-                assertColumn(sink, record, "data2", getTimestampWithTimezoneType(source, false, 3));
-                assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
-                assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
-                assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
-            },
-            (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+                sink,
+                List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
+                List.of(value, value, value, value, value, value),
+                expectedValues,
+                (record) -> {
+                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 1));
+                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 2));
+                    assertColumn(sink, record, "data2", getTimestampWithTimezoneType(source, false, 3));
+                    assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
+                    assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
+                    assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
+                },
+                (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
-    
+
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No TIMESTAMPTZ data type support")
     @WithTemporalPrecisionMode
