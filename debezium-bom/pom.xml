@@ -221,6 +221,11 @@
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xdb</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.oracle.instantclient</groupId>
                 <artifactId>xstreams</artifactId>
                 <version>${version.oracle.driver}</version>

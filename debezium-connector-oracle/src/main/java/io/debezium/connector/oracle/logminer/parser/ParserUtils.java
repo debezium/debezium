@@ -33,7 +33,7 @@ public class ParserUtils {
     /**
      * Resolve the column value for a given column value and column instance.
      * <p>
-     * If the column value is {@code null} and the column is an LOB-based column, this method will
+     * If the column value is {@code null} and the column is an LOB or XML-based column, this method will
      * resolve the final column value as {@link OracleValueConverters#UNAVAILABLE_VALUE}, a value
      * that represents that the column should be emitted with the unavailable value placeholder.
      * <p>
@@ -45,7 +45,7 @@ public class ParserUtils {
      * @return the resolved column's value
      */
     public static Object getColumnUnavailableValue(Object value, Column column) {
-        if (value == null && OracleDatabaseSchema.isLobColumn(column)) {
+        if (value == null && (OracleDatabaseSchema.isLobColumn(column) || OracleDatabaseSchema.isXmlColumn(column))) {
             return OracleValueConverters.UNAVAILABLE_VALUE;
         }
         return value;
