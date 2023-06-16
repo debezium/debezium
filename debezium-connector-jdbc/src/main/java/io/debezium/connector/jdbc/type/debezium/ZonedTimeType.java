@@ -16,7 +16,6 @@ import org.hibernate.query.Query;
 import org.hibernate.type.StandardBasicTypes;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.dialect.sqlserver.SqlServerDatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.ZonedTime;
@@ -76,11 +75,8 @@ public class ZonedTimeType extends AbstractTimeType {
                 if (getDialect().isConnectionTimeZoneSet()) {
                     query.setParameter(index, zdt.withZoneSameInstant(getDatabaseTimeZone().toZoneId()));
                 }
-                else if (getDialect() instanceof SqlServerDatabaseDialect) {
-                    query.setParameter(index, zdt.toLocalDateTime());
-                }
                 else {
-                    query.setParameter(index, zdt);
+                    bindWithNoTimeZoneDetails(query, index, zdt);
                 }
             }
         }
@@ -89,12 +85,11 @@ public class ZonedTimeType extends AbstractTimeType {
         }
     }
 
-    private int getJdbcType(DatabaseDialect dialect) {
-        if (dialect instanceof SqlServerDatabaseDialect) {
-            // SQL Server does not support time with time zone, but to align the behavior with other dialects,
-            // we will directly map to a TIMESTAMP with TIME ZONE so that SQL Server is mapped to DATETIMEOFFSET.
-            return Types.TIMESTAMP_WITH_TIMEZONE;
-        }
+    protected void bindWithNoTimeZoneDetails(Query<?> query, int index, ZonedDateTime zonedDateTime) {
+        query.setParameter(index, zonedDateTime);
+    }
+
+    protected int getJdbcType(DatabaseDialect dialect) {
         return Types.TIME_WITH_TIMEZONE;
     }
 }

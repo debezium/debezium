@@ -319,7 +319,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
                             if (context.getExecutionException().isPresent()) {
                                 LOGGER.error("Test {}.{}: {} failed with exception:", testClass.getName(), method.getName(),
-                                             getDisplayName(0), context.getExecutionException().get());
+                                        getDisplayName(0), context.getExecutionException().get());
                             }
                         },
                         new ParameterResolver() {
