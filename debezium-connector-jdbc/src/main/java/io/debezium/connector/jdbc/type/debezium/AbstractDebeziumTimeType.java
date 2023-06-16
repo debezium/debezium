@@ -30,7 +30,7 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
     @Override
     public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
         final LocalTime localTime = getLocalTime((Number) value);
-        if (dialect.isConnectionTimeZoneSet() || dialect.isJdbcTimeZoneSet()) {
+        if (dialect.isTimeZoneSet()) {
             return getDialect().getFormattedDateTime(localTime.atDate(LocalDate.now()).atZone(getDatabaseTimeZone().toZoneId()));
         }
         return dialect.getFormattedTime(localTime);
@@ -44,7 +44,7 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
         else if (value instanceof Number) {
             final LocalTime localTime = getLocalTime((Number) value);
             final LocalDateTime localDateTime = localTime.atDate(LocalDate.now());
-            if (getDialect().isConnectionTimeZoneSet() || getDialect().isJdbcTimeZoneSet()) {
+            if (getDialect().isTimeZoneSet()) {
                 query.setParameter(index, localDateTime.atZone(getDatabaseTimeZone().toZoneId()));
             }
             else {
