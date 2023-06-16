@@ -275,7 +275,12 @@ public interface SchemaNameAdjuster {
         }
         else {
             sb.append(replacement.replace(c));
-            if (Character.isDigit(c) && !(replacement instanceof UnicodeReplacementFunction)) { // This is to avoid conflict in case of two field that differs only from the starting digit char
+            if (Character.isDigit(c) && (replacement == ReplacementFunction.UNDERSCORE_REPLACEMENT
+                    || replacement instanceof FieldNameUnderscoreReplacementFunction)) {
+                // This is to avoid conflict in case of two field that differs
+                // only from the starting digit char
+                // It provides backward compatibility for AVRO adjuster
+                // TODO replace with a flag passed as a function argument
                 sb.append(c);
             }
             changed = true;
