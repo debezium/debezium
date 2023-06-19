@@ -34,6 +34,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
@@ -145,6 +146,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 getAvailableSignalChannels(),
                 DocumentReader.defaultReader(),
                 previousOffsets);
+        resetOffset(connectorConfig, previousOffset, signalProcessor);
 
         final Configuration heartbeatConfig = config;
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
@@ -406,5 +408,20 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
             }
         }
         return false;
+    }
+
+    private void resetOffset(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset,
+                             SignalProcessor<MySqlPartition, MySqlOffsetContext> signalProcessor) {
+        boolean isKafkaChannelEnabled = connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
+        if (previousOffset != null && isKafkaChannelEnabled && connectorConfig.isReadOnlyConnection()) {
+            MySqlReadOnlyIncrementalSnapshotContext<TableId> readOnlyIncrementalSnapshotContext = (MySqlReadOnlyIncrementalSnapshotContext<TableId>) previousOffset
+                    .getIncrementalSnapshotContext();
+            KafkaSignalChannel kafkaSignal = signalProcessor.getSignalChannel(KafkaSignalChannel.class);
+            Long signalOffset = readOnlyIncrementalSnapshotContext.getSignalOffset();
+            if (signalOffset != null) {
+                LOGGER.info("Resetting Kafka Signal offset to {}", signalOffset);
+                kafkaSignal.reset(signalOffset);
+            }
+        }
     }
 }
