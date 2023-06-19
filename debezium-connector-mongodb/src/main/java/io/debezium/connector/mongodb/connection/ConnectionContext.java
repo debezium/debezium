@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoCredential;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.config.Configuration;
@@ -122,8 +121,8 @@ public class ConnectionContext {
      *            {@link MongoDbConnection#execute(String, BlockingConsumer)}  execute} an operation to completion; may be null
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
-    public MongoDbConnection connect(ReplicaSet replicaSet, ReadPreference preference, Filters filters,
+    public MongoDbConnection connect(ReplicaSet replicaSet, Filters filters,
                                      MongoDbConnection.ErrorHandler errorHandler) {
-        return new MongoDbConnection(replicaSet, preference, clientFactory, filters, errorHandler);
+        return new MongoDbConnection(replicaSet, clientFactory, filters, errorHandler);
     }
 }
