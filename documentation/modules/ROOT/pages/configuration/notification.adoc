@@ -163,12 +163,12 @@ a|[source, json]
 }
 ----
 <1> The possible values are:
-* EMPTY,
-* NO_PRIMARY_KEY,
-* SKIPPED,
-* SQL_EXCEPTION,
-* SUCCEEDED,
-* UNKNOWN_SCHEMA
+* EMPTY - table is empty
+* NO_PRIMARY_KEY - table has no primary key necessary for snapshot
+* SKIPPED - snapshot for this kind of table is not supported, check logs for details
+* SQL_EXCEPTION - SQL exception caught while processing a snapshot
+* SUCCEEDED - snapshot completed successfully
+* UNKNOWN_SCHEMA - schema not found for table, check logs for the list of known tables
 |Completed
 a|[source, json]
 ----
