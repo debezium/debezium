@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
@@ -32,9 +32,13 @@ public class TestHelper {
 
     private static final Network NETWORK = Network.newNetwork();
 
-    private static final KafkaContainer KAFKA_CONTAINER = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.5"))
+    private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
+            DockerImageName.parse("quay.io/debezium/kafka:latest").asCompatibleSubstituteFor("kafka"))
             .withNetworkAliases(KAFKA_HOSTNAME)
-            .withNetwork(NETWORK);
+            .withNetwork(NETWORK)
+            .withEnv("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@" + KAFKA_HOSTNAME + ":9093")
+            .withEnv("CLUSTER_ID", "5Yr1SIgYQz-b-dgRabWx4g")
+            .withEnv("NODE_ID", "1");
 
     private static DebeziumContainer DEBEZIUM_CONTAINER;
 
