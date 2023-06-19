@@ -9,7 +9,6 @@ import java.util.function.Consumer;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.annotation.ThreadSafe;
@@ -52,10 +51,9 @@ public final class MongoDbClientFactory {
         return client(settings -> settings.applyConnectionString(connectionString));
     }
 
-    public MongoClient client(ReplicaSet replicaSet, ReadPreference preference) {
+    public MongoClient client(ReplicaSet replicaSet) {
         return client(settings -> settings
-                .applyConnectionString(replicaSet.connectionString())
-                .readPreference(preference));
+                .applyConnectionString(replicaSet.connectionString()));
     }
 
     private MongoClient client(Consumer<MongoClientSettings.Builder> configurator) {

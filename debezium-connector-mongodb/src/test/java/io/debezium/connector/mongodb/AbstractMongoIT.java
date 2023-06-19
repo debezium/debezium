@@ -13,8 +13,6 @@ import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ReadPreference;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
@@ -27,7 +25,7 @@ public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected ReplicaSet replicaSet;
-    protected MongoDbConnection primary;
+    protected MongoDbConnection connection;
 
     @Before
     public void beforeEach() {
@@ -75,7 +73,7 @@ public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
 
-        replicaSet = new ReplicaSet(mongo.getConnectionString());
+        replicaSet = TestHelper.replicaSet(mongo);
         context.configureLoggingContext(replicaSet.replicaSetName());
 
         // Restore Source position (if there are some) ...
@@ -84,7 +82,6 @@ public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
         }
 
         // Get a connection to the primary ...
-        primary = context.getConnectionContext().connect(
-                replicaSet, ReadPreference.primary(), context.filters(), TestHelper.connectionErrorHandler(3));
+        connection = context.getConnectionContext().connect(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 }

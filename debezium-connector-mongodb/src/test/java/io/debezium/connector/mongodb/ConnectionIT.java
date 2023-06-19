@@ -16,10 +16,13 @@ import org.bson.conversions.Bson;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.ReadPreference;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.InsertOneOptions;
 
@@ -36,6 +39,17 @@ public class ConnectionIT extends AbstractMongoIT {
         TestHelper.cleanDatabase(mongo, "dbC");
     }
 
+    @Test
+    public void shouldHonorReadPreference() throws InterruptedException {
+
+        connection.execute("Check client read preference", (MongoClient mongo) -> {
+            if (mongo instanceof MongoClientImpl) {
+                var settings = ((MongoClientImpl) mongo).getSettings();
+                assertThat(settings.getReadPreference()).isEqualTo(ReadPreference.secondaryPreferred());
+            }
+        });
+    }
+
     @Test(expected = DebeziumException.class)
     public void shouldUseSSL() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
@@ -47,8 +61,8 @@ public class ConnectionIT extends AbstractMongoIT {
                 .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
                 .build());
 
-        primary.execute("Try SSL connection", mongo -> {
-            primary.close();
+        connection.execute("Try SSL connection", mongo -> {
+            connection.close();
             mongo.getDatabase("dbit").listCollectionNames().first();
         });
     }
@@ -93,7 +107,7 @@ public class ConnectionIT extends AbstractMongoIT {
             Testing.debug("Completed adding documents to 'movies' collections");
         }
 
-        primary.execute("Add document to movies collections", client -> {
+        connection.execute("Add document to movies collections", client -> {
             for (String dbName : dbNames) {
                 // Read the collection to make sure we can find our document ...
                 MongoDatabase db = client.getDatabase("db" + dbName);
@@ -108,7 +122,7 @@ public class ConnectionIT extends AbstractMongoIT {
         });
 
         // Now that we've put at least one document into our collection, verify we can see the database and collection ...
-        assertThat(primary.databaseNames()).containsOnly("dbA", "dbB");
-        assertThat(primary.collections()).containsOnly(new CollectionId(replicaSet.replicaSetName(), "dbA", "moviesA"));
+        assertThat(connection.databaseNames()).containsOnly("dbA", "dbB");
+        assertThat(connection.collections()).containsOnly(new CollectionId(replicaSet.replicaSetName(), "dbA", "moviesA"));
     }
 }

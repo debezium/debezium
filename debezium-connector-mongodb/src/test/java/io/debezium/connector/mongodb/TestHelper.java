@@ -29,7 +29,9 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 
 /**
@@ -55,12 +57,17 @@ public class TestHelper {
                 .collect(Collectors.toList());
     }
 
+    public static String connectionString(MongoDbDeployment mongo) {
+        return ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", "secondaryPreferred");
+    }
+
     public static Configuration getConfiguration() {
         return getConfiguration("mongodb://dummy:27017");
     }
 
     public static Configuration getConfiguration(MongoDbDeployment mongo) {
-        return getConfiguration(mongo.getConnectionString());
+        var cs = connectionString(mongo);
+        return getConfiguration(cs);
     }
 
     public static Configuration getConfiguration(String connectionString) {
@@ -158,5 +165,10 @@ public class TestHelper {
         else {
             assertThat(removedFields).isNull();
         }
+    }
+
+    public static ReplicaSet replicaSet(MongoDbDeployment mongo) {
+        var cs = connectionString(mongo);
+        return new ReplicaSet(cs);
     }
 }
