@@ -94,29 +94,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void init(MySqlPartition partition, OffsetContext offsetContext) {
-        super.init(partition, offsetContext);
-
-        if (isKafkaChannelEnabled()) {
-
-            restoreOffset();
-        }
-    }
-
-    private void restoreOffset() {
-
-        KafkaSignalChannel kafkaSignal = dispatcher.getSignalProcessor().getSignalChannel(KafkaSignalChannel.class);
-
-        if (getContext().getSignalOffset() != null) {
-            kafkaSignal.reset(getContext().getSignalOffset());
-        }
-    }
-
-    private boolean isKafkaChannelEnabled() {
-        return connectorConfig.getEnabledChannels().contains(KafkaSignalChannel.CHANNEL_NAME);
-    }
-
-    @Override
     public void processMessage(MySqlPartition partition, DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
