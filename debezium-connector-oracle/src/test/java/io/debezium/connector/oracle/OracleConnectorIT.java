@@ -5374,7 +5374,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.dropTable(connection, "dbz6528");
             try (OracleConnection admin = TestHelper.adminConnection()) {
                 admin.setSessionToPdb(TestHelper.DATABASE);
-                TestHelper.dropTable(connection, "c##dbzuser.signals");
+                TestHelper.dropTable(admin, "c##dbzuser.signals");
             }
         }
     }
