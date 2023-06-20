@@ -81,7 +81,7 @@ public class ReplicaSetDiscovery {
             }
             else if (ConnectionMode.REPLICA_SET.equals(connectionMode)) {
                 LOGGER.info("ConnectionMode set to '{}, individual shard connections will be used", connectionMode.getValue());
-                readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
+                readReplicaSetsFromShardedCluster(replicaSetSpecs, client, connectionContext);
             }
             else {
                 LOGGER.warn("Incompatible connection mode '{}' specified", connectionMode.getValue());
@@ -113,17 +113,21 @@ public class ReplicaSetDiscovery {
         replicaSetSpecs.add(new ReplicaSet(connectionString));
     }
 
-    private void readReplicaSetsFromShardedCluster(Set<ReplicaSet> replicaSetSpecs, MongoClient client) {
+    private void readReplicaSetsFromShardedCluster(Set<ReplicaSet> replicaSetSpecs, MongoClient client, ConnectionContext connectionContext) {
         try {
+            var csParams = context.getConnectorConfig().getShardConnectionParameters();
+
             MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, SHARDS_COLLECTION_NAME, doc -> {
                 String shardName = doc.getString("_id");
                 String hostStr = doc.getString("host");
 
                 LOGGER.info("Reading shard details for {}", shardName);
 
-                ConnectionStrings.parseFromHosts(hostStr).ifPresentOrElse(
-                        cs -> replicaSetSpecs.add(new ReplicaSet(cs)),
-                        () -> LOGGER.info("Shard {} is not a valid replica set", shardName));
+                ConnectionStrings.parseFromHosts(hostStr)
+                        .map(cs -> ConnectionStrings.appendParameters(cs, csParams))
+                        .ifPresentOrElse(
+                                cs -> replicaSetSpecs.add(new ReplicaSet(cs)),
+                                () -> LOGGER.info("Shard {} is not a valid replica set", shardName));
             });
         }
         catch (MongoInterruptedException e) {
