@@ -158,10 +158,10 @@ public class MongoDbConnector extends SourceConnector {
                     String rsConnectionStrings = replicaSetsForTask.all().stream()
                             .map(ReplicaSet::connectionString)
                             .map(ConnectionString::toString)
-                            .collect(Collectors.joining(";"));
-                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s): {}", taskId, rsConnectionStrings);
+                            .collect(Collectors.joining(ReplicaSets.SEPARATOR));
+                    logger.info("Configuring MongoDB connector task {} to capture events for connections to: {}", taskId, rsConnectionStrings);
                     taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.REPLICA_SETS, rsConnectionStrings)
+                            .with(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, rsConnectionStrings)
                             .with(MongoDbConnectorConfig.TASK_ID, taskId)
                             .build()
                             .asMap());
