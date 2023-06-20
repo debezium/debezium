@@ -26,6 +26,8 @@ import io.debezium.util.Strings;
 @Immutable
 public class ReplicaSets {
 
+    public static final String SEPARATOR = "|";
+
     /**
      * Get an instance that contains no replica sets.
      *
