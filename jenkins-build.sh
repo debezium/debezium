@@ -10,6 +10,8 @@ release_version=$(mvn -q \
     exec:exec)
 git_sha=$(git rev-parse --short HEAD)
 
+/usr/local/bin/junit-script-output "running checkstyle" ./checkstyle.sh
+
 echo "Building Debezium version $release_version."
 mvn clean install -Passembly -DskipITs -pl debezium-bom,debezium-core,debezium-connector-mongodb
 

@@ -16,7 +16,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import com.mongodb.client.FindIterable;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;

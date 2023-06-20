@@ -593,7 +593,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The number of threads for incremental snapshots to query mongodb. If this is more than 1, a window size is will be equal to threads * chunk.")
+            .withDescription(
+                    "The number of threads for incremental snapshots to query mongodb. If this is more than 1, a window size is will be equal to threads * chunk.")
             .withDefault(1)
             .withValidation(Field::isPositiveInteger);
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")

@@ -346,7 +346,8 @@ public final class SourceInfo extends BaseSourceInfo {
             namespace = oplogEvent.getString("ns").getValue();
             if (oplogEvent.containsKey("wall")) {
                 wallTime = oplogEvent.getDateTime("wall").getValue();
-            } else if (masterEvent.containsKey("wall")) {
+            }
+            else if (masterEvent.containsKey("wall")) {
                 wallTime = masterEvent.getDateTime("wall").getValue();
             }
             if (oplogEvent.containsKey(STRIPE_AUDIT)) {
