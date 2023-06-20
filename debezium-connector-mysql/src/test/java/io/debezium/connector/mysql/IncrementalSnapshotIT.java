@@ -103,6 +103,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     }
 
     @Override
+    protected String connector() {
+        return "mysql";
+    }
+
+    @Override
+    protected String server() {
+        return DATABASE.getServerName();
+    }
+
+    @Override
     protected Class<MySqlConnector> connectorClass() {
         return MySqlConnector.class;
     }

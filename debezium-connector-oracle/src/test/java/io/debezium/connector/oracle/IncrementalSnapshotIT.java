@@ -180,6 +180,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         return 250;
     }
 
+    @Override
+    protected String connector() {
+        return "oracle";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.SERVER_NAME;
+    }
+
     @Test
     public void snapshotPreceededBySchemaChange() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed

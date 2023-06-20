@@ -1242,12 +1242,16 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server, String contextName) {
+        waitForStreamingRunning(connector, server, contextName, null);
+    }
+
+    public static void waitForStreamingRunning(String connector, String server, String contextName, String task) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> isStreamingRunning(connector, server, contextName));
+                .until(() -> isStreamingRunning(connector, server, contextName, task));
     }
 
     public static void waitForConnectorShutdown(String connector, String server) {
@@ -1258,14 +1262,20 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static boolean isStreamingRunning(String connector, String server) {
-        return isStreamingRunning(connector, server, getStreamingNamespace());
+        return isStreamingRunning(connector, server, getStreamingNamespace(), null);
     }
 
     public static boolean isStreamingRunning(String connector, String server, String contextName) {
+        return isStreamingRunning(connector, server, contextName, null);
+    }
+
+    public static boolean isStreamingRunning(String connector, String server, String contextName, String task) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         try {
-            return (boolean) mbeanServer.getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+            ObjectName streamingMetricsObjectName = task != null ? getStreamingMetricsObjectName(connector, server, contextName, task)
+                    : getStreamingMetricsObjectName(connector, server, contextName);
+            return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
         }
         catch (JMException ignored) {
         }
@@ -1299,6 +1309,10 @@ public abstract class AbstractConnectorTest implements Testing {
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
     }
 
     protected static String getStreamingNamespace() {

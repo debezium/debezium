@@ -167,6 +167,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         TestHelper.waitForDefaultReplicationSlotBeActive();
     }
 
+    @Override
+    protected String connector() {
+        return "postgres";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER;
+    }
+
     @Test
     public void inserts4Pks() throws Exception {
         // Testing.Print.enable();

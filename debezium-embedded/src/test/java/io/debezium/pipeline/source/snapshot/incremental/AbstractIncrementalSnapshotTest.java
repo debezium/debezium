@@ -88,6 +88,18 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
 
+    protected abstract String connector();
+
+    protected abstract String server();
+
+    protected String task() {
+        return null;
+    }
+
+    protected String database() {
+        return null;
+    }
+
     protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
     }
 
@@ -1094,6 +1106,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void testNotification() throws Exception {
+
         populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
@@ -1102,6 +1115,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         sendAdHocSnapshotSignal();
 
