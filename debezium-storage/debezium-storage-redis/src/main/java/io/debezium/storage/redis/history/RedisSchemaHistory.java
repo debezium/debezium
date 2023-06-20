@@ -105,8 +105,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 completedSuccessfully = true;
             }
             catch (RedisClientConnectionException e) {
-                LOGGER.warn("Attempting to reconnect to Redis");
-                this.connect();
+                reconnect();
             }
             catch (Exception e) {
                 LOGGER.warn("Writing to database schema history stream failed", e);
@@ -118,6 +117,19 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
             }
 
         }
+    }
+
+    private void reconnect() {
+        LOGGER.warn("Attempting to reconnect to Redis");
+        try {
+            if (client != null) {
+                client.disconnect();
+            }
+        }
+        catch (Exception eDisconnect) {
+            LOGGER.info("Exception while disconnecting", eDisconnect);
+        }
+        client = null;
     }
 
     @Override
@@ -147,8 +159,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 completedSuccessfully = true;
             }
             catch (RedisClientConnectionException e) {
-                LOGGER.warn("Attempting to reconnect to Redis");
-                this.connect();
+                reconnect();
             }
             catch (Exception e) {
                 LOGGER.warn("Reading from database schema history stream failed with " + e);
