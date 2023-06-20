@@ -2993,7 +2993,7 @@ alter_interval_partition
     ;
 
 partition_extended_names
-    : (PARTITION|PARTITIONS) partition_name
+    : (PARTITION|PARTITIONS) partition_name (',' partition_name)*
     | (PARTITION|PARTITIONS) '(' partition_name (',' partition_name)* ')'
     | (PARTITION|PARTITIONS) FOR '('? partition_key_value (',' partition_key_value)* ')'?
     ;
