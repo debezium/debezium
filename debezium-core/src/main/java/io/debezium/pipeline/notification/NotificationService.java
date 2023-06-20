@@ -48,7 +48,7 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
                 .filter(isConnectChannel())
                 .forEach(channel -> ((ConnectChannel) channel).initConnectChannel(schemaFactory, consumer));
 
-        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this);
+        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this, config);
         initialSnapshotNotificationService = new InitialSnapshotNotificationService<>(this, config);
     }
 

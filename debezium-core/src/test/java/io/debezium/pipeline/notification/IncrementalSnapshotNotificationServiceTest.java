@@ -8,7 +8,6 @@ package io.debezium.pipeline.notification;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.kafka.connect.data.Struct;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -42,14 +41,15 @@ public class IncrementalSnapshotNotificationServiceTest {
     private NotificationService<Partition, OffsetContext> notificationService;
     @Mock
     private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
+
+    @Mock
+    private CommonConnectorConfig connectorConfig;
     @InjectMocks
     private IncrementalSnapshotNotificationService<Partition, OffsetContext> incrementalSnapshotNotificationService;
 
     @Before
     public void setUp() {
-        Struct mockedSourceStruct = mock(Struct.class);
-        when(mockedSourceStruct.getString("name")).thenReturn("connector-test");
-        when(offsetContext.getSourceInfo()).thenReturn(mockedSourceStruct);
+        when(connectorConfig.getLogicalName()).thenReturn("connector-test");
         when(incrementalSnapshotContext.getCorrelationId()).thenReturn("12345");
         when(incrementalSnapshotContext.getDataCollections()).thenReturn(List.of(
                 new DataCollection<>(new TableId("db", "inventory", "product")),

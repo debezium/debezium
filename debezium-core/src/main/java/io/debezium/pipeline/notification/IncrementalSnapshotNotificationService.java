@@ -11,9 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.errors.DataException;
-
-import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -36,6 +34,8 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     private final NotificationService<P, O> notificationService;
 
+    private final CommonConnectorConfig connectorConfig;
+
     public enum TableScanCompletionStatus {
         EMPTY,
         NO_PRIMARY_KEY,
@@ -45,8 +45,9 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
         UNKNOWN_SCHEMA
     }
 
-    public IncrementalSnapshotNotificationService(NotificationService<P, O> notificationService) {
+    public IncrementalSnapshotNotificationService(NotificationService<P, O> notificationService, CommonConnectorConfig config) {
         this.notificationService = notificationService;
+        connectorConfig = config;
     }
 
     public <T extends DataCollectionId> void notifyStarted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext) {
@@ -139,14 +140,7 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
         Map<String, String> fullMap = new HashMap<>(additionalData);
 
-        String connectorName;
-        try {
-            connectorName = offsetContext.getSourceInfo().getString(BaseSourceInfo.SERVER_NAME_KEY);
-        }
-        catch (DataException e) {
-            connectorName = NONE;
-        }
-        fullMap.put(CONNECTOR_NAME, connectorName);
+        fullMap.put(CONNECTOR_NAME, connectorConfig.getLogicalName());
 
         String id = incrementalSnapshotContext.getCorrelationId() != null ? incrementalSnapshotContext.getCorrelationId() : UUID.randomUUID().toString();
         return Notification.Builder.builder()
