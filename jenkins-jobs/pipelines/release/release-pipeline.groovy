@@ -252,7 +252,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
     return repoId
 }
 
-node('Slave') {
+node('release-node') {
     catchError {
         stage('Validate parameters') {
             if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
