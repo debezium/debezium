@@ -2,6 +2,59 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.0.Final
+June 20th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409293)
+
+### New features since 2.3.0.CR1
+
+* Add support for custom SourceInfoStructMaker for adding new fields to source field [DBZ-6076](https://issues.redhat.com/browse/DBZ-6076)
+* Connector can potentially read a lot of sync topic messages on startup [DBZ-6308](https://issues.redhat.com/browse/DBZ-6308)
+* Allow to specify separate SID for rac.nodes settings [DBZ-6359](https://issues.redhat.com/browse/DBZ-6359)
+* Periodically clean up SGA using new LogMiner connection [DBZ-6499](https://issues.redhat.com/browse/DBZ-6499)
+* Upgrade debezium-connector-mysql tests to use MySQL 8 [DBZ-6534](https://issues.redhat.com/browse/DBZ-6534)
+* Remove duplicate partitions in TaskSyncContext. [DBZ-6544](https://issues.redhat.com/browse/DBZ-6544)
+* Support exactly-once semantic for streaming phase from Postgres connector [DBZ-6547](https://issues.redhat.com/browse/DBZ-6547)
+* Monitoring failed Incremental Snapshots [DBZ-6552](https://issues.redhat.com/browse/DBZ-6552)
+
+
+### Breaking changes since 2.3.0.CR1
+
+None
+
+
+### Fixes since 2.3.0.CR1
+
+* Upgrade to Infinispan 14.0.11.Final to fix CVE-2022-45047 [DBZ-6193](https://issues.redhat.com/browse/DBZ-6193)
+* Date and Time values without timezones are not persisted correctly based on database.time_zone [DBZ-6399](https://issues.redhat.com/browse/DBZ-6399)
+* "Ignoring invalid task provided offset" [DBZ-6463](https://issues.redhat.com/browse/DBZ-6463)
+* Oracle snapshot.include.collection.list should be prefixed with databaseName in documentation. [DBZ-6474](https://issues.redhat.com/browse/DBZ-6474)
+* Allow schema to be specified in the Debezium Sink Connector configuration [DBZ-6491](https://issues.redhat.com/browse/DBZ-6491)
+* Error value of negative seconds in convertOracleIntervalDaySecond [DBZ-6513](https://issues.redhat.com/browse/DBZ-6513)
+* Parse mysql table name failed which ending with backslash [DBZ-6519](https://issues.redhat.com/browse/DBZ-6519)
+* Oracle Connector: Snapshot fails with specific combination [DBZ-6528](https://issues.redhat.com/browse/DBZ-6528)
+* Table order is incorrect on snapshots [DBZ-6533](https://issues.redhat.com/browse/DBZ-6533)
+* Unhandled NullPointerException in PartitionRouting will crash the whole connect plugin [DBZ-6543](https://issues.redhat.com/browse/DBZ-6543)
+* Incorrect image name in postgres example of the operator repo [DBZ-6548](https://issues.redhat.com/browse/DBZ-6548)
+* Examples are not updated with correct image tags for released  [DBZ-6549](https://issues.redhat.com/browse/DBZ-6549)
+* SQL grammar exception on MySQL ALTER statements with multiple columns [DBZ-6554](https://issues.redhat.com/browse/DBZ-6554)
+* debezium/connect image for 2.2.1.Final is not available on dockerhub or quay.io [DBZ-6558](https://issues.redhat.com/browse/DBZ-6558)
+* Bug in field.name.adjustment.mode Property [DBZ-6559](https://issues.redhat.com/browse/DBZ-6559)
+* Operator sets incorrect value of transformation.predicate when no predicate is specified [DBZ-6560](https://issues.redhat.com/browse/DBZ-6560)
+* Kubernetes-Config extension interferes with SSL tests due to k8 devservice starting up [DBZ-6574](https://issues.redhat.com/browse/DBZ-6574)
+* MySQL read-only connector with Kafka signals enabled fails on start up [DBZ-6579](https://issues.redhat.com/browse/DBZ-6579)
+* Redis schema history can fail upon startup [DBZ-6580](https://issues.redhat.com/browse/DBZ-6580)
+
+
+### Other changes since 2.3.0.CR1
+
+* Use "debezium/kafka" container for Debezium UI tests instead of "confluentinc/cp-kafka" [DBZ-6449](https://issues.redhat.com/browse/DBZ-6449)
+* Include debezium operator in image build pipeline [DBZ-6546](https://issues.redhat.com/browse/DBZ-6546)
+* Update repository list in contributor list and missing commit workflows [DBZ-6556](https://issues.redhat.com/browse/DBZ-6556)
+* Upgrade MySQL JDBC driver to 8.0.33 [DBZ-6563](https://issues.redhat.com/browse/DBZ-6563)
+* Upgrade Google Cloud BOM to 26.17.0 [DBZ-6570](https://issues.redhat.com/browse/DBZ-6570)
+
+
+
 ## 2.3.0.CR1
 June 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12408706)
 
