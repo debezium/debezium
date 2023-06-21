@@ -453,8 +453,7 @@ public class SqlServerConnectionIT {
         }
 
         // Re-connect with the newly created user
-        try (SqlServerConnection connection = TestHelper.testConnection(
-                TestHelper.jdbcConfig("test_user", "Password!"))) {
+        try (SqlServerConnection connection = TestHelper.testConnection("test_user", "Password!")) {
             // This user shouldn't have access to CDC table
             connection.execute("USE testDB1");
             assertThat(connection.checkIfConnectedUserHasAccessToCDCTable(TestHelper.TEST_DATABASE_1)).isFalse();

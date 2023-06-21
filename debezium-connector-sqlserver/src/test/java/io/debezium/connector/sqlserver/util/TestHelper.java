@@ -256,7 +256,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(String databaseName) {
         Configuration config = defaultConnectorConfig()
-                .with(JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
+                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
                 .build();
 
         return testConnection(config);
@@ -269,9 +269,18 @@ public class TestHelper {
                 Collections.emptySet(), false);
     }
 
+    public static SqlServerConnection testConnection(String user, String password) {
+        Configuration config = defaultConnectorConfig()
+                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, user)
+                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, password)
+                .build();
+
+        return testConnection(config);
+    }
+
     public static SqlServerConnection testConnectionWithOptionRecompile() {
         SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConnectorConfig()
-                .with(JdbcConfiguration.DATABASE, TEST_DATABASE_1)
+                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
         return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
