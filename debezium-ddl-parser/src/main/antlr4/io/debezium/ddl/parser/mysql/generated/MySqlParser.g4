@@ -2348,7 +2348,7 @@ convertedDataType
       typeName=(BINARY| NCHAR) lengthOneDimension?
       | typeName=CHAR lengthOneDimension? (charSet charsetName)?
       | typeName=(DATE | DATETIME | TIME | JSON | INT | INTEGER)
-      | typeName=DECIMAL lengthTwoOptionalDimension?
+      | typeName=(DECIMAL | DEC) lengthTwoOptionalDimension?
       | (SIGNED | UNSIGNED) INTEGER?
     ) ARRAY?
     ;
