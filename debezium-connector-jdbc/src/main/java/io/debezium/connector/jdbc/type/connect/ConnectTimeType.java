@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Time;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
@@ -34,7 +35,7 @@ public class ConnectTimeType extends AbstractTimeType {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         return getDialect().getTimeQueryBinding();
     }
 

@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -24,8 +25,8 @@ public class ConnectMapToConnectStringType extends AbstractConnectMapType {
     public static final ConnectMapToConnectStringType INSTANCE = new ConnectMapToConnectStringType();
 
     @Override
-    public String getQueryBinding(Schema schema) {
-        return ConnectStringType.INSTANCE.getQueryBinding(schema);
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+        return ConnectStringType.INSTANCE.getQueryBinding(column, schema);
     }
 
     @Override

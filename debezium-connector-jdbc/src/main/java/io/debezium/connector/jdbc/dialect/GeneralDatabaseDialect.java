@@ -95,6 +95,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, Type> typeRegistry = new HashMap<>();
+    private final Map<String, String> typeCoercions = new HashMap<>();
     private final boolean jdbcTimeZone;
 
     public GeneralDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
@@ -319,7 +320,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
         builder.append(") VALUES (");
 
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> record.getFields().get(name).getQueryBinding());
+        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
 
         builder.append(")");
 
@@ -337,11 +338,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         builder.append("UPDATE ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" SET ");
-        builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> columnNameEqualsBinding(name, record));
+        builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
 
         if (!record.getKeyFieldNames().isEmpty()) {
             builder.append(" WHERE ");
-            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, record));
+            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
         }
 
         return builder.build();
@@ -355,10 +356,15 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
         if (!record.getKeyFieldNames().isEmpty()) {
             builder.append(" WHERE ");
-            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, record));
+            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
         }
 
         return builder.build();
+    }
+
+    @Override
+    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type) {
+        return "?";
     }
 
     @Override
@@ -623,8 +629,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
     }
 
-    protected String columnQueryBindingFromField(String fieldName, SinkRecordDescriptor record) {
-        return record.getFields().get(fieldName).getQueryBinding();
+    protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
+        final String columnName = columnNameFromField(fieldName, record);
+        return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName));
     }
 
     protected String columnNameFromField(String fieldName, SinkRecordDescriptor record) {
@@ -673,9 +680,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return toIdentifier(tableId.getTableName());
     }
 
-    private String columnNameEqualsBinding(String fieldName, SinkRecordDescriptor record) {
+    private String columnNameEqualsBinding(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
+        final ColumnDescriptor column = table.getColumnByName(columnNameFromField(fieldName, record));
         final FieldDescriptor field = record.getFields().get(fieldName);
-        return toIdentifier(columnNamingStrategy.resolveColumnName(fieldName)) + "=" + field.getQueryBinding();
+        return toIdentifier(columnNamingStrategy.resolveColumnName(fieldName)) + "=" + field.getQueryBinding(column);
     }
 
     private static boolean isColumnNullable(String columnName, Collection<String> primaryKeyColumnNames, int nullability) {
