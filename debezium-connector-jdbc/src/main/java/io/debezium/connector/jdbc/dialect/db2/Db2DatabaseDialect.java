@@ -93,7 +93,7 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         builder.append("merge into ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" using (values(");
-        builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, record));
+        builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table , record));
         builder.append(")) as DAT(");
         builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") on ");

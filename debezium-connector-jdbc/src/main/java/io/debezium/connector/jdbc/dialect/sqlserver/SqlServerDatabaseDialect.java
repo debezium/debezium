@@ -88,7 +88,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" WITH (HOLDLOCK) AS TARGET USING (SELECT ");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
-                (name) -> columnNameFromField(name, columnQueryBindingFromField(name, record) + " AS ", record));
+                (name) -> columnNameFromField(name, columnQueryBindingFromField(name, table, record) + " AS ", record));
         builder.append(") AS INCOMING ON (");
         builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> {
             final String columnName = columnNameFromField(name, record);

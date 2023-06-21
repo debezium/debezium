@@ -13,6 +13,7 @@ import org.hibernate.engine.jdbc.Size;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
@@ -33,7 +34,7 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         if (Bits.LOGICAL_NAME.equals(schema.name())) {
             final int bitSize = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
             return String.format("cast(? as %s)", bitSize > 1 ? String.format("varbinary(%d)", bitSize) : "bit");

@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 
@@ -26,7 +27,7 @@ class CaseInsensitiveTextType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         return "cast(? as citext)";
     }
 

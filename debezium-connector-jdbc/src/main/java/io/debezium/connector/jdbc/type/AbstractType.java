@@ -14,6 +14,7 @@ import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 
 /**
  * An abstract implementation of {@link Type}, which all types should extend.
@@ -22,7 +23,6 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
  */
 public abstract class AbstractType implements Type {
 
-    private static final String QUERY_BINDING = "?";
     private static final String SCHEMA_PARAMETER_COLUMN_TYPE = "__debezium.source.column.type";
     private static final String SCHEMA_PARAMETER_COLUMN_SIZE = "__debezium.source.column.length";
     private static final String SCHEMA_PARAMETER_COLUMN_PRECISION = "__debezium.source.column.scale";
@@ -35,8 +35,8 @@ public abstract class AbstractType implements Type {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
-        return QUERY_BINDING;
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+        return getDialect().getQueryBindingWithValueCast(column, schema, this);
     }
 
     @Override
