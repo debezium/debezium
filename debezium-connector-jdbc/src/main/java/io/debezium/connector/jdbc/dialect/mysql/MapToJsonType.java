@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectMapType;
 
@@ -31,8 +32,8 @@ class MapToJsonType extends AbstractConnectMapType {
     public static final MapToJsonType INSTANCE = new MapToJsonType();
 
     @Override
-    public String getQueryBinding(Schema schema) {
-        return JsonType.INSTANCE.getQueryBinding(schema);
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+        return JsonType.INSTANCE.getQueryBinding(column, schema);
     }
 
     @Override

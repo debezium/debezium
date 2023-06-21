@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
 
+import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.PostgreSQLDialect;
@@ -21,8 +22,10 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
+import io.debezium.connector.jdbc.type.Type;
 
 /**
  * A {@link DatabaseDialect} implementation for PostgreSQL.
@@ -83,7 +86,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(" (");
         builder.appendLists(",", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, record));
+        builder.appendLists(",", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ON CONFLICT (");
         builder.appendList(",", record.getKeyFieldNames(), (name) -> columnNameFromField(name, record));
         if (record.getNonKeyFieldNames().isEmpty()) {
@@ -97,6 +100,23 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             });
         }
         return builder.build();
+    }
+
+    @Override
+    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type) {
+        if (schema.type() == Schema.Type.STRING) {
+            final String typeName = column.getTypeName().toLowerCase();
+            if ("uuid".equals(typeName)) {
+                return "cast(? as uuid)";
+            }
+            else if ("json".equals(typeName)) {
+                return "cast(? as json)";
+            }
+            else if ("jsonb".equals(typeName)) {
+                return "cast(? as jsonb)";
+            }
+        }
+        return super.getQueryBindingWithValueCast(column, schema, type);
     }
 
     @Override

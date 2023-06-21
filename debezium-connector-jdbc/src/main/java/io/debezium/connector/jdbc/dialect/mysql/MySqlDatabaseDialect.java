@@ -150,7 +150,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(" (");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, record));
+        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
         final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()

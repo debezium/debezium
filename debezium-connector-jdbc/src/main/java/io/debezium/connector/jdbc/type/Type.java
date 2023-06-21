@@ -10,6 +10,7 @@ import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 
 /**
  * A type represents a relational column type used for query abd parameter binding.
@@ -52,10 +53,11 @@ public interface Type {
     /**
      * Return the SQL string to be used in DML statements for binding this type to SQL.
      *
+     * @param column column descriptor in the table relational model, never {@code null}
      * @param schema field schema, never {@code null}
      * @return query parameter argument binding SQL fragment
      */
-    String getQueryBinding(Schema schema);
+    String getQueryBinding(ColumnDescriptor column, Schema schema);
 
     /**
      * Resolve the default value clause value.
