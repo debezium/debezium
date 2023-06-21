@@ -20,20 +20,32 @@ public final class MongoDbDatabaseProvider {
     // Should be aligned with definition in pom.xm
     public static final String MONGO_DOCKER_DESKTOP_PORT_DEFAULT = "27017:27117";
 
-    /**
-     * Constructs the default testing MongoDB replica set
-     *
-     * @return MongoDb Replica set
-     */
-    public static MongoDbReplicaSet dockerReplicaSet() {
+    private static MongoDbReplicaSet.Builder dockerReplicaSetBuilder() {
         // will be used only in environment with docker desktop
         var portResolver = ParsingPortResolver.parseProperty(MONGO_DOCKER_DESKTOP_PORT_PROPERTY, MONGO_DOCKER_DESKTOP_PORT_DEFAULT);
         var replicaSize = Integer.parseInt(System.getProperty(MONGO_REPLICA_SIZE, "1"));
 
         return MongoDbReplicaSet.replicaSet()
                 .memberCount(replicaSize)
-                .portResolver(portResolver)
-                .build();
+                .portResolver(portResolver);
+    }
+
+    /**
+     * Constructs the default testing MongoDB replica set
+     *
+     * @return MongoDb Replica set
+     */
+    public static MongoDbReplicaSet dockerReplicaSet() {
+        return dockerReplicaSetBuilder().build();
+    }
+
+    /**
+     * Constructs testing MongoDB replica set with enabled authentication
+     *
+     * @return MongoDb Replica set
+     */
+    public static MongoDbReplicaSet dockerAuthReplicaSet() {
+        return dockerReplicaSetBuilder().authEnabled(true).build();
     }
 
     /**

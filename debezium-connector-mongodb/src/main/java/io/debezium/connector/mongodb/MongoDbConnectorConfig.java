@@ -218,6 +218,85 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
+     * The set of predefined CaptureScope options or aliases.
+     */
+    public enum CaptureScope implements EnumeratedValue {
+        /**
+         * Capture changes from entire MongoDB deployment
+         * <p>
+         * The MongoDB user used by debezium needs the following permissions/roles
+         * <ul>
+         *     <li>read role for any database
+         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
+         * </ul>
+         */
+        DEPLOYMENT("deployment"),
+
+        /**
+         * Capture changes from database.
+         * <p>
+         * The MongoDB user used by debezium needs the following permissions/roles
+         * <ul>
+         *     <li>read role for database specified by {@link MongoDbConnectorConfig#CAPTURE_TARGET}</li>
+         *     <li>write permissions to the signalling collection</li>
+         *     <li>read permissions to the config.shards collection (for sharded clusters with connection.mode=replica_set)</li>
+         * </ul>
+         *
+         * Additionally, the signaling collection has to reside under {@link MongoDbConnectorConfig#CAPTURE_TARGET}
+         */
+        DATABASE("database");
+
+        private final String value;
+
+        CaptureScope(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static CaptureScope parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (CaptureScope option : CaptureScope.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static CaptureScope parse(String value, String defaultValue) {
+            CaptureScope mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined MongoDbConnectionMode options or aliases.
      */
     public enum ConnectionMode implements EnumeratedValue {
@@ -508,6 +587,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
+    public static final Field CAPTURE_SCOPE = Field.create("capture.scope")
+            .withDisplayName("Capture scope")
+            .withEnum(CaptureScope.class, CaptureScope.DEPLOYMENT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The scope of captured changes. "
+                    + "Options include: "
+                    + "'deployment' (the default) to capture changes from the entire MongoDB deployment; "
+                    + "'database' to capture changes from a specific MongoDB database");
+
+    public static final Field CAPTURE_TARGET = Field.create("capture.target")
+            .withDisplayName("Capture target")
+            .withType(Type.STRING)
+            .withValidation(MongoDbConnectorConfig::validateCaptureTarget)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Name of captured database for " + CAPTURE_SCOPE.name() + "=" + CaptureScope.DATABASE.value);
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
@@ -640,6 +739,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private final SnapshotMode snapshotMode;
     private CaptureMode captureMode;
+    private final CaptureScope captureScope;
+    private final String captureTarget;
     private final ConnectionMode connectionMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
@@ -658,11 +759,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.connectionMode = ConnectionMode.parse(connectionModeValue, MongoDbConnectorConfig.CONNECTION_MODE.defaultValueAsString());
         this.shardConnectionParameters = config.getString(SHARD_CONNECTION_PARAMS);
 
+        String captureScopeValue = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
+        this.captureScope = CaptureScope.parse(captureScopeValue, MongoDbConnectorConfig.CAPTURE_SCOPE.defaultValueAsString());
+        this.captureTarget = config.getString(MongoDbConnectorConfig.CAPTURE_TARGET);
+
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
         this.replicaSets = resolveReplicaSets(config, connectionMode);
-
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -773,6 +877,22 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
+    private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
+        var value = config.getString(field);
+        var scope = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
+
+        if (value != null && CaptureScope.DEPLOYMENT.value.equals(scope)) {
+            LOGGER.warn("Config property '{}' will be ignored due to {}={}", field.name(), CAPTURE_SCOPE.name(), scope);
+        }
+
+        if (value == null) {
+            problems.accept(field, null, field.name() + "property is missing");
+            return 1;
+        }
+
+        return 0;
+    }
+
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
@@ -787,6 +907,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public CaptureMode getCaptureMode() {
         return captureMode;
+    }
+
+    public CaptureScope getCaptureScope() {
+        return captureScope;
+    }
+
+    public Optional<String> getCaptureTarget() {
+        return Optional.ofNullable(captureTarget);
     }
 
     public ConnectionMode getConnectionMode() {
