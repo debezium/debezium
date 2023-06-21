@@ -76,7 +76,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     private MongoPrimary primary;
     private CollectionId signallingCollectionId;
 
-    private final ExecutorService incrementalSnapshotThreadPool;
+    private ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
@@ -97,8 +97,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.dataListener = dataChangeEventListener;
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
                 : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
-        this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
-                "incremental-snapshot-" + replicaSets.all().get(0).replicaSetName(), connectorConfig.getIncrementalSnapshotThreads());
     }
 
     @Override
@@ -511,6 +509,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void preReadChunk(IncrementalSnapshotContext<CollectionId> context) {
+        if (this.incrementalSnapshotThreadPool == null || this.incrementalSnapshotThreadPool.isShutdown()) {
+            this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
+                    "incremental-snapshot-" + replicaSets.all().get(0).replicaSetName(), connectorConfig.getIncrementalSnapshotThreads());
+        }
     }
 
     protected void postReadChunk(IncrementalSnapshotContext<CollectionId> context) {
@@ -518,7 +520,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void postIncrementalSnapshotCompleted() {
-        // no-op
+        if (incrementalSnapshotThreadPool != null) {
+            this.incrementalSnapshotThreadPool.shutdown();
+        }
     }
 
     @Override
