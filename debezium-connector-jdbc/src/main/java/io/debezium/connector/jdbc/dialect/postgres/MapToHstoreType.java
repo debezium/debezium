@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectMapType;
 
@@ -25,7 +26,7 @@ class MapToHstoreType extends AbstractConnectMapType {
     public static final MapToHstoreType INSTANCE = new MapToHstoreType();
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         return "cast(? as hstore)";
     }
 

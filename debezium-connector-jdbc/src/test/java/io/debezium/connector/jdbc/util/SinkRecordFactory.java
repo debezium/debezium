@@ -193,6 +193,26 @@ public interface SinkRecordFactory {
                 .build();
     }
 
+    default SinkRecord createRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
+        return SinkRecordBuilder.create()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(1)
+                .partition(0)
+                .keySchema(basicKeySchema())
+                .recordSchema(SchemaBuilder.struct()
+                        .field("id", Schema.INT8_SCHEMA)
+                        .field(fieldName, fieldSchema)
+                        .build())
+                .sourceSchema(basicSourceSchema())
+                .key("id", key)
+                .after("id", key)
+                .after(fieldName, value)
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build();
+    }
+
     default SinkRecord createRecordMultipleKeyColumns(String topicName) {
         return SinkRecordBuilder.create()
                 .flat(isFlattened())
@@ -223,6 +243,28 @@ public interface SinkRecordFactory {
                 .before("name", "John Doe")
                 .after("id", (byte) 1)
                 .after("name", "Jane Doe")
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build();
+    }
+
+    default SinkRecord updateRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
+        return SinkRecordBuilder.update()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(1)
+                .partition(0)
+                .keySchema(basicKeySchema())
+                .recordSchema(SchemaBuilder.struct()
+                        .field("id", Schema.INT8_SCHEMA)
+                        .field(fieldName, fieldSchema)
+                        .build())
+                .sourceSchema(basicSourceSchema())
+                .key("id", key)
+                .before("id", key)
+                .before(fieldName, value)
+                .after("id", key)
+                .after(fieldName, value)
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
     }

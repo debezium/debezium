@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.geometry.Point;
@@ -29,7 +30,7 @@ class PointType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         return "cast(? as point)";
     }
 

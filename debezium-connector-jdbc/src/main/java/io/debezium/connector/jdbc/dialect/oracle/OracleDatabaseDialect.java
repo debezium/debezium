@@ -98,7 +98,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" USING (SELECT ");
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
-                (name) -> columnQueryBindingFromField(name, record) + " " + columnNameFromField(name, record));
+                (name) -> columnQueryBindingFromField(name, table, record) + " " + columnNameFromField(name, record));
         builder.append(" FROM dual) ").append("INCOMING ON (");
         builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
         builder.append(")");

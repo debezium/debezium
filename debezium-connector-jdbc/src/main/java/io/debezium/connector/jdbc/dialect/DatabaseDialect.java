@@ -18,6 +18,7 @@ import org.hibernate.query.NativeQuery;
 
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
 import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.connector.jdbc.type.Type;
@@ -140,6 +141,16 @@ public interface DatabaseDialect {
      * @return the delete SQL statement to be executed, never {@code null}
      */
     String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record);
+
+    /**
+     * Returns the SQL binding fragment for a column, schema, and type mapping.
+     *
+     * @param column the relational column type, never {@code null}
+     * @param schema the field schema type, never {@code null}
+     * @param type the resolved field type, never {@code null}
+     * @return the query binding SQL fragment
+     */
+    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type);
 
     /**
      * Gets the maximum length of a VARCHAR field in a primary key column.

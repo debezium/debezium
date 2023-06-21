@@ -9,6 +9,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.query.Query;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.MicroDuration;
@@ -28,7 +29,7 @@ class IntervalType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
         return "cast(? as interval)";
     }
 

@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -145,7 +146,9 @@ public class SinkRecordDescriptor {
         private final Type type;
         private final DatabaseDialect dialect;
         private final String typeName;
-        private final String queryBinding;
+
+        // Lazily prepared
+        private String queryBinding;
 
         private FieldDescriptor(Schema schema, String name, boolean key, DatabaseDialect dialect) {
             this.schema = schema;
@@ -156,7 +159,6 @@ public class SinkRecordDescriptor {
             // These are cached here allowing them to be resolved once per record
             this.type = dialect.getSchemaType(schema);
             this.typeName = type.getTypeName(dialect, schema, key);
-            this.queryBinding = type.getQueryBinding(schema);
 
             LOGGER.trace("Field [{}] with schema [{}]", name, schema.type());
             LOGGER.trace("    Type      : {}", type.getClass().getName());
@@ -191,7 +193,10 @@ public class SinkRecordDescriptor {
             return typeName;
         }
 
-        public String getQueryBinding() {
+        public String getQueryBinding(ColumnDescriptor column) {
+            if (queryBinding == null) {
+                queryBinding = type.getQueryBinding(column, schema);
+            }
             return queryBinding;
         }
 
