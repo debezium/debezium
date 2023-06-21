@@ -11,12 +11,10 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoChangeStreamCursor;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.annotation.ThreadSafe;
@@ -113,16 +111,11 @@ public class ReplicaSetOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.initEvent(replicaSetName, cursor);
     }
 
-    public void initFromOpTimeIfNeeded(MongoClient client) {
+    public void initFromOpTimeIfNeeded(BsonTimestamp timestamp) {
         if (lastResumeToken() != null) {
             return;
         }
         LOGGER.info("Initializing offset for replica-set {} from operation time", replicaSetName);
-
-        var database = client.getDatabase("admin");
-        var result = database.runCommand(new Document("ping", 1), BsonDocument.class);
-        var timestamp = result.getTimestamp("operationTime");
-
         sourceInfo.noEvent(replicaSetName, timestamp);
     }
 

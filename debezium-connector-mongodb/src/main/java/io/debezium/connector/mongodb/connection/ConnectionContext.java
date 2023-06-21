@@ -29,6 +29,7 @@ public class ConnectionContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
 
     private final Configuration config;
+    private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbClientFactory clientFactory;
 
     /**
@@ -36,6 +37,7 @@ public class ConnectionContext {
      */
     public ConnectionContext(Configuration config) {
         this.config = config;
+        this.connectorConfig = new MongoDbConnectorConfig(config);
 
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
@@ -74,7 +76,7 @@ public class ConnectionContext {
     }
 
     public MongoDbConnectorConfig getConnectorConfig() {
-        return new MongoDbConnectorConfig(config);
+        return connectorConfig;
     }
 
     /**
@@ -123,6 +125,6 @@ public class ConnectionContext {
      */
     public MongoDbConnection connect(ReplicaSet replicaSet, Filters filters,
                                      MongoDbConnection.ErrorHandler errorHandler) {
-        return new MongoDbConnection(replicaSet, clientFactory, filters, errorHandler);
+        return new MongoDbConnection(replicaSet, clientFactory, connectorConfig, filters, errorHandler);
     }
 }
