@@ -132,6 +132,9 @@ select  t.*, tt.* FROM wptests_terms AS t  INNER JOIN wptests_term_taxonomy AS t
 -- cast as integer
 SELECT CAST('1' AS INT);
 SELECT CAST('1' AS INTEGER);
+-- cast as decimal
+SELECT CAST('1' AS DECIMAL);
+SELECT CAST('1' AS DEC);
 #end
 #begin
 -- JSON functions
