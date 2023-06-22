@@ -68,6 +68,7 @@ The following example shows a typical notification that provides the status of a
 ----
 <1> The type field can contain one of the following values:
 
+* `STARTED`
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
