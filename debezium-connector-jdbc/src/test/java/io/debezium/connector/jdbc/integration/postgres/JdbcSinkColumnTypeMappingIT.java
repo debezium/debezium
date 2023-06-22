@@ -58,9 +58,9 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         shouldCoerceStringTypeToColumnType(factory, "jsonb", "{\"id\": 12345}", "{\"id\": 67890}");
     }
 
-
     private void shouldCoerceStringTypeToColumnType(SinkRecordFactory factory, String columnType, String insertValue,
-                                                    String updateValue) throws Exception {
+                                                    String updateValue)
+            throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
