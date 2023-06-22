@@ -21,7 +21,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 public class OcpMongoShardedDeployer extends AbstractOcpDatabaseDeployer<OcpMongoShardedController> {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedDeployer.class);
 
-    private List<Deployment> deployments;
+    private final List<Deployment> deployments;
 
     private OcpMongoShardedDeployer(
                                     String project,
@@ -53,12 +53,10 @@ public class OcpMongoShardedDeployer extends AbstractOcpDatabaseDeployer<OcpMong
                 .findFirst()
                 .get();
 
-        List<Service> svcs = services.stream()
+        services = services.stream()
                 .map(s -> ocp.services().inNamespace(project).createOrReplace(s))
                 .collect(Collectors.toList());
         LOGGER.info("Database deployed successfully");
-
-        this.services = svcs;
 
         return getController(deployment, services, ocp);
     }

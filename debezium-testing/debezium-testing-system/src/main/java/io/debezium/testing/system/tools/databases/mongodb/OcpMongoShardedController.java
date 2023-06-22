@@ -15,22 +15,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.TestUtils;
-import io.debezium.testing.system.tools.WaitConditions;
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.AbstractOcpDatabaseController;
-import io.debezium.testing.system.tools.databases.DatabaseInitListener;
-import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 import lombok.SneakyThrows;
@@ -52,19 +46,14 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
         }
     }
 
-    public String getReplicaSetUrl() {
-        var urlList = Arrays.stream(MongoComponents.values())
-                .map(c -> {
-                    // only match primary from each replica set
-                    var matcher = Pattern.compile("mongo-shard([0-9])r1").matcher(c.getName());
-                    if (!matcher.find()) {
-                        return null;
-                    } // "shard" + matcher.group(1) + "/" +
-                    return serviceHostnameFromName(c.getName()) + ":" + c.getPort();
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        return "mongodb://" + String.join(",", urlList);
+    private String getShardNumber(MongoComponents shard) {
+        var matcher = Pattern.compile("mongo-shard([0-9])r1").matcher(shard.getName());
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("Mongo component not a shard");
+        }
+        else {
+            return matcher.group(1);
+        }
     }
 
     @Override
@@ -106,49 +95,66 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
     }
 
     @SneakyThrows
-    private void executeOnPod(String deploymentName, String[] commands) {
-        Pod configPod = ocpUtils.podsWithLabels(project, Map.of("deployment", deploymentName)).get(0);
-        CountDownLatch latch = new CountDownLatch(1);
-        try (ExecWatch exec = ocp.pods().inNamespace(project).withName(configPod.getMetadata().getName())
-                .inContainer("mongo")
-                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
-                .writingError(System.err)
-                .usingListener(new DatabaseInitListener("mongo", latch))
-                .exec(commands)) {
-            LOGGER.info("Waiting until database " + deploymentName + " is initialized");
-            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
-        }
+    public void executeOnPodOfDeployment(MongoComponents component, String[] commands) {
+        ocpUtils.executeOnPod(component.getName(),
+                "mongo",
+                project,
+                "Waiting until database " + component.getName() + " is initialized",
+                commands);
     }
 
     @Override
     public void initialize() throws InterruptedException {
         Arrays.stream(MongoComponents.values()).forEach(c -> {
-            executeOnPod(c.getName(), c.getInitCommand().toArray(String[]::new));
-            try {
-                uploadAndExecuteMongoScript("/database-resources/mongodb/sharded/create-dbz-user.js", c);
+            if (c != MongoComponents.MONGOS) {
+                executeOnPodOfDeployment(c, c.getInitCommand().toArray(String[]::new));
             }
-            catch (URISyntaxException e) {
-                throw new RuntimeException(e);
-            }
+            uploadAndExecuteMongoScript("/database-resources/mongodb/sharded/create-dbz-user.js", c);
         });
 
-        var mongosPod = ocp.pods().inNamespace(project).withLabel("deployment", "mongo-mongos").list().getItems().get(0);
-        var mongosPodRes = ocp.pods().inNamespace(project).withName(mongosPod.getMetadata().getName());
+        uploadAndExecuteMongoScript("/database-resources/mongodb/sharded/init-mongos.js", MongoComponents.MONGOS);
 
-        String scriptLocationInContainer = "/opt/init-mongos.js";
-        mongosPodRes.file(scriptLocationInContainer)
-                .upload(initScript);
-        executeOnPod("mongo-mongos",
-                new String[]{ "mongosh", "localhost:27017", "-f", scriptLocationInContainer });
         if (!isRunningFromOcp()) {
             forwardDatabasePorts();
         }
     }
 
-    private void uploadAndExecuteMongoScript(String scriptLocation, MongoComponents component) throws URISyntaxException {
-        Path scriptPath = Paths.get(
-                Objects.requireNonNull(
-                        getClass().getResource(scriptLocation)).toURI());
+    public void addShard(MongoComponents shard) {
+        String shardNumber = getShardNumber(shard);
+        executeOnPodOfDeployment(MongoComponents.MONGOS, new String[]{
+                "mongosh",
+                "localhost:27017",
+                "--eval",
+                "sh.addShard(\"shard" + shardNumber + "rs/mongo-shard" + shardNumber + "r1." + project + ".svc.cluster.local:27018\");" +
+                        "sh.addShardToZone(\"shard3rs\", \"THREE\");" +
+                        "sh.updateZoneKeyRange(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 },\"THREE\");"
+        });
+    }
+
+    public void removeShard(MongoComponents shard) {
+
+        executeOnPodOfDeployment(MongoComponents.MONGOS, new String[]{
+                "mongosh",
+                "localhost:27017",
+                "--eval",
+                "sh.removeRangeFromZone(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 });" +
+                        "db.adminCommand({removeShard:\"shard" + getShardNumber(shard) + "rs\"});" +
+                        "db.adminCommand({removeShard:\"shard" + getShardNumber(shard) + "rs\"})"
+        });
+
+    }
+
+    private void uploadAndExecuteMongoScript(String scriptLocation, MongoComponents component) {
+        Path scriptPath;
+        try {
+            scriptPath = Paths.get(
+                    Objects.requireNonNull(
+                            getClass().getResource(scriptLocation)).toURI());
+        }
+        catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
         var podName = ocpUtils.podsWithLabels(project, Map.of("deployment", component.getName()))
                 .get(0)
                 .getMetadata()
@@ -156,27 +162,33 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
         var podResource = ocp.pods().inNamespace(project).withName(podName);
 
-        String containerPath = "/opt/script" + TestUtils.getUniqueId() + ".js";
+        // give unique name in case multiple scripts are uploaded to container
+        String containerPath = "/opt/" + scriptPath.getFileName().toString() + TestUtils.getUniqueId() + ".js";
 
         podResource.file(containerPath)
                 .upload(scriptPath);
-        executeOnPod(component.getName(),
+        executeOnPodOfDeployment(component,
                 new String[]{ "mongosh", "localhost:" + component.getPort(), "-f", containerPath });
     }
 
     public enum MongoComponents {
         CONFIG("mongo-config", 27019, List.of("mongosh", "localhost:27019", "--eval",
-                "rs.initiate({ _id: \"cfgrs\", configsvr: true, members: [{ _id : 0, host : \"mongo-config:27019\" }]})")),
+                "rs.initiate({ _id: \"cfgrs\", configsvr: true, members: [{ _id : 0, host : \"mongo-config." + ConfigProperties.OCP_PROJECT_MONGO
+                        + ".svc.cluster.local:27019\" }]})")),
         SHARD1R1("mongo-shard1r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
-                "rs.initiate({_id: \"shard1rs\", members: [{ _id : 0, host : \"mongo-shard1r1:27018\" }]})")),
+                "rs.initiate({_id: \"shard1rs\", members: [{ _id : 0, host : \"mongo-shard1r1." + ConfigProperties.OCP_PROJECT_MONGO
+                        + ".svc.cluster.local:27018\" }]})")),
         SHARD2R1("mongo-shard2r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
-                "rs.initiate({_id: \"shard2rs\", members: [{ _id : 0, host : \"mongo-shard2r1:27018\" }]})")),
-        MONGOS("mongo-mongos", 27017, List.of("mongosh", "localhost:27017", "--eval",
-                "rs.initiate({_id: \"mgs\", members: [{ _id : 0, host : \"mongo-mongos:27017\" }]})"));
+                "rs.initiate({_id: \"shard2rs\", members: [{ _id : 0, host : \"mongo-shard2r1." + ConfigProperties.OCP_PROJECT_MONGO
+                        + ".svc.cluster.local:27018\" }]})")),
+        SHARD3R1("mongo-shard3r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
+                "rs.initiate({_id: \"shard3rs\", members: [{ _id : 0, host : \"mongo-shard3r1." + ConfigProperties.OCP_PROJECT_MONGO
+                        + ".svc.cluster.local:27018\" }]})")),
+        MONGOS("mongo-mongos", 27017, null);
 
-        private String name;
-        private int port;
-        private List<String> initCommand;
+        private final String name;
+        private final int port;
+        private final List<String> initCommand;
 
         MongoComponents(String name, int port, List<String> initCommand) {
             this.name = name;

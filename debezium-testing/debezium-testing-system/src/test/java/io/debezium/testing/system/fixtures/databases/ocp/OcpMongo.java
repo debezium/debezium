@@ -17,8 +17,8 @@ import fixture5.annotations.FixtureContext;
 @FixtureContext(requires = { OpenShiftClient.class }, provides = { MongoDatabaseController.class })
 public class OcpMongo extends OcpDatabaseFixture<MongoDatabaseController> {
 
-    public static final String DB_DEPLOYMENT_PATH = "/database-resources/mongodb/single/deployment.yaml";
-    public static final String DB_SERVICE_PATH = "/database-resources/mongodb/single/service.yaml";
+    public static final String DB_DEPLOYMENT_PATH = "/database-resources/mongodb/standalone/deployment.yaml";
+    public static final String DB_SERVICE_PATH = "/database-resources/mongodb/standalone/service.yaml";
 
     public OcpMongo(ExtensionContext.Store store) {
         super(MongoDatabaseController.class, store);

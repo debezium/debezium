@@ -1,6 +1,6 @@
 // SETUP SHARDING
-sh.addShard("shard1rs/mongo-shard1r1:27018");
-sh.addShard("shard2rs/mongo-shard2r1:27018");
+sh.addShard("shard1rs/mongo-shard1r1.${ocp.project.mongo}.svc.cluster.local:27018");
+sh.addShard("shard2rs/mongo-shard2r1.${ocp.project.mongo}.svc.cluster.local:27018");
 
 db = db.getSiblingDB('inventory');
 sh.enableSharding("inventory");
@@ -9,7 +9,7 @@ db.createCollection(
    { clusteredIndex: { "key": { _id: 1 }, "unique": true, "name": "customers clustered key" } }
 );
 sh.shardCollection("inventory.customers", { _id: 1 } );
-
+sh.shardCollection("inventory.products", { _id: "hashed" } );
 
 sh.addShardToZone("shard1rs", "ONE");
 sh.addShardToZone("shard2rs", "TWO");
@@ -23,10 +23,9 @@ sh.updateZoneKeyRange(
 sh.updateZoneKeyRange(
    "inventory.customers",
    { _id : 1003 },
-   { _id : 1010 },
+   { _id : 1004 },
    "TWO"
 );
-// TODO shard products/orders?
 
 // CREATE TEST DATA
 db.products.insert([

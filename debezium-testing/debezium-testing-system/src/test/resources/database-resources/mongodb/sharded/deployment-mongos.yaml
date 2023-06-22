@@ -41,7 +41,7 @@ spec:
           command:
           - 'mongos'
           - '--configdb'
-          - 'cfgrs/mongo-config:27019'
+          - 'cfgrs/mongo-config.${ocp.project.mongo}.svc.cluster.local:27019'
           - '--bind_ip_all'
       restartPolicy: Always
       terminationGracePeriodSeconds: 30

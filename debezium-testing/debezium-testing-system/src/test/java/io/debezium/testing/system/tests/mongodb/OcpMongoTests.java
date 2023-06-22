@@ -30,6 +30,7 @@ public abstract class OcpMongoTests extends MongoTests {
     @Order(100)
     public void shouldStreamInShardedMode(OcpMongoShardedController dbController) throws IOException, InterruptedException {
         connectController.undeployConnector(connectorConfig.getConnectorName());
+
         String connectorName = "sharded-connector" + TestUtils.getUniqueId();
         connectorConfig = new ConnectorFactories(kafkaController)
                 .mongo(dbController, connectorName)
@@ -43,8 +44,10 @@ public abstract class OcpMongoTests extends MongoTests {
         awaitAssert(() -> assertions.assertRecordsContain(topic, "ashard@test.com"));
         awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
 
-        // insertProduct
-        // assert
+        insertProduct(dbController, "Sharded_mode", "aaa", "12.5", 3);
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.products", "Sharded_mode"));
+
+        addAndRemoveShardTest(dbController, connectorName);
         connectController.undeployConnector(connectorConfig.getConnectorName());
     }
 
@@ -54,54 +57,47 @@ public abstract class OcpMongoTests extends MongoTests {
         String connectorName = "replicaset-connector" + TestUtils.getUniqueId();
         connectorConfig = new ConnectorFactories(kafkaController)
                 .mongo(dbController, connectorName)
-                 .put("mongodb.connection.string", dbController.getDatabaseHostname() + ":" + dbController.getDatabasePort())
-//                .put("mongodb.connection.string", "mongodb://" + dbController.getDatabaseHostname() + ":" + dbController.getDatabasePort() + "/?replicaSet=rs0")
+                .put("mongodb.connection.string", "mongodb://" + dbController.getDatabaseHostname() + ":" + dbController.getDatabasePort())
                 .put("mongodb.connection.mode", "replica_set")
                 .put("task.max", 4)
                 .put("topic.prefix", connectorName);
-        connectorConfig.get().remove("mongodb.hosts");
-
         connectController.deployConnector(connectorConfig);
-
         String topic = connectorName + ".inventory.customers";
 
         insertCustomer(dbController, "Eve", "Sharded", "eshard@test.com");
 
-        String prefix = connectorName;
         assertions.assertTopicsExist(
-                prefix + ".inventory.customers");
+                connectorName + ".inventory.customers");
         awaitAssert(() -> assertions.assertRecordsContain(topic, "eshard@test.com"));
-        awaitAssert(() -> assertions.assertRecordsCount(topic, 5));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 5));
 
-        // assert
+        insertProduct(dbController, "Replicaset_mode", "aaa", "12.5", 3);
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.products", "Replicaset_mode"));
 
-        // insertProduct
-        // assert
-        connectController.undeployConnector(connectorConfig.getConnectorName());
+        addAndRemoveShardTest(dbController, connectorName);
     }
 
-    @Test
-    @Order(120)
-    public void addShard() {
-        // add shard
-        // edit connector
-        // insert
-        // assert
+    private void addAndRemoveShardTest(OcpMongoShardedController dbController, String connectorName) throws IOException, InterruptedException {
+        String topic = connectorName + ".inventory.customers";
 
-        // insertProduct
-        // assert
-    }
+        // add shard, restart connector, insert to that shard and verify that insert was captured by debezium
+        dbController.addShard(OcpMongoShardedController.MongoComponents.SHARD3R1);
 
-    @Test
-    @Order(130)
-    public void removeShard() {
-        // TODO when can I remove shard?
-        // remove shard
-        // edit connector
-        // insert
-        // assert
+        connectController.undeployConnector(connectorName);
+        connectController.deployConnector(connectorConfig);
 
-        // insertProduct
-        // assert
+        insertCustomer(dbController, "F", "F", "f@test.com");
+
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "f@test.com"));
+
+        // remove shard, restart connector and verify debezium is still streaming
+        removeCustomer(dbController, "f@test.com");
+        dbController.removeShard(OcpMongoShardedController.MongoComponents.SHARD3R1);
+
+        connectController.undeployConnector(connectorName);
+        connectController.deployConnector(connectorConfig);
+        insertCustomer(dbController, "David", "Duck", "duck@test.com");
+
+        awaitAssert(() -> assertions.assertRecordsContain(topic, "duck@test.com"));
     }
 }

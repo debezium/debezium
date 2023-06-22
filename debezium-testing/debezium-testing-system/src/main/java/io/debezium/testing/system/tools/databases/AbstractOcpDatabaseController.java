@@ -84,7 +84,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
 
     @Override
     public String getDatabaseHostname() {
-        return serviceHostnameFromName(getService().getMetadata().getName());
+        return getService().getMetadata().getName() + "." + project + ".svc.cluster.local";
     }
 
     @Override
@@ -153,8 +153,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         portForward = null;
     }
 
-    protected String serviceHostnameFromName(String serviceName) {
-        return serviceName + "." + project + ".svc.cluster.local";
+    protected void executeInitCommand(String... commands) throws InterruptedException {
+        ocpUtils.executeOnPod(name,
+                deployment.getMetadata().getLabels().get("app"),
+                project,
+                "Waiting until database is initialized",
+                commands);
     }
 
     private int getOriginalDatabasePort() {
@@ -167,16 +171,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     private int getAvailablePort() throws IOException {
         try (var socket = new ServerSocket(0)) {
             return socket.getLocalPort();
-        }
-    }
-
-    private boolean isLocalPortFree(int port) {
-        try {
-            new ServerSocket(port).close();
-            return true;
-        }
-        catch (IOException e) {
-            return false;
         }
     }
 }
