@@ -68,7 +68,11 @@ public interface SinkRecordFactory {
      * Returns a simple source info block schema.
      */
     default Schema basicSourceSchema() {
-        return SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
+        return SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("schema", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("db", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
     }
 
     default Schema basicRecordSchema() {
@@ -210,6 +214,26 @@ public interface SinkRecordFactory {
                 .after("id", key)
                 .after(fieldName, value)
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .build();
+    }
+
+    default SinkRecord createRecord(String topicName, byte key, String database, String schema, String table) {
+        return SinkRecordBuilder.create()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(1)
+                .partition(0)
+                .keySchema(basicKeySchema())
+                .recordSchema(basicRecordSchema())
+                .sourceSchema(basicSourceSchema())
+                .key("id", key)
+                .after("id", key)
+                .after("name", "John Doe")
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .source("db", database)
+                .source("schema", schema)
+                .source("table", table)
                 .build();
     }
 
