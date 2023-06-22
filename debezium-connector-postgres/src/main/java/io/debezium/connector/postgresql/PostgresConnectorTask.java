@@ -211,8 +211,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     schemaNameAdjuster,
                     signalProcessor);
 
-            dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
-
             NotificationService<PostgresPartition, PostgresOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 

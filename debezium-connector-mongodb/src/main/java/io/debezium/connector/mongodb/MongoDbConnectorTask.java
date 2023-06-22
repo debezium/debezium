@@ -118,8 +118,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     schemaNameAdjuster,
                     signalProcessor);
 
-            dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
-
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
