@@ -129,8 +129,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 schemaNameAdjuster,
                 signalProcessor);
 
-        dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
-
         NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
