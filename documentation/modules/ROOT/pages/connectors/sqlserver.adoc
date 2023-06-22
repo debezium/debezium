@@ -1664,7 +1664,7 @@ If the result is empty, verify that the user has privileges to access both the c
 === SQL Server on Azure
 
 The {prodname} SQL Server connector can be used with SQL Server on Azure.
-Refer to https://learn.microsoft.com/en-us/samples/azure-samples/azure-sql-db-change-stream-debezium/azure-sql--sql-server-change-stream-with-debezium/[this example] for configuring CDC for SQL Server on Azure and using it with {prodname}.
+Refer to https://learn.microsoft.com/en-us/samples/azure-samples/azure-sql-db-change-stream-debezium/azure-sql%2D%2Dsql-server-change-stream-with-debezium/[this example] for configuring CDC for SQL Server on Azure and using it with {prodname}.
 
 ifdef::community[]
 
