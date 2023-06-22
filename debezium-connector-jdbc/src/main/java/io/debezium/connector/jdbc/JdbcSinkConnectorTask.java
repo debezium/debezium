@@ -134,7 +134,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             return;
         }
 
-        LOGGER.info("Marking processed record for topic {}", topicName);
+        LOGGER.trace("Marking processed record for topic {}", topicName);
 
         final TopicPartition topicPartition = new TopicPartition(topicName, record.kafkaPartition());
         final OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.kafkaOffset() + 1L);
