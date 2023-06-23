@@ -932,8 +932,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public Optional<String[]> parseSignallingMessage(Struct value) {
         final String after;
         if (getEnableBson()) {
-            RawBsonDocument data = new RawBsonDocument(value.getBytes(Envelope.FieldName.AFTER));
-            after = data.toJson();
+            byte[] bytes = value.getBytes(Envelope.FieldName.AFTER);
+            if (bytes != null) {
+                RawBsonDocument data = new RawBsonDocument(bytes);
+                after = data.toJson();
+            }
+            else {
+                LOGGER.warn("{} field is missing, fallback to {} field", Envelope.FieldName.AFTER, MongoDbFieldName.RAW_OPLOG_FIELD);
+                RawBsonDocument oplogEvent = new RawBsonDocument(value.getBytes(MongoDbFieldName.RAW_OPLOG_FIELD));
+                after = oplogEvent.getDocument("o").toJson();
+            }
         }
         else {
             after = value.getString(Envelope.FieldName.AFTER);
