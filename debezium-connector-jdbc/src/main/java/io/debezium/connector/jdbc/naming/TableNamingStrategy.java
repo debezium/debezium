@@ -20,7 +20,7 @@ public interface TableNamingStrategy {
      *
      * @param config sink connector configuration, should not be {@code null}
      * @param record Kafka sink record, should not be {@code null}
-     * @return the resolved logical table name, never {@code null}
+     * @return the resolved logical table name; if {@code null} the record should not be processed
      */
     String resolveTableName(JdbcSinkConnectorConfig config, SinkRecord record);
 }
