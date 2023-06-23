@@ -157,7 +157,8 @@ a|[source, json]
    "type":"TABLE_SCAN_COMPLETED",
    "additional_data":{
       "connector_name":"my-connector",
-      "data_collection":"table1",
+      "data_collection":"table1, table2",
+      "scanned_collection":"table1",
       "total_rows_scanned":"100",
       "status":"SUCCEEDED" // <1>
    }
@@ -225,7 +226,7 @@ To enable an application to listen for the JMX notifications that an MBean emits
 [id="debezium-notification-custom-channel"]
 == Custom notification channels
 
-The notification mechanism is designed to be extensible. 
+The notification mechanism is designed to be extensible.
 You can implement channels as needed to deliver notifications in a manner that works best in your environment.
 Adding a notification channel involves several steps:
 
@@ -257,9 +258,9 @@ public interface NotificationChannel {
 <1> The name of the channel.
 To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
 <2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Sends the notification on the channel. 
+<3> Sends the notification on the channel.
 {prodname} calls this method to report its status.
-<4> Closes all allocated resources. 
+<4> Closes all allocated resources.
 {prodname} calls this method when the connector is stopped.
 
 // Type: concept
@@ -300,5 +301,5 @@ NOTE: To use a custom notification channel with multiple connectors, you must pl
 [id="configuring-connectors-to-use-a-custom-notification-channel"]
 === Configuring connectors to use a custom notification channel
 
-Add the name of the custom notification channel to the `notification.enabled.channels` configuration property. 
+Add the name of the custom notification channel to the `notification.enabled.channels` configuration property.
 

@@ -126,6 +126,7 @@ public class IncrementalSnapshotNotificationServiceTest {
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "TABLE_SCAN_COMPLETED", Map.of(
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer",
+                "scanned_collection", "db.inventory.product",
                 "total_rows_scanned", "100",
                 "status", "SUCCEEDED"));
 
