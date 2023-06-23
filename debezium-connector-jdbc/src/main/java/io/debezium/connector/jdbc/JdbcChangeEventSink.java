@@ -6,11 +6,13 @@
 package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
+import static io.debezium.connector.jdbc.naming.TableNamingStrategy.IGNORE_SINK_RECORD_FOR_TABLE;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
+import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -42,10 +44,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final SessionFactory sessionFactory;
     private final DatabaseDialect dialect;
     private final StatelessSession session;
+    private final TableNamingStrategy tableNamingStrategy;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config) {
         this.config = config;
         this.sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
+        this.tableNamingStrategy = config.getTableNamingStrategy();
 
         this.dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
         this.session = this.sessionFactory.openStatelessSession();
@@ -65,7 +69,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .withDialect(dialect)
                     .build();
 
-            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(record, descriptor);
+            String tableName = tableNamingStrategy.resolveTableName(config, record);
+            if (IGNORE_SINK_RECORD_FOR_TABLE.equals(tableName)) {
+                LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                return;
+            }
+            final TableId tableId = dialect.getTableId(tableName);
+            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, descriptor);
             write(table, descriptor);
         }
         catch (Exception e) {
@@ -92,8 +102,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private TableDescriptor checkAndApplyTableChangesIfNeeded(SinkRecord record, SinkRecordDescriptor descriptor) throws SQLException {
-        final TableId tableId = dialect.getTableIdFromTopic(record);
+    private TableDescriptor checkAndApplyTableChangesIfNeeded(TableId tableId, SinkRecordDescriptor descriptor) throws SQLException {
         if (!hasTable(tableId)) {
             // Table does not exist, lets attempt to create it.
             try {
