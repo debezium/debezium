@@ -42,9 +42,9 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
     private String resolveTableNameBySource(JdbcSinkConnectorConfig config, SinkRecord record, String tableFormat) {
         String table = tableFormat;
         if (table.contains("${source.")) {
-            if (isMaybeTombstone(record)) {
+            if (isTombstone(record)) {
                 LOGGER.warn("Ignore this record because it seems to be a tombstone that doesn't have source field, then cannot resolve table name in topic '{}', partition '{}', offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
-                return IGNORE_SINK_RECORD_FOR_TABLE;
+                return null;
             }
 
             try {
@@ -63,7 +63,7 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
         return table;
     }
 
-    private boolean isMaybeTombstone(SinkRecord record) {
+    private boolean isTombstone(SinkRecord record) {
         return record.value() == null;
     }
 }
