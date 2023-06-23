@@ -325,4 +325,12 @@ public interface SinkRecordFactory {
                 .build();
     }
 
+    default SinkRecord tombstoneRecord(String topicName) {
+        return SinkRecordBuilder.tombstone()
+                .topic(topicName)
+                .keySchema(basicKeySchema())
+                .key("id", (byte) 1)
+                .build();
+    }
+
 }
