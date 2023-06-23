@@ -92,7 +92,6 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final Dialect dialect;
     private final DdlTypeRegistry ddlTypeRegistry;
     private final IdentifierHelper identifierHelper;
-    private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final Map<String, Type> typeRegistry = new HashMap<>();
     private final Map<String, String> typeCoercions = new HashMap<>();
@@ -103,7 +102,6 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         this.dialect = unwrapSessionFactory(sessionFactory).getJdbcServices().getDialect();
         this.ddlTypeRegistry = unwrapSessionFactory(sessionFactory).getTypeConfiguration().getDdlTypeRegistry();
         this.identifierHelper = unwrapSessionFactory(sessionFactory).getJdbcServices().getJdbcEnvironment().getIdentifierHelper();
-        this.tableNamingStrategy = connectorConfig.getTableNamingStrategy();
         this.columnNamingStrategy = connectorConfig.getColumnNamingStrategy();
 
         final String jdbcTimeZone = config.getHibernateConfiguration().getProperty(AvailableSettings.JDBC_TIME_ZONE);
@@ -115,10 +113,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public TableId getTableIdFromTopic(SinkRecord record) {
+    public TableId getTableId(String tableName) {
         final NameQualifierSupport nameQualifierSupport = dialect.getNameQualifierSupport();
 
-        final String tableName = tableNamingStrategy.resolveTableName(connectorConfig, record);
         final String[] parts = io.debezium.relational.TableId.parseParts(tableName);
 
         if (parts.length == 3) {

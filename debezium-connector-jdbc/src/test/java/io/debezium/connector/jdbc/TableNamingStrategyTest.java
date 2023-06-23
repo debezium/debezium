@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.connector.jdbc.naming.TableNamingStrategy.IGNORE_SINK_RECORD_FOR_TABLE;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
@@ -53,21 +54,30 @@ public class TableNamingStrategyTest {
         assertThat(strategy.resolveTableName(config, factory.createRecord("database.schema.table"))).isEqualTo("SYS.database_schema_table");
     }
 
-     @Test
-     public void testDefaultTableNamingStrategyWithDebeziumSource() {
-         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "source_${source.db}_${source.schema}_${source.table}"));
-         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
-         final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
-         SinkRecord sinkRecord = factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1");
-         assertThat(strategy.resolveTableName(config, sinkRecord)).isEqualTo("source_database1_schema1_table1");
-     }
+    @Test
+    public void testDefaultTableNamingStrategyWithDebeziumSource() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "source_${source.db}_${source.schema}_${source.table}"));
+        final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
+        final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
+        SinkRecord sinkRecord = factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1");
+        assertThat(strategy.resolveTableName(config, sinkRecord)).isEqualTo("source_database1_schema1_table1");
+    }
 
     @Test
     public void testDefaultTableNamingStrategyWithInvalidSourceField() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "source_${source.invalid}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
-        SinkRecord sinkRecord = factory.createRecord("database.schema.table", (byte) 1, "database1", null, "table1");
+        SinkRecord sinkRecord = factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1");
         Assertions.assertThrows(DataException.class, () -> strategy.resolveTableName(config, sinkRecord));
+    }
+
+    @Test
+    public void testDefaultTableNamingStrategyWithDebeziumSourceAndTombstone() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "source_${source.db}_${source.schema}_${source.table}"));
+        final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
+        final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
+        SinkRecord sinkRecord = factory.tombstoneRecord("database.schema.table");
+        assertThat(strategy.resolveTableName(config, sinkRecord)).isEqualTo(IGNORE_SINK_RECORD_FOR_TABLE);
     }
 }

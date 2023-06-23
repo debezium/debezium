@@ -11,7 +11,6 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.query.NativeQuery;
@@ -41,12 +40,12 @@ public interface DatabaseDialect {
     DatabaseVersion getVersion();
 
     /**
-     * Resolves the table id for seink record.
+     * Resolves the table id for table name.
      *
-     * @param record the sink record.
+     * @param tableName the table name.
      * @return the parsed table identifier, never {@code null}.
      */
-    TableId getTableIdFromTopic(SinkRecord record);
+    TableId getTableId(String tableName);
 
     /**
      * Check whether the specified table exists.
