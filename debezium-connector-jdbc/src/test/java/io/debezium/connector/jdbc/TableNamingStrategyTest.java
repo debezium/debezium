@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc;
 
-import static io.debezium.connector.jdbc.naming.TableNamingStrategy.IGNORE_SINK_RECORD_FOR_TABLE;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
@@ -78,6 +77,15 @@ public class TableNamingStrategyTest {
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
         SinkRecord sinkRecord = factory.tombstoneRecord("database.schema.table");
-        assertThat(strategy.resolveTableName(config, sinkRecord)).isEqualTo(IGNORE_SINK_RECORD_FOR_TABLE);
+        assertThat(strategy.resolveTableName(config, sinkRecord)).isNull();
+    }
+
+    @Test
+    public void testDefaultTableNamingStrategyWithTopicAndTombstone() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("table.name.format", "kafka_${topic}"));
+        final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
+        final DefaultTableNamingStrategy strategy = new DefaultTableNamingStrategy();
+        SinkRecord sinkRecord = factory.tombstoneRecord("database.schema.table");
+        assertThat(strategy.resolveTableName(config, sinkRecord)).isEqualTo("kafka_database_schema_table");
     }
 }

@@ -6,7 +6,6 @@
 package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
-import static io.debezium.connector.jdbc.naming.TableNamingStrategy.IGNORE_SINK_RECORD_FOR_TABLE;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -70,7 +69,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     .build();
 
             String tableName = tableNamingStrategy.resolveTableName(config, record);
-            if (IGNORE_SINK_RECORD_FOR_TABLE.equals(tableName)) {
+            if (tableName == null) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
                 return;
             }
