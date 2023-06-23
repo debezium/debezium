@@ -5,21 +5,22 @@
  */
 package io.debezium.connector.jdbc.naming;
 
-import io.debezium.data.Envelope;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
-
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.data.Envelope;
+
 /**
  * Default implementation of the {@link TableNamingStrategy} where the table name is driven
- * directly from the topic name, replacing any {@code dot} characters with {@code underscore}.
+ * directly from the topic name, replacing any {@code dot} characters with {@code underscore}
+ * and source field in topic.
  *
  * @author Chris Cranford
  */
@@ -41,6 +42,11 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
     private String resolveTableNameBySource(JdbcSinkConnectorConfig config, SinkRecord record, String tableFormat) {
         String table = tableFormat;
         if (table.contains("${source.")) {
+            if (isMaybeTombstone(record)) {
+                LOGGER.warn("Ignore this record because it seems to be a tombstone that doesn't have source field, then cannot resolve table name in topic '{}', partition '{}', offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                return IGNORE_SINK_RECORD_FOR_TABLE;
+            }
+
             try {
                 Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
                 Matcher matcher = sourcePattern.matcher(table);
@@ -48,11 +54,16 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
                     String target = matcher.group();
                     table = table.replace(target, source.getString(matcher.group(2)));
                 }
-            } catch (DataException e) {
-                LOGGER.error("Failed to resolve table name with format '{}', check source field in topic '{}'", config.getTableNameFormat(), record.topic());
+            }
+            catch (DataException e) {
+                LOGGER.error("Failed to resolve table name with format '{}', check source field in topic '{}'", config.getTableNameFormat(), record.topic(), e);
                 throw e;
             }
         }
         return table;
+    }
+
+    private boolean isMaybeTombstone(SinkRecord record) {
+        return record.value() == null;
     }
 }

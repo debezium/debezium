@@ -15,6 +15,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
  * @author Chris Cranford
  */
 public interface TableNamingStrategy {
+    String IGNORE_SINK_RECORD_FOR_TABLE = "__IGNORE_SINK_RECORD_FOR_TABLE";
     /**
      * Resolves the logical table name from the sink record.
      *
