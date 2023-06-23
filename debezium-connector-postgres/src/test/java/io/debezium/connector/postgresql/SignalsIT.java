@@ -29,6 +29,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.spi.CustomActionProvider;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
@@ -226,6 +227,32 @@ public class SignalsIT extends AbstractConnectorTest {
         waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
 
         assertThat(logInterceptor.containsMessage("Signal message at offset")).isTrue();
+
+    }
+
+    @Test
+    public void customAction() throws Exception {
+        // Testing.Print.enable();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(CustomActionProvider.CustomAction.class);
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        sendLogSignalWithJmx("1", "customLog", "{\"message\": \"Signal message at offset ''{}''\"}");
+
+        waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
+
+        assertThat(logInterceptor.containsMessage("[CustomLog]")).isTrue();
 
     }
 
