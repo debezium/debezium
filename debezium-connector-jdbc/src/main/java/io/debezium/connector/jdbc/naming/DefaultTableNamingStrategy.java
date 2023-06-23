@@ -43,7 +43,9 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
         String table = tableFormat;
         if (table.contains("${source.")) {
             if (isTombstone(record)) {
-                LOGGER.warn("Ignore this record because it seems to be a tombstone that doesn't have source field, then cannot resolve table name in topic '{}', partition '{}', offset '{}'", record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                LOGGER.warn(
+                        "Ignore this record because it seems to be a tombstone that doesn't have source field, then cannot resolve table name in topic '{}', partition '{}', offset '{}'",
+                        record.topic(), record.kafkaPartition(), record.kafkaOffset());
                 return null;
             }
 
