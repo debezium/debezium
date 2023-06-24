@@ -18,4 +18,12 @@ public interface MongoDbDeployment extends Startable {
      */
     String getConnectionString();
 
+    default String getAuthConnectionString(String username, String password, String authSource) {
+        throw new UnsupportedOperationException("Authentication not supported for this deployment type");
+    }
+
+    default String getNoAuthConnectionString() {
+        throw new UnsupportedOperationException("Authentication not supported for this deployment type");
+    }
+
 }
