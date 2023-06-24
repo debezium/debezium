@@ -1027,13 +1027,40 @@ endif::community[]
 === Optimal Oplog Config
 
 
-The {prodname} MongoDB connector works by obtaining changes from https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Oplog] using https://www.mongodb.com/docs/manual/changeStreams/[change streams]. As oplog is a https://www.mongodb.com/docs/manual/reference/glossary/#std-term-capped-collection/[capped collection], older entries are overwritten once maximum configured size is reached. For MongoDB connector to be able to deal with failures it is important that the oplog retention config is such that the resume point is available upon restart or retries. If the last oplog position is lost, the connector can not start again and a new connector has to be created afresh - See xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
+The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set. 
+Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries. 
+If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position. 
+However, if this position was removed from the oplog, the connector might fail to start, depending on the value specified for the connector's `snapshot.mode` property.
+In the event of a failure, you must create a new connector to enable {prodname} to continue capturing records from the database.
+For more information, see xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
 
-To avoid this, you can provide a higher https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Oplog size] or preferably a https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Minimum Oplog Window] config available since MongoDB 4.4 (i.e. time-based, entries of the last X-hours are guaranteed to be available even if oplog size cap is reached). The latter is preferable but may not always be an option as it can have impact if the cluster is reaching its capacity and there is sudden load of data. Thus, you can instead choose to provide a higher Oplog size based on you workloads, ideally should be more than peak Oplog/Hour.
+To ensure that the oplog retains the offset values that {prodname} requires to resume streaming, you can use either of the following approaches:
 
-E.g. If we have 3 GB oplog per hour and only 1 GB oplog size limit. Oplog entries will get cleared thrice an hour, which would be bad if Debezium fails during this time. Thus, if your average reaction time to Debezium failure is 2 hours then the oplog size should be at least 6 GB.
+*  https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog]. 
+Based on your typical workloads, set the oplog size to a value that is greater than the peak number of oplog entries per hour.
 
-Monitoring Oplog is easy on a Atlas MongoDB Cluster, See https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour/[Monitoring Oplog] about Replication Oplog Window (if debezium is disabled and lagging more than this, then it is bound to fail) and Oplog GB/Hour (explained above).
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Increase the minimum number of hours that an oplog entry is retained] (MongoDB 4.4 and greater). 
+This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if oplog size cap is reached. 
+Although this is generally the preferred option, for clusters with high workloads that are nearing capacity, specify the maximum oplog size. 
+
+To help prevent failures that are related to missing oplog entries, it's important to track metrics that report replication behavior, and to optimize the oplog size to support {prodname}. 
+In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window. 
+If {prodname} is offline for an interval that exceeds the value of the replication oplog window, and the primary oplog grows faster than {prodname} can consume entries, a connector failure can result.
+
+It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog ([Oplog GB/Hour](https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour)), multiplied by the time that might be required to address a {prodname} failure.
+
+That is,
+  
+`_Oplog GB/Hour_` X  `_average reaction time to {prodname} failure_`
+
+For example, if the oplog size limit is set to 1GB, and the oplog grows by 3GB per hour, oplog entries are cleared three times per hour.
+If {prodname} were to fail during this time, its last oplog position is likely to be removed.
+
+If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two hours, you would thus set the oplog size to (3 GB/hour X 2 hours), or 6GB.
+
+. Additional resources
+
+* [MongoDB replication metrics](https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics)
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
