@@ -1116,6 +1116,8 @@ To help prevent failures that are related to missing oplog entries, it's importa
 In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window. 
 If {prodname} is offline for an interval that exceeds the value of the replication oplog window, and the primary oplog grows faster than {prodname} can consume entries, a connector failure can result.
 
+See [MongoDB replication metrics] (https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics) to learn how to monitor these metrics.
+
 It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog ([Oplog GB/Hour](https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour)), multiplied by the time that might be required to address a {prodname} failure.
 
 That is,
@@ -1126,10 +1128,6 @@ For example, if the oplog size limit is set to 1GB, and the oplog grows by 3GB p
 If {prodname} were to fail during this time, its last oplog position is likely to be removed.
 
 If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two hours, you would thus set the oplog size to (3 GB/hour X 2 hours), or 6GB.
-
-. Additional resources
-
-* [MongoDB replication metrics](https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics)
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
