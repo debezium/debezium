@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -58,13 +59,35 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mongo:" + IMAGE_VERSION);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private static final String CONTAINER_KEYFILE_PATH = "/data/replica.key";
+
     private final String name;
     private final int port;
     private final String replicaSet;
     private final PortResolver portResolver;
+    private final String process;
+    private final String typeFlag;
+    private final String configAddress;
+    private String username;
+    private String password;
+    private String authSource;
+    private boolean authUserEnabled = false;
+    private final boolean authEnabled;
 
     public static Builder node() {
         return new Builder();
+    }
+
+    public static Builder router(String configAddress) {
+        return new Builder().router(configAddress);
+    }
+
+    public static Builder configServerNode() {
+        return new Builder().configServer();
+    }
+
+    public static Builder shardServerNode() {
+        return new Builder().shardServer();
     }
 
     public static final class Builder {
@@ -76,6 +99,26 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         private String replicaSet;
         private Network network = Network.SHARED;
         private boolean skipDockerDesktopLogWarning = false;
+        private boolean authEnabled = false;
+        private String typeFlag = null;
+        private String configAddress = null;
+        private String process = "mongod";
+
+        private Builder router(String configAddress) {
+            this.process = "mongos";
+            this.configAddress = configAddress;
+            return this;
+        }
+
+        public Builder configServer() {
+            this.typeFlag = "--configsvr";
+            return this;
+        }
+
+        public Builder shardServer() {
+            this.typeFlag = "--shardsvr";
+            return this;
+        }
 
         public Builder imageName(DockerImageName imageName) {
             if (imageName != null) {
@@ -114,6 +157,11 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
             return this;
         }
 
+        public Builder authEnabled(boolean authEnabled) {
+            this.authEnabled = authEnabled;
+            return this;
+        }
+
         public MongoDbContainer build() {
             return new MongoDbContainer(this);
         }
@@ -122,9 +170,13 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
     private MongoDbContainer(Builder builder) {
         super(builder.imageName);
+        this.process = builder.process;
+        this.typeFlag = builder.typeFlag;
         this.name = builder.name;
         this.replicaSet = builder.replicaSet;
         this.portResolver = builder.portResolver;
+        this.authEnabled = builder.authEnabled;
+        this.configAddress = builder.configAddress;
 
         if (isDockerDesktop()) {
             this.port = portResolver.resolveFreePort();
@@ -138,10 +190,30 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
 
         withNetwork(builder.network);
         withNetworkAliases(name);
-        withCommand(
-                "--replSet", replicaSet,
-                "--port", String.valueOf(port),
-                "--bind_ip", "localhost," + name);
+    }
+
+    @Override
+    protected void configure() {
+        withCreateContainerCmdModifier(createCommand -> {
+            createCommand.withEntrypoint("sh");
+        });
+
+        var command = "docker-entrypoint.sh " + process
+                + " " + (typeFlag == null ? "" : typeFlag)
+                + " " + (replicaSet == null ? "" : "--replSet " + replicaSet)
+                + " " + (configAddress == null ? "" : "--configdb " + configAddress)
+                + " --port " + port
+                + " --bind_ip localhost," + name;
+
+        if (authEnabled) {
+            var keyFileCommand = "echo 'secret' > " + CONTAINER_KEYFILE_PATH
+                    + " && chown 999:999 " + CONTAINER_KEYFILE_PATH
+                    + " && chmod 0600 " + CONTAINER_KEYFILE_PATH;
+            command = keyFileCommand + " && " + command + " --keyFile " + CONTAINER_KEYFILE_PATH;
+        }
+
+        LOGGER.info("command is: " + command);
+        withCommand("-c", command);
         waitingFor(Wait.forLogMessage("(?i).*waiting for connections.*", 1));
     }
 
@@ -259,8 +331,11 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
                         isLegacy() ? "" : "mongosh",
                         "mongo",
                         "--quiet",
-                        "--host " + name,
-                        "--port " + port),
+                        "--host " + (authUserEnabled ? name : "localhost"),
+                        "--port " + port,
+                        authUserEnabled ? ("--username " + username) : "",
+                        authUserEnabled ? ("--password " + password) : "",
+                        authUserEnabled ? ("--authenticationDatabase " + authSource) : ""),
                 Arrays.stream(command)).collect(joining(" "));
 
         LOGGER.debug("Running command inside container: {}", mongoCommand);
@@ -318,6 +393,47 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
     protected void containerIsStarted(InspectContainerResponse containerInfo) {
         super.containerIsStarted(containerInfo);
         addFakeDnsEntry(name);
+    }
+
+    /**
+     *
+     * @param username username
+     * @param password password
+     * @param database database where user is created
+     * @param setDefault if true this user is set as the default for the following in container operations
+     * @param rolePairs either role name or "role:database" pair
+     */
+    public void createUser(String username, String password, String database, boolean setDefault, String... rolePairs) {
+        if (!authEnabled) {
+            throw new IllegalStateException("MongoDB not started with authentication support");
+        }
+
+        if (rolePairs.length < 1) {
+            throw new IllegalArgumentException("At least one role has to be specified");
+        }
+
+        var roles = Arrays.stream(rolePairs)
+                .map(this::mapPairToRole)
+                .collect(joining(",", "[", "]"));
+
+        eval("db.getSiblingDB('" + database + "').createUser({user: '" + username + "', pwd: '" + password + "', roles:" + roles + "})");
+
+        if (setDefault) {
+            this.username = username;
+            this.password = password;
+            this.authSource = database;
+            authUserEnabled = true;
+        }
+    }
+
+    private String mapPairToRole(String pair) {
+        var parts = pair.split(Pattern.quote(":"), 2);
+
+        if (parts.length == 1) {
+            return "'" + parts[0] + "'";
+        }
+
+        return "{ role: '" + parts[0] + "', db: '" + parts[1] + "' }";
     }
 
     @Override

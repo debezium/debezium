@@ -12,12 +12,15 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.awaitility.Awaitility.await;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -51,11 +54,23 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private final List<MongoDbContainer> members = new ArrayList<>();
     private final DockerImageName imageName;
+    private final boolean authEnabled;
+    private final String rootUser;
+    private final String rootPassword;
+    private final Supplier<MongoDbContainer.Builder> nodeSupplier;
 
     private boolean started;
 
     public static Builder replicaSet() {
-        return new Builder();
+        return new Builder().nodeSupplier(MongoDbContainer::node);
+    }
+
+    public static Builder shardReplicaSet() {
+        return new Builder().nodeSupplier(MongoDbContainer::shardServerNode);
+    }
+
+    public static Builder configServerReplicaSet() {
+        return new Builder().nodeSupplier(MongoDbContainer::configServerNode);
     }
 
     public static class Builder {
@@ -69,6 +84,20 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
+        private boolean authEnabled;
+        private String rootUser = "root";
+        private String rootPassword = "secret";
+        private Supplier<MongoDbContainer.Builder> nodeSupplier = MongoDbContainer::node;
+
+        public Builder nodeSupplier(Supplier<MongoDbContainer.Builder> nodeSupplier) {
+            this.nodeSupplier = nodeSupplier;
+            return this;
+        }
+
+        public Builder authEnabled(boolean authEnabled) {
+            this.authEnabled = authEnabled;
+            return this;
+        }
 
         public Builder imageName(DockerImageName imageName) {
             this.imageName = imageName;
@@ -110,27 +139,38 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             return this;
         }
 
+        public Builder rootUser(String username, String password) {
+            this.rootUser = username;
+            this.rootPassword = password;
+            return this;
+        }
+
         public MongoDbReplicaSet build() {
             return new MongoDbReplicaSet(this);
         }
     }
 
     private MongoDbReplicaSet(Builder builder) {
+        this.nodeSupplier = builder.nodeSupplier;
         this.name = builder.name;
         this.memberCount = builder.memberCount;
         this.configServer = builder.configServer;
         this.network = builder.network;
         this.portResolver = builder.portResolver;
         this.imageName = builder.imageName;
+        this.authEnabled = builder.authEnabled;
+        this.rootUser = builder.rootUser;
+        this.rootPassword = builder.rootPassword;
 
         for (int i = 1; i <= memberCount; i++) {
-            members.add(node()
+            members.add(nodeSupplier.get()
                     .network(network)
                     .name(builder.namespace + i)
                     .replicaSet(name)
                     .portResolver(portResolver)
                     .skipDockerDesktopLogWarning(true)
                     .imageName(imageName)
+                    .authEnabled(authEnabled)
                     .build());
         }
 
@@ -153,11 +193,47 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
      * @return the <a href="https://www.mongodb.com/docs/manual/reference/connection-string/#standard-connection-string-format">standard connection string</a>
      * to the replica set, comprised of only the {@code mongod} hosts.
      */
+    @Override
     public String getConnectionString() {
-        return "mongodb://" + members.stream()
+        if (authEnabled) {
+            return getAuthConnectionString(rootUser, rootPassword, "admin");
+        }
+        return getNoAuthConnectionString();
+    }
+
+    @Override
+    public String getNoAuthConnectionString() {
+        return getConnectionString(false, null, null, null);
+    }
+
+    @Override
+    public String getAuthConnectionString(String username, String password, String authSource) {
+        return getConnectionString(true, username, password, authSource);
+    }
+
+    private String getConnectionString(boolean useAuth, String username, String password, String authSource) {
+        var builder = new StringBuilder("mongodb://");
+
+        if (useAuth) {
+            builder
+                    .append(URLEncoder.encode(username, StandardCharsets.UTF_8))
+                    .append(":")
+                    .append(URLEncoder.encode(password, StandardCharsets.UTF_8))
+                    .append("@");
+        }
+
+        var hosts = members.stream()
                 .map(MongoDbContainer::getClientAddress)
                 .map(Objects::toString)
-                .collect(joining(",")) + "/?replicaSet=" + name;
+                .collect(joining(","));
+
+        builder.append(hosts)
+                .append("/?replicaSet=").append(name);
+
+        if (useAuth) {
+            builder.append("&").append("authSource=").append(authSource);
+        }
+        return builder.toString();
     }
 
     /**
@@ -191,6 +267,9 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         LOGGER.info("[{}] Awaiting primary...", name);
         awaitReplicaPrimary();
 
+        // Create rootUser
+        LOGGER.info("[{}] Creating root user...", name);
+        createRootUser();
         started = true;
     }
 
@@ -211,6 +290,26 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 .toArray(Address[]::new);
 
         arbitraryNode.initReplicaSet(configServer, serverAddresses);
+    }
+
+    private void createRootUser() {
+        // guard here to simplify start code
+        if (authEnabled) {
+            var primary = tryPrimary().orElseThrow();
+            primary.createUser(rootUser, rootPassword, "admin", true, "root");
+        }
+    }
+
+    /**
+     * Creates new user in the RS via primary;
+     * @param username name
+     * @param password password
+     * @param database auth database
+     * @param rolePairs either role name or "role:database" pair
+     */
+    public void createUser(String username, String password, String database, String... rolePairs) {
+        var primary = tryPrimary().orElseThrow();
+        primary.createUser(username, password, database, false, rolePairs);
     }
 
     /**
