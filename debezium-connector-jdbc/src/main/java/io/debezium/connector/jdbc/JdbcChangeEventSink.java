@@ -316,8 +316,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 query.setParameter(index++, record.getPartition());
                 query.setParameter(index++, record.getOffset());
                 break;
-            case RECORD_KEY:
-            case RECORD_VALUE:
+            default:
                 final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
                 if (keySource != null) {
                     index = bindFieldValuesToQuery(record, query, index, keySource, record.getKeyFieldNames());
