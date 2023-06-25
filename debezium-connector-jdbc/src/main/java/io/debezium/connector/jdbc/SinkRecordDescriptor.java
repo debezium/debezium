@@ -14,8 +14,10 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
@@ -112,6 +114,19 @@ public class SinkRecordDescriptor {
                     else {
                         throw new ConnectException("No struct-based primary key defined for record value.");
                     }
+
+                case RECORD_HEADER:
+                    final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
+                    record.headers().forEach((Header header) -> {
+                        headerSchemaBuilder.field(header.key(), header.schema());
+                    });
+
+                    final Schema headerSchema = headerSchemaBuilder.build();
+                    final Struct headerStruct = new Struct(headerSchema);
+                    record.headers().forEach((Header header) -> {
+                        headerStruct.put(header.key(), header.value());
+                    });
+                    return headerStruct;
             }
         }
         return null;
@@ -287,6 +302,9 @@ public class SinkRecordDescriptor {
                 case RECORD_KEY:
                     applyRecordKeyAsPrimaryKey(record);
                     break;
+                case RECORD_HEADER:
+                    applyRecordHeaderAsPrimaryKey(record);
+                    break;
                 case RECORD_VALUE:
                     applyRecordValueAsPrimaryKey(record, flattened);
                     break;
@@ -323,6 +341,20 @@ public class SinkRecordDescriptor {
             else {
                 throw new ConnectException("An unsupported record key schema type detected: " + keySchema.type());
             }
+        }
+
+        private void applyRecordHeaderAsPrimaryKey(SinkRecord record) {
+            if (record.headers() == null || record.headers().isEmpty()) {
+                throw new ConnectException("Configured primary key mode 'record_header' cannot have null or empty schema");
+            }
+
+            final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
+            record.headers().forEach((Header header) -> {
+                headerSchemaBuilder.field(header.key(), header.schema());
+            });
+            final Schema headerSchema = headerSchemaBuilder.build();
+            applyRecordKeyAsPrimaryKey(headerSchema);
+
         }
 
         private void applyRecordValueAsPrimaryKey(SinkRecord record, boolean flattened) {

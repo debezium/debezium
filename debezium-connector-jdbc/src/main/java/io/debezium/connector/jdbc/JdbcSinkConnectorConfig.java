@@ -330,7 +330,14 @@ public class JdbcSinkConnectorConfig {
          * be specified to identify the fields that will be the basis for the destination table's
          * primary key.
          */
-        RECORD_VALUE("record_value");
+        RECORD_VALUE("record_value"),
+
+        /**
+         * Fields from the event's record header are used. The {@code primary.key.fields} property should
+         * be specified to identify the fields that will be the basis for the destination table's
+         * primary key.
+         */
+        RECORD_HEADER("record_header");
 
         private String mode;
 
