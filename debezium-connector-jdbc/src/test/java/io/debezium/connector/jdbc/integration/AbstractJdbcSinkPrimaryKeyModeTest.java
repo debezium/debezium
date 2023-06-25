@@ -182,6 +182,72 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordWithPrimaryKeyColumnWithPrimaryKeyModeRecordHeader(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_HEADER.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        SinkRecord createRecord = factory.createRecord(topicName);
+        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
+                createRecord.kafkaOffset());
+        createRecord.headers().addInt("id", 1);
+        consume(createRecord);
+
+        final String destinationTableName = destinationTableName(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        tableAssert.exists().hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+
+        TestHelper.assertTable(dataSource(), destinationTableName)
+                .exists()
+                .hasNumberOfColumns(2)
+                .column("id").isNumber(false).hasValues((byte) 1)
+                .column("name").isText(false).hasValues("John Doe");
+
+        assertHasPrimaryKeyColumns(destinationTableName, "id");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordWithPrimaryKeyColumnsWithPrimaryKeyModeRecordHeader(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_HEADER.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
+                createRecord.kafkaOffset());
+        createRecord.headers().addInt("id1", 1);
+        createRecord.headers().addInt("id2", 10);
+        consume(createRecord);
+
+        final String destinationTableName = destinationTableName(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        tableAssert.exists().hasNumberOfColumns(3);
+
+        getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "id2", ValueType.NUMBER, 10);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
+
+        assertHasPrimaryKeyColumns(destinationTableName, "id1", "id2");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testRecordWithNoPrimaryKeyColumnsWithPrimaryKeyModeRecordValue(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
