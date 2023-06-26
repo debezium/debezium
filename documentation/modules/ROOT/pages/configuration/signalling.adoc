@@ -332,7 +332,8 @@ You can use signaling to initiate the following actions:
 * xref:debezium-signaling-ad-hoc-snapshots[Trigger ad hoc snapshots].
 * xref:debezium-signaling-stop-ad-hoc-snapshots[Stop execution of an ad hoc snapshot].
 * xref:debezium-signaling-pause-incremental-snapshots[Pause incremental snapshots].
-* xref:debezium-signaling-resume-incremental-snapshots[Resume incremenal snapshots].
+* xref:debezium-signaling-resume-incremental-snapshots[Resume incremental snapshots].
+* xref:debezium-signaling-custom-action[Custom action].
 
 Some signals are not compatible with all connectors.
 
@@ -564,3 +565,79 @@ endif::community[]
 * {link-prefix}:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
 * {link-prefix}:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
 * {link-prefix}:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
+
+// Type: procedure
+[id="debezium-signaling-custom-action"]
+=== Provide Custom action
+As for xref:debezium-custom-signaling-channel[custom signal channel], you can also provide your custom actions implementing the
+following interface:
+
+
+[source,java,indent=0]
+----
+@FunctionalInterface
+public interface SignalAction<P extends Partition> {
+
+    /**
+     * @param signalPayload the content of the signal
+     * @return true if the signal was processed
+     */
+    boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException;
+}
+
+----
+
+The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method where you will receive the payload sent through the signal channel.
+
+After that you need to provide all your custom actions through the SPI interface `io.debezium.pipeline.signal.actions.SignalActionProvider`
+
+[source,java,indent=0]
+----
+public interface SignalActionProvider {
+
+    /**
+     * Create a map of signal action where the key is the name of the action.
+     *
+     * @param dispatcher the event dispatcher instance
+     * @param connectorConfig the connector config
+     * @return a concrete action
+     */
+
+    <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher, CommonConnectorConfig connectorConfig);
+}
+----
+
+You need to provide your implementation to just return a map of signal action where the key of the map is the name of the action that you will use as xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[`type`] in the signal.
+
+// Type: concept
+[id="debezium-signaling-custom-action-core-module-dependencies"]
+=== {prodname} core module dependencies
+
+A custom actions Java project has compile dependencies on the {prodname} core module.
+You must include these compile dependencies in your project's `pom.xml` file, as shown in the following example:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-core</artifactId>
+    <version>${version.debezium}</version> // <1>
+</dependency>
+----
+<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+Declare your provider implementation in the `META-INF/services/io.debezium.pipeline.signal.actions.SignalActionProvider` file.
+
+// Type: procedure
+[id="deploying-a-debezium-custom-action"]
+=== Deploying a custom action
+
+.Prerequisites
+* You have a custom actions Java program.
+
+.Procedure
+* To use a custom action with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+ +
+For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
+
+NOTE: To use a custom action with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.
