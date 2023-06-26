@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -153,6 +154,7 @@ public class MongoDbConnector extends SourceConnector {
             List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
+                validateReplicaSets(config.getString(MongoDbConnectorConfig.HOSTS), replicaSets);
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
                         replicaSets.replicaSetCount(), maxTasks);
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
@@ -264,5 +266,35 @@ public class MongoDbConnector extends SourceConnector {
             }
         }
         return new Config(new ArrayList<>(results.values()));
+    }
+
+    /**
+     * Validate mongodb.hosts config against the actual replica set obtained from the connection.
+     * If the target is a replica set server (non-standalone) but mongodb.hosts config doesn't contain a leading
+     * replica set name, the validation will also fail and this method will throw an exception.
+     *
+     * @param hosts mongodb.hosts config in string, e.g. rs/1.2.3.4:27017.
+     * @param actualReplicaSets the actual replica set
+     */
+    protected void validateReplicaSets(String hosts, ReplicaSets actualReplicaSets) {
+        if (hosts == null) {
+            throw new ConnectException(
+                    "The mongodb.hosts config should not be null for validation");
+        }
+        if (actualReplicaSets == null) {
+            throw new ConnectException(
+                    "The actual replica set should not be null for validation");
+        }
+        ReplicaSets expectedReplicaSets = ReplicaSets.parse(hosts);
+        logger.info("Validating replica set names. Expected: {}, Actual: {}", expectedReplicaSets, actualReplicaSets);
+
+        // Compare the replica set names only.
+        List<String> expected = expectedReplicaSets.validReplicaSets().stream().map(ReplicaSet::replicaSetName).sorted().collect(Collectors.toList());
+        List<String> actual = actualReplicaSets.validReplicaSets().stream().map(ReplicaSet::replicaSetName).sorted().collect(Collectors.toList());
+
+        if (!expected.equals(actual)) {
+            throw new ConnectException(
+                    "Unexpected replica set names in server descriptions. Expected: " + expected + ", Got: " + actual);
+        }
     }
 }
