@@ -9,23 +9,51 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
+import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Testing;
 
-public abstract class AbstractMongoIT extends AbstractBaseMongoIT {
+public abstract class AbstractMongoIT {
 
     protected final static Logger logger = LoggerFactory.getLogger(AbstractMongoIT.class);
+    protected static MongoDbDeployment mongo;
 
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected ReplicaSet replicaSet;
     protected MongoDbConnection connection;
+
+    @BeforeClass
+    public static void beforeAll() {
+        DockerUtils.enableFakeDnsIfRequired();
+        mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
+        mongo.start();
+    }
+
+    @AfterClass
+    public static void afterAll() {
+        DockerUtils.disableFakeDns();
+        if (mongo != null) {
+            mongo.stop();
+        }
+    }
+
+    protected MongoClient connect() {
+        return MongoClients.create(mongo.getConnectionString());
+    }
 
     @Before
     public void beforeEach() {
