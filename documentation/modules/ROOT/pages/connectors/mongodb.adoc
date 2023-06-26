@@ -1720,12 +1720,35 @@ A value of `0` indicates using the server/driver default wait timeout.
 
 |[[mongodb-property-signal-data-collection]]<<mongodb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<databaseName>_._<collectionName>_` +
 ifdef::product[]
 Signaling is a Technology Preview feature for the {prodname} MongoDB connector.
 endif::product[]
+
+|[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector. 
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+
+|[[mongodb-property-notification-enabled-channels]]<<mongodb-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available: 
+
+* `sink`
+* `log`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
 |[[mongodb-property-incremental-snapshot-chunk-size]]<<mongodb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
@@ -1766,6 +1789,18 @@ _topic.prefix_._topic.transaction_ +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
 |===
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-mongodb-connector-performance

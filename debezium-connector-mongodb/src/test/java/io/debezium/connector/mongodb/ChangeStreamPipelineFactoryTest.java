@@ -52,9 +52,12 @@ public class ChangeStreamPipelineFactoryTest {
         assertPipelineStagesEquals(pipeline.getStages(),
                 "" +
                         "{\n" +
-                        "  \"$addFields\" : {\n" +
-                        "    \"namespace\" : {\n" +
-                        "      \"$concat\" : [ \"$ns.db\", \".\", \"$ns.coll\" ]\n" +
+                        "  \"$replaceRoot\" : {\n" +
+                        "    \"newRoot\" : {\n" +
+                        "      \"event\" : \"$$ROOT\",\n" +
+                        "      \"namespace\" : {\n" +
+                        "        \"$concat\" : [ \"$ns.db\", \".\", \"$ns.coll\" ]\n" +
+                        "      }\n" +
                         "    }\n" +
                         "  }\n" +
                         "}",
@@ -69,7 +72,7 @@ public class ChangeStreamPipelineFactoryTest {
                         "        }\n" +
                         "      }\n" +
                         "    }, {\n" +
-                        "      \"operationType\" : {\n" +
+                        "      \"event.operationType\" : {\n" +
                         "        \"$in\" : [ \"insert\", \"update\", \"replace\", \"delete\" ]\n" +
                         "      }\n" +
                         "    } ]\n" +
@@ -77,8 +80,8 @@ public class ChangeStreamPipelineFactoryTest {
                         "}",
                 "" +
                         "{\n" +
-                        "  \"$addFields\" : {\n" +
-                        "    \"namespace\" : \"$$REMOVE\"\n" +
+                        "  \"$replaceRoot\" : {\n" +
+                        "    \"newRoot\" : \"$event\"\n" +
                         "  }\n" +
                         "}",
                 "" +
@@ -108,9 +111,9 @@ public class ChangeStreamPipelineFactoryTest {
     private static void assertJsonEquals(String actual, String expected) {
         try {
             var mapper = new ObjectMapper();
-            actual = mapper.readTree(actual).toPrettyString();
-            expected = mapper.readTree(expected).toPrettyString();
-            assertThat(actual).isEqualTo(expected);
+            var actualNode = mapper.readTree(actual);
+            var expectedNode = mapper.readTree(expected);
+            assertThat(actualNode).isEqualTo(expectedNode);
         }
         catch (IOException e) {
             throw new RuntimeException(e);

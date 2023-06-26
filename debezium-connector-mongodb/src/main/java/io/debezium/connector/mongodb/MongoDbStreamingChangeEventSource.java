@@ -158,6 +158,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             doc.put("_data", new BsonString(rsOffsetContext.lastResumeToken()));
             rsChangeStream.resumeAfter(doc);
         }
+        else if (rsOffsetContext.lastTimestamp() != null) {
+            LOGGER.info("Resuming streaming from operation time '{}'", rsOffsetContext.lastTimestamp());
+            rsChangeStream.startAtOperationTime(rsOffsetContext.lastTimestamp());
+        }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             rsChangeStream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
@@ -190,7 +194,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                         rsPartition,
                                         rsOffsetContext,
                                         clock,
-                                        event));
+                                        event, connectorConfig));
                     }
                     catch (Exception e) {
                         errorHandler.setProducerThrowable(e);

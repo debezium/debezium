@@ -8,6 +8,7 @@
 ** xref:configuration/avro.adoc[Avro Serialization]
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
+** xref:configuration/notification.adoc[Receive notifications from Debezium]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]

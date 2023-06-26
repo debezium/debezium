@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.3.0-SNAPSHOT</version>
+    <version>2.4.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -119,7 +119,7 @@
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.5.1</version.postgresql.driver>
-        <version.mysql.driver>8.0.32</version.mysql.driver>
+        <version.mysql.driver>8.0.33</version.mysql.driver>
         <version.mysql.binlog>0.27.2</version.mysql.binlog>
         <version.mongo.driver>4.7.1</version.mongo.driver>
         <version.sqlserver.driver>10.2.1.jre8</version.sqlserver.driver>
@@ -128,7 +128,7 @@
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
 
         <!-- Databases, should align with database drivers -->
-        <version.mysql.server>5.7</version.mysql.server>
+        <version.mysql.server>8.0</version.mysql.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
@@ -139,8 +139,8 @@
         <version.com.google.protobuf.protoc>3.19.6</version.com.google.protobuf.protoc>
 
         <!-- Infinispan version for Oracle and Debezium Server sink -->
-        <version.infinispan>14.0.4.Final</version.infinispan>
-        <version.infinispan.protostream>4.5.0.Final</version.infinispan.protostream>
+        <version.infinispan>14.0.11.Final</version.infinispan>
+        <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
         <version.rocketmq>4.9.4</version.rocketmq>

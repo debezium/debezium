@@ -24,6 +24,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 public class PartitionRoutingTest {
 
@@ -31,7 +32,7 @@ public class PartitionRoutingTest {
             .name("server1.inventory.products.Value")
             .field("id", Schema.INT64_SCHEMA)
             .field("price", Schema.FLOAT32_SCHEMA)
-            .field("product", Schema.STRING_SCHEMA)
+            .field("product", Schema.OPTIONAL_STRING_SCHEMA)
             .build();
 
     private final PartitionRouting<SourceRecord> partitionRoutingTransformation = new PartitionRouting<>();
@@ -124,6 +125,21 @@ public class PartitionRoutingTest {
     }
 
     @Test
+    @FixFor("DBZ-6543")
+    public void whenAnSpecifiedOptionalFieldIsNotFoundOnPayloadItWillBeIgnored() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.product",
+                "partition.topic.num", 2));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(Map.of("id", 1L, "price", 1.0F)), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(eventRecord).isEqualTo(transformed);
+    }
+
+    @Test
     public void onlyFieldThatExistForCurrentEventWillBeUsedForPartitionComputation() {
 
         partitionRoutingTransformation.configure(Map.of(
@@ -184,6 +200,35 @@ public class PartitionRoutingTest {
         assertThat(transformedUpdateRecord).isNotEqualTo(updateRecord);
     }
 
+    @Test
+    public void byDefaultJavaHashIsUsed() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.id, change.product",
+                "partition.topic.num", 100));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "orange"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isEqualTo(39);
+    }
+
+    @Test
+    public void murmurHashWillBeUsed() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "change.id, change.product",
+                "partition.topic.num", 100,
+                "partition.hash.function", "murmur"));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "orange"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isEqualTo(65);
+    }
+
     private SourceRecord buildSourceRecord(Struct row, Envelope.Operation operation) {
 
         SchemaBuilder sourceSchemaBuilder = SchemaBuilder.struct()
@@ -229,9 +274,18 @@ public class PartitionRoutingTest {
     }
 
     private Struct productRow(long id, float price, String name) {
+
         return new Struct(VALUE_SCHEMA)
                 .put("id", id)
                 .put("price", price)
                 .put("product", name);
+    }
+
+    private Struct productRow(Map<String, Object> rowValues) {
+
+        Struct struct = new Struct(VALUE_SCHEMA);
+        rowValues.forEach(struct::put);
+
+        return struct;
     }
 }

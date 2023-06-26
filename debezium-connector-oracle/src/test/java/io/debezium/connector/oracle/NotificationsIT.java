@@ -49,6 +49,16 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     }
 
     @Override
+    protected String connector() {
+        return "oracle";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.SERVER_NAME;
+    }
+
+    @Override
     protected String snapshotStatusResult() {
         return "COMPLETED";
     }

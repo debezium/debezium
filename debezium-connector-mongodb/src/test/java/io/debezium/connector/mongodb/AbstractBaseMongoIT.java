@@ -12,18 +12,18 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
-import io.debezium.testing.testcontainers.MongoDbReplicaSet;
+import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Testing;
 
 public class AbstractBaseMongoIT implements Testing {
 
-    protected static MongoDbReplicaSet mongo;
+    protected static MongoDbDeployment mongo;
 
     @BeforeClass
     public static void beforeAll() {
         DockerUtils.enableFakeDnsIfRequired();
-        mongo = MongoDbDatabaseProvider.mongoDbReplicaSet();
+        mongo = MongoDbDatabaseProvider.externalOrDockerReplicaSet();
         mongo.start();
     }
 

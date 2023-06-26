@@ -763,12 +763,21 @@ SECOND:                              'SECOND';
 MICROSECOND:                         'MICROSECOND';
 
 
+// MariaDB: userstat plugin Keywords
+
+USER_STATISTICS:                     'USER_STATISTICS';
+CLIENT_STATISTICS:                   'CLIENT_STATISTICS';
+INDEX_STATISTICS:                    'INDEX_STATISTICS';
+TABLE_STATISTICS:                    'TABLE_STATISTICS';
+
+
 // PRIVILEGES
 
 ADMIN:                               'ADMIN';
 APPLICATION_PASSWORD_ADMIN:          'APPLICATION_PASSWORD_ADMIN';
 AUDIT_ADMIN:                         'AUDIT_ADMIN';
 AUDIT_ABORT_EXEMPT:                  'AUDIT_ABORT_EXEMPT';
+AUTHENTICATION_POLICY_ADMIN:         'AUTHENTICATION_POLICY_ADMIN';
 BACKUP_ADMIN:                        'BACKUP_ADMIN';
 BINLOG_ADMIN:                        'BINLOG_ADMIN';
 BINLOG_ENCRYPTION_ADMIN:             'BINLOG_ENCRYPTION_ADMIN';
@@ -1324,7 +1333,7 @@ DOT_ID:                              '.' ID_LITERAL;
 
 ID:                                  ID_LITERAL;
 // DOUBLE_QUOTE_ID:                  '"' ~'"'+ '"';
-REVERSE_QUOTE_ID:                    '`' ~'`'+ '`';
+REVERSE_QUOTE_ID:                    BQUOTA_STRING;
 STRING_USER_NAME:                    (
                                        SQUOTA_STRING | DQUOTA_STRING
                                        | BQUOTA_STRING | ID_LITERAL
@@ -1372,7 +1381,7 @@ fragment EXPONENT_NUM_PART:          'E' [-+]? DEC_DIGIT+;
 fragment ID_LITERAL:                 [A-Z_$0-9\u0080-\uFFFF]*?[A-Z_$\u0080-\uFFFF]+?[A-Z_$0-9\u0080-\uFFFF]*;
 fragment DQUOTA_STRING:              '"' ( '\\'. | '""' | ~('"'| '\\') )* '"';
 fragment SQUOTA_STRING:              '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\'';
-fragment BQUOTA_STRING:              '`' ( '\\'. | '``' | ~('`'|'\\'))* '`';
+fragment BQUOTA_STRING:              '`' ( ~'`' | '``' )* '`';
 fragment HEX_DIGIT:                  [0-9A-F];
 fragment DEC_DIGIT:                  [0-9];
 fragment BIT_STRING_L:               'B' '\'' [01]+ '\'';

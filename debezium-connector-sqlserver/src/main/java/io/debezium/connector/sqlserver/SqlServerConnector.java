@@ -153,7 +153,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     }
 
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
-        return new SqlServerConnection(sqlServerConfig.getJdbcConfig(), null, Collections.emptySet(),
+        return new SqlServerConnection(sqlServerConfig, null, Collections.emptySet(),
                 sqlServerConfig.useSingleDatabase());
     }
 }

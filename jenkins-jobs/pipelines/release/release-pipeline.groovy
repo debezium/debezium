@@ -95,7 +95,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
     echo "Additional repository $repository will be used"
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'ui']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'ui']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
@@ -252,7 +252,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
     return repoId
 }
 
-node('Slave') {
+node('release-node') {
     catchError {
         stage('Validate parameters') {
             if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
@@ -362,9 +362,6 @@ node('Slave') {
                 if (findVersion(JIRA_VERSION) == null) {
                     error "Requested release does not exist"
                 }
-                if (findVersion(PRODUCT_RELEASE) == null) {
-                    error "Requested product release does not exist"
-                }
 
                 unresolvedIssues = unresolvedIssuesFromJira()
                 issuesWithoutComponents = issuesWithoutComponentsFromJira()
@@ -440,6 +437,9 @@ node('Slave') {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                         }
                     }
+                    if(id == "operator") {
+                        sh "mvn clean install -Pstable,k8update -DskipTests -DskipITs"
+                    }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
                     if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
@@ -456,6 +456,9 @@ node('Slave') {
                         modifyFile(repoBom) {
                             it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                         }
+                    }
+                    if(id == "operator") {
+                        sh "mvn clean install -Pk8update -DskipTests -DskipITs"
                     }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
@@ -480,6 +483,7 @@ node('Slave') {
             }
             echo "MD5 sums calculated: ${sums}"
             def serverSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-server-dist/$RELEASE_VERSION/debezium-server-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
+            def operatorSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-operator/$RELEASE_VERSION/debezium-operator-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['SCRIPTING'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['KCRESTEXT'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-connect-rest-extension/$RELEASE_VERSION/debezium-connect-rest-extension-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             dir("$IMAGES_DIR/connect/$IMAGE_TAG") {
@@ -517,6 +521,31 @@ node('Slave') {
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$serverStagingRepoId/\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
+                }
+            }
+            echo "Modifying Server snapshot Dockerfile"
+            dir("$IMAGES_DIR/server/snapshot") {
+                modifyFile('Dockerfile') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
+                }
+            }
+            echo "Modifying Operator Dockerfile"
+            dir("$IMAGES_DIR/operator/$IMAGE_TAG") {
+                def operatorStagingRepoId = ADDITIONAL_REPOSITORIES['operator']?.mavenRepoId
+                if (operatorStagingRepoId == null) {
+                    operatorStagingRepoId = STAGING_REPO_ID
+                }
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$operatorStagingRepoId/\"")
+                            .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                            .replaceFirst('OPERATOR_MD5=\\S+', "OPERATOR_MD5=$operatorSum")
+                }
+            }
+            echo "Modifying Operator snapshot Dockerfile"
+            dir("$IMAGES_DIR/operator/snapshot") {
+                modifyFile('Dockerfile') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
                 }
             }
             echo "Modifying UI Dockerfile"
@@ -597,6 +626,12 @@ node('Slave') {
                 }
             }
             dir("$IMAGES_DIR/server/$IMAGE_TAG") {
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
+                }
+            }
+            dir("$IMAGES_DIR/operator/$IMAGE_TAG") {
                 modifyFile('Dockerfile') {
                     it
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")

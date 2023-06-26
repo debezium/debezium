@@ -48,6 +48,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "signal.";
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     public static final String CHANNEL_OFFSET = "channelOffset";
+    public static final String CHANNEL_NAME = "kafka";
 
     private String topicName;
     private String connectorName;
@@ -104,7 +105,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
         String type = document.getString("type");
         Document data = document.getDocument("data");
 
-        return Optional.of(new SignalRecord(id, type, data.toString(), record.offset(), Map.of(CHANNEL_OFFSET, record.offset())));
+        return Optional.of(new SignalRecord(id, type, data.toString(), Map.of(CHANNEL_OFFSET, record.offset())));
     }
 
     private static Optional<Document> parseJson(String value) {
@@ -126,7 +127,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public String name() {
-        return "kafka";
+        return CHANNEL_NAME;
     }
 
     @Override
@@ -144,6 +145,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
         this.signalsConsumer = new KafkaConsumer<>(consumerConfig.asProperties());
         LOGGER.info("Subscribing to signals topic '{}'", topicName);
         signalsConsumer.assign(Collect.arrayListOf(new TopicPartition(topicName, 0)));
+    }
+
+    @Override
+    public void reset(Object reference) {
+
+        signalsConsumer.seek(new TopicPartition(topicName, 0), ((Long) reference) + 1);
     }
 
     private static Configuration buildKafkaConfiguration(String signalName, Configuration signalConfig) {

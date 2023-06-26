@@ -52,6 +52,26 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     }
 
     @Override
+    protected String connector() {
+        return "sql_server";
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_SERVER_NAME;
+    }
+
+    @Override
+    protected String task() {
+        return "0";
+    }
+
+    @Override
+    protected String database() {
+        return TestHelper.TEST_DATABASE_1;
+    }
+
+    @Override
     protected String snapshotStatusResult() {
         return "COMPLETED";
     }

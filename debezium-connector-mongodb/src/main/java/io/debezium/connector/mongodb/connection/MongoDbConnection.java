@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
@@ -74,12 +73,11 @@ public final class MongoDbConnection implements AutoCloseable {
     private final Supplier<MongoClient> connectionSupplier;
 
     protected MongoDbConnection(ReplicaSet replicaSet,
-                                ReadPreference readPreference,
                                 MongoDbClientFactory clientFactory,
                                 Filters filters,
                                 ErrorHandler errorHandler) {
         this.name = replicaSet.replicaSetName();
-        this.connectionSupplier = () -> clientFactory.client(replicaSet, readPreference);
+        this.connectionSupplier = () -> clientFactory.client(replicaSet);
         this.filters = filters;
         this.errorHandler = errorHandler;
     }

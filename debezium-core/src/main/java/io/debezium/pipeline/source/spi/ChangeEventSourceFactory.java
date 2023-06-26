@@ -32,7 +32,7 @@ public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetC
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener<P> snapshotProgressListener);
+    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.

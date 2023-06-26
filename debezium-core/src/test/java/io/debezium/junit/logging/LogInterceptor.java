@@ -69,8 +69,9 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         this.events.add(loggingEvent);
     }
 
-    public void setLoggerLevel(Class<?> loggerClass, String level) {
-        // TODO LogManager.getLogger(loggerClass).setLevel(Level.toLevel(level));
+    public void setLoggerLevel(Class<?> loggerClass, Level level) {
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(loggerClass.getName());
+        logger.setLevel(level);
     }
 
     public long countOccurrences(String text) {

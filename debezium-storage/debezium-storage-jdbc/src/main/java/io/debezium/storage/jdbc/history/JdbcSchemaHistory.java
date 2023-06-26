@@ -116,7 +116,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     sql.setInt(3, partSeq);
                     sql.setTimestamp(4, currentTs);
                     sql.setInt(5, recordInsertSeq.incrementAndGet());
-                    sql.executeUpdate();
+                    sql.execute();
                     partSeq++;
                 }
                 conn.commit();
@@ -126,7 +126,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     conn.rollback();
                 }
                 catch (SQLException ex) {
-                    // ignore
+                    LOG.error("Exception during storeRecord", ex);
                 }
                 throw new SchemaHistoryException("Failed to store record: " + record, e);
             }
@@ -184,7 +184,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         boolean sExists = false;
         try {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
+            String databaseName = config.getDatabaseName();
+            ResultSet tableExists = dbMeta.getTables(databaseName,
+                    null, config.getTableName(), null);
             if (tableExists.next()) {
                 sExists = true;
             }

@@ -313,21 +313,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isListOfRegex)
             .withDescription("Regular expressions matching columns to include in change events");
 
-    /**
-     *  Specifies whether to skip messages containing no updates in included columns
-     */
-    public static final Field SKIP_MESSAGES_WITHOUT_CHANGE = Field.create("skip.messages.without.change")
-            .withDisplayName("Enable skipping messages without change")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
-            .withDefault(false)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription(("Enable to skip publishing messages when there is no change in included columns."
-                    + "This would essentially filter messages to be sent when there is no change in columns included as per column.include.list/column.exclude.list."
-                    + "For Postgres - this would require REPLICA IDENTITY of table to be FULL."))
-            .withValidation(Field::isBoolean);
-
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
@@ -583,8 +568,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final FieldNamer<Column> fieldNamer;
     private final SnapshotTablesRowCountOrder snapshotOrderByRowCount;
 
-    private final boolean skipMessagesWithoutChange;
-
     protected RelationalDatabaseConnectorConfig(Configuration config, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
                                                 ColumnFilterMode columnFilterMode, boolean useCatalogBeforeSchema) {
@@ -616,8 +599,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         else {
             this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
-
-        this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
 
         this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
         this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
@@ -661,10 +642,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public String getHeartbeatActionQuery() {
         return heartbeatActionQuery;
-    }
-
-    public boolean skipMessagesWithoutChange() {
-        return skipMessagesWithoutChange;
     }
 
     public byte[] getUnavailableValuePlaceholder() {

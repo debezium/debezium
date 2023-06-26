@@ -1829,8 +1829,7 @@ xmltype_table
          physical_properties? column_properties? table_partitioning_clauses?
          (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
          parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-	 (enable_disable_clause+)? row_movement_clause?
-         flashback_archive_clause?
+	 (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
     ;
 
 xmltype_virtual_columns
@@ -1861,7 +1860,7 @@ object_table
       physical_properties? column_properties? table_partitioning_clauses?
       (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
       parallel_clause? (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-      (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
+      (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
     ;
 
 oid_index_clause
@@ -1893,7 +1892,7 @@ relational_table
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
-          (enable_disable_clause+)? row_movement_clause? flashback_archive_clause?
+          (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause?
         ;
 
 relational_property
@@ -2475,6 +2474,10 @@ row_movement_clause
     : (ENABLE | DISABLE)? ROW MOVEMENT
     ;
 
+logical_replication_clause
+    : (DISABLE | ENABLE) LOGICAL REPLICATION ( ALL KEYS | ALLOW NOVALIDATE KEYS)?
+    ;
+
 flashback_archive_clause
     : FLASHBACK ARCHIVE flashback_archive=REGULAR_ID
     | NO FLASHBACK ARCHIVE
@@ -2536,7 +2539,7 @@ upgrade_table_clause
     ;
     
 truncate_table
-    : TRUNCATE TABLE tableview_name PURGE? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
+    : TRUNCATE TABLE tableview_name ((PRESERVE | PURGE) MATERIALIZED VIEW LOG)? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
     ;
 
 drop_table
@@ -2925,6 +2928,7 @@ alter_table_properties_1
       | records_per_block_clause
       | parallel_clause
       | row_movement_clause
+      | logical_replication_clause
       | flashback_archive_clause
       )+
       alter_iot_clauses?
@@ -2989,7 +2993,7 @@ alter_interval_partition
     ;
 
 partition_extended_names
-    : (PARTITION|PARTITIONS) partition_name
+    : (PARTITION|PARTITIONS) partition_name (',' partition_name)*
     | (PARTITION|PARTITIONS) '(' partition_name (',' partition_name)* ')'
     | (PARTITION|PARTITIONS) FOR '('? partition_key_value (',' partition_key_value)* ')'?
     ;
@@ -4475,6 +4479,7 @@ literal
     : CHAR_STRING
     | string_function
     | numeric
+    | numeric_negative
     | MAXVALUE
     ;
 

@@ -127,8 +127,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         final OracleStreamingChangeEventSourceMetrics streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
                 connectorConfig);
 
-        dispatcher.getSignalingActions().forEach(signalProcessor::registerSignalAction);
-
         NotificationService<OraclePartition, OracleOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 

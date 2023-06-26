@@ -8,13 +8,14 @@ package io.debezium.pipeline.signal.actions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.document.Array;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.JsonTableChangeSerializer;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.relational.history.TableChanges.TableChangeType;
 import io.debezium.schema.SchemaChangeEvent;
@@ -30,15 +31,17 @@ public class SchemaChanges<P extends Partition> implements SignalAction<P> {
     public static final String FIELD_DATABASE = "database";
     public static final String FIELD_SCHEMA = "schema";
 
-    private final JsonTableChangeSerializer serializer;
+    private final TableChanges.TableChangesSerializer<Array> serializer;
     private final boolean useCatalogBeforeSchema;
     private final EventDispatcher<P, TableId> dispatcher;
 
     @SuppressWarnings("unchecked")
-    public SchemaChanges(EventDispatcher<P, ? extends DataCollectionId> dispatcher, boolean useCatalogBeforeSchema) {
-        serializer = new JsonTableChangeSerializer();
-        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
+    public SchemaChanges(EventDispatcher<P, ? extends DataCollectionId> dispatcher, CommonConnectorConfig connectorConfig,
+                         TableChanges.TableChangesSerializer<Array> serializer) {
+        this.useCatalogBeforeSchema = connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig
+                && ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema();
         this.dispatcher = (EventDispatcher<P, TableId>) dispatcher;
+        this.serializer = serializer;
     }
 
     @Override

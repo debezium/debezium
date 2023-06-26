@@ -14,6 +14,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1492,7 +1493,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record = records.get(0);
         VerifyRecord.isValidInsert(record, PK_FIELD, 1);
-        final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
+        final String isbn = new String(((Struct) record.value()).getStruct("after").getString("aa"));
         assertThat(isbn).isEqualTo("0-393-04002-X");
 
         TestHelper.assertNoOpenTransactions();
@@ -3470,6 +3471,64 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             else {
                 VerifyRecord.isValidInsert(record, PK_FIELD, pkValue.getAndIncrement());
             }
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-6076")
+    public void shouldAddNewFieldToSourceInfo() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                .with(PostgresConnectorConfig.SOURCE_INFO_STRUCT_MAKER, CustomPostgresSourceInfoStructMaker.class.getName())
+                .build());
+        assertConnectorIsRunning();
+
+        // check records from snapshot
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> {
+            assertTrue(sourceRecord.value() instanceof Struct);
+            Struct source = ((Struct) sourceRecord.value()).getStruct("source");
+            assertEquals("newFieldValue", source.getString("newField"));
+        });
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        // check records from streaming
+        actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> {
+            assertTrue(sourceRecord.value() instanceof Struct);
+            Struct source = ((Struct) sourceRecord.value()).getStruct("source");
+            assertEquals("newFieldValue", source.getString("newField"));
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-6076")
+    public void shouldUseDefaultSourceInfoStructMaker() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .build());
+        assertConnectorIsRunning();
+
+        // check records from snapshot
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> {
+            assertTrue(sourceRecord.value() instanceof Struct);
+            Struct source = ((Struct) sourceRecord.value()).getStruct("source");
+            assertEquals("io.debezium.connector.postgresql.Source", source.schema().name()); // each connector have different schema name.
+            assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+        });
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        // check records from streaming
+        actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> {
+            assertTrue(sourceRecord.value() instanceof Struct);
+            Struct source = ((Struct) sourceRecord.value()).getStruct("source");
+            assertEquals("io.debezium.connector.postgresql.Source", source.schema().name());
+            assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
         });
     }
 

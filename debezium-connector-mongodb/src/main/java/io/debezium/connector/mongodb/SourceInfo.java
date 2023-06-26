@@ -124,11 +124,11 @@ public final class SourceInfo extends BaseSourceInfo {
         }
 
         public int getTime() {
-            return this.ts.getTime();
+            return (this.ts != null) ? this.ts.getTime() : 0;
         }
 
         public int getInc() {
-            return this.ts.getInc();
+            return (this.ts != null) ? this.ts.getInc() : -1;
         }
 
         public SessionTransactionId getChangeStreamSessionTxnId() {
@@ -194,6 +194,11 @@ public final class SourceInfo extends BaseSourceInfo {
     public String lastResumeToken(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         return existing != null ? existing.resumeToken : null;
+    }
+
+    public BsonTimestamp lastTimestamp(String replicaSetName) {
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        return existing != null ? existing.getTimestamp() : null;
     }
 
     /**
@@ -268,9 +273,21 @@ public final class SourceInfo extends BaseSourceInfo {
 
         String namespace = "";
         long wallTime = 0L;
-        BsonTimestamp ts = ResumeTokens.getTimestamp(cursor.getResumeToken());
         String resumeToken = ResumeTokens.getDataString(cursor.getResumeToken());
-        Position position = Position.changeStreamPosition(ts, resumeToken, null);
+        Position position = Position.changeStreamPosition(null, resumeToken, null);
+        positionsByReplicaSetName.put(replicaSetName, position);
+
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
+    }
+
+    public void noEvent(String replicaSetName, BsonTimestamp timestamp) {
+        if (timestamp == null) {
+            return;
+        }
+
+        String namespace = "";
+        long wallTime = 0L;
+        Position position = Position.changeStreamPosition(timestamp, null, null);
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position, wallTime);
@@ -282,8 +299,7 @@ public final class SourceInfo extends BaseSourceInfo {
         long wallTime = 0L;
         if (changeStreamEvent != null) {
             String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
-            // > Decode timestamp from resume token to be consistent with other events
-            BsonTimestamp ts = ResumeTokens.getTimestamp(changeStreamEvent.getResumeToken());
+            BsonTimestamp ts = changeStreamEvent.getClusterTime();
             position = Position.changeStreamPosition(ts, resumeToken, MongoUtil.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
             if (changeStreamEvent.getWallTime() != null) {

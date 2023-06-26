@@ -70,7 +70,7 @@ For more information, see xref:#{context}-incremental-snapshots[Incremental snap
 ////
 .Prerequisites
 
-* xref:{link-signalling}#debezium-signaling-enabling-signaling[Signaling is enabled].
+* xref:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled].
 
 .Procedure
 

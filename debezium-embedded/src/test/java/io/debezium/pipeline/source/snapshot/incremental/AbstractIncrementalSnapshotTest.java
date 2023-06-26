@@ -88,6 +88,18 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected abstract Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl);
 
+    protected abstract String connector();
+
+    protected abstract String server();
+
+    protected String task() {
+        return null;
+    }
+
+    protected String database() {
+        return null;
+    }
+
     protected void waitForCdcTransactionPropagation(int expectedTransactions) throws Exception {
     }
 
@@ -1094,13 +1106,17 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void testNotification() throws Exception {
+
         populateTable();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1)
-                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+        startConnector(x -> x.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, defaultIncrementalSnapshotChunkSize())
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"), loggingCompletion(), false);
+
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         sendAdHocSnapshotSignal();
 
@@ -1147,8 +1163,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertCorrectIncrementalSnapshotNotification(notifications);
     }
 
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 1;
+    }
+
     private static BiPredicate<Integer, SourceRecord> incrementalSnapshotCompleted() {
         return (recordsConsumed, record) -> record.topic().equals("io.debezium.notification") &&
+                ((Struct) record.value()).getString("aggregate_type").equals("Incremental Snapshot") &&
                 ((Struct) record.value()).getString("type").equals("COMPLETED");
     }
 
@@ -1164,11 +1185,15 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED"))).isTrue();
         assertThat(incrementalSnapshotNotification.stream().anyMatch(s -> s.getString("type").equals("COMPLETED"))).isTrue();
 
+        assertThat(incrementalSnapshotNotification.stream().map(s -> s.getString("id"))
+                .distinct()
+                .collect(Collectors.toList())).contains("ad-hoc");
+
         Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
         assertThat(inProgress.getMap("additional_data"))
                 .containsEntry("current_collection_in_progress", tableDataCollectionId())
                 .containsEntry("maximum_key", "1000")
-                .containsEntry("last_processed_key", "1");
+                .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()));
 
         Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
         assertThat(completed.getMap("additional_data"))

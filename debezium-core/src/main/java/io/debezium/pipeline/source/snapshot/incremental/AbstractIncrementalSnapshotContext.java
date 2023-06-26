@@ -60,6 +60,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
 
     /**
      * @code(true) if window is opened and deduplication should be executed
@@ -93,6 +94,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     private Table schema;
 
     private boolean schemaVerificationPassed;
+
+    private String correlationId;
 
     /**
      * Determines if the incremental snapshot was paused or not.
@@ -225,6 +228,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
@@ -233,17 +237,20 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> additionalCondition,
+                                                                    Optional<String> surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(x -> new DataCollection<T>((T) TableId.parse(x, useCatalogBeforeSchema), additionalCondition, surrogateKey))
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
+        this.correlationId = correlationId;
         return newDataCollectionIds;
     }
 
     @Override
     public void stopSnapshot() {
         this.dataCollectionsToSnapshot.clear();
+        this.correlationId = null;
     }
 
     @Override
@@ -256,6 +263,16 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @Override
     public List<DataCollection<T>> getDataCollections() {
         return new ArrayList<>(dataCollectionsToSnapshot);
+    }
+
+    @Override
+    public void unsetCorrelationId() {
+        this.correlationId = null;
+    }
+
+    @Override
+    public String getCorrelationId() {
+        return this.correlationId;
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
@@ -272,6 +289,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         if (dataCollectionsStr != null) {
             context.addTablesIdsToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
+        context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
     }
 

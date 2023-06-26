@@ -36,6 +36,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
@@ -63,8 +64,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
-                                          BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics);
+                                          BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor,
+                                          NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService);
         this.connectorConfig = connectorConfig;
         this.connection = connectionFactory.mainConnection();
         this.filters = connectorConfig.getTableFilters();

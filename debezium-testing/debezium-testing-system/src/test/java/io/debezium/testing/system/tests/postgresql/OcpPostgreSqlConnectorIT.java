@@ -14,6 +14,7 @@ import io.debezium.testing.system.assertions.KafkaAssertions;
 import io.debezium.testing.system.fixtures.OcpClient;
 import io.debezium.testing.system.fixtures.connectors.PostgreSqlConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpPostgreSql;
+import io.debezium.testing.system.fixtures.databases.ocp.OcpPostgreSqlReplica;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -31,9 +32,10 @@ import fixture5.annotations.Fixture;
 @Fixture(OcpStrimziOperator.class)
 @Fixture(OcpKafka.class)
 @Fixture(OcpPostgreSql.class)
+@Fixture(OcpPostgreSqlReplica.class)
 @Fixture(PostgreSqlConnector.class)
 @ExtendWith(FixtureExtension.class)
-public class OcpPostgreSqlConnectorIT extends PostgreSqlTests {
+public class OcpPostgreSqlConnectorIT extends PostgreSqlOcpTests {
 
     public OcpPostgreSqlConnectorIT(KafkaController kafkaController,
                                     KafkaConnectController connectController,

@@ -49,11 +49,21 @@ public class NotificationsIT extends AbstractNotificationsIT<MySqlConnector> {
     @Override
     protected Configuration.Builder config() {
         return DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER.getValue());
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL.getValue());
+    }
+
+    @Override
+    protected String connector() {
+        return "mysql";
+    }
+
+    @Override
+    protected String server() {
+        return DATABASE.getServerName();
     }
 
     @Override
     protected String snapshotStatusResult() {
-        return "SKIPPED";
+        return "COMPLETED";
     }
 }

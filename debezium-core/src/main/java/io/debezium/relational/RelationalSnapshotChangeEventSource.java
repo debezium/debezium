@@ -44,6 +44,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -85,8 +86,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
-                                               SnapshotProgressListener<P> snapshotProgressListener) {
-        super(connectorConfig, snapshotProgressListener);
+                                               SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService) {
+        super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnectionFactory.mainConnection();
         this.jdbcConnectionFactory = jdbcConnectionFactory;
@@ -202,6 +203,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             for (int i = 1; i < snapshotMaxThreads; i++) {
                 JdbcConnection conn = jdbcConnectionFactory.newConnection().setAutoCommit(false);
                 conn.connection().setTransactionIsolation(jdbcConnection.connection().getTransactionIsolation());
+                connectionPoolConnectionCreated(ctx, conn);
                 connectionPool.add(conn);
                 if (firstQuery.isPresent()) {
                     conn.execute(firstQuery.get());
@@ -225,10 +227,20 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected void connectionCreated(RelationalSnapshotContext<P, O> snapshotContext) throws Exception {
     }
 
+    /**
+     * Executes steps which have to be taken just after a connection pool connection is created.
+     */
+    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
+    }
+
+    protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
+        return Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE);
+    }
+
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
+                .filter(tid -> pattern.asMatchPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
                 .sorted();
     }
 
@@ -240,7 +252,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
         }
         if (!Strings.isNullOrBlank(signalingDataCollection)) {
-            captureTablePatterns.addAll(Strings.listOfRegex(signalingDataCollection, Pattern.CASE_INSENSITIVE));
+            captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
         }
         if (captureTablePatterns.size() > 0) {
             return captureTablePatterns
@@ -604,7 +616,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected ChangeRecordEmitter<P> getChangeRecordEmitter(P partition, O offset, TableId tableId,
                                                             Object[] row, Instant timestamp) {
         offset.event(tableId, timestamp);
-        return new SnapshotChangeRecordEmitter<>(partition, offset, row, getClock());
+        return new SnapshotChangeRecordEmitter<>(partition, offset, row, getClock(), connectorConfig);
     }
 
     /**

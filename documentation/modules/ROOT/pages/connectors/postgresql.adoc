@@ -161,6 +161,9 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 |`never`
 |The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
 
+|`initial` (default)
+|The connector performs a database snapshot when no Kafka offsets topic exists. After the database snapshot completes the Kafka offsets topic is written. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+
 |`initial_only`
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
@@ -3425,6 +3428,29 @@ By default, truncate operations are skipped.
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_` +
 
+|[[postgresql-property-signal-enabled-channels]]<<postgresql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector. 
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+
+|[[postgresql-property-notification-enabled-channels]]<<postgresql-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available: 
+
+* `sink`
+* `log`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+
 |[[postgresql-property-incremental-snapshot-chunk-size]]<<postgresql-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |1024
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
@@ -3493,6 +3519,15 @@ The connector also supports _pass-through_ configuration properties that are use
 
 Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. The PostgreSQL connector does use the {link-kafka-docs}.html#consumerconfigs[new consumer configuration properties].
 
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-postgresql-connector-performance

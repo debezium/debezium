@@ -1,0 +1,304 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-notification"]
+= {prodname} notifications
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+{prodname} notifications provide a mechanism to obtain status information about the connector.
+Notifications can be sent to the following channels:
+
+SinkNotificationChannel:: Sends notifications through the Connect API to a configured topic.
+LogNotificationChannel:: Notifications are appended to the log.
+JmxNotificationChannel:: Notifications are exposed as an attribute in a JMX bean.
+Custom:: Notifications are sent to a xref:debezium-notification-custom-channel[custom channel] that you implement.
+
+
+// Type: concept
+[id="debezium-notification-format"]
+== Debezium notification format
+
+Notification messages contain the following information:
+
+|===
+|Property |Description
+
+|id
+|A unique identifier that is assigned to the notification. For incremental snapshot notifications, the `id` is the same sent with the `execute-snapshot` signal.
+
+|aggregate_type
+|The data type of the aggregate root to which a notification is related.
+In domain-driven design, exported events should always refer to an aggregate.
+
+|type
+|Provides status information about the event specified in the `aggregate_type` field.
+
+|additional_data
+|A Map<String,String> with detailed information about the notification.
+For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
+|===
+
+// Type: concept
+[id="debezium-available-notifications"]
+=== Available notifications
+
+{prodname} notifications deliver information about the progress of xref:debezium-notifications-about-the-status-of-an-initial-snapshot[initial snapshots] or xref:debezium-notifications-about-the-progress-of-incremental-snapshot[incremental snapshots].
+
+
+==== Status of an initial snapshot
+
+The following example shows a typical notification that provides the status of an initial snapshot:
+
+[source, json]
+----
+{
+    "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
+    "aggregate_type": "Initial Snapshot",
+    "type": "COMPLETED" <1>
+}
+----
+<1> The type field can contain one of the following values:
+
+* `STARTED`
+* `COMPLETED`
+* `ABORTED`
+* `SKIPPED`
+
+[id="debezium-notifications-about-the-progress-of-incremental-snapshots"]
+==== {prodname} notifications about the progress of incremental snapshots
+
+The following table shows examples of the different payloads that might be present in notifications that report the status of incremental snapshots:
+
+|===
+|Status|Payload
+
+|Start
+a|[source, json]
+----
+  {
+      "id":"ff81ba59-15ea-42ae-b5d0-4d74f1f4038f",
+      "aggregate_type":"Incremental Snapshot",
+      "type":"STARTED",
+      "additional_data":{
+         "connector_name":"my-connector",
+         "data_collections":"table1, table2"
+      }
+}
+----
+|Paused
+a|[source, json]
+----
+{
+      "id":"068d07a5-d16b-4c4a-b95f-8ad061a69d51",
+      "aggregate_type":"Incremental Snapshot",
+      "type":"PAUSED",
+      "additional_data":{
+         "connector_name":"my-connector",
+         "data_collections":"table1, table2"
+      }
+}
+----
+|Resumed
+a|[source, json]
+----
+ {
+   "id":"a9468204-769d-430f-96d2-b0933d4839f3",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"RESUMED",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collections":"table1, table2"
+   }
+}
+----
+|Stopped
+a|[source, json]
+----
+{
+   "id":"83fb3d6c-190b-4e40-96eb-f8f427bf482c",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"ABORTED",
+   "additional_data":{
+      "connector_name":"my-connector"
+   }
+}
+----
+|Processing chunk
+a|[source, json]
+----
+{
+   "id":"d02047d6-377f-4a21-a4e9-cb6e817cf744",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"IN_PROGRESS",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collections":"table1, table2",
+      "current_collection_in_progress":"table1",
+      "maximum_key":"100",
+      "last_processed_key":"50"
+   }
+}
+----
+|Snapshot completed for a table
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"TABLE_SCAN_COMPLETED",
+   "additional_data":{
+      "connector_name":"my-connector",
+      "data_collection":"table1",
+      "total_rows_scanned":"100",
+      "status":"SUCCEEDED" // <1>
+   }
+}
+----
+<1> The possible values are:
+* EMPTY - table is empty
+* NO_PRIMARY_KEY - table has no primary key necessary for snapshot
+* SKIPPED - snapshot for this kind of table is not supported, check logs for details
+* SQL_EXCEPTION - SQL exception caught while processing a snapshot
+* SUCCEEDED - snapshot completed successfully
+* UNKNOWN_SCHEMA - schema not found for table, check logs for the list of known tables
+|Completed
+a|[source, json]
+----
+{
+   "id":"6d82a3ec-ba86-4b36-9168-7423b0dd5c1d",
+   "aggregate_type":"Incremental Snapshot",
+   "type":"COMPLETED",
+   "additional_data":{
+      "connector_name":"my-connector"
+   }
+}
+----
+|===
+
+// Type: procedure
+[id="enabling-debezium-notifications"]
+=== Enabling {prodname} notifications
+
+To enable Debezium to emit notifications, specify a list of notification channels by setting the `notification.enabled.channels` configuration property.
+By default, the following notification channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+
+[IMPORTANT]
+====
+To use the `sink` notification channel, you must also set the `notification.sink.topic.name` configuration property to the name of the topic where you want {prodname} to send notifications.
+====
+
+// Type: procedure
+[id="access-debezium-jmx-notifications"]
+=== Access to {prodname} JMX notifications
+
+To enable {prodname} to report events that are exposed through JMX beans, complete the following configuration steps:
+
+1. {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[Enable the JMX MBean Server] to expose the notification bean.
+2. Add `jmx` to the `notification.enabled.channels` property in the connector configuration.
+3. Connect your preferred JMX client to the MBean Server.
+
+Notifications are exposed through the `Notifications` attribute of a bean with the name `debezium.__<connector-type>__.management.notifications.__<server>__`.
+
+The following image shows a notification that reports the start of an incremental snapshot:
+
+image::jmx-notification-attribute.png[Fields in the JMX `Notifications` attribute]
+
+To discard a notification, call the `reset` operation on the bean.
+
+The notifications are also exposed as a JMX notification with type `debezium.notification`.
+To enable an application to listen for the JMX notifications that an MBean emits,  link:https://docs.oracle.com/javase/tutorial/jmx/notifs/index.html[subscribe the application to the notifications].
+
+// Type: concept
+[id="debezium-notification-custom-channel"]
+== Custom notification channels
+
+The notification mechanism is designed to be extensible. 
+You can implement channels as needed to deliver notifications in a manner that works best in your environment.
+Adding a notification channel involves several steps:
+
+1. xref:debezium-configuring-custom-notification-channels[Create a Java project for the channel] to implement the channel, and xref:debezium-core-module-dependency[add `{prodname} Core` as a dependency].
+2. xref:deploying-a-debezium-custom-notification-channel[Deploy the notification channel].
+3. xref:configuring-connectors-to-use-a-custom-notification-channel[Enable connectors to use the custom notification channel by modifying the connector configuration].
+
+
+
+// Type: procedure
+[id="debezium-configuring-custom-notification-channels"]
+=== Configuring custom notification channels
+
+Custom notification channels are Java classes that implement the `io.debezium.pipeline.notification.channels.NotificationChannel` service provider interface (SPI).
+For example:
+[source,java,indent=0]
+----
+public interface NotificationChannel {
+
+    String name(); // <1>
+
+    void init(CommonConnectorConfig config); // <2>
+
+    void send(Notification notification); // <3>
+
+    void close(); // <4>
+}
+----
+<1> The name of the channel.
+To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
+<2> Initializes specific configuration, variables, or connections that the channel requires.
+<3> Sends the notification on the channel. 
+{prodname} calls this method to report its status.
+<4> Closes all allocated resources. 
+{prodname} calls this method when the connector is stopped.
+
+// Type: concept
+[id="debezium-core-module-dependency"]
+=== {prodname} core module dependencies
+
+A custom notification channel Java project has compile dependencies on the {prodname} core module.
+You must include these compile dependencies in your project's `pom.xml` file, as shown in the following example:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-core</artifactId>
+    <version>${version.debezium}</version> // <1>
+</dependency>
+----
+<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+Declare your implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
+
+// Type: procedure
+[id="deploying-a-debezium-custom-notification-channel"]
+=== Deploying a custom notification channel
+
+.Prerequisites
+* You have a custom notification channel Java program.
+
+.Procedure
+* To use a notification channel with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+ +
+For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
+To use a signaling channel with a connector, add the converter JAR file to the connector's subdirectory.
+
+NOTE: To use a custom notification channel with multiple connectors, you must place a copy of the notification channel JAR file in each connector subdirectory.
+
+// Type: procedure
+[id="configuring-connectors-to-use-a-custom-notification-channel"]
+=== Configuring connectors to use a custom notification channel
+
+Add the name of the custom notification channel to the `notification.enabled.channels` configuration property. 
+

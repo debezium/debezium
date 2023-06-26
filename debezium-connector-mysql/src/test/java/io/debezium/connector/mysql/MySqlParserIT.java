@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 
+import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -95,9 +96,6 @@ public class MySqlParserIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
 
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("SELECT VERSION();");
@@ -109,8 +107,21 @@ public class MySqlParserIT extends AbstractConnectorTest {
                 connection.execute("INSERT INTO VISIBLE_COLUMN_TABLE VALUES (1001,'Larry',113);");
             }
         }
-        SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.ddlRecordsForDatabase(DB_NAME).size()).isEqualTo(1);
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(30);
+        boolean statementFound = records.ddlRecordsForDatabase(DB_NAME)
+                .stream()
+                .anyMatch(s -> ((Struct) s.value())
+                        .getString("ddl").equals("CREATE TABLE `VISIBLE_COLUMN_TABLE` (\n" +
+                                "  `ID` bigint NOT NULL AUTO_INCREMENT,\n" +
+                                "  `NAME` varchar(100) NOT NULL,\n" +
+                                "  `WORK_ID` bigint DEFAULT NULL,\n" +
+                                "  PRIMARY KEY (`ID`)\n" +
+                                ") ENGINE=InnoDB AUTO_INCREMENT=1002 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"));
+        assertThat(statementFound).isTrue();
     }
 
     @Test
@@ -118,9 +129,6 @@ public class MySqlParserIT extends AbstractConnectorTest {
         config = defaultConfig().build();
 
         Testing.Print.enable();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
 
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
             try (JdbcConnection connection = db.connect()) {
@@ -133,7 +141,55 @@ public class MySqlParserIT extends AbstractConnectorTest {
                 connection.execute("INSERT INTO INVISIBLE_COLUMN_TABLE VALUES (1002,'Jack');");
             }
         }
-        SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.ddlRecordsForDatabase(DB_NAME).size()).isEqualTo(1);
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(30);
+        boolean statementFound = records.ddlRecordsForDatabase(DB_NAME)
+                .stream()
+                .anyMatch(s -> ((Struct) s.value())
+                        .getString("ddl").equals("CREATE TABLE `INVISIBLE_COLUMN_TABLE` (\n" +
+                                "  `ID` bigint NOT NULL AUTO_INCREMENT,\n" +
+                                "  `NAME` varchar(100) NOT NULL,\n" +
+                                "  `WORK_ID` bigint DEFAULT NULL /*!80023 INVISIBLE */,\n" +
+                                "  PRIMARY KEY (`ID`)\n" +
+                                ") ENGINE=InnoDB AUTO_INCREMENT=1003 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"));
+        assertThat(statementFound).isTrue();
+    }
+
+    @Test
+    public void parseTableCreatedWithTableStatement() throws SQLException, InterruptedException {
+        config = defaultConfig().build();
+
+        Testing.Print.enable();
+
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DB_NAME, mySQLContainer.getUsername(), mySQLContainer.getPassword())) {
+            try (JdbcConnection connection = db.connect()) {
+
+                connection.execute("CREATE TABLE table1 (" +
+                        "ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY," +
+                        "NAME VARCHAR(100) NOT NULL" +
+                        ");");
+                connection.execute("CREATE TABLE table2 (" +
+                        "WORK_ID BIGINT" +
+                        ") TABLE table1;");
+                connection.execute("INSERT INTO table2 VALUES (113, 1001,'Larry');");
+            }
+        }
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(30);
+        boolean statementFound = records.ddlRecordsForDatabase(DB_NAME)
+                .stream()
+                .anyMatch(s -> ((Struct) s.value())
+                        .getString("ddl").equals("CREATE TABLE `table2` (\n" +
+                                "  `WORK_ID` bigint DEFAULT NULL,\n" +
+                                "  `ID` bigint NOT NULL DEFAULT '0',\n" +
+                                "  `NAME` varchar(100) NOT NULL\n" +
+                                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"));
+        assertThat(statementFound).isTrue();
     }
 }

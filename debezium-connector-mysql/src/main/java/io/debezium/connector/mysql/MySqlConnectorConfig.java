@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -859,6 +860,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(MySqlSourceInfoStructMaker.class.getName());
+
     public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
             .withDefault(true);
 
@@ -910,7 +914,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     GTID_SOURCE_FILTER_DML_EVENTS,
                     BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                    INCONSISTENT_SCHEMA_HANDLING_MODE)
+                    INCONSISTENT_SCHEMA_HANDLING_MODE,
+                    SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     protected static ConfigDef configDef() {
@@ -1060,7 +1065,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override

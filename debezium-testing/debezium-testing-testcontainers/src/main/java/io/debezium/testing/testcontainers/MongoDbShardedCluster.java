@@ -5,7 +5,8 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static io.debezium.testing.testcontainers.MongoDbContainer.node;
+import static io.debezium.testing.testcontainers.MongoDbContainer.router;
+import static io.debezium.testing.testcontainers.MongoDbReplicaSet.configServerReplicaSet;
 import static io.debezium.testing.testcontainers.MongoDbReplicaSet.replicaSet;
 import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -191,7 +192,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
 
     private MongoDbReplicaSet createShard(int i) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#start-each-member-of-the-shard-replica-set
-        var shard = replicaSet()
+        var shard = MongoDbReplicaSet.shardReplicaSet()
                 .network(network)
                 .namespace("test-mongo-shard" + i + "-replica")
                 .name("shard" + i)
@@ -201,18 +202,12 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .imageName(imageName)
                 .build();
 
-        shard.getMembers().forEach(node -> node.setCommand(
-                "--shardsvr",
-                "--replSet", shard.getName(),
-                "--port", String.valueOf(node.getNamedAddress().getPort()),
-                "--bind_ip", "localhost," + node.getNamedAddress().getHost()));
-
         return shard;
     }
 
     private MongoDbReplicaSet createConfigServers() {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#create-the-config-server-replica-set
-        var configServers = replicaSet()
+        var configServers = configServerReplicaSet()
                 .network(network)
                 .namespace("test-mongo-configdb")
                 .name("configdb")
@@ -222,12 +217,6 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .skipDockerDesktopLogWarning(true)
                 .imageName(imageName)
                 .build();
-
-        configServers.getMembers().forEach(node -> node.setCommand(
-                "--configsvr",
-                "--replSet", configServers.getName(),
-                "--port", String.valueOf(node.getNamedAddress().getPort()),
-                "--bind_ip", "localhost," + node.getNamedAddress().getHost()));
 
         return configServers;
     }
@@ -240,7 +229,7 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
 
     private MongoDbContainer createRouter(Network network, int i) {
         // See https://www.mongodb.com/docs/v6.0/tutorial/deploy-shard-cluster/#start-a-mongos-for-the-sharded-cluster
-        var router = node()
+        var router = router(formatReplicaSetAddress(configServers, /* namedAddess= */ true))
                 .network(network)
                 .name("test-mongos" + i)
                 .portResolver(portResolver)
@@ -248,11 +237,6 @@ public class MongoDbShardedCluster implements MongoDbDeployment {
                 .imageName(imageName)
                 .build();
 
-        router.setCommand(
-                "mongos",
-                "--port", String.valueOf(router.getNamedAddress().getPort()),
-                "--bind_ip", "localhost," + router.getNamedAddress().getHost(),
-                "--configdb", formatReplicaSetAddress(configServers, /* namedAddess= */ true));
         router.getDependencies().addAll(shards);
         router.getDependencies().add(configServers);
 

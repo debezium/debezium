@@ -13,10 +13,11 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    private final Schema schema;
+    private Schema schema;
 
-    public MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
-        super(connector, version, connectorConfig);
+    @Override
+    public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
+        super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name(connectorConfig.schemaNameAdjuster().adjust("io.debezium.connector.mongo.Source"))
                 .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)

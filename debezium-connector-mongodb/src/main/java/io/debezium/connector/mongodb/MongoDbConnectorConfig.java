@@ -55,6 +55,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final Pattern FIELD_RENAMES_PATTERN = Pattern
             .compile("^[*|\\w|\\-|\\s*]+(?:\\.[*|\\w|\\-]+\\.[*|\\w|\\-]+)+(\\.[*|\\w|\\-]+)*:(?:[*|\\w|\\-]+)+\\s*$");
     protected static final String QUALIFIED_FIELD_RENAMES_PATTERN = "<databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>";
+    private final String shardConnectionParameters;
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -283,9 +284,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     /**
-     * The comma-separated list of replica set names
+     * The {@link ReplicaSets#SEPARATOR}-separated list of connection strings
      */
-    public static final Field REPLICA_SETS = Field.createInternal("mongodb.replica.sets")
+    public static final Field TASK_CONNECTION_STRINGS = Field.createInternal("mongodb.internal.task.connection.strings")
             .withDescription("Internal use only")
             .withType(Type.LIST);
 
@@ -298,6 +299,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.HIGH)
             .withValidation(MongoDbConnectorConfig::validateConnectionString)
             .withDescription("Database connection string.");
+
+    public static final Field SHARD_CONNECTION_PARAMS = Field.create("mongodb.connection.string.shard.params")
+            .withDisplayName("Shard connection parameters")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The connection string parameters used when connecting to individual shards of sharded cluster."
+                    + "Only applicable with replica_set connection mode.");
 
     public static final Field CONNECTION_MODE = Field.create("mongodb.connection.mode")
             .withDisplayName("Connection mode")
@@ -580,6 +590,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "or whether the address(es) in 'hosts' should be used as is ('false'). "
                     + "The default is 'true'.");
 
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(MongoDbSourceInfoStructMaker.class.getName());
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -606,7 +619,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_EXCLUDE_LIST,
                     FIELD_RENAMES,
-                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION,
+                    SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
                     CAPTURE_MODE,
@@ -642,11 +656,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         String connectionModeValue = config.getString(MongoDbConnectorConfig.CONNECTION_MODE);
         this.connectionMode = ConnectionMode.parse(connectionModeValue, MongoDbConnectorConfig.CONNECTION_MODE.defaultValueAsString());
+        this.shardConnectionParameters = config.getString(SHARD_CONNECTION_PARAMS);
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
 
         this.replicaSets = resolveReplicaSets(config, connectionMode);
+
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -777,6 +793,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return connectionMode;
     }
 
+    public String getShardConnectionParameters() {
+        return shardConnectionParameters;
+    }
+
     public ReplicaSets getReplicaSets() {
         return replicaSets;
     }
@@ -792,7 +812,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {
@@ -840,7 +860,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static ReplicaSets resolveReplicaSets(Configuration config, ConnectionMode connectionMode) {
-        if (!config.hasKey(MongoDbConnectorConfig.REPLICA_SETS)) {
+        if (!config.hasKey(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS)) {
             return new ReplicaSets(List.of());
         }
 
@@ -848,10 +868,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         switch (connectionMode) {
             case REPLICA_SET:
-                replicaSetSpecs = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::new);
+                replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::new);
                 break;
             case SHARDED:
-                replicaSetSpecs = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ";", ReplicaSet::forCluster);
+                replicaSetSpecs = config.getList(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, ReplicaSets.SEPARATOR, ReplicaSet::forCluster);
                 break;
             default:
                 LOGGER.warn("Unexpected connection mode '{}'", connectionMode);

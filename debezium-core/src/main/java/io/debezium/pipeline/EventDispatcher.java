@@ -8,11 +8,15 @@ package io.debezium.pipeline;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -29,15 +33,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.signal.SignalProcessor;
-import io.debezium.pipeline.signal.actions.Log;
-import io.debezium.pipeline.signal.actions.SchemaChanges;
-import io.debezium.pipeline.signal.actions.SignalAction;
-import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
-import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
-import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
-import io.debezium.pipeline.signal.actions.snapshotting.PauseIncrementalSnapshot;
-import io.debezium.pipeline.signal.actions.snapshotting.ResumeIncrementalSnapshot;
-import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.pipeline.signal.actions.SignalActionProvider;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -49,7 +45,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
@@ -157,7 +152,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            registerSignalActions();
+            this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
         else {
@@ -193,7 +189,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = transactionMonitor;
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            this.sourceSignalChannel = signalProcessor.getSourceSignalChannel();
+            registerSignalActions();
+            this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
         else {
@@ -204,22 +201,16 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
     }
 
-    public Map<String, SignalAction<P>> getSignalingActions() {
+    public void registerSignalActions() {
 
-        return Map.of(Log.NAME, new Log<>(),
-                SchemaChanges.NAME, getSchemaChangeAction(this.connectorConfig),
-                ExecuteSnapshot.NAME, new ExecuteSnapshot<>(this),
-                StopSnapshot.NAME, new StopSnapshot<>(this),
-                OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>(),
-                CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(this),
-                PauseIncrementalSnapshot.NAME, new PauseIncrementalSnapshot<>(this),
-                ResumeIncrementalSnapshot.NAME, new ResumeIncrementalSnapshot<>(this));
-    }
+        List<SignalActionProvider> actionProviders = StreamSupport.stream(ServiceLoader.load(SignalActionProvider.class).spliterator(), false)
+                .collect(Collectors.toList());
 
-    private SignalAction<P> getSchemaChangeAction(CommonConnectorConfig connectorConfig) {
-        return connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig
-                ? new SchemaChanges<>(this, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema())
-                : new SchemaChanges<>(this, false);
+        actionProviders.stream()
+                .map(provider -> provider.createActions(this, connectorConfig))
+                .flatMap(e -> e.entrySet().stream())
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
+                .forEach(signalProcessor::registerSignalAction);
 
     }
 

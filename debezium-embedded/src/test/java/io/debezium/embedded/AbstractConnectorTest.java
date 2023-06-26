@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -615,6 +616,43 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     * The initial records are skipped until the condition is satisfied.
+     * This is most useful in corner cases when there can be a duplicate records between snapshot
+     * and streaming switch.
+     *
+     * @param numRecords the number of records that should be consumed
+     * @param tripCondition condition to satisfy to stop skipping records
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsButSkipUntil(int recordsToRead, BiPredicate<Struct, Struct> tripCondition) throws InterruptedException {
+        final var records = new SourceRecords();
+        final var skipRecords = new AtomicBoolean(true);
+        consumeRecords(recordsToRead, record -> {
+            if (skipRecords.get()) {
+                if (tripCondition.test((Struct) record.key(), (Struct) record.value())) {
+                    skipRecords.set(false);
+                }
+                else {
+                    Testing.print("Skipped record");
+                    print(record);
+                    Testing.debug("Skipped record");
+                    debug(record);
+                }
+            }
+            if (!skipRecords.get()) {
+                records.add(record);
+            }
+        });
+        recordsToRead -= records.allRecordsInOrder().size();
+        if (recordsToRead > 0) {
+            consumeRecords(recordsToRead, records::add);
+        }
+        return records;
+    }
+
+    /**
      * Try to consume and capture records untel a codition is satisfied.
      *
      * @param condition contition that must be satisifed to terminate reading
@@ -1180,10 +1218,14 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
-        waitForSnapshotEvent(connector, server, "SnapshotCompleted");
+        waitForSnapshotEvent(connector, server, "SnapshotCompleted", null, null);
     }
 
-    private static void waitForSnapshotEvent(String connector, String server, String event) throws InterruptedException {
+    public static void waitForSnapshotToBeCompleted(String connector, String server, String task, String database) throws InterruptedException {
+        waitForSnapshotEvent(connector, server, "SnapshotCompleted", task, database);
+    }
+
+    private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         Awaitility.await()
@@ -1192,7 +1234,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server), event));
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server, task, database), event));
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
@@ -1200,12 +1242,16 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server, String contextName) {
+        waitForStreamingRunning(connector, server, contextName, null);
+    }
+
+    public static void waitForStreamingRunning(String connector, String server, String contextName, String task) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> isStreamingRunning(connector, server, contextName));
+                .until(() -> isStreamingRunning(connector, server, contextName, task));
     }
 
     public static void waitForConnectorShutdown(String connector, String server) {
@@ -1216,14 +1262,20 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static boolean isStreamingRunning(String connector, String server) {
-        return isStreamingRunning(connector, server, getStreamingNamespace());
+        return isStreamingRunning(connector, server, getStreamingNamespace(), null);
     }
 
     public static boolean isStreamingRunning(String connector, String server, String contextName) {
+        return isStreamingRunning(connector, server, contextName, null);
+    }
+
+    public static boolean isStreamingRunning(String connector, String server, String contextName, String task) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         try {
-            return (boolean) mbeanServer.getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+            ObjectName streamingMetricsObjectName = task != null ? getStreamingMetricsObjectName(connector, server, contextName, task)
+                    : getStreamingMetricsObjectName(connector, server, contextName);
+            return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
         }
         catch (JMException ignored) {
         }
@@ -1234,12 +1286,33 @@ public abstract class AbstractConnectorTest implements Testing {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server);
     }
 
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database) throws MalformedObjectNameException {
+
+        Map<String, String> props = new HashMap<>();
+        props.put("task", task);
+        props.put("database", database);
+        String additionalProperties = props.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
+                .collect(Collectors.joining(","));
+
+        if (additionalProperties.length() != 0) {
+            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + "," + additionalProperties);
+        }
+
+        return getSnapshotMetricsObjectName(connector, server);
+    }
+
     public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
         return getStreamingMetricsObjectName(connector, server, getStreamingNamespace());
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
     }
 
     protected static String getStreamingNamespace() {

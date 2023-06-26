@@ -333,6 +333,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.ltreeArrayOid()) {
                     return SchemaBuilder.array(Ltree.builder().optional().build());
                 }
+                else if (oidValue == typeRegistry.isbn()) {
+                    return SchemaBuilder.string();
+                }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
 
@@ -530,6 +533,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         oidValue == typeRegistry.citextArrayOid() ||
                         oidValue == typeRegistry.hstoreArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
+                }
+                else if (oidValue == typeRegistry.isbnOid()) {
+                    return data -> convertIsbn(column, fieldDefn, data);
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
@@ -955,6 +961,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertCitext(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof byte[]) {
+                r.deliver(new String((byte[]) data));
+            }
+            else if (data instanceof String) {
+                r.deliver(data);
+            }
+            else if (data instanceof PGobject) {
+                r.deliver(((PGobject) data).getValue());
+            }
+        });
+    }
+
+    protected Object convertIsbn(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
             if (data instanceof byte[]) {
                 r.deliver(new String((byte[]) data));

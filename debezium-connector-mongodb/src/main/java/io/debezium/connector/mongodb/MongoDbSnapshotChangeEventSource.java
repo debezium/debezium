@@ -33,17 +33,19 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
@@ -51,7 +53,7 @@ import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
- * A {@link SnapshotChangeEventSource} that performs multi-threaded snapshots of replica sets.
+ * A {@link SnapshotChangeEventSource} that performs multithreaded snapshots of replica sets.
  *
  * @author Chris Cranford
  */
@@ -62,28 +64,58 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbTaskContext taskContext;
     private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
-    private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
     private final SnapshotProgressListener<MongoDbPartition> snapshotProgressListener;
     private final ErrorHandler errorHandler;
-    private AtomicBoolean aborted = new AtomicBoolean(false);
+    private final AtomicBoolean aborted = new AtomicBoolean(false);
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                             MongoDbConnection.ChangeEventSourceConnectionFactory connections, ReplicaSets replicaSets,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
-                                            SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler) {
-        super(connectorConfig, snapshotProgressListener);
+                                            SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler,
+                                            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
+        super(connectorConfig, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
         this.connections = connections;
-        this.connectionContext = taskContext.getConnectionContext();
         this.replicaSets = replicaSets;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.errorHandler = errorHandler;
+    }
+
+    /*
+     * This is required because MongoDbPartition and MongoDbOffsetContext are not managed well for MongoDB. They are only correctly initialized just before starting CDC streaming
+     * In the future only ReplicaSetPartition and ReplicaSetOffset should be present and initialized in the MongoDbConnectorTask
+     */
+    @Override
+    protected Offsets<MongoDbPartition, OffsetContext> getOffsets(SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
+                                                                  MongoDbOffsetContext mongoDbOffsetContext, SnapshottingTask snapshottingTask) {
+
+        final MongoDbSnapshottingTask mongoDbSnapshottingTask = (MongoDbSnapshottingTask) snapshottingTask;
+        final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
+
+        ReplicaSet replicaSet = getReplicaSet(mongoDbSnapshottingTask);
+        if (mongoDbOffsetContext == null) {
+            initSnapshotStartOffsets(mongoDbSnapshotContext);
+            return Offsets.of(snapshotContext.offset.getReplicaSetPartition(replicaSet),
+                    snapshotContext.offset.getReplicaSetOffsetContext(replicaSet));
+        }
+
+        return Offsets.of(mongoDbOffsetContext.getReplicaSetPartition(replicaSet),
+                mongoDbOffsetContext.getReplicaSetOffsetContext(replicaSet));
+    }
+
+    private ReplicaSet getReplicaSet(MongoDbSnapshottingTask mongoDbSnapshottingTask) {
+
+        // In case of a Sharded Cluster, for snapshot, only the connection.mode=sharded is supported. In this case only one ReplicaSet is present.
+        if (mongoDbSnapshottingTask.getReplicaSetsToSnapshot().isEmpty()) { // When snapshot mode is never
+            return replicaSets.getSnapshotReplicaSet();
+        }
+        return mongoDbSnapshottingTask.getReplicaSetsToSnapshot().get(0);
     }
 
     @Override
@@ -198,22 +230,24 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private boolean isValidResumeToken(MongoDbPartition partition, ReplicaSet replicaSet, BsonDocument token) {
-        try {
-            try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
-                return mongo.execute("Checking change stream", client -> {
-                    ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
-                    stream.resumeAfter(token);
+        if (token == null) {
+            return false;
+        }
 
-                    try (var ignored = stream.cursor()) {
-                        LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
-                        return false;
-                    }
-                    catch (MongoCommandException | MongoChangeStreamException e) {
-                        LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
-                        return true;
-                    }
-                });
-            }
+        try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
+            return mongo.execute("Checking change stream", client -> {
+                ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
+                stream.resumeAfter(token);
+
+                try (var ignored = stream.cursor()) {
+                    LOGGER.info("Valid resume token present for replica set '{}, so no snapshot will be performed'", replicaSet.replicaSetName());
+                    return false;
+                }
+                catch (MongoCommandException | MongoChangeStreamException e) {
+                    LOGGER.info("Invalid resume token present for replica set '{}, snapshot will be performed'", replicaSet.replicaSetName());
+                    return true;
+                }
+            });
         }
         catch (InterruptedException e) {
             throw new DebeziumException("Interrupted while creating snapshotting task", e);
@@ -237,6 +271,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = stream.cursor()) {
                 rsOffsetCtx.initEvent(cursor);
             }
+            rsOffsetCtx.initFromOpTimeIfNeeded(client);
         });
     }
 
@@ -424,7 +459,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
-        return new MongoDbSnapshotRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document);
+        return new MongoDbSnapshotRecordEmitter(replicaSetPartition, replicaSetOffsetContext, getClock(), document, connectorConfig);
     }
 
     private Clock getClock() {

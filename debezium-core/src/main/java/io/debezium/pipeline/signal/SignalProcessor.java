@@ -92,7 +92,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     public void start() {
 
         LOGGER.info("SignalProcessor started. Scheduling it every {}ms", connectorConfig.getSignalPollInterval().toMillis());
-        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, 1, TimeUnit.NANOSECONDS);
+        signalProcessorExecutor.scheduleAtFixedRate(this::process, 0, connectorConfig.getSignalPollInterval().toMillis(), TimeUnit.MILLISECONDS);
     }
 
     public void stop() throws InterruptedException {
@@ -127,7 +127,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
         executeWithSemaphore(() -> {
             LOGGER.trace("SignalProcessor processing");
-            signalChannelReaders.parallelStream()
+            signalChannelReaders.stream()
                     .filter(isEnabled())
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
@@ -140,7 +140,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         executeWithSemaphore(() -> {
             LOGGER.trace("Processing source signals");
             signalChannelReaders.stream()
-                    .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
+                    .filter(isSignal(SourceSignalChannel.class))
                     .filter(isEnabled())
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
@@ -195,13 +195,18 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         }
     }
 
-    public SourceSignalChannel getSourceSignalChannel() {
-        return (SourceSignalChannel) signalChannelReaders.stream()
-                .filter(isSignal(SourceSignalChannel.CHANNEL_NAME))
-                .findFirst().get();
+    /**
+     * The method permits to get specified SignalChannelReader instance from the available SPI implementations
+     * @param channel the class of the channel to get
+     * @return the specified instance from the available SPI implementations
+     */
+    public <T extends SignalChannelReader> T getSignalChannel(Class<T> channel) {
+        return channel.cast(signalChannelReaders.stream()
+                .filter(isSignal(channel))
+                .findFirst().get());
     }
 
-    private static Predicate<SignalChannelReader> isSignal(String signalName) {
-        return channel -> channel.name().equals(signalName);
+    private static <T extends SignalChannelReader> Predicate<SignalChannelReader> isSignal(Class<T> channelClass) {
+        return channel -> channel.getClass().equals(channelClass);
     }
 }

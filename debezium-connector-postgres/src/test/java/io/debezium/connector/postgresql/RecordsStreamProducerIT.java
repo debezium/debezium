@@ -353,6 +353,15 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    public void shouldReceiveChangesForInsertsCustomTypesWithIncludeUnknownFalse() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false));
+        // custom types + null value
+        assertInsert(INSERT_CUSTOM_TYPES_STMT, 1, schemasAndValuesForCustomTypes());
+    }
+
+    @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsConnectDateTypes() throws Exception {
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.CONNECT);

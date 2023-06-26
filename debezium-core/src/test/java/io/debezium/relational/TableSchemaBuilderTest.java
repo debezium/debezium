@@ -43,7 +43,7 @@ import io.debezium.time.Date;
 public class TableSchemaBuilderTest {
 
     private static final String AVRO_UNSUPPORTED_NAME = "9-`~!@#$%^&*()+=[]{}\\|;:\"'<>,.?/";
-    private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "________________________________";
+    private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "_9_______________________________";
     private static final String AVRO_UNICODE_NAME_CONVERTED = "_u0039_u002d_u0060_u007e_u0021_u0040_u0023_u0024_u0025_u005e_u0026_u002a_u0028_u0029_u002b_u003d_u005b_u005d_u007b_u007d_u005c_u007c_u003b_u003a_u0022_u0027_u003c_u003e_u002c_u002e_u003f_u002f";
 
     private final TableId id = new TableId("catalog", "schema", "table");
@@ -221,6 +221,62 @@ public class TableSchemaBuilderTest {
     }
 
     @Test
+    @FixFor("DBZ-6559")
+    public void shouldBuildCorrectSchemaNamesWhenPrefixHasInvalidChar() {
+
+        topicProperties = new Properties();
+        topicProperties.put("topic.prefix", "3prefix");
+        topicNamingStrategy = new SchemaTopicNamingStrategy(topicProperties, false);
+
+        // table id with catalog and schema
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.schema.table.Value");
+
+        // only catalog
+        table = table.edit()
+                .tableId(new TableId("testDb", null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(new DefaultTopicNamingStrategy(topicProperties), table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testDb.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testDb.testTable.Value");
+
+        // only schema
+        table = table.edit()
+                .tableId(new TableId(null, "testSchema", "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testSchema.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testSchema.testTable.Value");
+
+        // neither catalog nor schema
+        table = table.edit()
+                .tableId(new TableId(null, null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("_3prefix.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("_3prefix.testTable.Value");
+    }
+
+    @Test
     @FixFor("DBZ-2975")
     public void shouldBuildCorrectSchemaNamesInMultiPartitionMode() {
         // table id with catalog and schema
@@ -327,9 +383,9 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("7C7")).isNull();
 
         // Column starting with digit is prefixed with _
-        assertThat(values.field("_C7").name()).isEqualTo("_C7");
-        assertThat(values.field("_C7").index()).isEqualTo(6);
-        assertThat(values.field("_C7").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(values.field("_7C7").name()).isEqualTo("_7C7");
+        assertThat(values.field("_7C7").index()).isEqualTo(6);
+        assertThat(values.field("_7C7").schema()).isEqualTo(SchemaBuilder.string().build());
 
         // Column containing '-' should have '-' replaced with '_', field should not exist
         assertThat(values.field("C-8")).isNull();

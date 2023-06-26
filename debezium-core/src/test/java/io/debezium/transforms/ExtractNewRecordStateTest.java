@@ -7,11 +7,14 @@ package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
@@ -20,6 +23,7 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * @author Jiri Pechanec
@@ -482,20 +486,6 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testAddFieldNonExistantField() {
-        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(ADD_FIELDS, "nope");
-            transform.configure(props);
-
-            final SourceRecord createRecord = createComplexCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-
-            assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
-        }
-    }
-
     @Test
     @FixFor("DBZ-1452")
     public void testAddFieldHandleDeleteRewrite() {
@@ -881,6 +871,96 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             after = transform.apply(before);
             assertThat(after).isNull(); // drop tombstones are enabled by default
         }
+    }
+
+    @Test
+    @FixFor({ "DBZ-6486" })
+    public void testNewNotDefaultField() {
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            String fieldPrefix = "";
+            props.put(ADD_FIELDS, "notExisting,op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER, changes:META_SRC_CHANGED");
+            props.put(ADD_FIELDS_PREFIX, fieldPrefix);
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecordWithChangedFields();
+
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "OP")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "LSN")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "ID")).isEqualTo("571");
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "source_lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "META_SRC_CHANGED")).isEqualTo(List.of("name"));
+            assertThat((unwrapped.valueSchema().field("notExisting"))).isNull();
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-6486" })
+    public void testFieldNotExists() {
+
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            String fieldPrefix = "";
+            props.put(ADD_FIELDS, "op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER, notExist:META_SRC_CHANGED");
+            props.put(ADD_FIELDS_PREFIX, fieldPrefix);
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecordWithChangedFields();
+
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "OP")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "LSN")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "ID")).isEqualTo("571");
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "source_lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
+        }
+    }
+
+    private SourceRecord createUpdateRecordWithChangedFields() {
+        Envelope changesEnvelope = Envelope.defineSchema()
+                .withName("changedFields.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .withSchema(SchemaBuilder.array(Schema.STRING_SCHEMA), "changes")
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+        final List<String> changes = new ArrayList<>();
+        changes.add("name");
+
+        before.put("id", (byte) 1);
+        before.put("name", "myRecord");
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        transaction.put("id", "571");
+        transaction.put("total_order", 42L);
+        transaction.put("data_collection_order", 42L);
+
+        Struct struct = new Struct(changesEnvelope.schema());
+        struct.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
+        if (before != null) {
+            struct.put(Envelope.FieldName.BEFORE, before);
+        }
+        struct.put(Envelope.FieldName.AFTER, after);
+        if (source != null) {
+            struct.put(Envelope.FieldName.SOURCE, source);
+        }
+        if (Instant.now() != null) {
+            struct.put(Envelope.FieldName.TIMESTAMP, Instant.now().toEpochMilli());
+        }
+
+        struct.put("changes", changes);
+        struct.put("transaction", transaction);
+
+        final SourceRecord updateRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), struct);
+        return updateRecord;
     }
 
     protected SourceRecord addDropFieldsHeader(SourceRecord record, String name, List<String> values) {

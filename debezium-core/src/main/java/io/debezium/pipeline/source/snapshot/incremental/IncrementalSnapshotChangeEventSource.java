@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
@@ -32,7 +33,7 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     void init(P partition, OffsetContext offsetContext);
 
-    void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds,
+    void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, List<String> dataCollectionIds,
                                           Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException;
 

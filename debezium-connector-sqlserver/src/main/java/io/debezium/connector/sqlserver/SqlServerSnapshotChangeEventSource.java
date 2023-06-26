@@ -24,6 +24,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolatio
 import io.debezium.connector.sqlserver.SqlServerOffsetContext.Loader;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -48,8 +49,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                               SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
-                                              SnapshotProgressListener<SqlServerPartition> snapshotProgressListener) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener);
+                                              SnapshotProgressListener<SqlServerPartition> snapshotProgressListener,
+                                              NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.sqlServerDatabaseSchema = schema;

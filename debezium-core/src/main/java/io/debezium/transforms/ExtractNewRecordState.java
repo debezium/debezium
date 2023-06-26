@@ -5,6 +5,13 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.data.Envelope.FieldName.OPERATION;
+import static io.debezium.data.Envelope.FieldName.SOURCE;
+import static io.debezium.data.Envelope.FieldName.TIMESTAMP;
+import static io.debezium.data.Envelope.FieldName.TRANSACTION;
+import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
+import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY;
+import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.util.ArrayList;
@@ -14,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -36,10 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.Strings;
@@ -111,7 +116,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<>();
     private final InsertField<R> removedDelegate = new InsertField.Value<>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<>();
-    private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
+    private BoundedConcurrentHashMap<String, Schema> schemaUpdateCache;
     private SmtManager<R> smtManager;
 
     @Override
@@ -262,13 +267,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         for (FieldReference fieldReference : additionalHeaders) {
             // add "d" operation header to tombstone events
             if (originalRecordValue == null) {
-                if (FieldName.OPERATION.equals(fieldReference.field)) {
+                if (OPERATION.equals(fieldReference.field)) {
                     headers.addString(fieldReference.getNewField(), Operation.DELETE.code());
                 }
                 continue;
             }
-            headers.add(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue),
-                    fieldReference.getSchema(originalRecordValue.schema()));
+            Optional<Schema> schema = fieldReference.getSchema(originalRecordValue.schema());
+            schema.ifPresent(value -> headers.add(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue), value));
         }
 
         return headers;
@@ -278,7 +283,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct originalRecordValue = (Struct) originalRecord.value();
 
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(),
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(buildCacheKey(value, originalRecordValue),
                 s -> makeUpdatedSchema(additionalFields, value.schema(), originalRecordValue));
 
         // Update the value with the new fields
@@ -291,7 +296,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         for (FieldReference fieldReference : additionalFields) {
-            updatedValue = updateValue(fieldReference, updatedValue, originalRecordValue);
+            Optional<Schema> schema = fieldReference.getSchema(originalRecordValue.schema());
+            if (schema.isPresent()) {
+                updatedValue = updateValue(fieldReference, updatedValue, originalRecordValue);
+            }
         }
 
         return unwrappedRecord.newRecord(
@@ -302,6 +310,15 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 updatedSchema,
                 updatedValue,
                 unwrappedRecord.timestamp());
+    }
+
+    private static String buildCacheKey(Struct value, Struct originalRecordValue) {
+        // This is needed because in case using this SMT after ExtractChangedRecordState and HeaderToValue
+        // If we only use the value schema as cache key, it will be calculated only on `read` record and any other event will use the value in cache.
+        // But since ExtractChangedRecordState generates changed field with `update` or `delete` operation and then eventually copied to the payload with HeaderToValue SMT,
+        // the schema in that case will never be updated since cached on the first `read` operation.
+        // Using also the operation in the cache key will solve the problem.
+        return value.schema() + originalRecordValue.getString(OPERATION);
     }
 
     private R dropFields(R record) {
@@ -380,14 +397,17 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         // Update the schema with the new fields
         for (FieldReference fieldReference : additionalFields) {
-            builder = updateSchema(fieldReference, builder, originalRecordValue.schema());
+            Optional<Schema> fieldSchema = fieldReference.getSchema(originalRecordValue.schema());
+            if (fieldSchema.isPresent()) {
+                builder = updateSchema(fieldReference, builder, fieldSchema.get());
+            }
         }
 
         return builder.build();
     }
 
-    private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema originalRecordSchema) {
-        return builder.field(fieldReference.getNewField(), fieldReference.getSchema(originalRecordSchema));
+    private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema fieldSchema) {
+        return builder.field(fieldReference.getNewField(), fieldSchema);
     }
 
     private Struct updateValue(FieldReference fieldReference, Struct updatedValue, Struct struct) {
@@ -454,16 +474,18 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
          * Determines the struct hosting the given unqualified field.
          */
         private static String determineStruct(String simpleFieldName) {
-            if (simpleFieldName.equals(Envelope.FieldName.OPERATION) || simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
-                return null;
-            }
-            else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||
-                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY) ||
-                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY)) {
-                return Envelope.FieldName.TRANSACTION;
-            }
-            else {
-                return Envelope.FieldName.SOURCE;
+
+            switch (simpleFieldName) {
+                case DEBEZIUM_TRANSACTION_ID_KEY:
+                case DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY:
+                case DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY:
+                    return TRANSACTION;
+                case OPERATION:
+                case TIMESTAMP:
+                    return null;
+                default:
+                    return SOURCE;
+
             }
         }
 
@@ -487,19 +509,42 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             Struct parentStruct = struct != null ? (Struct) originalRecordValue.getWithoutDefault(struct) : originalRecordValue;
 
             // transaction is optional; e.g. not present during snapshotting atm.
-            return parentStruct != null ? parentStruct.getWithoutDefault(field) : null;
+            return parentStruct != null ? getWithoutDefault(parentStruct, originalRecordValue) : null;
         }
 
-        Schema getSchema(Schema originalRecordSchema) {
+        private Object getWithoutDefault(Struct parentStruct, Struct originalRecordValue) {
+            // In case field was added by other SMT and is in the main payload
+            // object.
+            return isInSchema(parentStruct.schema()) ? parentStruct.getWithoutDefault(field)
+                    : originalRecordValue.getWithoutDefault(field);
+        }
+
+        Optional<Schema> getSchema(Schema originalRecordSchema) {
+
+            Optional<org.apache.kafka.connect.data.Field> extractedField = getField(originalRecordSchema);
+            return extractedField.map(value -> SchemaUtil.copySchemaBasics(value.schema()).optional().build());
+
+        }
+
+        private Optional<org.apache.kafka.connect.data.Field> getField(Schema originalRecordSchema) {
+
             Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
 
             org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
 
             if (schemaField == null) {
-                throw new IllegalArgumentException("Unexpected field name: " + field);
+                LOGGER.debug("Field {} not found in {}. Trying in main payload", field, struct);
+                if (!isInSchema(originalRecordSchema)) {
+                    return Optional.empty();
+                }
+                schemaField = originalRecordSchema.field(field);
             }
 
-            return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
+            return Optional.of(schemaField);
+        }
+
+        private boolean isInSchema(Schema originalRecordSchema) {
+            return originalRecordSchema.field(field) != null;
         }
     }
 }

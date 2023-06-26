@@ -10,7 +10,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -450,10 +449,10 @@ public class OracleConnection extends JdbcConnection {
      * @return an optional timestamp when the system change number occurred
      * @throws SQLException if a database exception occurred
      */
-    public Optional<OffsetDateTime> getScnToTimestamp(Scn scn) throws SQLException {
+    public Optional<Instant> getScnToTimestamp(Scn scn) throws SQLException {
         try {
             return queryAndMap("SELECT scn_to_timestamp('" + scn + "') FROM DUAL", rs -> rs.next()
-                    ? Optional.of(rs.getObject(1, OffsetDateTime.class))
+                    ? Optional.of(rs.getTimestamp(1).toInstant())
                     : Optional.empty());
         }
         catch (SQLException e) {

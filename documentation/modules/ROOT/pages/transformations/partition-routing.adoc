@@ -33,6 +33,7 @@ The configuration specifies the following parameters:
 `partition.payload.field`:: Specifies the fields in the event payload that the SMT uses to calculate the destination partition.
  You can use dot notation to specify nested payload fields.
 `partition.topic.num`:: Specifies the number of partitions in the destination topic.
+`partition.hash.function`:: Specifies hash function to be used hash of the fields which would determine number of the destination partition.
 
 By default, {prodname} routes all change event records for a configured data collection to a single Apache Kafka topic.
 Connectors do not direct event records to specific partitions in the topic.
@@ -267,6 +268,18 @@ For example, `after.name,source.table,change.name`
 |
 |The number of partitions for the topic on which this SMT acts. 
 Use the `TopicNameMatches` predicate to filter records by topic.
+
+|[[partition-routing-partition-hash-function]]<<partition-routing-partition-hash-function, `partition.hash.function`>>
+| `java`
+|Hash function to be used when computing hash of the fields which would determine number of the destination partition.
+Possible values are: +
+ +
+`java` - standard Java `Object::hashCode` function +
+ +
+`murmur` - latest version of http://en.wikipedia.org/wiki/MurmurHash[MurmurHash] function, MurmurHash3 +
+ +
+This configuration is optional.
+If not specified or invalid value is used, the default value will be used.
 |
 
 |===

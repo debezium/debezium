@@ -12,8 +12,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ReadPreference;
-
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
@@ -63,7 +61,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
+                                                                                                          NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
@@ -72,7 +71,8 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                errorHandler);
+                errorHandler,
+                notificationService);
     }
 
     @Override
@@ -113,7 +113,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
 
     public MongoDbConnection.ChangeEventSourceConnectionFactory getMongoDbConnectionFactory(ConnectionContext connectionContext) {
         return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
-                replicaSet, ReadPreference.secondaryPreferred(), taskContext.filters(), connectionErrorHandler(partition));
+                replicaSet, taskContext.filters(), connectionErrorHandler(partition));
     }
 
     private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {

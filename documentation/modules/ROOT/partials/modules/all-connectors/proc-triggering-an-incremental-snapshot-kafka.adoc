@@ -1,0 +1,66 @@
+.Procedure using kafka signaling channel
+
+You can send a message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka topic] to request the connector to run an ad hoc incremental snapshot.
+
+The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
+
+The value of the message is a JSON object with `type` and `data` fields.
+
+The signal type is `execute-snapshot`, and the `data` field must have the following fields:
+
+.Execute snapshot data fields
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. 
+Currently {prodname} supports only the `incremental` type.  +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| An array of comma-separated regular expressions that match the fully-qualified names of tables to include in the snapshot. +
+Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
+
+|`additional-condition`
+|_N/A_
+| An optional string that specifies a condition that the connector evaluates to designate a subset of columns to include in a snapshot.
+|===
+
+An example of the execute-snapshot Kafka message:
+
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
+
+==== Ad hoc incremental snapshots with additional-condition
+
+{prodname} uses the `additional-condition` field to select a subset of a {data-collection}'s content.
+
+Typically, when {prodname} runs a snapshot, it runs a SQL query such as:
+
+`SELECT * FROM _<tableName>_ ....`
+
+When the snapshot request includes an `additional-condition`, the `additional-condition` is appended to the SQL query, for example:
+
+`SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....`
+
+For example, given a `products` {data-collection} with the columns `id` (primary key), `color`, and `brand`, if you want a snapshot to include only content for which `color=blue`, when you request the snapshot, you could append an `additional-condition` statement to filter the content:
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue"}}`
+----
+
+You can use the `additional-condition` statement to pass conditions based on multiple columns.
+For example, using the same `products` {data-collection} as in the previous example, if you want a snapshot to include only the content from the `products` {data-collection} for which `color=blue`, and `brand=MyBrand`, you could send the following request:
+
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=MyBrand"}}`
+----

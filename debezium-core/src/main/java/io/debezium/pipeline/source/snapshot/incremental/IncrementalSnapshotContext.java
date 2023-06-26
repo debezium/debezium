@@ -17,7 +17,8 @@ public interface IncrementalSnapshotContext<T> {
 
     DataCollection<T> nextDataCollection();
 
-    List<DataCollection<T>> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, Optional<String> additionalCondition, Optional<String> surrogateKey);
+    List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> additionalCondition,
+                                                             Optional<String> surrogateKey);
 
     int dataCollectionsToBeSnapshottedCount();
 
@@ -68,5 +69,9 @@ public interface IncrementalSnapshotContext<T> {
     boolean removeDataCollectionFromSnapshot(String dataCollectionId);
 
     List<DataCollection<T>> getDataCollections();
+
+    void unsetCorrelationId();
+
+    String getCorrelationId();
 
 }

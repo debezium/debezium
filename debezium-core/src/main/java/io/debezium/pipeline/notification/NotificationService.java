@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.notification;
 
+import static io.debezium.function.Predicates.not;
+
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -27,6 +29,9 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
     private final List<NotificationChannel> notificationChannels;
     private final List<String> enabledChannels;
 
+    private final IncrementalSnapshotNotificationService<P, O> incrementalSnapshotNotificationService;
+    private final InitialSnapshotNotificationService<P, O> initialSnapshotNotificationService;
+
     public NotificationService(List<NotificationChannel> notificationChannels,
                                CommonConnectorConfig config,
                                SchemaFactory schemaFactory, BlockingConsumer<SourceRecord> consumer) {
@@ -42,6 +47,9 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
         this.notificationChannels.stream()
                 .filter(isConnectChannel())
                 .forEach(channel -> ((ConnectChannel) channel).initConnectChannel(schemaFactory, consumer));
+
+        incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(this, config);
+        initialSnapshotNotificationService = new InitialSnapshotNotificationService<>(this, config);
     }
 
     /**
@@ -59,6 +67,7 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
     /**
      * This method permits to send a notification together with offsets.
      * This make sense only for channels that implements For {@link ConnectChannel}
+     * A notification is sent also to non {@link ConnectChannel}
      * @param notification the notification to send
      * @param offsets the offset to send together with Kafka {@link SourceRecord}
      */
@@ -66,8 +75,21 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
 
         this.notificationChannels.stream()
                 .filter(isEnabled())
+                .filter(not(isConnectChannel()))
+                .forEach(channel -> channel.send(notification));
+
+        this.notificationChannels.stream()
+                .filter(isEnabled())
                 .filter(isConnectChannel())
                 .forEach(channel -> ((ConnectChannel) channel).send(notification, offsets));
+    }
+
+    public IncrementalSnapshotNotificationService<P, O> incrementalSnapshotNotificationService() {
+        return incrementalSnapshotNotificationService;
+    }
+
+    public InitialSnapshotNotificationService<P, O> initialSnapshotNotificationService() {
+        return initialSnapshotNotificationService;
     }
 
     private Predicate<? super NotificationChannel> isEnabled() {
@@ -76,5 +98,12 @@ public class NotificationService<P extends Partition, O extends OffsetContext> {
 
     private Predicate<? super NotificationChannel> isConnectChannel() {
         return channel -> channel instanceof ConnectChannel;
+    }
+
+    public void stop() {
+
+        this.notificationChannels.stream()
+                .filter(isEnabled())
+                .forEach(NotificationChannel::close);
     }
 }

@@ -263,6 +263,7 @@ public interface SchemaNameAdjuster {
      * @return the valid fullname for Avro; never null
      */
     static String validFullname(String proposedName, ReplacementFunction replacement, ReplacementOccurred uponReplacement) {
+
         if (proposedName.length() == 0) {
             return proposedName;
         }
@@ -274,8 +275,17 @@ public interface SchemaNameAdjuster {
         }
         else {
             sb.append(replacement.replace(c));
+            if (Character.isDigit(c) && (replacement == ReplacementFunction.UNDERSCORE_REPLACEMENT
+                    || replacement instanceof FieldNameUnderscoreReplacementFunction)) {
+                // This is to avoid conflict in case of two field that differs
+                // only from the starting digit char
+                // It provides backward compatibility for AVRO adjuster
+                // TODO replace with a flag passed as a function argument
+                sb.append(c);
+            }
             changed = true;
         }
+
         for (int i = 1; i != proposedName.length(); ++i) {
             c = proposedName.charAt(i);
             if (replacement.isValidNonFirstCharacter(c)) {

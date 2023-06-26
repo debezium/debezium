@@ -65,6 +65,25 @@ public final class ConnectionStrings {
         return connectionString + "&" + param;
     }
 
+    public static String appendParameters(String connectionString, String parameters) {
+        if (parameters == null || parameters.isBlank()) {
+            return connectionString;
+        }
+        if (connectionString.endsWith("?")) {
+            return connectionString + parameters;
+        }
+        if (connectionString.endsWith("/")) {
+            return connectionString + "?" + parameters;
+        }
+
+        var pos = connectionString.lastIndexOf("?");
+        if (pos == -1) {
+            return connectionString + "/?" + parameters;
+        }
+
+        return connectionString + "&" + parameters;
+    }
+
     /**
      * Mask credential information in connection string
      *

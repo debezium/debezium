@@ -18,6 +18,7 @@ import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -80,7 +81,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlReadOnlyIncrementalSnapshotChangeEventSource.class);
     private final String showMasterStmt = "SHOW MASTER STATUS";
-    private final KafkaSignalChannel kafkaSignal;
 
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                              JdbcConnection jdbcConnection,
@@ -91,18 +91,6 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
                                                              NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        kafkaSignal = new KafkaSignalChannel();
-    }
-
-    @Override
-    public void init(MySqlPartition partition, OffsetContext offsetContext) {
-        super.init(partition, offsetContext);
-
-        kafkaSignal.init(connectorConfig);
-        Long signalOffset = getContext().getSignalOffset();
-        if (signalOffset != null) {
-            kafkaSignal.seek(signalOffset);
-        }
     }
 
     @Override
@@ -232,11 +220,14 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
     }
 
     @Override
-    public void addDataCollectionNamesToSnapshot(MySqlPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData,
+    public void addDataCollectionNamesToSnapshot(SignalPayload<MySqlPartition> signalPayload,
                                                  List<String> dataCollectionIds,
                                                  Optional<String> additionalCondition, Optional<String> surrogateKey)
             throws InterruptedException {
-        super.addDataCollectionNamesToSnapshot(partition, offsetContext, additionalData, dataCollectionIds, additionalCondition, surrogateKey);
+
+        final Map<String, Object> additionalData = signalPayload.additionalData;
+
+        super.addDataCollectionNamesToSnapshot(signalPayload, dataCollectionIds, additionalCondition, surrogateKey);
 
         getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }

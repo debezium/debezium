@@ -2400,9 +2400,32 @@ By default, truncate operations are skipped (not emitted by this connector).
 
 |[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 Use the following format to specify the collection name: +
 `_<schemaName>_._<tableName>_`
+
+|[[db2-property-signal-enabled-channels]]<<db2-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector. 
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+
+|[[db2-property-notification-enabled-channels]]<<db2-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of the notification channel names that are enabled for the connector.
+By default, the following channels are available: 
+
+* `sink`
+* `log`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
 |[[db2-property-incremental-snapshot-chunk-size]]<<db2-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
@@ -2464,6 +2487,16 @@ endif::product[]
 ==== {prodname} connector database schema history configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-db2-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties

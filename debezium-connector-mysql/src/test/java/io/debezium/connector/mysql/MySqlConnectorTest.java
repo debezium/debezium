@@ -11,6 +11,7 @@ import java.util.Arrays;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
+import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.connector.Connector;
 import org.junit.Test;
 
@@ -36,8 +37,7 @@ public class MySqlConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.equals(MySqlConnectorConfig.SCHEMA_HISTORY) || expected.equals(MySqlConnectorConfig.JDBC_DRIVER)
-                    || expected.equals(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY)) {
+            if (expected.type() == Type.CLASS) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
             }
             else if (expected.type() == ConfigDef.Type.LIST && key.defaultValue != null) {

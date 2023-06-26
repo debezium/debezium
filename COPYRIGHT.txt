@@ -36,9 +36,11 @@ Andrey Pustovetov
 Andrey Savchuk
 Andrey Yegorov
 Andy Teijelo
+Angshuman Dey
 Anil Dasari
 Animesh Kumar
 Anisha Mohanty
+Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Arik Cohen
@@ -87,6 +89,7 @@ Chris Cranford
 Chris Egerton
 Chris Lee
 Chris Riccomini
+Christian Jacob Mencias
 Christian Posta
 Christian Stein
 Christopher Burch
@@ -105,6 +108,7 @@ Daan Roosen
 Daniel Petisme
 Dave Cramer
 Dave Cumberland
+David Beck
 David Chen
 David Feinblum
 David Haglund
@@ -180,6 +184,7 @@ Jan Hendrik Dolling
 Jan Werner
 Jannik Steinmann
 Jason Schweier
+Jesse Ehrenzweig
 Jiabao Sun
 Juan Fiallo
 Jun Zhao

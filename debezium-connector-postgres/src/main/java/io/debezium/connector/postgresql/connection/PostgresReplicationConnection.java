@@ -146,8 +146,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initPublication() {
-        String createPublicationStmt;
-        String tableFilterString = null;
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
@@ -155,39 +153,50 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 Connection conn = pgConnection();
                 conn.setAutoCommit(false);
 
-                String selectPublication = String.format("SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'", publicationName);
+                String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
                 try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
-                    if (rs.next()) {
-                        Long count = rs.getLong(1);
+                    if (!rs.next()) {
                         // Close eagerly as the transaction might stay running
-                        if (count == 0L) {
-                            LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
-                            switch (publicationAutocreateMode) {
-                                case DISABLED:
-                                    throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
-                                case ALL_TABLES:
-                                    createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
-                                    LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
-                                    // Publication doesn't exist, create it.
-                                    stmt.execute(createPublicationStmt);
-                                    break;
-                                case FILTERED:
-                                    createOrUpdatePublicationModeFilterted(tableFilterString, stmt, false);
-                                    break;
-                            }
+                        LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
+                        switch (publicationAutocreateMode) {
+                            case DISABLED:
+                                throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
+                            case ALL_TABLES:
+                                String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                // Publication doesn't exist, create it.
+                                stmt.execute(createPublicationStmt);
+                                break;
+                            case FILTERED:
+                                createOrUpdatePublicationModeFilterted(stmt, false);
+                                break;
                         }
-                        else {
-                            switch (publicationAutocreateMode) {
-                                case FILTERED:
-                                    createOrUpdatePublicationModeFilterted(tableFilterString, stmt, true);
-                                    break;
-                                default:
-                                    LOGGER.trace(
-                                            "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
-                                                    "and will be used by the plugin",
-                                            publicationName, plugin, database());
+                    }
+                    else {
+                        switch (publicationAutocreateMode) {
+                            case FILTERED:
+                                // Checking that publication can be altered
+                                Boolean allTables = rs.getBoolean(1);
+                                if (allTables) {
+                                    throw new DebeziumException(String.format(
+                                            "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
+                                                    "is already active on the server and can not be altered. " +
+                                                    "If you need to exclude some tables or include only specific subset, " +
+                                                    "please recreate the publication with necessary configuration " +
+                                                    "or let plugin recreate it by dropping existing publication. " +
+                                                    "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
+                                            publicationName, plugin, database()));
+                                }
+                                else {
+                                    createOrUpdatePublicationModeFilterted(stmt, true);
+                                }
+                                break;
+                            default:
+                                LOGGER.trace(
+                                        "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
+                                                "and will be used by the plugin",
+                                        publicationName, plugin, database());
 
-                            }
                         }
                     }
                 }
@@ -200,7 +209,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private void createOrUpdatePublicationModeFilterted(String tableFilterString, Statement stmt, boolean isUpdate) {
+    private void createOrUpdatePublicationModeFilterted(Statement stmt, boolean isUpdate) {
+        String tableFilterString = null;
         String createOrUpdatePublicationStmt;
         try {
             Set<TableId> tablesToCapture = determineCapturedTables();

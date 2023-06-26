@@ -8,8 +8,16 @@ package io.debezium.connector.postgresql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
+
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanException;
+import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import javax.management.ReflectionException;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -21,6 +29,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.spi.CustomActionProvider;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
@@ -193,5 +202,66 @@ public class SignalsIT extends AbstractConnectorTest {
         assertThat(postKey.schema().fields()).hasSize(2);
         assertThat(postKey.schema().field("pk")).isNotNull();
         assertThat(postKey.schema().field("aa")).isNotNull();
+    }
+
+    @Test
+    public void jmxSignals() throws Exception {
+        // Testing.Print.enable();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        sendLogSignalWithJmx("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}");
+
+        waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
+
+        assertThat(logInterceptor.containsMessage("Signal message at offset")).isTrue();
+
+    }
+
+    @Test
+    public void customAction() throws Exception {
+        // Testing.Print.enable();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(CustomActionProvider.CustomAction.class);
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        sendLogSignalWithJmx("1", "customLog", "{\"message\": \"Signal message at offset ''{}''\"}");
+
+        waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
+
+        assertThat(logInterceptor.containsMessage("[CustomLog]")).isTrue();
+
+    }
+
+    private void sendLogSignalWithJmx(String id, String type, String data)
+            throws MalformedObjectNameException, ReflectionException, InstanceNotFoundException, MBeanException {
+
+        ObjectName objectName = new ObjectName("debezium.postgres:type=management, context=signals, server=test_server");
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        server.invoke(objectName, "signal", new Object[]{ id, type, data }, new String[]{ String.class.getName(), String.class.getName(), String.class.getName() });
     }
 }

@@ -66,6 +66,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
     private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
+    private final UniqueDatabase CONFLICT_NAMES_DATABASE = new UniqueDatabase("logical_server_name", "mysql_dbz_6533");
 
     private Configuration config;
 
@@ -78,6 +79,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
         BINARY_FIELD_DATABASE.createAndInitialize();
+        CONFLICT_NAMES_DATABASE.createAndInitialize();
     }
 
     @After
@@ -684,6 +686,35 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
             }
         });
         assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+    }
+
+    @Test
+    @FixFor("DBZ-6533")
+    public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeListWithConflictingNames() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, CONFLICT_NAMES_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
+                        CONFLICT_NAMES_DATABASE.qualifiedTableName("tablename") + ","
+                                + CONFLICT_NAMES_DATABASE.qualifiedTableName("another") + ","
+                                + CONFLICT_NAMES_DATABASE.qualifiedTableName("tablename_suffix"))
+                .build();
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("tablename", "another", "tablename_suffix");
+        SourceRecords sourceRecords = consumeRecordsByTopic(3);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            if (record.value() != null) {
+                tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+            }
+        });
+        assertArrayEquals(tablesInOrderExpected.toArray(), tablesInOrder.toArray());
     }
 
     @Test

@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaNameAdjuster.ReplacementOccurred;
 import io.debezium.schema.UnicodeReplacementFunction;
@@ -131,6 +132,14 @@ public class SchemaNameAdjusterTest {
         adjuster.adjust("some-invalid%fullname_");
         assertThat(counter.get()).isEqualTo(2);
         assertThat(conflicts.get()).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-6559")
+    public void whenFirstCharIsInvalidAddUnderscoreBeforeInsteadOfReplacingIt() {
+        SchemaNameAdjuster unicodeAdjuster = SchemaNameAdjuster.AVRO;
+        assertThat(unicodeAdjuster.adjust("24ColumnName")).isEqualTo("_24ColumnName");
+        assertThat(unicodeAdjuster.adjust("44ColumnName")).isEqualTo("_44ColumnName");
     }
 
     protected void assertValidFullname(String fullname) {

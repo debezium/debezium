@@ -100,7 +100,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
-    private List<NotificationChannel> notificationChannels;
+    private final List<NotificationChannel> notificationChannels;
 
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...

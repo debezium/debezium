@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -51,6 +52,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     protected static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
+    private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -307,6 +309,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isBoolean)
             .withDescription("Add OPTION(RECOMPILE) on each SELECT statement during the incremental snapshot process. "
                     + "This prevents parameter sniffing but can cause CPU pressure on the source database.");
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDescription(
+                    "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size. The default value is '10000'.")
+            .withDefault(DEFAULT_QUERY_FETCH_SIZE);
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(SqlServerSourceInfoStructMaker.class.getName());
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
@@ -326,10 +335,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    MAX_RETRIES_ON_ERROR)
+                    MAX_RETRIES_ON_ERROR,
+                    QUERY_FETCH_SIZE)
+            .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST)
+                    SCHEMA_EXCLUDE_LIST,
+                    CommonConnectorConfig.QUERY_FETCH_SIZE)
             .create();
 
     /**
@@ -349,6 +361,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int maxTransactionsPerIteration;
     private final int maxRetriesOnError;
     private final boolean optionRecompile;
+    private final int queryFetchSize;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -371,6 +384,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
 
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
@@ -445,6 +459,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
+    public int getQueryFetchSize() {
+        return queryFetchSize;
+    }
+
+    @Override
     public boolean supportsOperationFiltering() {
         return true;
     }
@@ -456,7 +475,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new SqlServerSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SqlServerConnectorConfig.SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     private static class SystemTablesPredicate implements TableFilter {

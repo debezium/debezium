@@ -2647,7 +2647,8 @@ For example, to define a `selector` parameter that specifies the subset of colum
 
 |[[oracle-property-database-dbname]]<<oracle-property-database-dbname, `+database.dbname+`>>
 |No default
-|Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
+|Name of the database to connect to.
+In a container database environment, specify the name of the root container database (CDB), not the name of an included pluggable database (PDB).
 
 |[[oracle-property-database-url]]<<oracle-property-database-url, `+database.url+`>>
 |No default
@@ -2720,20 +2721,25 @@ You can set the following values:
   Use this setting only if no schema changes might occur during the creation of the snapshot.
 
 |[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
-| All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<schemaName>_._<tableName>_`) of the tables to include in a snapshot.
+| All tables specified in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`__<databaseName>.____<schemaName>__.__<tableName>__`) of the tables to include in a snapshot.
+
+In a multitenant container database (CDB) environment, the regular expression must include the xref:oracle-property-database-pdb-name[pluggable database (PDB) name], using the format `__<pdbName>__.__<schemaName>__.__<tableName>__`.
+
+To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
 ifdef::product[]
 Only POSIX regular expressions are valid.
 endif::product[]
 ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
 endif::community[]
-The specified items must be named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
+A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+
 This property takes effect only if the connector's xref:oracle-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
 This property does not affect the behavior of incremental snapshots. +
 
-To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
 
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |No default
@@ -3203,6 +3209,13 @@ For low volume systems, a LogMiner session may consume too much PGA memory when 
 The default behavior is to only use a new LogMiner session when a log switch is detected.
 By setting this value to something greater than `0`, this specifies the maximum number of milliseconds a LogMiner session can be active before it gets stopped and started to deallocate and reallocate PGA memory.
 
+|[[oracle-property-log-mining-restart-connection]]<<oracle-property-log-mining-restart-connection, `+log.mining.restart.connection+`>>
+|`false`
+|Specifies whether the JDBC connection will be closed and re-opened on log switches or when mining session has reached maximum lifetime threshold. +
+ +
+By default, the JDBC connection is not closed across log switches or maximum session lifetimes. +
+This should be enabled if you experience excessive Oracle SGA growth with LogMiner.
+
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
 |The minimum SCN interval size that this connector attempts to read from redo/archive logs. Active batch size is also increased/decreased by this amount for tuning connector throughput when needed.
@@ -3270,7 +3283,7 @@ Any transaction that exceeds this configured value is discarded entirely, and th
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
 
-|[[oracle-property-log-mining-username-exclude-list]]<<oracle-property-log-mining-username-exclude-list, `+log.mining.username.include.list+`>>
+|[[oracle-property-log-mining-username-include-list]]<<oracle-property-log-mining-username-include-list, `+log.mining.username.include.list+`>>
 |No default
 |List of database users to include from the LogMiner query.
 It can be useful to set this property if you want the capturing process to include changes from the specified users.
@@ -3355,10 +3368,33 @@ By default, only truncate operations are skipped.
 
 |[[oracle-property-signal-data-collection]]<<oracle-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector.
+a|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector.
 When you use this property with an Oracle pluggable database (PDB), set its value to the name of the root database. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<schemaName>_._<tableName>_`
+
+|[[oracle-property-signal-enabled-channels]]<<oracle-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+| List of the signaling channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+
+|[[oracle-property-notification-enabled-channels]]<<oracle-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available:
+
+* `sink`
+* `log`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
 |[[oracle-property-incremental-snapshot-chunk-size]]<<oracle-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
@@ -3419,6 +3455,16 @@ endif::product[]
 [id="debezium-oracle-connector-database-history-configuration-properties"]
 ==== {prodname} Oracle connector database schema history configuration properties
 include::../../partials/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
+==== {prodname} connector Kafka signals configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-oracle-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} Oracle connector pass-through database driver configuration properties

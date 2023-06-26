@@ -503,112 +503,7 @@ you must set one of the following options:
 
 ==== Ad hoc read-only incremental snapshots
 
-When the MySQL connection is read-only, the {link-prefix}:{link-signalling}[signaling table] mechanism can also run a snapshot by sending a message to the Kafka topic that is specified in
-the xref:mysql-property-signal-kafka-topic[signal.kafka.topic] property.
-
-The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
-
-The value is a JSON object with `type` and `data` fields.
-
-The signal type is `execute-snapshot` and the `data` field must have the following fields:
-
-.Execute snapshot data fields
-[cols="2,2,6",options="header"]
-|===
-|Field | Default | Value
-
-|`type`
-|`incremental`
-| The type of the snapshot to be executed. Currently only `incremental` is supported. +
-See the next section for more details.
-
-|`data-collections`
-|_N/A_
-| An array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
-The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
-
-|`additional-condition`
-|_N/A_
-| An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}(s).
-|===
-
-An example of the execute-snapshot Kafka message:
-
-----
-Key = `test_connector`
-
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
-----
-
-==== Ad hoc read-only incremental snapshots with additional-condition
-
-* `additional-condition` is used to select a subset of a {data-collection}'s content.
-
-* To give an analogy how `additional-condition` is used:
-
-** For a snapshot, the SQL query executed behind the scenes is something like:
-+
-SELECT * FROM _<tableName>_ ....
-
-** For a snapshot with a `additional-condition`, the `additional-condition` is appended to the SQL query, something like:
-+
-SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
-
-* Suppose there is a `products` {data-collection} with columns `id` (primary key), `color` and `brand`.
-+
-To snapshot just the content of the `products` {data-collection} where `color=blue`
-+
-----
-Key = `test_connector`
-
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue"}}`
-----
-
-* `additional-condition` can be used to pass condition based on multiple columns.
-Using the same `products` {data-collection}, to snapshot content of the `products` {data-collection} where `color=blue` and `brand=foo`
-+
-----
-Key = `test_connector`
-
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=foo"}}`
-----
-
-==== Stopping an Ad hoc read-only incremental snapshot
-
-When the MySQL connection is read-only, the {link-prefix}:{link-signalling}[signaling table] mechanism can also stop a snapshot by sending a message to the Kafka topic that is specified in
-the xref:mysql-property-signal-kafka-topic[signal.kafka.topic] property.
-
-The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
-
-The value is a JSON object with `type` and `data` fields.
-
-The signal type is `stop-snapshot` and the `data` field must have the following fields:
-
-.Execute snapshot data fields
-[cols="2,2,6",options="header"]
-|===
-|Field | Default | Value
-
-|`type`
-|`incremental`
-| The type of the snapshot to be executed. Currently only `incremental` is supported. +
-See the next section for more details.
-
-|`data-collections`
-|_N/A_
-| An optional array of comma-separated regular expressions that match fully-qualified names of tables to be snapshotted. +
-The format of the names is the same as for xref:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
-
-|===
-
-An example of the stop-snapshot Kafka message:
-
-----
-Key = `test_connector`
-
-Value = `{"type":"stop-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
-----
+When the MySQL connection is read-only, you can use the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[kafka signaling channel] to send messages to Kafka topic.
 
 // Type: continue
 [id="mysql-snapshot-events"]
@@ -3134,9 +3029,32 @@ By default, truncate operations are skipped.
 
 |[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
-|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-signaling[signals] to the connector. +
+|Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signals] to the connector. +
 Use the following format to specify the collection name: +
 `_<databaseName>_._<tableName>_`
+
+|[[mysql-property-signal-enabled-channels]]<<mysql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
+|source
+|List of the signaling channel names that are enabled for the connector. 
+By default, the following channels are available:
+
+* `source`
+* `kafka`
+* `file`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
+
+|[[mysql-property-notification-enabled-channels]]<<mysql-property-notification-enabled-channels, `+notification.enabled.channels+`>>
+|No default
+| List of notification channel names that are enabled for the connector.
+By default, the following channels are available: 
+
+* `sink`
+* `log`
+* `jmx`
+
+Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
 
 |[[mysql-property-incremental-snapshot-allow-schema-changes]]<<mysql-property-incremental-snapshot-allow-schema-changes, `+incremental.snapshot.allow.schema.changes+`>>
 |`false`
@@ -3231,38 +3149,12 @@ include::{partialsdir}/modules/all-connectors/ref-connector-configuration-databa
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
 ==== {prodname} connector Kafka signals configuration properties
 
-When the MySQL connector is configured as read-only, the alternative for the signaling table is the signals Kafka topic.
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-{prodname} provides a set of `signal.*` properties that control how the connector interacts with the Kafka signals topic.
+[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
+==== {prodname} connector sink notifications configuration properties
 
-The following table describes the `signal` properties.
-
-.Kafka signals configuration properties
-[cols="33%a,17%a,50%a",options="header",subs="+attributes"]
-|===
-|Property |Default |Description
-|[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
-|No default
-|The name of the Kafka topic that the connector monitors for ad hoc signals.
-
-|[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
-|No default
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
-
-|[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
-|`100`
-|An integer value that specifies the maximum number of milliseconds the connector should wait when polling signals. The default is 100ms.
-
-|===
-
-[id="debezium-{context}-connector-pass-through-signals-kafka-consumer-configuration-properties"]
-==== {prodname} connector pass-through signals Kafka consumer client configuration properties
-
-The {prodname} connector provides for pass-through configuration of the signals Kafka consumer.
-Pass-through signals properties begin with the prefix `signals.consumer.*`.
-For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
-
-As is the case with the xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[pass-through properties for database schema history clients], {prodname} strips the prefixes from the properties before it passes them to the Kafka signals consumer.
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 [id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
 ==== {prodname} connector pass-through database driver configuration properties

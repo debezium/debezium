@@ -5,7 +5,9 @@
  */
 package io.debezium.pipeline.notification;
 
+import java.beans.ConstructorProperties;
 import java.util.Map;
+import java.util.Objects;
 
 public class Notification {
 
@@ -19,6 +21,7 @@ public class Notification {
     private final String type;
     private final Map<String, String> additionalData;
 
+    @ConstructorProperties({ "id", "aggregateType", "type", "additionalData" })
     public Notification(String id, String aggregateType, String type, Map<String, String> additionalData) {
         this.id = id;
         this.aggregateType = aggregateType;
@@ -49,6 +52,25 @@ public class Notification {
                 ", type='" + type + '\'' +
                 ", additionalData=" + additionalData +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Notification that = (Notification) o;
+        return Objects.equals(id, that.id) && Objects.equals(aggregateType, that.aggregateType) && Objects.equals(type,
+                that.type) && Objects.equals(additionalData, that.additionalData);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, aggregateType, type, additionalData);
     }
 
     public static final class Builder {

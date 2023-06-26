@@ -9,6 +9,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 
 import io.debezium.connector.mongodb.MongoDbCollectionSchema;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
@@ -25,8 +26,9 @@ public class MongoDbSnapshotRecordEmitter extends AbstractChangeRecordEmitter<Mo
 
     private final BsonDocument event;
 
-    public MongoDbSnapshotRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, BsonDocument event) {
-        super(partition, offsetContext, clock);
+    public MongoDbSnapshotRecordEmitter(MongoDbPartition partition, OffsetContext offsetContext, Clock clock, BsonDocument event,
+                                        MongoDbConnectorConfig connectorConfig) {
+        super(partition, offsetContext, clock, connectorConfig);
         this.event = event;
     }
 

@@ -478,6 +478,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription(
                     "The maximum number of milliseconds that a LogMiner session lives for before being restarted. Defaults to 0 (indefinite until a log switch occurs)");
 
+    public static final Field LOG_MINING_RESTART_CONNECTION = Field.create("log.mining.restart.connection")
+            .withDisplayName("Restarts Oracle database connection when reaching maximum session time or database log switch")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Debezium opens a database connection and keeps that connection open throughout the entire streaming phase. " +
+                    "In some situations, this can lead to excessive SGA memory usage. " +
+                    "By setting this option to 'true' (the default is 'false'), the connector will close and re-open a database connection " +
+                    "after every detected log switch or if the log.mining.session.max.ms has been reached.");
+
     public static final Field LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE = Field.createInternal("log.mining.transaction.snapshot.boundary.mode")
             .withEnum(TransactionSnapshotBoundaryMode.class, TransactionSnapshotBoundaryMode.SKIP)
             .withWidth(Width.SHORT)
@@ -515,6 +526,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault("LOG_MINING_FLUSH")
             .withValidation(OracleConnectorConfig::validateLogMiningFlushTableName)
             .withDescription("The name of the flush table used by the connector, defaults to LOG_MINING_FLUSH.");
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(OracleSourceInfoStructMaker.class.getName());
 
     public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
             .withDescription(
@@ -581,7 +595,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
                     LOG_MINING_READ_ONLY,
                     LOG_MINING_FLUSH_TABLE_NAME,
-                    LOG_MINING_QUERY_FILTER_MODE)
+                    LOG_MINING_QUERY_FILTER_MODE,
+                    LOG_MINING_RESTART_CONNECTION)
+            .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**
@@ -643,6 +659,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningReadOnly;
     private final String logMiningFlushTableName;
     private final LogMiningQueryFilterMode logMiningQueryFilterMode;
+    private final Boolean logMiningRestartConnection;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -701,6 +718,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningReadOnly = config.getBoolean(LOG_MINING_READ_ONLY);
         this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
         this.logMiningQueryFilterMode = LogMiningQueryFilterMode.parse(config.getString(LOG_MINING_QUERY_FILTER_MODE));
+        this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
     }
 
     private static String toUpperCase(String property) {
@@ -1392,7 +1410,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new OracleSourceInfoStructMaker(Module.name(), Module.version(), this);
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override
@@ -1645,6 +1663,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public LogMiningQueryFilterMode getLogMiningQueryFilterMode() {
         return logMiningQueryFilterMode;
+    }
+
+    /**
+     * @return whether the connector should restart the JDBC connection after log switches or maximum session windows.
+     */
+    public boolean isLogMiningRestartConnection() {
+        return logMiningRestartConnection;
     }
 
     @Override
