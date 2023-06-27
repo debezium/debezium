@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -180,6 +182,7 @@ public class MongoDbConnector extends SourceConnector {
                 MongoCollection<BsonDocument> connection = client.getDatabase(parts[0]).getCollection(parts[1], BsonDocument.class);
                 List<BsonDocument> keys = connection.find().sort(new Document(DOCUMENT_ID, 1)).projection(Projections.include(DOCUMENT_ID)).into(new ArrayList<>());
 
+                AtomicInteger snapshotTaskId = new AtomicInteger(0);
                 ConnectorUtils.groupPartitions(keys, connectorConfig.getIncrementalSnapshotTasks()).forEach(
                         subkeys -> {
                             // Create the configuration for each task ...
@@ -188,18 +191,19 @@ public class MongoDbConnector extends SourceConnector {
                             String minKey = min.get(DOCUMENT_ID).toString();
                             String maxKey = max.get(DOCUMENT_ID).toString();
 
-                            int taskId = taskConfigs.size() == 1 ? 0 : taskConfigs.size();
-                            logger.info("Configuring MongoDB connector task {} to capture snapshot events for key range max={} min={}", taskId, max, min);
+                            int currentTaskId = snapshotTaskId.getAndIncrement();
+
+                            logger.info("Configuring MongoDB connector task {} to capture snapshot events for key range max={} min={}", currentTaskId, max, min);
 
                             Map<String, String> taskConfig = config.edit()
-                                    .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                                    .with(MongoDbConnectorConfig.TASK_ID, currentTaskId)
                                     .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
                                     .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
                                     .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
                                     .build()
                                     .asMap();
 
-                            if (taskId == 0) {
+                            if (currentTaskId == 0) {
                                 taskConfigs.set(0, taskConfig);
                             }
                             else {
