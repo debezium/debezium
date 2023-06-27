@@ -234,8 +234,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.INTERVALDS:
                 return (data) -> convertIntervalDaySecond(column, fieldDefn, data);
             case OracleTypes.RAW:
-                // Raw data types are not supported
-                return null;
+                return (data) -> convertBinary(column, fieldDefn, data, binaryMode);
         }
 
         return super.converter(column, fieldDefn);
@@ -346,6 +345,9 @@ public class OracleValueConverters extends JdbcValueConverters {
                     Blob blob = (Blob) data;
                     data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
                 }
+            }
+            else if (data instanceof RAW) {
+                data = ((RAW) data).getBytes();
             }
 
             if (data == UNAVAILABLE_VALUE) {
