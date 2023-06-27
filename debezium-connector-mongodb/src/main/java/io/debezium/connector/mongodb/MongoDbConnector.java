@@ -175,7 +175,7 @@ public class MongoDbConnector extends SourceConnector {
                 MongoDbConnectorConfig connectorConfig = taskContext.getConnectorConfig();
                 logger.info("Configuring {} MongoDB connector task(s) for incremental snapshots", connectorConfig.getIncrementalSnapshotTasks());
                 MongoClient client = taskContext.getConnectionContext().clientFor(taskContext.getConnectionContext().hosts());
-                String[] parts = connectorConfig.getIncrementalSnapshotCollectionId().split(".");
+                String[] parts = connectorConfig.getIncrementalSnapshotCollectionId().split("\\.");
 
                 MongoCollection<BsonDocument> connection = client.getDatabase(parts[0]).getCollection(parts[1], BsonDocument.class);
                 List<BsonDocument> keys = connection.find().sort(new Document(DOCUMENT_ID, 1)).projection(Projections.include(DOCUMENT_ID)).into(new ArrayList<>());
@@ -186,13 +186,15 @@ public class MongoDbConnector extends SourceConnector {
                             BsonDocument min = subkeys.get(0);
                             BsonDocument max = subkeys.get(subkeys.size() - 1);
                             int taskId = taskConfigs.size();
+                            String minKey = min.get(DOCUMENT_ID).toString();
+                            String maxKey = max.get(DOCUMENT_ID).toString();
                             logger.info("Configuring MongoDB connector task {} to capture snapshot events for key range max={} min={}", taskId, max, min);
                             if (taskId == 1) {
                                 taskConfigs.set(0, config.edit()
                                         .with(MongoDbConnectorConfig.TASK_ID, taskId)
                                         .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, min)
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, max)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
                                         .build()
                                         .asMap());
                             }
@@ -200,8 +202,8 @@ public class MongoDbConnector extends SourceConnector {
                                 taskConfigs.add(config.edit()
                                         .with(MongoDbConnectorConfig.TASK_ID, taskId)
                                         .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, min)
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, max)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
                                         .build()
                                         .asMap());
                             }
