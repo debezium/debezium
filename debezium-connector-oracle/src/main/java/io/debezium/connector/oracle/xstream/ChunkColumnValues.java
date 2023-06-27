@@ -124,6 +124,7 @@ public class ChunkColumnValues {
                 case ChunkColumnValue.NCLOB:
                 case ChunkColumnValue.XMLTYPE:
                     return chunkColumnValue.getColumnData().stringValue().length();
+                case ChunkColumnValue.RAW:
                 case ChunkColumnValue.BLOB:
                     return chunkColumnValue.getColumnData().getBytes().length;
                 default:

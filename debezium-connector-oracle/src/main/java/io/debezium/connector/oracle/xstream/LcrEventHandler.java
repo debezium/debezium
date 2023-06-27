@@ -399,6 +399,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         resolvedChunkValues.put(columnName, chunkValues.getXmlValue());
                         break;
 
+                    case ChunkColumnValue.RAW:
                     case ChunkColumnValue.BLOB:
                         resolvedChunkValues.put(columnName, chunkValues.getByteArray());
                         break;
