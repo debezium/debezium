@@ -594,9 +594,36 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription(
-                    "The number of threads for incremental snapshots to query mongodb. If this is more than 1, a window size is will be equal to threads * chunk.")
-            .withDefault(1)
-            .withValidation(Field::isPositiveInteger);
+                    "Incremental snapshot maximum key")
+            .withInvisibleRecommender();
+
+    public static final Field INCREMENTAL_SNAPSHOT_TASKS = Field.create("incremental.snapshot.tasks")
+            .withDisplayName("Incremental snapshot tasks")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "The number of tasks for incremental snapshots to query mongodb.")
+            .withInvisibleRecommender();
+
+    public static final Field INCREMENTAL_SNAPSHOT_MAX_KEY = Field.create("incremental.snapshot.key.max")
+            .withDisplayName("Incremental snapshot maximum key")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Incremental snapshot maximum key")
+            .withInvisibleRecommender();
+
+    public static final Field INCREMENTAL_SNAPSHOT_MIN_KEY = Field.create("incremental.snapshot.key.min")
+            .withDisplayName("Incremental snapshot minimum key")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Incremental snapshot maximum key")
+            .withInvisibleRecommender();
+
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
             .withDisplayName("Connect Timeout MS")
             .withType(Type.INT)
@@ -717,6 +744,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int cursorMaxAwaitTimeMs;
     private final String stripeAuditFilterPattern;
     private final int incrementalSnapshotThreads;
+    private final int incrementalSnapshotTasks;
+
+    private final String incrementalSnapshotRangeMaxKey;
+    private final String incrementalSnapshotRangeMinKey;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -734,6 +765,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
         this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
+        this.incrementalSnapshotTasks = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_TASKS, 1);
+        this.incrementalSnapshotRangeMaxKey = config.getString(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, "");
+        this.incrementalSnapshotRangeMinKey = config.getString(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, "");
+
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -854,6 +889,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     public int getIncrementalSnapshotThreads() {
+        return incrementalSnapshotThreads;
+    }
+
+    public int getIncrementalSnapshotTasks() {
+        return incrementalSnapshotTasks;
+    }
+
+    public String getIncrementalSnapshotMaxKey() {
+        return incrementalSnapshotRangeMaxKey;
+    }
+
+    public String getIncrementalSnapshotMinKey() {
+        return incrementalSnapshotRangeMinKey;
+    }
+
+    public String getIncrementalSnapshotCollectionId() {
+        return "incrementalSnapshotThreads";
+    }
+
+    public int getIncrementalSnapshotCollection() {
         return incrementalSnapshotThreads;
     }
 

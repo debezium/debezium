@@ -21,6 +21,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,9 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private ExecutorService incrementalSnapshotThreadPool;
 
+    private final String incrementalSnapshotRangeMaxKey;
+    private final String incrementalSnapshotRangeMinKey;
+
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
                                                        ReplicaSets replicaSets,
@@ -97,6 +101,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.dataListener = dataChangeEventListener;
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionId() == null ? null
                 : CollectionId.parse("UNUSED", connectorConfig.getSignalingDataCollectionId());
+        this.incrementalSnapshotRangeMaxKey = connectorConfig.getIncrementalSnapshotMaxKey();
+        this.incrementalSnapshotRangeMinKey = connectorConfig.getIncrementalSnapshotMinKey();
     }
 
     @Override
@@ -434,21 +440,20 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         final Document maxKeyPredicate = new Document();
         final Document maxKeyOp = new Document();
 
-        if (endKey != null) {
-            maxKeyOp.put("$lte", endKey[0]);
-            maxKeyPredicate.put(DOCUMENT_ID, maxKeyOp);
-        }
+        Object queryEndKey = endKey != null ? endKey[0] : new ObjectId(incrementalSnapshotRangeMaxKey);
+
+        maxKeyOp.put("$lte", queryEndKey);
+        maxKeyPredicate.put(DOCUMENT_ID, maxKeyOp);
 
         Document predicate = maxKeyPredicate;
 
-        if (startKey != null) {
-            final Document chunkEndPredicate = new Document();
-            final Document chunkEndOp = new Document();
-            chunkEndOp.put("$gt", startKey[0]);
-            chunkEndPredicate.put(DOCUMENT_ID, chunkEndOp);
-            predicate = new Document();
-            predicate.put("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
-        }
+        Object queryStartKey = startKey != null ? startKey[0] : new ObjectId(incrementalSnapshotRangeMinKey);
+        final Document chunkEndPredicate = new Document();
+        final Document chunkEndOp = new Document();
+        chunkEndOp.put("$gt", queryStartKey);
+        chunkEndPredicate.put(DOCUMENT_ID, chunkEndOp);
+        predicate = new Document();
+        predicate.put("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
 
         return predicate;
     }

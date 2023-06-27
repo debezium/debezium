@@ -18,13 +18,17 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.apache.kafka.connect.util.ConnectorUtils;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.Projections;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
@@ -86,6 +90,8 @@ public class MongoDbConnector extends SourceConnector {
     private MongoDbTaskContext taskContext;
     private ConnectionContext connectionContext;
     private ExecutorService replicaSetMonitorExecutor;
+
+    private final String DOCUMENT_ID = "_id";
 
     public MongoDbConnector() {
     }
@@ -165,8 +171,44 @@ public class MongoDbConnector extends SourceConnector {
                             .build()
                             .asMap());
                 });
+
+                logger.debug("Configuring {} MongoDB connector task(s) for incremental snapshots", taskConfigs.size());
+                MongoDbConnectorConfig connectorConfig = taskContext.getConnectorConfig();
+                MongoClient client = taskContext.getConnectionContext().clientFor(taskContext.getConnectionContext().hosts());
+                String[] parts = connectorConfig.getSignalingDataCollectionId().split(",");
+
+                MongoCollection<BsonDocument> connection = client.getDatabase(parts[0]).getCollection(parts[1], BsonDocument.class);
+                List<BsonDocument> keys = connection.find().sort(new Document(DOCUMENT_ID, 1)).projection(Projections.include(DOCUMENT_ID)).into(new ArrayList<>());
+
+                ConnectorUtils.groupPartitions(keys, connectorConfig.getIncrementalSnapshotTasks()).forEach(
+                        subkeys -> {
+                            // Create the configuration for each task ...
+                            BsonDocument min = subkeys.get(0);
+                            BsonDocument max = subkeys.get(subkeys.size() - 1);
+                            int taskId = taskConfigs.size();
+                            logger.info("Configuring MongoDB connector task {} to capture snapshot events for key range max={} min={}", taskId, max, min);
+                            if (taskId == 1) {
+                                taskConfigs.set(0, config.edit()
+                                        .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                                        .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, min)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, max)
+                                        .build()
+                                        .asMap());
+                            }
+                            else {
+                                taskConfigs.add(config.edit()
+                                        .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                                        .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, min)
+                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, max)
+                                        .build()
+                                        .asMap());
+                            }
+                        });
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
+
             return taskConfigs;
         }
         finally {
