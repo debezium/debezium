@@ -27,7 +27,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -42,14 +41,11 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  */
 public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
-    public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     protected static final int DEFAULT_PORT = 1433;
     protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
-    protected static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
     private static final int DEFAULT_QUERY_FETCH_SIZE = 10_000;
@@ -260,17 +256,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isNonNegativeInteger)
             .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
 
-    public static final Field MAX_RETRIES_ON_ERROR = Field.create(ERRORS_MAX_RETRIES)
-            .withDisplayName("The maximum number of retries")
-            .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_MAX_RETRIES)
-            .withValidation(Field::isInteger)
-            .withDescription(
-                    "The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -335,7 +320,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    MAX_RETRIES_ON_ERROR,
                     QUERY_FETCH_SIZE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
@@ -359,7 +343,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final boolean readOnlyDatabaseConnection;
     private final int maxTransactionsPerIteration;
-    private final int maxRetriesOnError;
     private final boolean optionRecompile;
     private final int queryFetchSize;
 
@@ -396,7 +379,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
-        this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
 
         if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
             LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
@@ -448,10 +430,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public int getMaxTransactionsPerIteration() {
         return maxTransactionsPerIteration;
-    }
-
-    public int getMaxRetriesOnError() {
-        return maxRetriesOnError;
     }
 
     public boolean getOptionRecompile() {
