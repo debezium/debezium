@@ -34,7 +34,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
 
     private static final String DEFAULT_SCHEMA_HISTORY = "io.debezium.storage.kafka.history.KafkaSchemaHistory";
-
     private final boolean useCatalogBeforeSchema;
     private final Class<? extends SourceConnector> connectorClass;
     private final boolean multiPartitionMode;
