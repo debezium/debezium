@@ -48,7 +48,8 @@ public class OracleErrorHandler extends ErrorHandler {
     @Immutable
     private static final Set<String> RETRIABLE_ERROR_MESSAGES = Collect.unmodifiableSet(
             "No more data to read from socket",
-            "immediate shutdown or close in progress" // nested ORA-01089
+            "immediate shutdown or close in progress", // nested ORA-01089
+            "failed to exclusively lock system dictionary" // nested ORA-01327
     );
 
     public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
