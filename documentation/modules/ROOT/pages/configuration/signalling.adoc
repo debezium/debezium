@@ -567,10 +567,15 @@ endif::community[]
 * {link-prefix}:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
 
 // Type: procedure
+// ModuleID: debezium-signaling-defining-a-custom-action
+// Title: Defining a custom signal action
 [id="debezium-signaling-custom-action"]
-=== Provide Custom action
-As for xref:debezium-custom-signaling-channel[custom signal channel], you can also provide your custom actions implementing the
-following interface:
+=== Defining a custom action
+
+Custom actions enable you to extend the {prodname} signaling framework to trigger actions that are not available in the default implementation.
+You can use a custom action with multiple connectors.
+
+To define a custom signal action, you must define the following interface:
 
 
 [source,java,indent=0]
@@ -587,9 +592,9 @@ public interface SignalAction<P extends Partition> {
 
 ----
 
-The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method where you will receive the payload sent through the signal channel.
+The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method with one parameter that is the message payloads sent through the signaling channel.
 
-After that you need to provide all your custom actions through the SPI interface `io.debezium.pipeline.signal.actions.SignalActionProvider`
+After you define a custom action, you can provide custom actions through the following `io.debezium.pipeline.signal.actions.SignalActionProvider`SPI interface.
 
 [source,java,indent=0]
 ----
@@ -607,14 +612,16 @@ public interface SignalActionProvider {
 }
 ----
 
-You need to provide your implementation to just return a map of signal action where the key of the map is the name of the action that you will use as xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[`type`] in the signal.
+Your implementation must return a map of the signal action.
+Set the map key to the name of the action.
+The key is used as the xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[`type`] of the signal.
 
 // Type: concept
 [id="debezium-signaling-custom-action-core-module-dependencies"]
 === {prodname} core module dependencies
 
 A custom actions Java project has compile dependencies on the {prodname} core module.
-You must include these compile dependencies in your project's `pom.xml` file, as shown in the following example:
+Include the following compile dependencies in your project's `pom.xml` file:
 
 [source,xml]
 ----
@@ -629,6 +636,8 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 Declare your provider implementation in the `META-INF/services/io.debezium.pipeline.signal.actions.SignalActionProvider` file.
 
 // Type: procedure
+// ModuleID: debezium-signaling-deploying-a-custom-action
+// Title: Deploying a custom signal action
 [id="deploying-a-debezium-custom-action"]
 === Deploying a custom action
 
