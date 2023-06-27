@@ -185,27 +185,25 @@ public class MongoDbConnector extends SourceConnector {
                             // Create the configuration for each task ...
                             BsonDocument min = subkeys.get(0);
                             BsonDocument max = subkeys.get(subkeys.size() - 1);
-                            int taskId = taskConfigs.size();
                             String minKey = min.get(DOCUMENT_ID).toString();
                             String maxKey = max.get(DOCUMENT_ID).toString();
+
+                            int taskId = taskConfigs.size() == 1 ? 0 : taskConfigs.size();
                             logger.info("Configuring MongoDB connector task {} to capture snapshot events for key range max={} min={}", taskId, max, min);
-                            if (taskId == 1) {
-                                taskConfigs.set(0, config.edit()
-                                        .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                                        .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
-                                        .build()
-                                        .asMap());
+
+                            Map<String, String> taskConfig = config.edit()
+                                    .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                                    .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
+                                    .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
+                                    .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
+                                    .build()
+                                    .asMap();
+
+                            if (taskId == 0) {
+                                taskConfigs.set(0, taskConfig);
                             }
                             else {
-                                taskConfigs.add(config.edit()
-                                        .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                                        .with(MongoDbConnectorConfig.HOSTS, replicaSets.hosts())
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, minKey)
-                                        .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, maxKey)
-                                        .build()
-                                        .asMap());
+                                taskConfigs.add(taskConfig);
                             }
                         });
             }
