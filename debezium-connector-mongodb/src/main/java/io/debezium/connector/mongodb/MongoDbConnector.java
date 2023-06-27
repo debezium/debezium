@@ -175,7 +175,7 @@ public class MongoDbConnector extends SourceConnector {
                 logger.debug("Configuring {} MongoDB connector task(s) for incremental snapshots", taskConfigs.size());
                 MongoDbConnectorConfig connectorConfig = taskContext.getConnectorConfig();
                 MongoClient client = taskContext.getConnectionContext().clientFor(taskContext.getConnectionContext().hosts());
-                String[] parts = connectorConfig.getSignalingDataCollectionId().split(",");
+                String[] parts = connectorConfig.getIncrementalSnapshotCollectionId().split(",");
 
                 MongoCollection<BsonDocument> connection = client.getDatabase(parts[0]).getCollection(parts[1], BsonDocument.class);
                 List<BsonDocument> keys = connection.find().sort(new Document(DOCUMENT_ID, 1)).projection(Projections.include(DOCUMENT_ID)).into(new ArrayList<>());

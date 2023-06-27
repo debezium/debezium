@@ -606,6 +606,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     "The number of tasks for incremental snapshots to query mongodb.")
             .withInvisibleRecommender();
 
+    public static final Field INCREMENTAL_SNAPSHOT_COLLECTION_ID = Field.create("incremental.snapshot.collection.id")
+            .withDisplayName("Incremental snapshot collection id")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Incremental snapshot collection id");
+
     public static final Field INCREMENTAL_SNAPSHOT_MAX_KEY = Field.create("incremental.snapshot.key.max")
             .withDisplayName("Incremental snapshot maximum key")
             .withType(Type.STRING)
@@ -693,6 +701,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
                     INCREMENTAL_SNAPSHOT_THREADS,
+                    INCREMENTAL_SNAPSHOT_TASKS,
                     CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS,
                     SOCKET_TIMEOUT_MS,
@@ -746,6 +755,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private final int incrementalSnapshotThreads;
     private final int incrementalSnapshotTasks;
 
+    private final String incrementalSnapshotCollectionId;
     private final String incrementalSnapshotRangeMaxKey;
     private final String incrementalSnapshotRangeMinKey;
 
@@ -766,6 +776,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
         this.incrementalSnapshotThreads = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_THREADS, 1);
         this.incrementalSnapshotTasks = config.getInteger(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_TASKS, 1);
+        this.incrementalSnapshotCollectionId = config.getString(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_COLLECTION_ID, "");
         this.incrementalSnapshotRangeMaxKey = config.getString(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MAX_KEY, "");
         this.incrementalSnapshotRangeMinKey = config.getString(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_MIN_KEY, "");
 
@@ -905,11 +916,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     public String getIncrementalSnapshotCollectionId() {
-        return "incrementalSnapshotThreads";
-    }
-
-    public int getIncrementalSnapshotCollection() {
-        return incrementalSnapshotThreads;
+        return incrementalSnapshotCollectionId;
     }
 
     public int getCursorMaxAwaitTime() {
