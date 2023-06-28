@@ -1415,7 +1415,7 @@ The following table describes how the connector maps binary and character large 
 
 |`RAW`
 |n/a
-|_This data type is not supported._
+|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
 |===
 
@@ -1741,6 +1741,39 @@ endif::product[]
 
 |===
 
+[id="oracle-xml-types"]
+=== XML type
+ifdef::community[]
+[NOTE]
+====
+Support for `XMLTYPE` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
+Please let us know if you encounter any problems while using these data types.
+====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the `XMLTYpE` with the {prodname} Oracle connector is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
+====
+endif::product[]
+The following table describes how the connector maps XMLTYPE data types.
+
+.Mappings for Oracle XMLTYPE data types
+[cols="20%a,15%a,55%a",options="header"]
+|===
+|Oracle Data Type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`XMLTYPE`
+|`STRING`
+|`io.debezium.data.Xml`
+
+|===
+
 [id="oracle-user-defined-types"]
 === User-defined types
 
@@ -1752,7 +1785,7 @@ At this time, you cannot use the {prodname} Oracle connector with any of these u
 === Oracle-supplied types
 
 Oracle provides SQL-based interfaces that you can use to define new types when the built-in or ANSI-supported types are insufficient.
-Oracle offers several commonly used data types to serve a broad array of purposes such as *Any*, *XML*, or *Spatial* types.
+Oracle offers several commonly used data types to serve a broad array of purposes such as *Any* or *Spatial* types.
 At this time, you cannot use the {prodname} Oracle connector with any of these data types.
 
 [[oracle-default-values]]
@@ -2118,6 +2151,7 @@ To deploy a {prodname} Oracle connector, you install the {prodname} Oracle conne
 +
 NOTE: If you use the {prodname} Oracle connector with Oracle XStream, obtain the JDBC driver as part of the Oracle Instant Client package.
 For more information, see xref:obtaining-oracle-jdbc-driver-and-xstreams-api-files[].
+. Download the link:https://repo1.maven.org/maven2/com/oracle/database/xml/xdb/{ojdbc8-version}/xdb-{ojdbc8-version}.jar[XDB library for Oracle] from Maven Central and extract the downloaded file to the directory that contains the {prodname} Oracle connector JAR file.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
