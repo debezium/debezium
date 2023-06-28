@@ -33,7 +33,7 @@ options {
 }
 
 sql_script
-    : ((unit_statement | sql_plus_command) SEMICOLON?)* EOF
+    : sql_plus_command_no_semicolon? ((sql_plus_command | unit_statement) (SEMICOLON '/'? (sql_plus_command | unit_statement))* SEMICOLON? '/'?) EOF
     ;
 
 unit_statement
@@ -590,7 +590,6 @@ create_index
     : CREATE (UNIQUE | BITMAP)? INDEX index_name
        ON (cluster_index_clause | table_index_clause | bitmap_join_index_clause)
        UNUSABLE?
-       ';'?
     ;
 
 cluster_index_clause
@@ -715,7 +714,7 @@ indextype
 
 //https://docs.oracle.com/cd/E11882_01/server.112/e41084/statements_1010.htm#SQLRF00805
 alter_index
-    : ALTER INDEX index_name (alter_index_ops_set1 | alter_index_ops_set2) ';'
+    : ALTER INDEX index_name (alter_index_ops_set1 | alter_index_ops_set2)
     ;
 
 alter_index_ops_set1
@@ -982,7 +981,6 @@ analyze
       | LIST CHAINED ROWS into_clause1?
       | DELETE SYSTEM? STATISTICS
       )
-      ';'
     ;
 
 partition_extention_clause
@@ -1819,7 +1817,6 @@ create_table
     : CREATE (GLOBAL TEMPORARY)? TABLE tableview_name
         (SHARING '=' (NONE | METADATA | DATA | EXTENDED DATA))?
         (relational_table | object_table | xmltype_table) (USAGE QUEUE)? (AS select_only_statement)?
-      ';'
     ;
 
 xmltype_table
@@ -2539,11 +2536,11 @@ upgrade_table_clause
     ;
     
 truncate_table
-    : TRUNCATE TABLE tableview_name ((PRESERVE | PURGE) MATERIALIZED VIEW LOG)? ((DROP ALL?|REUSE) STORAGE)? CASCADE? SEMICOLON
+    : TRUNCATE TABLE tableview_name ((PRESERVE | PURGE) MATERIALIZED VIEW LOG)? ((DROP ALL?|REUSE) STORAGE)? CASCADE?
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE? SEMICOLON
+    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
     ;
 
 drop_view
@@ -2903,7 +2900,6 @@ alter_table
       | move_table_clause
       )
       ((enable_disable_clause | enable_or_disable (TABLE LOCK | ALL TRIGGERS) )+)?
-      ';'
     ;
 
 alter_table_properties
@@ -4672,9 +4668,11 @@ xmlserialize_param_ident_part
 
 // SqlPlus
 
+sql_plus_command_no_semicolon
+    : set_command
+    ;
 sql_plus_command
-    : '/'
-    | EXIT
+    : EXIT
     | PROMPT_MESSAGE
     | SHOW (ERR | ERRORS)
     | START_CMD
