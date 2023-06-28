@@ -669,3 +669,13 @@ WITH my_values(val1, val2) AS (
 )
 SELECT v.val1, v.val2 FROM my_values v;
 #end
+
+#begin
+CREATE DEFINER=`gpuser`@`%` PROCEDURE `test_parse_array` (IN val INT)
+BEGIN
+DECLARE array VARCHAR(50);
+
+SELECT 1;
+
+END
+#end
