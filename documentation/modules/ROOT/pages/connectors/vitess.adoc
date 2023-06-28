@@ -1039,13 +1039,13 @@ Following is the same example for a Vitess connector that connects to a Vitess (
     "database.port": "15991",
     "database.user": "vitess",
     "database.password": "vitess_password",
+    "topic.prefix": "fullfillment",
     "vitess.keyspace": "commerce",
     "vitess.tablet.type": "MASTER",
     "vitess.vtctld.host": "192.168.99.101",
     "vitess.vtctld.port": "15999",
     "vitess.vtctld.user": "vitess",
     "vitess.vtctld.password": "vitess_password",
-    "database.server.name": "fullfillment",
     "vitess.offset.storage.per.task": true, // <1>
     "vitess.offset.storage.task.key.gen": 1, // <2>
     "vitess.prev.num.tasks": 1, // <3>
