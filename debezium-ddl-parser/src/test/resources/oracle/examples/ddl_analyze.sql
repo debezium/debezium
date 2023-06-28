@@ -9,7 +9,7 @@ analyze table schema.table123 list chained rows into chained_rows;
 analyze table schema.table123 estimate statistics sample 5 percent;
 analyze table schema.table123 compute statistics for table;
 analyze table schema.table123 partition (partition_name) estimate statistics;
-analyze table schema.table123 subpartition sub(partition_name) estimate statistics;
+analyze table schema.table123 subpartition (partition_name) estimate statistics;
 -- Analyze Index
 analyze index schema.index123 estimate statistics;
 analyze index schema.index123 estimate statistics for all columns;
