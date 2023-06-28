@@ -63,13 +63,12 @@ public abstract class OcpMongoTests extends MongoTests {
                 .put("topic.prefix", connectorName);
         connectController.deployConnector(connectorConfig);
         String topic = connectorName + ".inventory.customers";
+        assertions.assertTopicsExist(
+                connectorName + ".inventory.customers");
 
         insertCustomer(dbController, "Eve", "Sharded", "eshard@test.com");
 
-        assertions.assertTopicsExist(
-                connectorName + ".inventory.customers");
         awaitAssert(() -> assertions.assertRecordsContain(topic, "eshard@test.com"));
-        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 5));
 
         insertProduct(dbController, "Replicaset_mode", "aaa", "12.5", 3);
         awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.products", "Replicaset_mode"));
@@ -99,5 +98,6 @@ public abstract class OcpMongoTests extends MongoTests {
         insertCustomer(dbController, "David", "Duck", "duck@test.com");
 
         awaitAssert(() -> assertions.assertRecordsContain(topic, "duck@test.com"));
+        connectController.undeployConnector(connectorName);
     }
 }

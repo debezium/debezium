@@ -31,19 +31,12 @@ import lombok.SneakyThrows;
 
 public class OcpMongoShardedController extends AbstractOcpDatabaseController<MongoDatabaseClient> implements MongoDatabaseController {
 
+    public static final String INIT_MONGOS_SCRIPT_LOCATION = "/database-resources/mongodb/sharded/init-mongos.js";
+    public static final String CREATE_DBZ_USER_SCRIPT_LOCATION = "/database-resources/mongodb/sharded/create-dbz-user.js";
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedController.class);
-    private Path initScript;
 
     public OcpMongoShardedController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
         super(deployment, services, ocp);
-        try {
-            initScript = Paths.get(
-                    Objects.requireNonNull(
-                            getClass().getResource("/database-resources/mongodb/sharded/init-mongos.js")).toURI());
-        }
-        catch (URISyntaxException e) {
-            LOGGER.error("database-resources/mongodb/sharded/init-mongos.js not found :/");
-        }
     }
 
     private String getShardNumber(MongoComponents shard) {
@@ -81,11 +74,11 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
         }
         // restart every mongo component individually
         Arrays.stream(MongoComponents.values()).forEach(mongoComponent -> {
-            Deployment deployment1 = ocp.apps().deployments().inNamespace(project).withName(mongoComponent.getName()).get();
-
             LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
-            ocp.apps().deployments().inNamespace(project).withName(mongoComponent.getName()).scale(0);
-            ocpUtils.waitForPodsDeletion(project, deployment1);
+
+            Deployment deployment1 = ocp.apps().deployments().inNamespace(project).withName(mongoComponent.getName()).get();
+            ocpUtils.deletePodsOfDeployment(deployment1);
+
             LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
             ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
         });
@@ -95,53 +88,49 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
     }
 
     @SneakyThrows
-    public void executeOnPodOfDeployment(MongoComponents component, String[] commands) {
-        ocpUtils.executeOnPod(component.getName(),
-                "mongo",
-                project,
-                "Waiting until database " + component.getName() + " is initialized",
+    public void executeCommadOnComponent(MongoComponents component, String... commands) {
+        var maybeDeployment = ocpUtils.deploymentsWithPrefix(project, component.getName());
+        if (maybeDeployment.isEmpty()) {
+            throw new IllegalStateException("Deployment of " + component.getName() + " missing");
+        }
+        executeCommand(maybeDeployment.get(),
                 commands);
     }
 
     @Override
     public void initialize() throws InterruptedException {
-        Arrays.stream(MongoComponents.values()).forEach(c -> {
+        Arrays.stream(MongoComponents.values()).parallel().forEach(c -> {
             if (c != MongoComponents.MONGOS) {
-                executeOnPodOfDeployment(c, c.getInitCommand().toArray(String[]::new));
+                executeCommadOnComponent(c, c.getInitCommand().toArray(String[]::new));
+                uploadAndExecuteMongoScript(CREATE_DBZ_USER_SCRIPT_LOCATION, c);
             }
-            uploadAndExecuteMongoScript("/database-resources/mongodb/sharded/create-dbz-user.js", c);
         });
 
-        uploadAndExecuteMongoScript("/database-resources/mongodb/sharded/init-mongos.js", MongoComponents.MONGOS);
+        uploadAndExecuteMongoScript(INIT_MONGOS_SCRIPT_LOCATION, MongoComponents.MONGOS);
 
         if (!isRunningFromOcp()) {
             forwardDatabasePorts();
         }
     }
 
-    public void addShard(MongoComponents shard) {
+    public void addShard(MongoComponents shard) throws InterruptedException {
         String shardNumber = getShardNumber(shard);
-        executeOnPodOfDeployment(MongoComponents.MONGOS, new String[]{
-                "mongosh",
+        executeCommadOnComponent(MongoComponents.MONGOS, "mongosh",
                 "localhost:27017",
                 "--eval",
                 "sh.addShard(\"shard" + shardNumber + "rs/mongo-shard" + shardNumber + "r1." + project + ".svc.cluster.local:27018\");" +
                         "sh.addShardToZone(\"shard3rs\", \"THREE\");" +
-                        "sh.updateZoneKeyRange(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 },\"THREE\");"
-        });
+                        "sh.updateZoneKeyRange(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 },\"THREE\");");
     }
 
-    public void removeShard(MongoComponents shard) {
-
-        executeOnPodOfDeployment(MongoComponents.MONGOS, new String[]{
-                "mongosh",
+    public void removeShard(MongoComponents shard) throws InterruptedException {
+        String shardNumber = getShardNumber(shard);
+        executeCommadOnComponent(MongoComponents.MONGOS, "mongosh",
                 "localhost:27017",
                 "--eval",
                 "sh.removeRangeFromZone(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 });" +
-                        "db.adminCommand({removeShard:\"shard" + getShardNumber(shard) + "rs\"});" +
-                        "db.adminCommand({removeShard:\"shard" + getShardNumber(shard) + "rs\"})"
-        });
-
+                        "db.adminCommand({removeShard:\"shard" + shardNumber + "rs\"});" +
+                        "db.adminCommand({removeShard:\"shard" + shardNumber + "rs\"})");
     }
 
     private void uploadAndExecuteMongoScript(String scriptLocation, MongoComponents component) {
@@ -167,8 +156,8 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
         podResource.file(containerPath)
                 .upload(scriptPath);
-        executeOnPodOfDeployment(component,
-                new String[]{ "mongosh", "localhost:" + component.getPort(), "-f", containerPath });
+        executeCommadOnComponent(component,
+                "mongosh", "localhost:" + component.getPort(), "-f", containerPath);
     }
 
     public enum MongoComponents {

@@ -48,6 +48,6 @@ public class OcpPostgreSqlReplicaController extends OcpSqlDatabaseController {
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .file(INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
-        executeInitCommand("psql", "-U", DATABASE_POSTGRESQL_USERNAME, "-d", DATABASE_POSTGRESQL_DBZ_DBNAME, "-f", INIT_SCRIPT_PATH_CONTAINER);
+        executeInitCommand(deployment, "psql", "-U", DATABASE_POSTGRESQL_USERNAME, "-d", DATABASE_POSTGRESQL_DBZ_DBNAME, "-f", INIT_SCRIPT_PATH_CONTAINER);
     }
 }

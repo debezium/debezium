@@ -52,7 +52,7 @@ public class OcpOracleController extends OcpSqlDatabaseController {
                 .file(DB_INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
 
-        executeInitCommand("sqlplus", "-S",
+        executeInitCommand(deployment, "sqlplus", "-S",
                 DATABASE_ORACLE_USERNAME + "/" + DATABASE_ORACLE_PASSWORD + "@//localhost:1521/ORCLPDB1", "@" + DB_INIT_SCRIPT_PATH_CONTAINER);
     }
 

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.system.tools.databases.DatabaseInitListener;
 import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
@@ -43,7 +41,6 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
 import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
@@ -264,11 +261,19 @@ public class OpenShiftUtils {
         }
     }
 
-    public void waitForPodsDeletion(String project, Deployment deployment) {
+    public void deletePodsOfDeployment(Deployment deployment) {
+        client.apps()
+                .deployments()
+                .inNamespace(deployment.getMetadata().getNamespace())
+                .withName(deployment.getMetadata().getName()).scale(0);
+        waitForPodsDeletion(deployment);
+    }
+
+    public void waitForPodsDeletion(Deployment deployment) {
         String deploymentName = deployment.getMetadata().getName();
         LOGGER.info("Waiting for pods to delete [" + deploymentName + "]");
         Supplier<PodList> podListSupplier = () -> client.pods()
-                .inNamespace(project)
+                .inNamespace(deployment.getMetadata().getNamespace())
                 .withLabels(Map.of("deployment", deploymentName))
                 .list();
         await().atMost(scaled(40), SECONDS)
@@ -334,19 +339,5 @@ public class OpenShiftUtils {
                 .withTrustCerts(true);
 
         return new DefaultOpenShiftClient(configBuilder.build());
-    }
-
-    public void executeOnPod(String deploymentName, String containerName, String project, String waitingLogMessage, String... commands) throws InterruptedException {
-        Pod pod = podsWithLabels(project, Map.of("deployment", deploymentName)).get(0);
-        CountDownLatch latch = new CountDownLatch(1);
-        try (ExecWatch exec = client.pods().inNamespace(project).withName(pod.getMetadata().getName())
-                .inContainer(containerName)
-                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
-                .writingError(System.err)
-                .usingListener(new DatabaseInitListener(containerName, latch))
-                .exec(commands)) {
-            LOGGER.info(waitingLogMessage);
-            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
-        }
     }
 }

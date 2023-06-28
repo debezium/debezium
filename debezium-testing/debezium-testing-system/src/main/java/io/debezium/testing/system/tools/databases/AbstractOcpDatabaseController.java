@@ -8,17 +8,27 @@ package io.debezium.testing.system.tools.databases;
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
+import io.debezium.testing.system.tools.WaitConditions;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.PortForward;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.ServiceResource;
+import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -73,8 +83,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             }
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
-        ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
-        ocpUtils.waitForPodsDeletion(project, deployment);
+        ocpUtils.deletePodsOfDeployment(deployment);
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
         if (!isRunningFromOcp()) {
@@ -153,12 +162,37 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         portForward = null;
     }
 
-    protected void executeInitCommand(String... commands) throws InterruptedException {
-        ocpUtils.executeOnPod(name,
-                deployment.getMetadata().getLabels().get("app"),
-                project,
-                "Waiting until database is initialized",
-                commands);
+    protected void executeInitCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        String containerName = deployment.getMetadata().getLabels().get("app");
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseInitListener(containerName, latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting until database is initialized");
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
+        }
+    }
+
+    protected void executeCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for comands " + Arrays.toString(commands));
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
+        }
+    }
+
+    private TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment) {
+        Pod pod = ocpUtils.podsForDeployment(deployment).get(0);
+        return getPodResource(pod)
+                .inContainer(pod.getMetadata().getLabels().get("app"))
+                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
+                .writingError(System.err);
+    }
+
+    private PodResource<Pod> getPodResource(Pod pod) {
+        return ocp.pods().inNamespace(project).withName(pod.getMetadata().getName());
     }
 
     private int getOriginalDatabasePort() {
