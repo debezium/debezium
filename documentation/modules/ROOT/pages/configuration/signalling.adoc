@@ -592,9 +592,9 @@ public interface SignalAction<P extends Partition> {
 
 ----
 
-The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method with one parameter that is the message payloads sent through the signaling channel.
+The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method with one parameter, which represents the message payloads sent through the signaling channel.
 
-After you define a custom action, you can provide custom actions through the following `io.debezium.pipeline.signal.actions.SignalActionProvider`SPI interface.
+After you define a custom signaling action, use the following SPI interface to make the custom action available to the signaling mechanism:  `io.debezium.pipeline.signal.actions.SignalActionProvider`.
 
 [source,java,indent=0]
 ----
