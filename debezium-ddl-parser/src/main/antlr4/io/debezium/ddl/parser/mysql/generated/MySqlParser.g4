@@ -1641,7 +1641,7 @@ alterUser
         )?
         (WITH userResourceOption+)?
         (userPasswordOption | userLockOption)*
-        (COMMENT STRING_LITERAL |  ATTRIBUTE STRING_LITERAL)?       #alterUserMysqlV80
+        (COMMENT STRING_LITERAL | ATTRIBUTE STRING_LITERAL)?        #alterUserMysqlV80
     | ALTER USER ifExists?
       (userName | uid) DEFAULT ROLE roleOption                      #alterUserMysqlV80
     ;
@@ -1729,17 +1729,21 @@ userSpecification
 
 userAuthOption
     : userName IDENTIFIED BY PASSWORD hashed=STRING_LITERAL         #hashAuthOption
-    | userName
-      IDENTIFIED BY STRING_LITERAL (RETAIN CURRENT PASSWORD)?       #stringAuthOption
-    | userName
-      IDENTIFIED (WITH | VIA)                                       // VIA is MariaDB-specific only
+    | userName IDENTIFIED BY RANDOM PASSWORD authOptionClause       #randomAuthOption
+    | userName IDENTIFIED BY STRING_LITERAL authOptionClause        #stringAuthOption
+    | userName IDENTIFIED (WITH | VIA)                              // VIA is MariaDB-specific only
       authenticationRule (OR authenticationRule)*                   #moduleAuthOption // OR is MariaDB-specific only
     | userName                                                      #simpleAuthOption
     ;
 
+authOptionClause
+    : (REPLACE STRING_LITERAL)? (RETAIN CURRENT PASSWORD)?
+    ;
+
 authenticationRule
     : authPlugin
-      ((BY | USING | AS) STRING_LITERAL)?                           #module
+      ((BY | USING | AS) (STRING_LITERAL | RANDOM PASSWORD)
+      authOptionClause)?                                            #module
     | authPlugin
       (USING | AS) passwordFunctionClause                           #passwordModuleOption // MariaDB
     ;
@@ -2869,7 +2873,7 @@ functionNameBase
     | OVERLAPS | PERCENT_RANK | PERIOD_ADD | PERIOD_DIFF | PI | POINT
     | POINTFROMTEXT | POINTFROMWKB | POINTN | POLYFROMTEXT
     | POLYFROMWKB | POLYGON | POLYGONFROMTEXT | POLYGONFROMWKB
-    | POSITION | POW | POWER | QUARTER | QUOTE | RADIANS | RAND | RANK
+    | POSITION | POW | POWER | QUARTER | QUOTE | RADIANS | RAND | RANDOM | RANK
     | RANDOM_BYTES | RELEASE_LOCK | REVERSE | RIGHT | ROUND
     | ROW_COUNT | ROW_NUMBER | RPAD | RTRIM | SCHEMA | SECOND | SEC_TO_TIME
     | SESSION_USER | SESSION_VARIABLES_ADMIN
