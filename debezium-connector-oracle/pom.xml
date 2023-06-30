@@ -44,11 +44,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.oracle.database.xml</groupId>
-            <artifactId>xdb</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
         </dependency>
@@ -63,6 +58,17 @@
         <dependency>
             <groupId>org.infinispan.protostream</groupId>
             <artifactId>protostream-processor</artifactId>
+        </dependency>
+        <!-- Dependencies needed for XML support -->
+        <dependency>
+            <groupId>com.oracle.database.xml</groupId>
+            <artifactId>xdb</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.xml</groupId>
+            <artifactId>xmlparserv2</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Testing -->
@@ -128,12 +134,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>com.oracle.database.xml</groupId>
-            <artifactId>xmlparserv2</artifactId>
-            <version>${version.oracle.driver}</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <properties>
