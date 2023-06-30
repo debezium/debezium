@@ -4372,3 +4372,16 @@ ORA-25191: cannot reference overflow table of an index-organized table
 +
 If an ORA-25191 exception is thrown, please raise a Jira issue with the details about the table and it's mappings, related to other parent tables, etc.
 As a workaround, the include/exclude configuration options can be adjusted to prevent the connector from accessing such tables.
+
+
+*How to solve SAX feature external-general-entities not supported*::
+Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type and to support this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
+ +
+Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runtime finds an uses this implementation rather than the other on the classpath, this error will occur.
+In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
+ +
+When the following JVM argument is provided, the Oracle connector will start successfully without this error.
+[source,bash]
+----
+-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
+----

@@ -210,7 +210,7 @@
                 <version>${version.sqlserver.driver}</version>
             </dependency>
 
-            <!-- Oracle JDBC driver, Oracle XStream -->
+            <!-- Oracle JDBC driver, XML support, Oracle XStream -->
             <dependency>
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
@@ -219,6 +219,11 @@
             <dependency>
                 <groupId>com.oracle.database.xml</groupId>
                 <artifactId>xdb</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xmlparserv2</artifactId>
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
