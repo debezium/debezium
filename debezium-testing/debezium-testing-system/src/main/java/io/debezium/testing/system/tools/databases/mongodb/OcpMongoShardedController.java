@@ -73,14 +73,14 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
             }
         }
         // restart every mongo component individually
-        Arrays.stream(MongoComponents.values()).forEach(mongoComponent -> {
-            LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
+        Arrays.stream(MongoComponents.values()).parallel().forEach(mongoComponent -> {
+            LOGGER.info("Removing all pods of '" + mongoComponent.getName() + "' deployment in namespace '" + project + "'");
 
             Deployment deployment1 = ocp.apps().deployments().inNamespace(project).withName(mongoComponent.getName()).get();
             ocpUtils.deletePodsOfDeployment(deployment1);
 
-            LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
-            ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
+            LOGGER.info("Restoring all pods of '" + mongoComponent.getName() + "' deployment in namespace '" + project + "'");
+            ocp.apps().deployments().inNamespace(project).withName(deployment1.getMetadata().getName()).scale(1);
         });
         if (!isRunningFromOcp()) {
             forwardDatabasePorts();
@@ -88,7 +88,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
     }
 
     @SneakyThrows
-    public void executeCommadOnComponent(MongoComponents component, String... commands) {
+    public void executeCommandOnComponent(MongoComponents component, String... commands) {
         var maybeDeployment = ocpUtils.deploymentsWithPrefix(project, component.getName());
         if (maybeDeployment.isEmpty()) {
             throw new IllegalStateException("Deployment of " + component.getName() + " missing");
@@ -100,8 +100,10 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
     @Override
     public void initialize() throws InterruptedException {
         Arrays.stream(MongoComponents.values()).parallel().forEach(c -> {
+            if (c.getInitCommand() != null) {
+                executeCommandOnComponent(c, c.getInitCommand());
+            }
             if (c != MongoComponents.MONGOS) {
-                executeCommadOnComponent(c, c.getInitCommand().toArray(String[]::new));
                 uploadAndExecuteMongoScript(CREATE_DBZ_USER_SCRIPT_LOCATION, c);
             }
         });
@@ -115,7 +117,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
     public void addShard(MongoComponents shard) throws InterruptedException {
         String shardNumber = getShardNumber(shard);
-        executeCommadOnComponent(MongoComponents.MONGOS, "mongosh",
+        executeCommandOnComponent(MongoComponents.MONGOS, "mongosh",
                 "localhost:27017",
                 "--eval",
                 "sh.addShard(\"shard" + shardNumber + "rs/mongo-shard" + shardNumber + "r1." + project + ".svc.cluster.local:27018\");" +
@@ -125,11 +127,11 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
     public void removeShard(MongoComponents shard) throws InterruptedException {
         String shardNumber = getShardNumber(shard);
-        executeCommadOnComponent(MongoComponents.MONGOS, "mongosh",
+        executeCommandOnComponent(MongoComponents.MONGOS, "mongosh",
                 "localhost:27017",
                 "--eval",
                 "sh.removeRangeFromZone(\"inventory.customers\",{ _id : 1004 },{ _id : 1005 });" +
-                        "db.adminCommand({removeShard:\"shard" + shardNumber + "rs\"});" +
+                // "db.adminCommand({removeShard:\"shard" + shardNumber + "rs\"});" +
                         "db.adminCommand({removeShard:\"shard" + shardNumber + "rs\"})");
     }
 
@@ -156,30 +158,32 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
 
         podResource.file(containerPath)
                 .upload(scriptPath);
-        executeCommadOnComponent(component,
+        executeCommandOnComponent(component,
                 "mongosh", "localhost:" + component.getPort(), "-f", containerPath);
     }
 
     public enum MongoComponents {
-        CONFIG("mongo-config", 27019, List.of("mongosh", "localhost:27019", "--eval",
+        CONFIG("mongo-config", 27019, new String[]{ "mongosh", "localhost:27019", "--eval",
                 "rs.initiate({ _id: \"cfgrs\", configsvr: true, members: [{ _id : 0, host : \"mongo-config." + ConfigProperties.OCP_PROJECT_MONGO
-                        + ".svc.cluster.local:27019\" }]})")),
-        SHARD1R1("mongo-shard1r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
+                        + ".svc.cluster.local:27019\" }]})" }),
+        SHARD1R1("mongo-shard1r1", 27018, new String[]{ "mongosh", "localhost:27018", "--eval",
                 "rs.initiate({_id: \"shard1rs\", members: [{ _id : 0, host : \"mongo-shard1r1." + ConfigProperties.OCP_PROJECT_MONGO
-                        + ".svc.cluster.local:27018\" }]})")),
-        SHARD2R1("mongo-shard2r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
+                        + ".svc.cluster.local:27018\" }, { _id : 1, host : \"mongo-shard1r2." + ConfigProperties.OCP_PROJECT_MONGO
+                        + ".svc.cluster.local:27018\" }]})" }),
+        SHARD1R2("mongo-shard1r2", 27018, null),
+        SHARD2R1("mongo-shard2r1", 27018, new String[]{ "mongosh", "localhost:27018", "--eval",
                 "rs.initiate({_id: \"shard2rs\", members: [{ _id : 0, host : \"mongo-shard2r1." + ConfigProperties.OCP_PROJECT_MONGO
-                        + ".svc.cluster.local:27018\" }]})")),
-        SHARD3R1("mongo-shard3r1", 27018, List.of("mongosh", "localhost:27018", "--eval",
+                        + ".svc.cluster.local:27018\" }]})" }),
+        SHARD3R1("mongo-shard3r1", 27018, new String[]{ "mongosh", "localhost:27018", "--eval",
                 "rs.initiate({_id: \"shard3rs\", members: [{ _id : 0, host : \"mongo-shard3r1." + ConfigProperties.OCP_PROJECT_MONGO
-                        + ".svc.cluster.local:27018\" }]})")),
+                        + ".svc.cluster.local:27018\" }]})" }),
         MONGOS("mongo-mongos", 27017, null);
 
         private final String name;
         private final int port;
-        private final List<String> initCommand;
+        private final String[] initCommand;
 
-        MongoComponents(String name, int port, List<String> initCommand) {
+        MongoComponents(String name, int port, String[] initCommand) {
             this.name = name;
             this.port = port;
             this.initCommand = initCommand;
@@ -193,7 +197,7 @@ public class OcpMongoShardedController extends AbstractOcpDatabaseController<Mon
             return port;
         }
 
-        public List<String> getInitCommand() {
+        public String[] getInitCommand() {
             return initCommand;
         }
     }

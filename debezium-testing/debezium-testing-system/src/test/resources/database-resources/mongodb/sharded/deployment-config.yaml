@@ -31,19 +31,10 @@ spec:
         volumeMounts:
         - name: mongo-volume-config
           mountPath: /data/db
-        livenessProbe:
-          initialDelaySeconds: 30
-          tcpSocket:
-            port: 27019
-          timeoutSeconds: 1
-        readinessProbe:
-          initialDelaySeconds: 30
-          tcpSocket:
-            port: 27019
           timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
-        image: quay.io/mmedek/mongo:latest
+        image: quay.io/mongodb/mongodb:org-6.0.1-standalone-ubi8
         command:
         - '/usr/bin/mongod'
         - '--configsvr'

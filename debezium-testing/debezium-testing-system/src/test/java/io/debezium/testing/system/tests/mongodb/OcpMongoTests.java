@@ -74,6 +74,7 @@ public abstract class OcpMongoTests extends MongoTests {
         awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.products", "Replicaset_mode"));
 
         addAndRemoveShardTest(dbController, connectorName);
+        connectController.undeployConnector(connectorName);
     }
 
     private void addAndRemoveShardTest(OcpMongoShardedController dbController, String connectorName) throws IOException, InterruptedException {
@@ -98,6 +99,5 @@ public abstract class OcpMongoTests extends MongoTests {
         insertCustomer(dbController, "David", "Duck", "duck@test.com");
 
         awaitAssert(() -> assertions.assertRecordsContain(topic, "duck@test.com"));
-        connectController.undeployConnector(connectorName);
     }
 }

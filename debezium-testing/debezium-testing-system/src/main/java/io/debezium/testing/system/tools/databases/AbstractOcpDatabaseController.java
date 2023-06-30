@@ -184,7 +184,11 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     }
 
     private TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment) {
-        Pod pod = ocpUtils.podsForDeployment(deployment).get(0);
+        var pods = ocpUtils.podsForDeployment(deployment);
+        if (pods.size() > 1) {
+            throw new IllegalArgumentException("Executing command on deployment scaled to >1");
+        }
+        Pod pod = pods.get(0);
         return getPodResource(pod)
                 .inContainer(pod.getMetadata().getLabels().get("app"))
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES

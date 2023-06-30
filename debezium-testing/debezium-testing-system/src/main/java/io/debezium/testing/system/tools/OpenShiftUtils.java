@@ -6,6 +6,7 @@
 package io.debezium.testing.system.tools;
 
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
@@ -276,7 +277,7 @@ public class OpenShiftUtils {
                 .inNamespace(deployment.getMetadata().getNamespace())
                 .withLabels(Map.of("deployment", deploymentName))
                 .list();
-        await().atMost(scaled(40), SECONDS)
+        await().atMost(scaled(1), MINUTES)
                 .pollDelay(5, SECONDS)
                 .pollInterval(3, SECONDS)
                 .until(() -> podListSupplier.get().getItems().isEmpty());

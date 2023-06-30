@@ -21,11 +21,13 @@ public class OcpMongoSharded extends OcpDatabaseFixture<OcpMongoShardedControlle
     public static final List<String> DEPLOYMENTS = List.of("/database-resources/mongodb/sharded/deployment-config.yaml",
             "/database-resources/mongodb/sharded/deployment-mongos.yaml",
             "/database-resources/mongodb/sharded/deployment-shard1r1.yaml",
+            "/database-resources/mongodb/sharded/deployment-shard1r2.yaml",
             "/database-resources/mongodb/sharded/deployment-shard2r1.yaml",
             "/database-resources/mongodb/sharded/deployment-shard3r1.yaml");
     public static final String[] SERVICES = List.of("/database-resources/mongodb/sharded/service-mongos.yaml",
             "/database-resources/mongodb/sharded/service-config.yaml",
             "/database-resources/mongodb/sharded/service-shard1.yaml",
+            "/database-resources/mongodb/sharded/service-shard1r2.yaml",
             "/database-resources/mongodb/sharded/service-shard2.yaml",
             "/database-resources/mongodb/sharded/service-shard3.yaml").toArray(new String[0]);
 
