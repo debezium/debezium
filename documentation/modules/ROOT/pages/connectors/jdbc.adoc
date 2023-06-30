@@ -113,6 +113,13 @@ You can use the `primary.key.fields` property to restrict the primary key to a s
 Because the value of a Kafka event is always a `Struct`, by default, all of the fields in the value become columns of the primary key.
 To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
 
+|`record_header`
+|The primary key is composed of the Kafka event's headers. +
+ +
+Kafka event's headers contains could contain multiple header that each one could be `Struct` or primitives data types,
+the connectors makes a  `Struct` of these headers. Hence, all fields in this `Struct` become columns of the primary key.
+To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
+
 |===
 
 [IMPORTANT]
