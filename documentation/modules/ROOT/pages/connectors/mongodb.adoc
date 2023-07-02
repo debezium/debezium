@@ -1030,7 +1030,7 @@ endif::community[]
 The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set. 
 Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries. 
 If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position. 
-However, if this position was removed from the oplog, the connector might fail to start (stating "Resume point may no longer be in the oplog"), depending on the value specified for the connector's `snapshot.mode` property.
+However, if this position was removed from the oplog, the connector might fail to start ( xref:connector-error-invalid-resume-token[More details]), depending on the value specified for the connector's `snapshot.mode` property.
 In the event of a failure, you must create a new connector to enable {prodname} to continue capturing records from the database.
 For more information, see xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
 
@@ -1981,6 +1981,7 @@ Each delay is double that of the prior delay, up to the maximum delay. Given the
 |16 |120|20:07
 |===
 
+[id="connector-error-invalid-resume-token"]
 === Connector Unable to Start - InvalidResumeToken or ChangeStreamHistoryLost
 
 If a connector was stopped for long period and now is unable to start, with the following exception.
@@ -1991,7 +1992,7 @@ This indicates that the entry which corresponds to the connector's resume token 
 
 To recover from the failure, either delete the failed connector, and create a new connector with the same configuration but with a different connector name, or pause the connector and clean or change the offset topic.
 
-To avoid this failure, see how to configure oplog optimally.
+To avoid this failure, xref:mongodb-optimal-oplog-config [see how to configure oplog optimally].
 
 [id="debezium-mongodb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
