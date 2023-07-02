@@ -24,7 +24,7 @@ import io.debezium.util.Collect;
 public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics<MongoDbPartition>
         implements MongoDbSnapshotChangeEventSourceMetricsMBean {
 
-    private AtomicLong numberOfDisconnects = new AtomicLong();
+    private final AtomicLong numberOfDisconnects = new AtomicLong();
 
     public <T extends CdcSourceTaskContext> MongoDbSnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                     EventMetadataProvider metadataProvider) {

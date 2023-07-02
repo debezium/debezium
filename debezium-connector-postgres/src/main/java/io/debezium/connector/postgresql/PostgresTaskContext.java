@@ -41,7 +41,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     private Long lastXmin;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy) {
-        super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
+        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), Collections::emptySet);
 
         this.config = config;
         if (config.xminFetchInterval().toMillis() > 0) {
