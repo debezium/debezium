@@ -95,6 +95,39 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 * link:https://docs.mongodb.com/manual/tutorial/remove-shards-from-cluster/[Shard removal]
 * link:https://docs.mongodb.com/manual/changeStreams/[Change Streams]
 
+// Type: concept
+// Title: Description of how the MongoDB connector uses the MongoDB read preference
+// ModuleID: description-of-how-the-mongodb-connector-uses-the-mongodb-read-preference
+[id="read-preference"]
+=== Read Preference
+
+You can specify MongoDB read preferences for a connection in the connector properties.
+The method that you use to set read preferences depends on the MongoDB topology, and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`].
+
+Replica set topology::
+Set the read preference in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+Sharded cluster topology:: 
+Set the read preference based on the connection mode, as shown in the following table:
++
+.Setting the read preference for a sharded cluster based on the `mongodb.connection.mode`
+[cols="3,6",options="header"]
+|===
+|Connection mode |Property for specifying read preference
+
+|`sharded`
+|`mongodb.connection.string`
+
+|`replica_set`
+|`mongodb.connection.string.shard.params`
+
+|===
++
+In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`. 
+For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
+When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
+It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in `mongodb.connection.string.shard.params`. 
+For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
+
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
 // Title: How {prodname} MongoDB connectors work
@@ -1371,6 +1404,15 @@ Connectors that capture changes from a sharded MongoDB cluster use this connecti
 After the initial discovery process, connection strings are generated for each individual shard.
 ====
 
+|[[mongodb-property-mongodb-connection-string-shard-params]]<<mongodb-property-mongodb-connection-string-shard-params, `+mongodb.connection.string.shard.params+`>>
+|No default
+|Specifies the URL parameters of the https://www.mongodb.com/docs/manual/reference/connection-string/[connection string], including read preferences, that the connector uses to connect to individual shards of a MongoDB sharded cluster.
+
+[NOTE]
+====
+This property applies only when the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
+====
+
 |[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
 |`replica_set`
 |Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
@@ -1378,7 +1420,7 @@ Set this property to one of the following values:
 
 `replica_set`:: The connector establishes individual connections to the replica set for each shard.
 
-`sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb-connection-string`].+
+`sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 [NOTE]
 ====
