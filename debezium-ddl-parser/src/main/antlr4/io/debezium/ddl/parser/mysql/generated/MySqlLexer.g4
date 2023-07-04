@@ -770,6 +770,9 @@ CLIENT_STATISTICS:                   'CLIENT_STATISTICS';
 INDEX_STATISTICS:                    'INDEX_STATISTICS';
 TABLE_STATISTICS:                    'TABLE_STATISTICS';
 
+// Azure Database for MySQL Single Server instance:
+FIREWALL_RULES:                      'FIREWALL_RULES';
+
 
 // PRIVILEGES
 
