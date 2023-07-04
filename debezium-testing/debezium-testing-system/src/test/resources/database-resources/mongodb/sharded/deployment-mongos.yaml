@@ -4,6 +4,7 @@ metadata:
   name: mongo-mongos
   labels:
     app: mongo
+    deployment: mongo-mongos
 spec:
   replicas: 1
   selector:
@@ -27,7 +28,7 @@ spec:
           imagePullPolicy: Always
           terminationMessagePolicy: File
           terminationMessagePath: /dev/termination-log
-          image: quay.io/mongodb/mongodb:org-6.0.1-standalone-ubi8
+          image: ${docker.image.mongo.sharded}
           command:
           - 'mongos'
           - '--configdb'

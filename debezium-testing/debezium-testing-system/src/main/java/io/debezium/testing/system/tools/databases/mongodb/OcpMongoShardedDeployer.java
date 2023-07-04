@@ -5,15 +5,16 @@
  */
 package io.debezium.testing.system.tools.databases.mongodb;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.YAML;
 import io.debezium.testing.system.tools.databases.AbstractOcpDatabaseDeployer;
+import io.debezium.testing.system.tools.databases.mongodb.builders.OcpShardModelFactory;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -21,41 +22,56 @@ import io.fabric8.openshift.client.OpenShiftClient;
 public class OcpMongoShardedDeployer extends AbstractOcpDatabaseDeployer<OcpMongoShardedController> {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpMongoShardedDeployer.class);
 
-    private final List<Deployment> deployments;
+    private final Deployment mongosDeployment;
+    private final Deployment configDeployment;
 
     private OcpMongoShardedDeployer(
                                     String project,
-                                    List<Deployment> deployments,
+                                    Deployment mongosDeployment,
+                                    Deployment configDeployment,
                                     List<Service> services,
                                     OpenShiftClient ocp) {
         super(project, null, services, ocp);
-        this.deployments = deployments;
+        this.mongosDeployment = mongosDeployment;
+        this.configDeployment = configDeployment;
     }
 
     @Override
     public OcpMongoShardedController deploy() {
-        LOGGER.info("Deploying pull secrets");
-
         if (pullSecret != null) {
+            LOGGER.info("Deploying pull secrets");
             ocp.secrets().inNamespace(project).createOrReplace(pullSecret);
             ocpUtils.linkPullSecret(project, "default", pullSecret);
         }
 
-        LOGGER.info("Deploying mongo pods");
-        deployments.parallelStream().forEach(
-                deployment -> {
-                    deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
-                    ocpUtils.waitForPods(project, deployment.getMetadata().getLabels());
+        LOGGER.info("Deploying mongo config server");
+        ocp.apps().deployments().inNamespace(project).createOrReplace(configDeployment);
+        ocpUtils.waitForPods(project, configDeployment.getMetadata().getLabels());
+        ocpUtils.createService(project, configDeployment.getMetadata().getName(), "db", OcpMongoShardedConstants.MONGO_CONFIG_PORT,
+                configDeployment.getMetadata().getLabels(),
+                configDeployment.getMetadata().getLabels());
 
-                });
-        deployment = ocp.apps().deployments().inNamespace(project).list().getItems().stream()
-                .filter(d -> d.getMetadata().getName().equals("mongo-mongos"))
-                .findFirst()
-                .get();
+        LOGGER.info("Deploying mongos router");
+        deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(mongosDeployment);
+        ocpUtils.createService(project, mongosDeployment.getMetadata().getName(), "db", OcpMongoShardedConstants.MONGO_MONGOS_PORT,
+                mongosDeployment.getMetadata().getLabels(),
+                mongosDeployment.getMetadata().getLabels());
 
-        services = services.stream()
-                .map(s -> ocp.services().inNamespace(project).createOrReplace(s))
-                .collect(Collectors.toList());
+        LOGGER.info("Deploying mongo shards");
+        List<Integer> shardRange = IntStream.rangeClosed(1, OcpMongoShardedConstants.SHARD_COUNT).boxed().collect(Collectors.toList());
+        List<Integer> replicaRange = IntStream.rangeClosed(1, OcpMongoShardedConstants.REPLICAS_IN_SHARD).boxed().collect(Collectors.toList());
+
+        shardRange.parallelStream().forEach((shardNum) -> replicaRange.parallelStream().forEach((replicaNum) -> {
+            Deployment deployment1 = ocp
+                    .apps()
+                    .deployments()
+                    .inNamespace(project)
+                    .createOrReplace(OcpShardModelFactory.shardDeployment(shardNum, replicaNum));
+            services.add(ocp.services()
+                    .inNamespace(project)
+                    .createOrReplace(OcpShardModelFactory.shardService(shardNum, replicaNum)));
+            ocpUtils.waitForPods(project, deployment1.getMetadata().getLabels());
+        }));
         LOGGER.info("Database deployed successfully");
 
         return getController(deployment, services, ocp);
@@ -67,20 +83,26 @@ public class OcpMongoShardedDeployer extends AbstractOcpDatabaseDeployer<OcpMong
     }
 
     public static class Deployer extends DatabaseBuilder<OcpMongoShardedDeployer.Deployer, OcpMongoShardedDeployer> {
-        private List<Deployment> deployments;
+        private Deployment mongosDeployment;
+        private Deployment configDeployment;
 
         @Override
         public OcpMongoShardedDeployer build() {
             return new OcpMongoShardedDeployer(
                     project,
-                    deployments,
+                    mongosDeployment,
+                    configDeployment,
                     services,
                     ocpClient);
         }
 
-        public DatabaseBuilder<OcpMongoShardedDeployer.Deployer, OcpMongoShardedDeployer> withDeployments(List<String> deployments) {
-            this.deployments = new ArrayList<>();
-            deployments.forEach(d -> this.deployments.add(YAML.fromResource(d, Deployment.class)));
+        public OcpMongoShardedDeployer.Deployer withMongosDeployment(String deployment) {
+            this.mongosDeployment = YAML.fromResource(deployment, Deployment.class);
+            return self();
+        }
+
+        public OcpMongoShardedDeployer.Deployer withConfigDeployment(String deployment) {
+            this.configDeployment = YAML.fromResource(deployment, Deployment.class);
             return self();
         }
     }

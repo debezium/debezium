@@ -262,17 +262,18 @@ public class OpenShiftUtils {
         }
     }
 
-    public void deletePodsOfDeployment(Deployment deployment) {
+    public void scaleDeploymentToZero(Deployment deployment) {
         client.apps()
                 .deployments()
                 .inNamespace(deployment.getMetadata().getNamespace())
-                .withName(deployment.getMetadata().getName()).scale(0);
-        waitForPodsDeletion(deployment);
+                .withName(deployment.getMetadata().getName())
+                .scale(0);
+        waitForDeploymentToScaleDown(deployment);
     }
 
-    public void waitForPodsDeletion(Deployment deployment) {
+    public void waitForDeploymentToScaleDown(Deployment deployment) {
         String deploymentName = deployment.getMetadata().getName();
-        LOGGER.info("Waiting for pods to delete [" + deploymentName + "]");
+        LOGGER.info("Waiting for deployment [" + deploymentName + "] to scale to 0");
         Supplier<PodList> podListSupplier = () -> client.pods()
                 .inNamespace(deployment.getMetadata().getNamespace())
                 .withLabels(Map.of("deployment", deploymentName))

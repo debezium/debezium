@@ -83,7 +83,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             }
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
-        ocpUtils.deletePodsOfDeployment(deployment);
+        ocpUtils.scaleDeploymentToZero(deployment);
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
         if (!isRunningFromOcp()) {
@@ -146,11 +146,11 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .portForward(dbPort, localPort);
 
         for (Throwable e : forward.getClientThrowables()) {
-            LOGGER.error("Client error when forwarding DB port " + deployment, e);
+            LOGGER.warn("Client error when forwarding DB port " + deployment, e);
         }
 
         for (Throwable e : forward.getServerThrowables()) {
-            LOGGER.error("Server error when forwarding DB port" + dbPort, e);
+            LOGGER.warn("Server error when forwarding DB port" + deployment, e);
         }
         portForward = forward;
     }
@@ -178,7 +178,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         try (var ignored = prepareExec(deployment)
                 .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
                 .exec(commands)) {
-            LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for comands " + Arrays.toString(commands));
+            LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for commands " + Arrays.toString(commands));
             latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
         }
     }
@@ -186,13 +186,12 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     private TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment) {
         var pods = ocpUtils.podsForDeployment(deployment);
         if (pods.size() > 1) {
-            throw new IllegalArgumentException("Executing command on deployment scaled to >1");
+            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
         }
         Pod pod = pods.get(0);
         return getPodResource(pod)
                 .inContainer(pod.getMetadata().getLabels().get("app"))
-                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
-                .writingError(System.err);
+                .writingError(System.err); // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 1 LINES
     }
 
     private PodResource<Pod> getPodResource(Pod pod) {

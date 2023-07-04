@@ -4,6 +4,7 @@ metadata:
   name: mongo-config
   labels:
     app: mongo
+    deployment: mongo-config
 spec:
   replicas: 1
   selector:
@@ -34,7 +35,7 @@ spec:
           timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
-        image: quay.io/mongodb/mongodb:org-6.0.1-standalone-ubi8
+        image: ${docker.image.mongo.sharded}
         command:
         - '/usr/bin/mongod'
         - '--configsvr'

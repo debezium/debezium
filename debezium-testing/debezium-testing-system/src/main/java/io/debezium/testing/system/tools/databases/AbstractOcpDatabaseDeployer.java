@@ -59,9 +59,8 @@ public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
     @Override
     public T deploy() {
-        LOGGER.info("Deploying pull secrets");
-
         if (pullSecret != null) {
+            LOGGER.info("Deploying pull secrets");
             ocp.secrets().inNamespace(project).createOrReplace(pullSecret);
             ocpUtils.linkPullSecret(project, "default", pullSecret);
         }

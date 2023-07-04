@@ -14,6 +14,7 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_D
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.util.Objects;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -51,6 +52,20 @@ public abstract class MongoTests extends ConnectorTest {
 
         client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
             Document doc = new Document()
+                    .append("first_name", firstName)
+                    .append("last_name", lastName)
+                    .append("email", email);
+            col.insertOne(doc);
+        });
+    }
+
+    public void insertCustomer(MongoDatabaseController dbController, String firstName, String lastName, String email, long id) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
+            Document doc = new Document()
+                    .append("_id", id)
                     .append("first_name", firstName)
                     .append("last_name", lastName)
                     .append("email", email);
@@ -97,7 +112,7 @@ public abstract class MongoTests extends ConnectorTest {
 
         client.execute("inventory", "products", col -> {
             Bson query = eq("name", name);
-            col.deleteOne(col.find(query).first());
+            col.deleteOne(Objects.requireNonNull(col.find(query).first()));
         });
     }
 

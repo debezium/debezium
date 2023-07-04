@@ -7,7 +7,6 @@ package io.debezium.testing.system.fixtures.databases;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.databases.DatabaseController;
 
 import fixture5.TestFixture;
@@ -34,7 +33,7 @@ public abstract class DatabaseFixture<T extends DatabaseController<?>> extends T
 
     @Override
     public void teardown() throws Exception {
-        if (dbController != null && !ConfigProperties.PREPARE_NAMESPACES_AND_STRIMZI) {
+        if (dbController != null) {
             dbController.reload();
         }
     }
