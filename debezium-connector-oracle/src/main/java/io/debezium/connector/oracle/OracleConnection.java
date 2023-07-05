@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.HashSet;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +75,18 @@ public class OracleConnection extends JdbcConnection {
 
     public OracleConnection(JdbcConfiguration config) {
         this(config, true);
+    }
+
+    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
+        this(config, connectionFactory, true);
+    }
+
+    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
+        super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        this.databaseVersion = resolveOracleDatabaseVersion();
+        if (showVersion) {
+            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
+        }
     }
 
     public OracleConnection(JdbcConfiguration config, boolean showVersion) {
@@ -167,6 +181,9 @@ public class OracleConnection extends JdbcConnection {
             }
         }
         catch (SQLException e) {
+            if (e instanceof SQLRecoverableException) {
+                throw new RetriableException("Failed to resolve Oracle database version", e);
+            }
             throw new RuntimeException("Failed to resolve Oracle database version", e);
         }
 
