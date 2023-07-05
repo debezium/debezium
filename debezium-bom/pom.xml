@@ -22,7 +22,7 @@
 
         <!-- Vitess dependencies -->
         <version.vitess.grpc>12.0.0</version.vitess.grpc>
-        <version.grpc>1.33.0</version.grpc>
+        <version.grpc>1.53.0</version.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
