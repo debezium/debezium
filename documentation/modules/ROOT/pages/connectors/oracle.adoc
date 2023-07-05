@@ -206,6 +206,39 @@ The connector writes schema change events to a Kafka topic named `_<serverName>_
 {prodname} emits a new message to this topic whenever it streams data from a new table.
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the Oracle connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.oracle.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
 The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
@@ -444,7 +477,8 @@ In the following example, the `payload` field contains the `databaseName` key:
       }
     ],
     "optional": false,
-    "name": "io.debezium.connector.oracle.SchemaChangeKey"
+    "name": "io.debezium.connector.oracle.SchemaChangeKey",
+    "version": 1
   },
   "payload": {
     "databaseName": "ORCLPDB1"
