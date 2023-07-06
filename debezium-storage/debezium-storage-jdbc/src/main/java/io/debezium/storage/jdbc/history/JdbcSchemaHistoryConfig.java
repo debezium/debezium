@@ -131,7 +131,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
      * Function to split database and table name from the fully qualified table name.
      * @param databaseAndTableName database and table name
      */
-    private void splitDatabaseAndTableName(String databaseAndTableName) {
+    void splitDatabaseAndTableName(String databaseAndTableName) {
         if (databaseAndTableName != null) {
             String[] parts = databaseAndTableName.split("\\.");
             if (parts.length == 2) {
