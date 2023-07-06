@@ -208,18 +208,21 @@ Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are
 Schema data::
 DDL statements that describe changes that occur to the structure of tables.
 
-By default, the snapshot captures schema data for every table that is present in the database, not only from tables that are designated for capture.
-For tables that are not designated for capture, the snapshot captures only the table structure.
-It does not capture any table data.
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+This is not an error.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
 The captured schema data is persisted to the both the internal schema history topic, and to the schema change topic, if one is configured.
+Although the default behavior of an intial snapshot captures the schema all tables, if a table is not designated for capture (that is, not named in the `snapshot.include.collection.list`), the snapshot captures only the table structure.
+It does not capture any data from the table.
 
-Users might be surprised to see that an initial snapshot captured schema information for non-captured tables, and might assume that an error occurred.
-But initial snapshots capture schema information for all tables by design.
-To capture a table, {prodname} requires its DDL, including the schema history in case of schema changes result in records with different table structures.
-By persisting schema data for tables that are not part of the original capture set, the connector prepares itself to readily capture event data from these tables should that later become necessary.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+A table schema can change at any time.
+Columns can be added or removed, or column names can be changed.
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
 
-Because the database schema can change at any time, {prodname} must be able to identify the schema that is in effect for a table at the time that any event occurs.
-Then, if the connector later stops, when it resumes reading from the transaction log, it can correlate event information with information from the schema history topic to ensure that it applies the correct schema to each event.
+If the initial snapshot did not capture schema data for a table, you must perform additional steps before {prodname} can capture the table.
 
 .Additional information
  * xref:capturing-data-from-tables-not-captured-by-the-initial-snapshot[]
