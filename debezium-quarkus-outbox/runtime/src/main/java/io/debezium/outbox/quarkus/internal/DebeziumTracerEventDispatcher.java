@@ -15,11 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.opentracing.Scope;
-import io.opentracing.Span;
-import io.opentracing.Tracer;
-import io.opentracing.propagation.Format;
-import io.opentracing.tag.Tags;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.SpanBuilder;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 
 /**
  * An application-scoped {@link EventDispatcher} implementation that is responsible not only
@@ -37,36 +40,37 @@ public class DebeziumTracerEventDispatcher extends AbstractEventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumTracerEventDispatcher.class);
 
     @Inject
-    Tracer tracer;
+    OpenTelemetry openTelemetry;
 
     @Override
     public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
-        final Tracer.SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
-        final DebeziumTextMap exportedSpanData = new DebeziumTextMap();
+        final Tracer tracer = openTelemetry.getTracer(TRACING_COMPONENT);
+        final SpanBuilder spanBuilder = tracer.spanBuilder(OPERATION_NAME);
+        final DataMapTracingSetter exportedSpanData = DataMapTracingSetter.create();
 
-        final Span parentSpan = tracer.activeSpan();
+        final Span parentSpan = Span.current();
         if (parentSpan != null) {
-            spanBuilder.asChildOf(parentSpan);
+            spanBuilder.setParent(Context.current().with(parentSpan));
         }
-        spanBuilder.withTag(AGGREGATE_TYPE, event.getAggregateType())
-                .withTag(AGGREGATE_ID, event.getAggregateId().toString())
-                .withTag(TYPE, event.getAggregateType())
-                .withTag(TIMESTAMP, event.getTimestamp().toString());
+        spanBuilder.setAttribute(AGGREGATE_TYPE, event.getAggregateType())
+                .setAttribute(AGGREGATE_ID, event.getAggregateId().toString())
+                .setAttribute(TYPE, event.getAggregateType())
+                .setAttribute(TIMESTAMP, event.getTimestamp().toString())
+                .setSpanKind(SpanKind.INTERNAL);
 
-        final Span activeSpan = spanBuilder.start();
-        try (Scope outboxSpanScope = tracer.scopeManager().activate(activeSpan)) {
-            Tags.COMPONENT.set(activeSpan, TRACING_COMPONENT);
-            tracer.inject(activeSpan.context(), Format.Builtin.TEXT_MAP, exportedSpanData);
+        final Span activeSpan = spanBuilder.startSpan();
+        try (Scope outboxSpanScope = activeSpan.makeCurrent()) {
 
             // Define the entity map-mode object using property names and values
             final Map<String, Object> dataMap = getDataMapFromEvent(event);
-            dataMap.put(OutboxConstants.TRACING_SPAN_CONTEXT, exportedSpanData.export());
+            TextMapPropagator textMapPropagator = openTelemetry.getPropagators().getTextMapPropagator();
+            textMapPropagator.inject(Context.current(), dataMap, exportedSpanData);
             persist(dataMap);
         }
         finally {
-            activeSpan.finish();
+            activeSpan.end();
         }
     }
 }
