@@ -521,7 +521,7 @@ For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mo
 <10> Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
 <11> Specifies the timezone used when writing temporal field types.
-<12> List of topics to consume, separated by commas
+<12> List of topics to consume, separated by commas.
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
@@ -552,11 +552,14 @@ Information about the properties is organized as follows:
 
 |[[jdbc-property-connection-name]]<<jdbc-property-connection-name, `+name+`>>
 |No default
-|Unique name for the connector. Attempting to register again with the same name will fail. This property is required by all Kafka Connect connectors.
+|Unique name for the connector. 
+A failure results if you attempt to reuse this name when registering a connector.   
+This property is required by all Kafka Connect connectors.
 
 |[[jdbc-property-connection-class]]<<jdbc-property-connection-class, `+connector.class+`>>
 |No default
-|The name of the Java class for the connector. Always use a value of `io.debezium.connector.jdbc.JdbcSinkConnector` for the JDBC connector.
+|The name of the Java class for the connector. 
+For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
 
 |[[jdbc-property-connection-task]]<<jdbc-property-connection-task, `+tasks.max+`>>
 |1
@@ -565,10 +568,13 @@ Information about the properties is organized as follows:
 |[[jdbc-property-connection-topics]]<<jdbc-property-connection-topics, `+topics+`>>
 |No default
 |List of topics to consume, separated by commas.
+Do not use this property in combination with the xref:jdbc-property-connection-topics-regex[`topics.regex`] property.
 
 |[[jdbc-property-connection-topics-regex]]<<jdbc-property-connection-topics-regex, `+topics.regex+`>>
 |No default
-|Regular expression giving topics to consume. Under the hood, the regex is compiled to a `java.util.regex.Pattern`. Only one of topics or topics.regex should be specified.
+|A regular expression that specifies the topics to consume. 
+Internally, the regular expression is compiled to a `java.util.regex.Pattern`. 
+Do not use this property in combination with the xref:jdbc-property-connection-topics[`topics`] property.
 
 
 |===
