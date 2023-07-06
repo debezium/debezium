@@ -44,10 +44,12 @@ public abstract class Metrics {
         String connectorType = connectorConfig.getContextName();
         String connectorName = connectorConfig.getLogicalName();
         if (multiPartitionMode) {
-            this.name = metricName(connectorType, Collect.linkMapOf(
+            Map<String, String> tags = Collect.linkMapOf(
                     "server", connectorName,
                     "task", connectorConfig.getTaskId(),
-                    "context", contextName));
+                    "context", contextName);
+            tags.putAll(connectorConfig.getCustomMetricTags());
+            this.name = metricName(connectorType, tags);
         }
         else {
             this.name = metricName(connectorType, connectorName, contextName, connectorConfig.getCustomMetricTags());
