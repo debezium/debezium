@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenJavaVersion;
 import io.debezium.util.Testing;
@@ -124,9 +126,26 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    public void testStreamingOnlyMetrics() throws Exception {
-        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+    @FixFor("DBZ-6603")
+    public void testSnapshotAndStreamingWithCustomMetrics() throws Exception {
+        // Setup
+        TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
 
+        // start connector
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.CUSTOM_METRIC_TAGS, "env=test,bu=bigdata")
+                .build();
+        Map<String, String> customMetricTags = new PostgresConnectorConfig(config).getCustomMetricTags();
+        start(PostgresConnector.class, config);
+
+        assertSnapshotWithCustomMetrics(customMetricTags);
+        assertStreamingWithCustomMetrics(customMetricTags);
+    }
+
+    @Test
+    public void testStreamingOnlyMetrics() throws Exception {
         // Setup
         TestHelper.execute(INIT_STATEMENTS);
 
@@ -157,6 +176,25 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(true);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPaused")).isEqualTo(false);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
+    }
+
+    private void assertSnapshotWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        final ObjectName objectName = getSnapshotMetricsObjectName("postgres", TestHelper.TEST_SERVER, customMetricTags);
+
+        // Wait for the snapshot to complete to verify metrics
+        waitForSnapshotWithCustomMetricsToBeCompleted(customMetricTags);
+
+        // Check snapshot metrics
+        assertThat(mBeanServer.getAttribute(objectName, "TotalTableCount")).isEqualTo(1);
+        assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(new String[]{ "public.simple" });
+        assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(2L);
+        assertThat(mBeanServer.getAttribute(objectName, "RemainingTableCount")).isEqualTo(0);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPaused")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
     }
 
     private void assertSnapshotNotExecutedMetrics() throws Exception {
@@ -191,7 +229,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
 
         // Insert new records and wait for them to become available
         TestHelper.execute(INSERT_STATEMENTS);
-        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS);
         Thread.sleep(Duration.ofSeconds(2).toMillis());
 
         // Check streaming metrics
@@ -200,6 +238,25 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         // todo: this does not seem to be populated?
         // Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[] {"public.simple"});
+    }
+
+    private void assertStreamingWithCustomMetrics(Map<String, String> customMetricTags) throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        final ObjectName objectName = getStreamingMetricsObjectName("postgres", TestHelper.TEST_SERVER, customMetricTags);
+
+        // Wait for the streaming to begin
+        TestConsumer consumer = testConsumer(2, "public");
+        waitForStreamingWithCustomMetricsToStart(customMetricTags);
+
+        // Insert new records and wait for them to become available
+        TestHelper.execute(INSERT_STATEMENTS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30L, TimeUnit.SECONDS);
+        Thread.sleep(Duration.ofSeconds(2).toMillis());
+
+        // Check streaming metrics
+        Testing.print("****ASSERTIONS****");
+        assertThat(mBeanServer.getAttribute(objectName, "Connected")).isEqualTo(true);
+        assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(2L);
     }
 
     @Test
