@@ -1207,9 +1207,13 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`60000 ms`
 |The interval at which offsets are committed for the sync topic.
 
-|[[spanner-property-rebalanceetaskwaitingtimeout]]<<spanner-property-rebalancetaskwaitingtimeout, `+connector.spanner.rebalancing.task.waiting.timeout+`>>
+|[[spanner-property-rebalancetaskwaitingtimeout]]<<spanner-property-rebalancetaskwaitingtimeout, `+connector.spanner.rebalancing.task.waiting.timeout+`>>
 |`1000 ms`
 |The duration of time a task waits before processing a rebalancing event.
+
+|[[spanner-property-custom-metric-tags]]<<spanner-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
 |===
 
