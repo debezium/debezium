@@ -42,7 +42,7 @@ public final class OutboxProcessor extends OutboxCommonProcessor {
                       BuildProducer<GeneratedResourceBuildItem> generatedResourcesProducer,
                       BuildProducer<ReflectiveClassBuildItem> reflectiveClassProducer,
                       Capabilities capabilities) {
-        if (debeziumOutboxConfig.tracingEnabled && capabilities.isPresent(Capability.OPENTRACING)) {
+        if (debeziumOutboxConfig.tracingEnabled && capabilities.isPresent(Capability.OPENTELEMETRY_TRACER)) {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DebeziumTracerEventDispatcher.class));
 
         }
