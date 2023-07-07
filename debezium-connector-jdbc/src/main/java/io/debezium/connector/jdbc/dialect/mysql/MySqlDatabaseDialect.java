@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.connector.jdbc.type.debezium.GeometryType;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.dialect.Dialect;
@@ -109,6 +110,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         registerType(YearType.INSTANCE);
         registerType(JsonType.INSTANCE);
         registerType(MapToJsonType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override

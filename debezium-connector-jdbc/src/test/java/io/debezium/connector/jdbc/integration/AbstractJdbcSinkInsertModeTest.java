@@ -9,6 +9,11 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
 
+import javax.xml.bind.DatatypeConverter;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
@@ -335,5 +340,43 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory) {
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        Schema geometrySchema = SchemaBuilder.struct()
+                .name("io.debezium.data.geometry.Geometry")
+                .field("wkb", Schema.BYTES_SCHEMA)
+                .field("srid", Schema.OPTIONAL_INT32_SCHEMA)
+                .optional()
+                .build();
+        Struct geometryValue = new Struct(geometrySchema)
+                .put("wkb", "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA".getBytes())
+                .put("srid", 3187);
+
+        final SinkRecord createRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1, "geometry", geometrySchema, geometryValue);
+        consume(createRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
+
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "geometry", ValueType.BYTES, DatatypeConverter
+                .parseHexBinary(
+                        "730C000001030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440"));
     }
 }
