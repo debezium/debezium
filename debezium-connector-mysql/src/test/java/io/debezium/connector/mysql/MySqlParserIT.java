@@ -29,7 +29,7 @@ import io.debezium.connector.mysql.junit.SkipWhenSslModeIsNot;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
 /**

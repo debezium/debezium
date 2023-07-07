@@ -8,7 +8,7 @@ package io.debezium.testing.testcontainers;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 
-import io.debezium.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 
 public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistryContainer> {
 
