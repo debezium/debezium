@@ -182,6 +182,18 @@ For more information, see the https://docs.mongodb.com/manual/core/replica-set-a
 ====
 
 // Type: concept
+// ModuleID: mongodb-user-permissions-required-by-debezium-connectors
+// Title: User permissions required by {prodname} connectors
+[[required-user-permissions]]
+=== Required user permissions
+Depending on the value of xref:mongodb-property-capture-scope[`capture.scope`] property the user used by the connector needs either the permissions to read any database (when xref:mongodb-property-capture-scope[`capture.scope`] is set to `deployment`) or the permissions to read the database specified by xref:mongodb-property-capture-target[`capture.target`] (when xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`).
+
+In any case the user should also have the permission to execute the https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+
+Additionally when capturing changes from a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set` the user used by the connector also needs the permission to read the `config.shards` system collection.
+
+
+// Type: concept
 // Title: How {prodname} MongoDB connectors use logical names for replica sets and sharded clusters
 // ModuleID: how-debezium-mongodb-connectors-use-logical-names-for-replica-sets-and-sharded-clusters
 [[mongodb-logical-connector-name]]
@@ -1517,6 +1529,24 @@ This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
+
+|[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
+|`deployment`
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of change streamed] opened by the connector.
+Set this property to one of the following values:
+
+`deployment`:: opens a change stream cursor for a deployment (either a replica set or a sharded cluster) to watch for changes to all non-system collections across all databases except for `admin`, `local`, and `config`.
+
+`database`:: opens a change stream cursor for a single database to watch for changes to all its non-system collections.
++
+[WARNING]
+====
+To use signaling when `database` is specified as the value the signaling collection needs to be located in the database specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+====
+
+|[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
+|
+| Specifies the database to watch for changes when xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`
 
 |[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
