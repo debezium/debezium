@@ -186,11 +186,35 @@ For more information, see the https://docs.mongodb.com/manual/core/replica-set-a
 // Title: User permissions required by {prodname} connectors
 [[required-user-permissions]]
 === Required user permissions
-Depending on the value of xref:mongodb-property-capture-scope[`capture.scope`] property the user used by the connector needs either the permissions to read any database (when xref:mongodb-property-capture-scope[`capture.scope`] is set to `deployment`) or the permissions to read the database specified by xref:mongodb-property-capture-target[`capture.target`] (when xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`).
 
-In any case the user should also have the permission to execute the https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+To capture data from MongoDB, {prodname} attaches to the database as a MongoDB user.
+The MongoDB user account that you create for {prodname} requires specific database permissions to read from the database. 
+The connector user requires the following permissions:
 
-Additionally when capturing changes from a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set` the user used by the connector also needs the permission to read the `config.shards` system collection.
+* Read from the database.
+* Run the `ping` command.
+
+The connector user might also require the following permission:
+
+* Read from the `config.shards` system collection.
+
+.Database read permissions
+The connector user must be able to read from all databases, or to read from a specific database, depending on the value of the connector's xref:mongodb-property-capture-scope[`capture.scope`] property. 
+Assign one of the following permissions to the user, depending on the `capture.scope` setting:
+
+`capture.scope` is set to `deployment`::
+Grant the user permission to read any database. 
+
+`capture.scope` is set to `database`::
+Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
+
+.Permission to use the MongoDB `ping` command 
+
+Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+
+.Permission to read the `config.shards` collection
+
+For connectors that capture changes from a sharded MongoDB cluster, and for which the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`, you must grant the user permission to read the `config.shards` system collection.
 
 
 // Type: concept
@@ -1532,21 +1556,22 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
-|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of change streamed] opened by the connector.
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
 Set this property to one of the following values:
 
-`deployment`:: opens a change stream cursor for a deployment (either a replica set or a sharded cluster) to watch for changes to all non-system collections across all databases except for `admin`, `local`, and `config`.
+`deployment`:: Opens a change stream cursor for a deployment (either a replica set or a sharded cluster) to watch for changes to all non-system collections across all databases, except for `admin`, `local`, and `config`.
 
-`database`:: opens a change stream cursor for a single database to watch for changes to all its non-system collections.
+`database`:: Opens a change stream cursor for a single database to watch for changes to all of its non-system collections.
 +
 [WARNING]
 ====
-To use signaling when `database` is specified as the value the signaling collection needs to be located in the database specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+If you set the value of this property to `database`,  to use {prodname} signaling , the signaling collection must reside in the database that is  specified by the xref:mongodb-property-capture-target[`capture.target`] property.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
 |
-| Specifies the database to watch for changes when xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`
+| Specifies the database that the connector monitors for changes.
+This property applies only if the xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`.
 
 |[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
