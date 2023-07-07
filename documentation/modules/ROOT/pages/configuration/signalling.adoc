@@ -409,7 +409,7 @@ endif::community[]
 |Key | Value
 
 |test_connector
-|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=MyBrand"}}`
+|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color='blue' AND brand='MyBrand'"}}`
 
 |===
 
