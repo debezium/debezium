@@ -361,7 +361,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         context.maximumKey(maximumKey);
                     }
                     catch (SQLException e) {
-                        LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
+                        LOGGER.error("Failed to read maximum key for table " + currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                 SQL_EXCEPTION);
                         nextDataCollection(partition, offsetContext);
