@@ -206,12 +206,12 @@ When a connector runs an initial snapshot, it captures two types of information:
 Table data::
 Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are designated by the connector's xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`] property.
 Schema data::
-DDL statements that describe changes that occur to the structure of tables.
+DDL statements that describe the structural changes that are applied to tables.
 
 After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
 This is not an error.
 By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
-The captured schema data is persisted to the both the internal schema history topic, and to the schema change topic, if one is configured.
+The captured schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
 Although the default behavior of an intial snapshot captures the schema all tables, if a table is not designated for capture (that is, not named in the `snapshot.include.collection.list`), the snapshot captures only the table structure.
 It does not capture any data from the table.
 
@@ -234,7 +234,7 @@ If the initial snapshot did not capture schema data for a table, you must perfor
 For a connector to capture data from a table, information about the table's schema must be present in the schema history topic.
 If you specified a list of tables for the connector to capture by configuring a `table.include.list`, when the connector runs its initial snapshot, it captures data from only the tables that are named in the list.
 However, by default, the initial snapshot captures the schema of every table in the database, not just the tables that you specified in the `include` list.
-This default behavior, which occurs when the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property is set to `false`, facilitates future additions to the list of tables to capture.
+This default behavior facilitates future additions to the list of tables to capture.
 
 [NOTE]
 ====
@@ -335,7 +335,7 @@ As with any initial snapshot, in a database with many large tables, running an i
 2. Remove the connector offsets and history topic.
  Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 3. Set values for properties in the connector configuration as described in the following steps:
-.. .. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
 .. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
 4. Restart the connector.
 The connector takes a full database snapshot.
