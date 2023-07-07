@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.util;
+package io.debezium.testing.testcontainers.util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,15 +23,22 @@ public class ContainerImageVersions {
     private static final String QUAY_IO_REGISTRY = "quay.io/";
     private static final String BASE_URL = "https://quay.io/api/v1/repository/%s/tag/?onlyActiveTags=true";
 
+    private static final String VERSION_PROPERTY_PREFIX = "debezium.testcontainers.version";
+
     public static String getStableImage(String image) {
         return image + ":" + getStableVersion(image);
     }
 
     public static String getStableVersion(String image) {
+        if (image.startsWith(QUAY_IO_REGISTRY)) {
+            image = image.substring(QUAY_IO_REGISTRY.length());
+        }
+
+        return getStableVersionFromProperty(image).orElse(getStableVersionFromQuay(image));
+    }
+
+    public static String getStableVersionFromQuay(String image) {
         try {
-            if (image.startsWith(QUAY_IO_REGISTRY)) {
-                image = image.substring(QUAY_IO_REGISTRY.length());
-            }
             URL url = new URL(String.format(BASE_URL, image));
             HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
             httpsURLConnection.setRequestMethod("GET");
@@ -65,5 +73,12 @@ public class ContainerImageVersions {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Optional<String> getStableVersionFromProperty(String image) {
+        var propImageName = image.replace("/", ".");
+        var version = System.getProperty(VERSION_PROPERTY_PREFIX + "." + propImageName);
+
+        return Optional.ofNullable(version);
     }
 }

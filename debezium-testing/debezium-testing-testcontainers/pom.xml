@@ -53,6 +53,7 @@
       <groupId>io.debezium</groupId>
       <artifactId>debezium-core</artifactId>
       <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
 
     <dependency>

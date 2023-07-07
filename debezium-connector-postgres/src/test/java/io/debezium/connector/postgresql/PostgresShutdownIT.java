@@ -30,7 +30,7 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 import io.debezium.util.Testing;
 
 /**
