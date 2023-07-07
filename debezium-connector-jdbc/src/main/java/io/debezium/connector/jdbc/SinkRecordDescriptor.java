@@ -280,15 +280,7 @@ public class SinkRecordDescriptor {
         }
 
         private boolean isFlattened(SinkRecord record) {
-            final Schema valueSchema = record.valueSchema();
-            if (valueSchema != null) {
-                for (Field field : valueSchema.fields()) {
-                    if (Schema.Type.STRUCT.equals(field.schema().type())) {
-                        return false;
-                    }
-                }
-            }
-            return true;
+            return record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
         }
 
         private void readSinkRecordKeyData(SinkRecord record, boolean flattened) {
