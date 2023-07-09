@@ -1030,26 +1030,26 @@ endif::community[]
 The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set. 
 Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries. 
 If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position. 
-However, if this position was removed from the oplog, the connector might fail to start ( xref:connector-error-invalid-resume-token[More details]), depending on the value specified for the connector's `snapshot.mode` property.
+However, if last stream position was removed from the oplog, depending on the value specified in the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property, the connector might fail to start, reporting an xref:connector-error-invalid-resume-token[invalid resume token error].
 In the event of a failure, you must create a new connector to enable {prodname} to continue capturing records from the database.
 For more information, see xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
 
 To ensure that the oplog retains the offset values that {prodname} requires to resume streaming, you can use either of the following approaches:
 
-*  https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog]. 
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog]. 
 Based on your typical workloads, set the oplog size to a value that is greater than the peak number of oplog entries per hour.
 
 * https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Increase the minimum number of hours that an oplog entry is retained] (MongoDB 4.4 and greater). 
-This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if oplog size cap is reached. 
+This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if the oplog reaches its maximum configured size. 
 Although this is generally the preferred option, for clusters with high workloads that are nearing capacity, specify the maximum oplog size. 
 
 To help prevent failures that are related to missing oplog entries, it's important to track metrics that report replication behavior, and to optimize the oplog size to support {prodname}. 
 In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window. 
 If {prodname} is offline for an interval that exceeds the value of the replication oplog window, and the primary oplog grows faster than {prodname} can consume entries, a connector failure can result.
 
-See [MongoDB replication metrics] (https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics) to learn how to monitor these metrics.
+For information about how to monitor these metrics, see https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics[the MongoDB documentation].
 
-It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog ([Oplog GB/Hour](https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour)), multiplied by the time that might be required to address a {prodname} failure.
+It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog (https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour[Oplog GB/Hour]), multiplied by the time that might be required to address a {prodname} failure.
 
 That is,
   
@@ -1058,7 +1058,7 @@ That is,
 For example, if the oplog size limit is set to 1GB, and the oplog grows by 3GB per hour, oplog entries are cleared three times per hour.
 If {prodname} were to fail during this time, its last oplog position is likely to be removed.
 
-If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two hours, you would thus set the oplog size to (3 GB/hour X 2 hours), or 6GB.
+If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two hours, you would thus set the oplog size to 3GB/hour X 2 hours, or 6GB.
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
@@ -1984,15 +1984,20 @@ Each delay is double that of the prior delay, up to the maximum delay. Given the
 [id="connector-error-invalid-resume-token"]
 === Connector Unable to Start - InvalidResumeToken or ChangeStreamHistoryLost
 
-If a connector was stopped for long period and now is unable to start, with the following exception.
+A connector that is stopped for a long period fails to start, and reports the following exception:
 ----
 Command failed with error 286 (ChangeStreamHistoryLost): 'PlanExecutor error during aggregation :: caused by :: Resume of change stream was not possible, as the resume point may no longer be in the oplog
 ----
-This indicates that the entry which corresponds to the connector's resume token no longer exists in the Oplog. At this point the connector cannot resume streaming, because the oplog no longer contains the previous offset that the connector has processed.
+The preceding exception indicates that the entry that corresponds to the connector's resume token is no longer present in the oplog. 
+Because the oplog no longer contains the last offset that the connector processed, the connector cannot resume streaming.
 
-To recover from the failure, either delete the failed connector, and create a new connector with the same configuration but with a different connector name, or pause the connector and clean or change the offset topic.
+You can use either of the following options to recover from the failure:
 
-To avoid this failure, xref:mongodb-optimal-oplog-config [see how to configure oplog optimally].
+* Delete the failed connector, and create a new connector with the same configuration but with a different connector name.
+
+* Pause the connector and then remove offsets, or change the offset topic.
+
+To help prevent failures related to missing resume tokens, xref:mongodb-optimal-oplog-config[optimize configuration of the oplog].
 
 [id="debezium-mongodb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
