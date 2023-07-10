@@ -18,7 +18,8 @@ import java.util.Properties;
 
 public class DataMapTracingSetter implements TextMapSetter<Map<String, Object>> {
 
-    private DataMapTracingSetter() {}
+    private DataMapTracingSetter() {
+    }
 
     public static DataMapTracingSetter create() {
         return new DataMapTracingSetter();
