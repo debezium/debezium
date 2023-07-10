@@ -27,8 +27,6 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.type.debezium.GeometryType;
-import io.debezium.connector.jdbc.type.debezium.PointType;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
