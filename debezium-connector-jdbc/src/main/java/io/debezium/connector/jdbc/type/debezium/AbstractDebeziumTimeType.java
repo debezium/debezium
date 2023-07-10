@@ -38,7 +38,7 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value == null) {
             query.setParameter(index, null);
         }
@@ -55,6 +55,7 @@ public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
         else {
             throwUnexpectedValue(value);
         }
+        return 1;
     }
 
     protected abstract LocalTime getLocalTime(Number value);

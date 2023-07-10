@@ -37,21 +37,24 @@ public class GeometryType extends AbstractType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
 
         if (value == null) {
             query.setParameter(index, null);
+            return 1;
         }
-        else if (value instanceof Struct) {
+
+        if (value instanceof Struct) {
             final int srid = ((Struct) value).getInt32("srid");
             final byte[] wkb = ((Struct) value).getBytes("wkb");
 
             // TODO manage binary.handling.mode?
             query.setParameter(index, Base64.getDecoder().decode(wkb));
             query.setParameter(index + 1, srid);
+            return 2;
         }
-        else {
-            throwUnexpectedValue(value);
-        }
+
+        throwUnexpectedValue(value);
+        return 0;
     }
 }

@@ -49,7 +49,7 @@ class IntervalType extends AbstractType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value != null && Long.class.isAssignableFrom(value.getClass())) {
             final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
             query.setParameter(index, ((long) doubleValue) + " seconds");
@@ -57,5 +57,7 @@ class IntervalType extends AbstractType {
         else {
             query.setParameter(index, value);
         }
+
+        return 1;
     }
 }

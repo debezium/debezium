@@ -38,8 +38,8 @@ class MapToHstoreType extends AbstractConnectMapType {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
-        super.bind(query, index, schema, HstoreConverter.mapToString((Map<String, String>) value));
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
+        return super.bind(query, index, schema, HstoreConverter.mapToString((Map<String, String>) value));
     }
 
 }
