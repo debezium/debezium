@@ -28,6 +28,7 @@ import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
 
 /**
  * Insert Mode tests for MySQL.
@@ -46,6 +47,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-6637")
     public void testInsertModeInsertWithPrimaryKeyModeComplexRecordValue(SinkRecordFactory factory) {
 
         final Map<String, String> properties = getDefaultSinkConfig();
@@ -81,9 +83,15 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+
+        // ST_GeomFromText('POLYGON ((0 5, 2 5, 2 7, 0 7, 0 5))', 3187)
         getSink().assertColumnType(tableAssert, "geometry", ValueType.BYTES, DatatypeConverter
                 .parseHexBinary(
                         "730C000001030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440"));
+
+        // getSink().assertColumn(destinationTableName(createGeometryRecord), "geometry", "\"postgis\".\"geometry\"");
+
+        // ST_PointFromText('POINT (1 1)', 3187)
         getSink().assertColumnType(tableAssert, "point", ValueType.BYTES, DatatypeConverter
                 .parseHexBinary(
                         "730C00000101000000000000000000F03F000000000000F03F"));
