@@ -31,6 +31,10 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
 
     String transactionTopic();
 
+    default String recordSchemaPrefix(I id) {
+        return dataChangeTopic(id);
+    }
+
     /**
      * Sanitize the given character whether is a legal character of a Kafka topic name.
      * Legal characters are {@code [a-zA-Z0-9._-]}.
