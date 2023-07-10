@@ -62,7 +62,7 @@ public class ZonedTimeType extends AbstractTimeType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value == null) {
             query.setParameter(index, null);
         }
@@ -83,6 +83,8 @@ public class ZonedTimeType extends AbstractTimeType {
         else {
             throwUnexpectedValue(value);
         }
+
+        return 1;
     }
 
     protected void bindWithNoTimeZoneDetails(Query<?> query, int index, ZonedDateTime zonedDateTime) {

@@ -74,7 +74,7 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value == null) {
             query.setParameter(index, null);
         }
@@ -91,6 +91,7 @@ class BitType extends AbstractType {
                 query.setParameter(index, Strings.justifyRight(binaryBitString, length, '0'));
             }
         }
+        return 1;
     }
 
     private boolean isBitOne(Schema schema) {

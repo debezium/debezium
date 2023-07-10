@@ -65,8 +65,10 @@ public abstract class AbstractType implements Type {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         query.setParameter(index, value);
+
+        return 1;
     }
 
     protected DatabaseDialect getDialect() {
@@ -92,7 +94,7 @@ public abstract class AbstractType implements Type {
         return Optional.empty();
     }
 
-    protected void throwUnexpectedValue(Object value) {
+    protected void throwUnexpectedValue(Object value) throws RuntimeException {
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value.toString(), value.getClass().getName()));
     }
