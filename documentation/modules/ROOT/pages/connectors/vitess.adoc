@@ -43,7 +43,7 @@ In this way, the connector starts with a consistent view of all of the data, and
 
 The connector is tolerant of failures.
 As the connector reads changes and produces events, it records the Vitess global transaction ID (VGTID) position for each event.
-If the connector stops for any reason (including communication failures, network problems, or crashes), after the connector restarts, it continues reading the VStream from the last VGTID that it stored.
+If the connector stops for any reason (including communication failures, network problems, or crashes), after the connector restarts, it continues reading from VStream from the last change event entry that it stored.
 This behavior does not apply to snapshots. If the connector stops during a snapshot, after a restart, the connector does not continue performing snapshots where it last left off.
 We'll talk later about how the connector behaves xref:{link-vitess-connector}#vitess-when-things-go-wrong[when things go wrong].
 
