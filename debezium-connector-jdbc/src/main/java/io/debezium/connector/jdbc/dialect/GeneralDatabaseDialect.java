@@ -365,8 +365,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public int bindValue(FieldDescriptor field, NativeQuery<?> query, int startIndex, Object value) {
         LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, field.getType().getClass().getName(), value);
-        field.bind(query, startIndex, value);
-        return 1;
+        return field.bind(query, startIndex, value);
     }
 
     @Override
@@ -551,10 +550,6 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         // io.debezium.time.MicroDuration - partially supported with PostgreSQL
         // io.debezium.time.NAnoDuration - not supported; emitted by Cassandra
         //
-        // MySQL and PostgreSQL:
-        // io.debezium.data.geometry.Geography - not yet supported
-        // io.debezium.data.geometry.Geometry - not yet supported
-        // io.debezium.data.geometry.Point - not yet supported
 
         // Supported common Debezium data types
         registerType(DateType.INSTANCE);

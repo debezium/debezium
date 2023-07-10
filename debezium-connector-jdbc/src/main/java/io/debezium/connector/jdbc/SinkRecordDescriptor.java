@@ -215,8 +215,8 @@ public class SinkRecordDescriptor {
             return queryBinding;
         }
 
-        public void bind(NativeQuery<?> query, int startIndex, Object value) {
-            type.bind(query, startIndex, schema, value);
+        public int bind(NativeQuery<?> query, int startIndex, Object value) {
+            return type.bind(query, startIndex, schema, value);
         }
 
         @Override
