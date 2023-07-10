@@ -62,26 +62,12 @@ public class Sink extends JdbcConnectionProvider {
     }
 
     public AbstractColumnAssert assertColumnType(TableAssert table, String columnName, ValueType type, boolean lenient) {
-        switch (type) {
-            case BOOLEAN:
-                return table.column(columnName).isBoolean(lenient);
-            case TEXT:
-                return table.column(columnName).isText(lenient);
-            case DATE:
-                return table.column(columnName).isDate(lenient);
-            case TIME:
-                return table.column(columnName).isTime(lenient);
-            case DATE_TIME:
-                return table.column(columnName).isDateTime(lenient);
-            case NUMBER:
-                return table.column(columnName).isNumber(lenient);
-            case UUID:
-                return table.column(columnName).isUUID(lenient);
-            case BYTES:
-                return table.column(columnName).isBytes(lenient);
-            default:
-                throw new RuntimeException("Unexpected value type: " + type);
-        }
+
+        return table.column(columnName).isOfType(type, lenient);
+    }
+
+    public AbstractColumnAssert assertColumnType(TableAssert table, String columnName, Class classType, Object values) {
+        return table.column(columnName).isOfClass(classType, false).hasValues(values);
     }
 
     public void assertColumnType(TableAssert table, String columnName, ValueType type) {
