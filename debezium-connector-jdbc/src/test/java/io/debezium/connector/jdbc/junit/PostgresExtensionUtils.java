@@ -55,7 +55,6 @@ public class PostgresExtensionUtils {
                 sink.execute("DROP SCHEMA IF EXISTS postgis CASCADE");
                 sink.execute("CREATE SCHEMA postgis");
                 sink.execute("CREATE EXTENSION IF NOT EXISTS postgis SCHEMA postgis");
-                sink.execute("CREATE TYPE geometry AS (udt postgis.geometry)");
             }
             else {
                 sink.execute("CREATE EXTENSION " + extensionName);
