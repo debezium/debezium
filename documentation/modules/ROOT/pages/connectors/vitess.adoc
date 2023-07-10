@@ -607,7 +607,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace), table, and shard that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
 * VGTID of the operation
 * Timestamp for when the change was made in the database
@@ -689,7 +689,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace), table, and shard that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
 * VGTID of the operation
 * Timestamp for when the change was made in the database
@@ -766,7 +766,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace), table, and shard that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
 * VGTID of the operation
 * Timestamp for when the change was made in the database
