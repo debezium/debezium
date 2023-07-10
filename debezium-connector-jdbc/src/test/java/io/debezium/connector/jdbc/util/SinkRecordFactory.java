@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.util;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -195,6 +196,35 @@ public interface SinkRecordFactory {
                 .after("name", "John Doe")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
+    }
+
+    default SinkRecord createRecordWithSchemaValue(String topicName, byte key, List<String> fieldNames, List<Schema> fieldSchemas, List<Object> values) {
+        SinkRecordBuilder.SinkRecordTypeBuilder basicSchemaBuilder = SinkRecordBuilder.create()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(1)
+                .partition(0)
+                .keySchema(basicKeySchema())
+                .sourceSchema(basicSourceSchema())
+                .source("ts_ms", (int) Instant.now().getEpochSecond())
+                .key("id", key);
+
+        SchemaBuilder recordSchema = SchemaBuilder.struct().field("id", Schema.INT8_SCHEMA);
+
+        for (int i = 0; i < fieldNames.size(); i++) {
+            recordSchema.field(fieldNames.get(i), fieldSchemas.get(i));
+        }
+
+        basicSchemaBuilder.recordSchema(recordSchema);
+
+        basicSchemaBuilder.after("id", key);
+
+        for (int i = 0; i < values.size(); i++) {
+            basicSchemaBuilder.after(fieldNames.get(i), values.get(i));
+        }
+
+        return basicSchemaBuilder.build();
     }
 
     default SinkRecord createRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {

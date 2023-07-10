@@ -76,6 +76,7 @@ public interface Type {
      * @param index parameter index to bind
      * @param schema field schema, never {@code null}
      * @param value value to be bound, may be {@code null}
+     * @return the number of bound parameters
      */
-    void bind(Query<?> query, int index, Schema schema, Object value);
+    int bind(Query<?> query, int index, Schema schema, Object value);
 }

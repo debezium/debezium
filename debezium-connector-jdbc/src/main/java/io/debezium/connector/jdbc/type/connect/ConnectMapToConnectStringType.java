@@ -40,11 +40,12 @@ public class ConnectMapToConnectStringType extends AbstractConnectMapType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value instanceof Map) {
             value = mapToJsonString(value);
         }
         ConnectStringType.INSTANCE.bind(query, index, schema, value);
+        return 1;
     }
 
 }

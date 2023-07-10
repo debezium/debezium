@@ -43,11 +43,11 @@ class JsonType extends AbstractType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (isHstore(schema)) {
             value = HstoreConverter.jsonToString((String) value);
         }
-        super.bind(query, index, schema, value);
+        return super.bind(query, index, schema, value);
     }
 
     private String resolveType(Schema schema) {

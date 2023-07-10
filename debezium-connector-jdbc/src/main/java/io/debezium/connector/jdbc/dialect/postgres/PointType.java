@@ -40,7 +40,7 @@ class PointType extends AbstractType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value == null) {
             query.setParameter(index, null);
         }
@@ -50,5 +50,7 @@ class PointType extends AbstractType {
             final double y = struct.getFloat64(Point.Y_FIELD);
             query.setParameter(index, String.format("(%f,%f)", x, y));
         }
+
+        return 1;
     }
 }

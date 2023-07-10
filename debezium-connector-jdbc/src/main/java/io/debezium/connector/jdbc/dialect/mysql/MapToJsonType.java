@@ -42,7 +42,7 @@ class MapToJsonType extends AbstractConnectMapType {
     }
 
     @Override
-    public void bind(Query<?> query, int index, Schema schema, Object value) {
+    public int bind(Query<?> query, int index, Schema schema, Object value) {
         if (value instanceof Map) {
             try {
                 value = OBJECT_MAPPER.writeValueAsString(value);
@@ -51,7 +51,7 @@ class MapToJsonType extends AbstractConnectMapType {
                 throw new ConnectException("Failed to deserialize MAP data to JSON", e);
             }
         }
-        JsonType.INSTANCE.bind(query, index, schema, value);
+        return JsonType.INSTANCE.bind(query, index, schema, value);
     }
 
 }
