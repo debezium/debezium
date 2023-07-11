@@ -5,8 +5,6 @@
  */
 package io.debezium.testing.system.fixtures.kafka;
 
-import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_BUILD;
-import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_KC_IMAGE;
 import static io.debezium.testing.system.tools.ConfigProperties.STRIMZI_OPERATOR_CONNECTORS;
 
 import org.jetbrains.annotations.NotNull;
@@ -92,21 +90,15 @@ public class OcpKafka extends TestFixture {
     private void deployConnectCluster(StrimziOperatorController operatorController, OcpKafkaController kafkaController) throws Exception {
         ConfigMap configMap = YAML.fromResource(KAFKA_CONNECT_LOGGING, ConfigMap.class);
 
+        OcpArtifactServerController artifactServerController = deployArtifactServer();
+
         FabricKafkaConnectBuilder builder = FabricKafkaConnectBuilder
                 .base(kafkaController.getLocalBootstrapAddress())
                 .withLoggingFromConfigMap(configMap)
                 .withMetricsFromConfigMap(configMap)
-                .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS);
-
-        if (STRIMZI_KC_BUILD) {
-            OcpArtifactServerController artifactServerController = deployArtifactServer();
-            builder.withBuild(artifactServerController);
-        }
-        else {
-            builder.withImage(STRIMZI_KC_IMAGE);
-        }
-
-        builder.withPullSecret(operatorController.getPullSecret());
+                .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS)
+                .withBuild(artifactServerController)
+                .withPullSecret(operatorController.getPullSecret());
 
         OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer(
                 project, builder, configMap, operatorController, ocp, new OkHttpClient());
