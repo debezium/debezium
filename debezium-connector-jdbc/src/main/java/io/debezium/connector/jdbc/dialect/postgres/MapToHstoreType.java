@@ -26,7 +26,7 @@ class MapToHstoreType extends AbstractConnectMapType {
     public static final MapToHstoreType INSTANCE = new MapToHstoreType();
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return "cast(? as hstore)";
     }
 

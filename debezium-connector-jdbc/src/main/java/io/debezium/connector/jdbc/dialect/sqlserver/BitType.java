@@ -34,7 +34,7 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         if (Bits.LOGICAL_NAME.equals(schema.name())) {
             final int bitSize = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
             return String.format("cast(? as %s)", bitSize > 1 ? String.format("varbinary(%d)", bitSize) : "bit");

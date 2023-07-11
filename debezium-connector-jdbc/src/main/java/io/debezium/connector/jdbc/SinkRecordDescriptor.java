@@ -208,9 +208,9 @@ public class SinkRecordDescriptor {
             return typeName;
         }
 
-        public String getQueryBinding(ColumnDescriptor column) {
+        public String getQueryBinding(ColumnDescriptor column, Object value) {
             if (queryBinding == null) {
-                queryBinding = type.getQueryBinding(column, schema);
+                queryBinding = type.getQueryBinding(column, schema, value);
             }
             return queryBinding;
         }

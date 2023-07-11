@@ -25,8 +25,8 @@ public class ConnectMapToConnectStringType extends AbstractConnectMapType {
     public static final ConnectMapToConnectStringType INSTANCE = new ConnectMapToConnectStringType();
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
-        return ConnectStringType.INSTANCE.getQueryBinding(column, schema);
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+        return ConnectStringType.INSTANCE.getQueryBinding(column, schema, value);
     }
 
     @Override

@@ -35,7 +35,7 @@ public class ConnectTimeType extends AbstractTimeType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return getDialect().getTimeQueryBinding();
     }
 
