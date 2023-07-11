@@ -1444,7 +1444,7 @@ public interface Configuration {
     }
 
     /**
-     * Get the boolean value associated with the given key, using the given supplier to obtain a default value if there is no such
+     * Get the string value associated with the given key, using the given supplier to obtain a default value if there is no such
      * key-value pair.
      *
      * @param field the field
