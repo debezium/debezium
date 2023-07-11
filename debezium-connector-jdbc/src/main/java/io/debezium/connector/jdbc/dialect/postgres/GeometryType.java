@@ -5,25 +5,33 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.util.Base64;
-
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.hibernate.query.Query;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.type.AbstractGeoType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.geometry.Geometry;
 
-public class GeometryType extends AbstractType {
+public class GeometryType extends AbstractGeoType {
 
     public static final Type INSTANCE = new GeometryType();
 
+    static final String GEO_FROM_WKB_FUNCTION = "%s.ST_GeomFromWKB(?, ?)";
+    private static final String TYPE_NAME = "%s.geometry";
+    String postgisSchema;
+
+    @Override
+    public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+        super.configure(config, dialect);
+
+        this.postgisSchema = config.getPostgresPostgisSchema();
+    }
+
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema) {
-        return "postgis.ST_GeomFromWKB(?, ?)"; // TODO postgis should come from a configuration property
+        return String.format(GEO_FROM_WKB_FUNCTION, postgisSchema);
     }
 
     @Override
@@ -33,28 +41,6 @@ public class GeometryType extends AbstractType {
 
     @Override
     public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return "postgis.geometry";
-    }
-
-    @Override
-    public int bind(Query<?> query, int index, Schema schema, Object value) {
-
-        if (value == null) {
-            query.setParameter(index, null);
-            return 1;
-        }
-
-        if (value instanceof Struct) {
-            final int srid = ((Struct) value).getInt32("srid");
-            final byte[] wkb = ((Struct) value).getBytes("wkb");
-
-            // TODO manage binary.handling.mode?
-            query.setParameter(index, Base64.getDecoder().decode(wkb));
-            query.setParameter(index + 1, srid);
-            return 2;
-        }
-
-        throwUnexpectedValue(value);
-        return 0;
+        return String.format(TYPE_NAME, postgisSchema);
     }
 }

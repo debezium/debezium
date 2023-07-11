@@ -158,6 +158,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(EnumType.INSTANCE);
         registerType(PointType.INSTANCE);
         registerType(GeometryType.INSTANCE);
+        registerType(GeographyType.INSTANCE);
         registerType(MoneyType.INSTANCE);
         registerType(XmlType.INSTANCE);
         registerType(LtreeType.INSTANCE);
