@@ -26,8 +26,8 @@ class PointType extends GeometryType {
     private static final String GEO_FROM_WKB_FUNCTION_AS_POINT = "cast(" + GEO_FROM_WKB_FUNCTION + " as point)";
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
-        return String.format(GEO_FROM_WKB_FUNCTION_AS_POINT, postgisSchema);
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+        return value == null ? "?" : String.format(GEO_FROM_WKB_FUNCTION_AS_POINT, postgisSchema);
     }
 
     @Override

@@ -34,7 +34,7 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         if (isBitOne(schema)) {
             final Optional<String> columnType = getSourceColumnType(schema);
             if (columnType.isPresent() && "BIT".equals(columnType.get())) {

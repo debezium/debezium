@@ -6,6 +6,8 @@
 package io.debezium.connector.jdbc.integration.postgres;
 
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -69,28 +71,29 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         Schema geometrySchema = buildGeoTypeSchema("Geometry");
 
         Struct geometryValue = new Struct(geometrySchema)
-                .put("wkb", "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA".getBytes())
-                .put("srid", 3187);
+                .put("wkb", Base64.getDecoder().decode(
+                        "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA".getBytes()));
 
         Schema pointSchema = buildGeoTypeSchema("Point");
         Struct pointValue = new Struct(pointSchema)
                 .put("x", 1.0)
                 .put("y", 1.0)
-                .put("wkb", "AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes())
+                .put("wkb", Base64.getDecoder().decode("AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes()))
                 .put("srid", 3187);
 
         Schema geographySchema = buildGeoTypeSchema("Geography");
 
         Struct geographyValue = new Struct(geographySchema)
-                .put("wkb", "AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes())
+                .put("wkb", Base64.getDecoder().decode("AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes()))
                 .put("srid", 4326);
 
         final SinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
-                List.of("geometry", "point", "geography"), List.of(geometrySchema, pointSchema, geographySchema), List.of(geometryValue, pointValue, geographyValue));
+                List.of("geometry", "point", "geography", "p"), List.of(geometrySchema, pointSchema, geographySchema, pointSchema),
+                Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }));
         consume(createGeometryRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
-        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(5);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
 
@@ -98,7 +101,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         PGobject expectedValue = new PGobject();
         expectedValue.setType("\"postgis\".\"geometry\"");
         expectedValue.setValue(
-                "0103000020730C00000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440");
+                "01030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440");
         getSink().assertColumnType(tableAssert, "geometry", PGobject.class, expectedValue);
 
         // ST_PointFromText('POINT (1 1)', 3187)
@@ -111,6 +114,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         expectedGeographyValue.setValue(
                 "0105000020E610000001000000010200000002000000A779C7293A2465400B462575025A46C0C66D3480B7FC6440C3D32B65195246C0");
         getSink().assertColumnType(tableAssert, "geography", PGobject.class, expectedGeographyValue);
+
+        getSink().assertColumnHasNullValue(tableAssert, "p");
     }
 
     private static Schema buildGeoTypeSchema(String type) {

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.type;
 
-import java.util.Base64;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -24,10 +24,13 @@ public abstract class AbstractGeoType extends AbstractType {
         }
 
         if (value instanceof Struct) {
-            final int srid = ((Struct) value).getInt32(SRID);
+            // Default srid is 0 for both
+            // MySQL https://dev.mysql.com/doc/refman/8.0/en/spatial-reference-systems.html#:~:text=The%20SRS%20denoted%20in%20MySQL,for%20spatial%20data%20in%20MySQL.
+            // PostgreSQL https://postgis.net/docs/using_postgis_dbmanagement.html#spatial_ref_sys_table
+            final Integer srid = Optional.ofNullable(((Struct) value).getInt32(SRID)).orElse(0);
             final byte[] wkb = ((Struct) value).getBytes(WKB);
 
-            query.setParameter(index, Base64.getDecoder().decode(wkb));
+            query.setParameter(index, wkb);
             query.setParameter(index + 1, srid);
             return 2;
         }
