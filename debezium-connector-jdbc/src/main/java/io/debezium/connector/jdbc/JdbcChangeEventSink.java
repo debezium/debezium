@@ -9,6 +9,7 @@ import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolution
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Struct;
@@ -310,18 +311,17 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private int bindKeyValuesToQuery(SinkRecordDescriptor record, NativeQuery<?> query, int index) {
-        switch (config.getPrimaryKeyMode()) {
-            case KAFKA:
-                query.setParameter(index++, record.getTopicName());
-                query.setParameter(index++, record.getPartition());
-                query.setParameter(index++, record.getOffset());
-                break;
-            default:
-                final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
-                if (keySource != null) {
-                    index = bindFieldValuesToQuery(record, query, index, keySource, record.getKeyFieldNames());
-                }
-                break;
+
+        if (Objects.requireNonNull(config.getPrimaryKeyMode()) == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
+            query.setParameter(index++, record.getTopicName());
+            query.setParameter(index++, record.getPartition());
+            query.setParameter(index++, record.getOffset());
+        }
+        else {
+            final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
+            if (keySource != null) {
+                index = bindFieldValuesToQuery(record, query, index, keySource, record.getKeyFieldNames());
+            }
         }
         return index;
     }

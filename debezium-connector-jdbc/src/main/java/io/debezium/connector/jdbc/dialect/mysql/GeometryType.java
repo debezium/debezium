@@ -18,8 +18,8 @@ public class GeometryType extends AbstractGeoType {
     public static final Type INSTANCE = new GeometryType();
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
-        return "ST_GeomFromWKB(?, ?)";
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+        return value == null ? "?" : "ST_GeomFromWKB(?, ?)";
     }
 
     @Override

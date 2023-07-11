@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -621,7 +622,41 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
         final String columnName = columnNameFromField(fieldName, record);
-        return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName));
+
+        if (record.getNonKeyFieldNames().contains(columnName)) {
+            Struct source = record.getAfterStruct();
+            return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName), source.get(fieldName));
+        }
+
+        Object value = getValueFromKeyField(fieldName, record, columnName);
+        return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName), value);
+    }
+
+    private Object getValueFromKeyField(String fieldName, SinkRecordDescriptor record, String columnName) {
+
+        Object value;
+        if (connectorConfig.getPrimaryKeyMode() == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
+            value = getValueForColumn(columnName, record);
+        }
+        else {
+            final Struct source = record.getKeyStruct(connectorConfig.getPrimaryKeyMode());
+            value = source.get(fieldName);
+        }
+        return value;
+    }
+
+    private Object getValueForColumn(String columnName, SinkRecordDescriptor record) {
+
+        switch (columnName) {
+            case "__connect_topic":
+                return record.getTopicName();
+            case "__connect_partition":
+                return record.getPartition();
+            case "__connect_offset":
+                return record.getOffset();
+            default:
+                return null;
+        }
     }
 
     protected String columnNameFromField(String fieldName, SinkRecordDescriptor record) {
@@ -673,7 +708,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private String columnNameEqualsBinding(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
         final ColumnDescriptor column = table.getColumnByName(columnNameFromField(fieldName, record));
         final FieldDescriptor field = record.getFields().get(fieldName);
-        return toIdentifier(columnNamingStrategy.resolveColumnName(fieldName)) + "=" + field.getQueryBinding(column);
+        return toIdentifier(columnNamingStrategy.resolveColumnName(fieldName)) + "=" + field.getQueryBinding(column, record.getAfterStruct());
     }
 
     private static boolean isColumnNullable(String columnName, Collection<String> primaryKeyColumnNames, int nullability) {

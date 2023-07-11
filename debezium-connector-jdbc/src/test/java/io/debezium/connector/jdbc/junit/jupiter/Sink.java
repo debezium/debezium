@@ -86,6 +86,10 @@ public class Sink extends JdbcConnectionProvider {
         assertColumnType(table, columnName, type, isAnyValueNull(values)).hasValues(values);
     }
 
+    public void assertColumnHasNullValue(TableAssert table, String columnName) {
+        assertColumnType(table, columnName, ValueType.NOT_IDENTIFIED, false).hasOnlyNullValues();
+    }
+
     public void assertColumn(String tableName, String columnName, String expectedType) {
         tableName = formatTableName(tableName);
         columnName = formatColumnName(columnName);

@@ -29,7 +29,7 @@ class JsonType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         if (isHstore(schema)) {
             return "cast(? as hstore)";
             // return super.getQueryBinding(schema);
