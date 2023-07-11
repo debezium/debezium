@@ -60,6 +60,7 @@ public class JdbcSinkConnectorConfig {
     public static final String TABLE_NAMING_STRATEGY = "table.naming.strategy";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String DATABASE_TIME_ZONE = "database.time_zone";
+    public static final String POSTGRES_POSTGIS_SCHEMA = "database.postgres.postgis.schema";
 
     // todo add support for the ValueConverter contract
 
@@ -231,6 +232,15 @@ public class JdbcSinkConnectorConfig {
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
 
+    public static final Field POSTGRES_POSTGIS_SCHEMA_FIELD = Field.create(POSTGRES_POSTGIS_SCHEMA)
+            .withDisplayName("Name of the schema where postgis extension is installed")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("public")
+            .withDescription("Name of the schema where postgis extension is installed. Default is public");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -250,7 +260,8 @@ public class JdbcSinkConnectorConfig {
                     // DATA_TYPE_MAPPING_FIELD,
                     TABLE_NAMING_STRATEGY_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
-                    DATABASE_TIME_ZONE_FIELD)
+                    DATABASE_TIME_ZONE_FIELD,
+                    POSTGRES_POSTGIS_SCHEMA_FIELD)
             .create();
 
     /**
@@ -296,6 +307,7 @@ public class JdbcSinkConnectorConfig {
         public String getValue() {
             return mode;
         }
+
     }
 
     /**
@@ -358,6 +370,7 @@ public class JdbcSinkConnectorConfig {
         public String getValue() {
             return mode;
         }
+
     }
 
     /**
@@ -382,7 +395,6 @@ public class JdbcSinkConnectorConfig {
         // * schema not found in the event will be dropped.
         // */
         // ADVANCED("advanced");
-
         private String mode;
 
         SchemaEvolutionMode(String mode) {
@@ -402,9 +414,11 @@ public class JdbcSinkConnectorConfig {
         public String getValue() {
             return mode;
         }
+
     }
 
     private final Configuration config;
+
     private final InsertMode insertMode;
     private final boolean deleteEnabled;
     private final String tableNameFormat;
@@ -416,6 +430,7 @@ public class JdbcSinkConnectorConfig {
     private final TableNamingStrategy tableNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private final String databaseTimezone;
+    private final String postgresPostgisSchema;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -430,6 +445,7 @@ public class JdbcSinkConnectorConfig {
         this.tableNamingStrategy = config.getInstance(TABLE_NAMING_STRATEGY_FIELD, TableNamingStrategy.class);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.databaseTimezone = config.getString(DATABASE_TIME_ZONE_FIELD);
+        this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
     }
 
     public void validate() {
@@ -484,7 +500,6 @@ public class JdbcSinkConnectorConfig {
     // public Set<String> getDataTypeMapping() {
     // return dataTypeMapping;
     // }
-
     public TableNamingStrategy getTableNamingStrategy() {
         return tableNamingStrategy;
     }
@@ -495,6 +510,10 @@ public class JdbcSinkConnectorConfig {
 
     public String getDatabaseTimeZone() {
         return databaseTimezone;
+    }
+
+    public String getPostgresPostgisSchema() {
+        return postgresPostgisSchema;
     }
 
     /** makes {@link org.hibernate.cfg.Configuration} from connector config
@@ -567,5 +586,4 @@ public class JdbcSinkConnectorConfig {
         }
         return 0;
     }
-
 }

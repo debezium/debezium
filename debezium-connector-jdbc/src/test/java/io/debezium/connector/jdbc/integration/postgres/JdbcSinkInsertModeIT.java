@@ -58,6 +58,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -78,12 +79,18 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", "AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes())
                 .put("srid", 3187);
 
+        Schema geographySchema = buildGeoTypeSchema("Geography");
+
+        Struct geographyValue = new Struct(geographySchema)
+                .put("wkb", "AQUAACDmEAAAAQAAAAECAAAAAgAAAKd5xyk6JGVAC0YldQJaRsDGbTSAt/xkQMPTK2UZUkbA".getBytes())
+                .put("srid", 4326);
+
         final SinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
-                List.of("geometry", "point"), List.of(geometrySchema, pointSchema), List.of(geometryValue, pointValue));
+                List.of("geometry", "point", "geography"), List.of(geometrySchema, pointSchema, geographySchema), List.of(geometryValue, pointValue, geographyValue));
         consume(createGeometryRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
-        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
 
@@ -97,6 +104,13 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         // ST_PointFromText('POINT (1 1)', 3187)
         PGpoint expectedPoint = new PGpoint(1.0, 1.0);
         getSink().assertColumnType(tableAssert, "point", PGobject.class, expectedPoint);
+
+        // SRID=4326;MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))
+        PGobject expectedGeographyValue = new PGobject();
+        expectedGeographyValue.setType("\"postgis\".\"geography\"");
+        expectedGeographyValue.setValue(
+                "0105000020E610000001000000010200000002000000A779C7293A2465400B462575025A46C0C66D3480B7FC6440C3D32B65195246C0");
+        getSink().assertColumnType(tableAssert, "geography", PGobject.class, expectedGeographyValue);
     }
 
     private static Schema buildGeoTypeSchema(String type) {

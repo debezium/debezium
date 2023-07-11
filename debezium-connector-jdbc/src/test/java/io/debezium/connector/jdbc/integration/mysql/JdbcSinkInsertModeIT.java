@@ -85,6 +85,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
 
         // ST_GeomFromText('POLYGON ((0 5, 2 5, 2 7, 0 7, 0 5))', 3187)
+
         getSink().assertColumnType(tableAssert, "geometry", ValueType.BYTES, DatatypeConverter
                 .parseHexBinary(
                         "730C000001030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440"));
