@@ -21,10 +21,12 @@
         <version.jetty>9.4.12.v20180830</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>12.0.0</version.vitess.grpc>
-        <version.grpc>1.33.0</version.grpc>
+        <version.vitess.grpc>17.0.0</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
+
+        <!-- Spanner and Vitess dependencies -->
+        <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
