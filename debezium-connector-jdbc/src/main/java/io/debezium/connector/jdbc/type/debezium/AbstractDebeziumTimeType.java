@@ -24,7 +24,7 @@ import io.debezium.connector.jdbc.type.AbstractTimeType;
 public abstract class AbstractDebeziumTimeType extends AbstractTimeType {
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return getDialect().getTimeQueryBinding();
     }
 

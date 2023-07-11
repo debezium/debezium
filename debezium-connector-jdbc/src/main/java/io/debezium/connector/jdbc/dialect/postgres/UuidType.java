@@ -28,7 +28,7 @@ class UuidType extends AbstractType {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return "cast(? as uuid)";
     }
 

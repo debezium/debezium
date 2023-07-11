@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.integration.mysql;
 
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -65,22 +67,22 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         Schema geometrySchema = buildGeoTypeSchema("Geometry");
 
         Struct geometryValue = new Struct(geometrySchema)
-                .put("wkb", "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA".getBytes())
-                .put("srid", 3187);
+                .put("wkb", Base64.getDecoder().decode(
+                        "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA".getBytes()));
 
         Schema pointSchema = buildGeoTypeSchema("Point");
         Struct pointValue = new Struct(pointSchema)
                 .put("x", 1.0)
                 .put("y", 1.0)
-                .put("wkb", "AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes())
+                .put("wkb", Base64.getDecoder().decode("AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes()))
                 .put("srid", 3187);
 
         final SinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
-                List.of("geometry", "point"), List.of(geometrySchema, pointSchema), List.of(geometryValue, pointValue));
+                List.of("geometry", "point", "g"), List.of(geometrySchema, pointSchema, geometrySchema), Arrays.asList(new Object[]{ geometryValue, pointValue, null }));
         consume(createGeometryRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
-        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+        tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
 
@@ -88,14 +90,14 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         getSink().assertColumnType(tableAssert, "geometry", ValueType.BYTES, DatatypeConverter
                 .parseHexBinary(
-                        "730C000001030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440"));
-
-        // getSink().assertColumn(destinationTableName(createGeometryRecord), "geometry", "\"postgis\".\"geometry\"");
+                        "0000000001030000000100000005000000000000000000000000000000000014400000000000000040000000000000144000000000000000400000000000001C4000000000000000000000000000001C4000000000000000000000000000001440"));
 
         // ST_PointFromText('POINT (1 1)', 3187)
         getSink().assertColumnType(tableAssert, "point", ValueType.BYTES, DatatypeConverter
                 .parseHexBinary(
                         "730C00000101000000000000000000F03F000000000000F03F"));
+
+        getSink().assertColumnHasNullValue(tableAssert, "g");
     }
 
     private static Schema buildGeoTypeSchema(String type) {

@@ -55,9 +55,10 @@ public interface Type {
      *
      * @param column column descriptor in the table relational model, never {@code null}
      * @param schema field schema, never {@code null}
+     * @param value value to be bound, may be {@code null}
      * @return query parameter argument binding SQL fragment
      */
-    String getQueryBinding(ColumnDescriptor column, Schema schema);
+    String getQueryBinding(ColumnDescriptor column, Schema schema, Object value);
 
     /**
      * Resolve the default value clause value.

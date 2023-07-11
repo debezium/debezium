@@ -35,7 +35,7 @@ public abstract class AbstractType implements Type {
     }
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return getDialect().getQueryBindingWithValueCast(column, schema, this);
     }
 

@@ -32,8 +32,8 @@ class MapToJsonType extends AbstractConnectMapType {
     public static final MapToJsonType INSTANCE = new MapToJsonType();
 
     @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema) {
-        return JsonType.INSTANCE.getQueryBinding(column, schema);
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+        return JsonType.INSTANCE.getQueryBinding(column, schema, value);
     }
 
     @Override
