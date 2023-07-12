@@ -1346,7 +1346,7 @@ STRING_USER_NAME:                    (
                                      );
 IP_ADDRESS:                          (
                                        [0-9]+ '.' [0-9.]+
-                                       | [0-9A-F:]+ ':' [0-9A-F:]+
+                                       | [0-9A-F]* ':' [0-9A-F]* ':' [0-9A-F:]+
                                      );
 STRING_USER_NAME_MARIADB:            (
                                         SQUOTA_STRING | DQUOTA_STRING
