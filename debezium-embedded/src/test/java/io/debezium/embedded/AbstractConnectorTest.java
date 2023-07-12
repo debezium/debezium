@@ -1154,7 +1154,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
 
-        FileOffsetBackingStore offsetStore = new FileOffsetBackingStore();
+        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         try {
