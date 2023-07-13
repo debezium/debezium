@@ -89,7 +89,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     protected MemoryTransaction createTransaction(LogMinerEventRow row) {
-        return new MemoryTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName());
+        return new MemoryTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName(), row.getThread());
     }
 
     @Override
@@ -152,9 +152,9 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                                 LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
                                 first = false;
                             }
-                            LOGGER.warn("Transaction {} (start SCN {}, change time {}, {} events) is being abandoned.",
+                            LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
                                     entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
-                                    entry.getValue().getNumberOfEvents());
+                                    entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
 
                             abandonedTransactionsCache.add(entry.getKey());
                             iterator.remove();
