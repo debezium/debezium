@@ -5,16 +5,18 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
-import io.debezium.DebeziumException;
-import io.opentelemetry.context.propagation.TextMapSetter;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
+import io.debezium.DebeziumException;
+import io.opentelemetry.context.propagation.TextMapSetter;
 
 public class DataMapTracingSetter implements TextMapSetter<Map<String, Object>> {
 
