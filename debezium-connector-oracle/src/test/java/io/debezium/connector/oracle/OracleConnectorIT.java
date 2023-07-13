@@ -5379,6 +5379,79 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6650")
+    public void shouldNotThrowConcurrentModificationExceptionWhenDispatchingSchemaChangeEvent() throws Exception {
+        // The reporter's use case shows a log snippet where the table in question was not part of
+        // the connector's schema history initially, so we'll build the test case around that.
+        TestHelper.dropTable(connection, "dbz6650_snapshot");
+        TestHelper.dropTable(connection, "dbz6650_stream");
+        try {
+            connection.execute("CREATE TABLE dbz6650_snapshot (id numeric(9,0), data varchar2(50), primary key(id))");
+            connection.execute("INSERT INTO dbz6650_snapshot values (1, 'data')");
+            TestHelper.streamTable(connection, "dbz6650_snapshot");
+
+            connection.execute("CREATE TABLE dbz6650_stream (id numeric(9,0), data varchar2(50), primary key(id))");
+            connection.execute("INSERT INTO dbz6650_stream values (1, 'data')");
+            TestHelper.streamTable(connection, "dbz6650_stream");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6650_SNAPSHOT")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .with(OracleConnectorConfig.SKIPPED_OPERATIONS, "none") // explicitly needed
+                    .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Expected: 1 create for known table and 1 insert.
+            SourceRecords records = consumeRecordsByTopic(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6650_SNAPSHOT");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+
+            List<SourceRecord> schemaRecords = records.recordsForTopic("server1");
+            assertThat(schemaRecords).hasSize(1);
+
+            // Now at this point its safe to stop the connector and reconfigure it so that it includes the stream
+            // table that wasn't captured as part of the connector's schema history capture.
+            stopConnector();
+
+            config = config.edit()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6650_SNAPSHOT,DEBEZIUM\\.DBZ6650_STREAM")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            assertNoRecordsToConsume();
+
+            connection.execute("TRUNCATE TABLE dbz6650_stream");
+            connection.execute("INSERT INTO dbz6650_stream (id,data) values (2,'data')");
+
+            // Expected: 1 truncate (DDL), 1 truncate (DML), and 1 insert
+            records = consumeRecordsByTopic(3);
+
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6650_STREAM");
+            assertThat(tableRecords).hasSize(2);
+            VerifyRecord.isValidTruncate(tableRecords.get(0));
+            VerifyRecord.isValidInsert(tableRecords.get(1), "ID", 2);
+
+            schemaRecords = records.recordsForTopic("server1");
+            assertThat(schemaRecords).hasSize(1);
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6650_snapshot");
+            TestHelper.dropTable(connection, "dbz6650_stream");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
