@@ -51,6 +51,8 @@
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
+        <version.junit5>5.7.2</version.junit5>
+        <version.junit.platform.launcher>1.7.2</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
         <version.assertj>3.11.1</version.assertj>
         <version.jmh>1.21</version.jmh>
@@ -485,6 +487,16 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>${version.junit.platform.launcher}</version>
             </dependency>
             <dependency>
                 <groupId>io.rest-assured</groupId>
