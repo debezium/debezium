@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tests.mongodb;
 
+import static com.mongodb.client.model.Filters.eq;
 import static io.debezium.testing.system.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
@@ -13,8 +14,10 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_MONGO_D
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.util.Objects;
 
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
@@ -56,12 +59,60 @@ public abstract class MongoTests extends ConnectorTest {
         });
     }
 
+    public void insertCustomer(MongoDatabaseController dbController, String firstName, String lastName, String email, long id) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
+            Document doc = new Document()
+                    .append("_id", id)
+                    .append("first_name", firstName)
+                    .append("last_name", lastName)
+                    .append("email", email);
+            col.insertOne(doc);
+        });
+    }
+
+    public void removeCustomer(MongoDatabaseController dbController, String email) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute("inventory", "customers", col -> {
+            Bson query = eq("email", email);
+            col.deleteOne(col.find(query).first());
+        });
+    }
+
     public void renameCustomer(MongoDatabaseController dbController, String oldName, String newName) {
         MongoDatabaseClient client = dbController
                 .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
 
         client.execute(DATABASE_MONGO_DBZ_DBNAME, "customers", col -> {
             col.updateOne(Filters.eq("first_name", oldName), Updates.set("first_name", newName));
+        });
+    }
+
+    public void insertProduct(MongoDatabaseController dbController, String name, String description, String weight, int quantity) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute(DATABASE_MONGO_DBZ_DBNAME, "products", col -> {
+            Document doc = new Document()
+                    .append("name", name)
+                    .append("description", description)
+                    .append("weight", weight)
+                    .append("quantity", quantity);
+            col.insertOne(doc);
+        });
+    }
+
+    public void removeProduct(MongoDatabaseController dbController, String name) {
+        MongoDatabaseClient client = dbController
+                .getDatabaseClient(DATABASE_MONGO_DBZ_USERNAME, DATABASE_MONGO_DBZ_PASSWORD, DATABASE_MONGO_DBZ_LOGIN_DBNAME);
+
+        client.execute("inventory", "products", col -> {
+            Bson query = eq("name", name);
+            col.deleteOne(Objects.requireNonNull(col.find(query).first()));
         });
     }
 
