@@ -117,7 +117,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     sql.setInt(3, partSeq);
                     sql.setTimestamp(4, currentTs);
                     sql.setInt(5, recordInsertSeq.incrementAndGet());
-                    sql.execute();
+                    sql.executeUpdate();
                     partSeq++;
                 }
                 conn.commit();
