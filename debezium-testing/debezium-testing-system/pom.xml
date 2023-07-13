@@ -18,8 +18,6 @@
     <version.commons.compress>1.21</version.commons.compress>
     <version.strimzi>0.28.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
-    <version.junit5>5.7.2</version.junit5>
-    <version.junit.platform.launcher>1.7.2</version.junit.platform.launcher>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.2.0.Final</version.apicurio>
     <version.apicurio.model>2.2.0.Final</version.apicurio.model>
@@ -311,14 +309,12 @@
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>${version.junit5}</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-launcher</artifactId>
-      <version>${version.junit.platform.launcher}</version>
       <scope>test</scope>
     </dependency>
 
