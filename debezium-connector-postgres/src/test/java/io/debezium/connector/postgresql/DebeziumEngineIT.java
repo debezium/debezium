@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.util.Callback;
 import org.junit.Assert;
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
@@ -214,8 +214,8 @@ public class DebeziumEngineIT {
 
     public static class TestOffsetStore extends FileOffsetBackingStore {
 
-        public TestOffsetStore(Converter keyConverter) {
-            super(keyConverter);
+        public TestOffsetStore() {
+            super(KafkaConnectUtil.converterForOffsetStore());
         }
 
         @Override
