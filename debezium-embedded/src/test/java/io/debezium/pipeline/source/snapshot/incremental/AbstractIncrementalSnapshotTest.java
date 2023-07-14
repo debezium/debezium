@@ -51,6 +51,7 @@ import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
 
@@ -279,6 +280,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional<String> additionalCondition, Optional<String> surrogateKey,
                                                                                   String... dataCollectionIds) {
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(additionalCondition, surrogateKey, AbstractSnapshotSignal.SnapshotType.INCREMENTAL,
+                dataCollectionIds);
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional<String> additionalCondition, Optional<String> surrogateKey,
+                                                                                  AbstractSnapshotSignal.SnapshotType snapshotType,
+                                                                                  String... dataCollectionIds) {
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
                 .map(x -> '"' + x + '"')
                 .collect(Collectors.joining(", "));
@@ -286,23 +294,23 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             String query;
             if (additionalCondition.isPresent() && surrogateKey.isPresent()) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"additional-condition\": %s, \"surrogate-key\": %s}')",
-                        signalTableName(), dataCollectionIdsList, additionalCondition.get(), surrogateKey.get());
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s, \"surrogate-key\": %s}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition.get(), surrogateKey.get());
             }
             else if (additionalCondition.isPresent()) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"additional-condition\": %s}')",
-                        signalTableName(), dataCollectionIdsList, additionalCondition.get());
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition.get());
             }
             else if (surrogateKey.isPresent()) {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s], \"surrogate-key\": %s}')",
-                        signalTableName(), dataCollectionIdsList, surrogateKey.get());
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": %s}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey.get());
             }
             else {
                 query = String.format(
-                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [%s]}')",
-                        signalTableName(), dataCollectionIdsList);
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s]}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList);
             }
             logger.info("Sending signal with query {}", query);
             connection.execute(query);

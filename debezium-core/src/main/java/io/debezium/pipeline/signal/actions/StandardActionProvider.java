@@ -8,6 +8,7 @@ package io.debezium.pipeline.signal.actions;
 import java.util.Map;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
@@ -22,10 +23,11 @@ import io.debezium.spi.schema.DataCollectionId;
 public class StandardActionProvider implements SignalActionProvider {
     @Override
     public <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher,
+                                                                            ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
                                                                             CommonConnectorConfig connectorConfig) {
         return Map.of(Log.NAME, new Log<>(),
                 SchemaChanges.NAME, new SchemaChanges<>(dispatcher, connectorConfig, new JsonTableChangeSerializer()),
-                ExecuteSnapshot.NAME, new ExecuteSnapshot<>(dispatcher),
+                ExecuteSnapshot.NAME, new ExecuteSnapshot<>(dispatcher, changeEventSourceCoordinator),
                 StopSnapshot.NAME, new StopSnapshot<>(dispatcher),
                 OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow<>(),
                 CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow<>(dispatcher),
