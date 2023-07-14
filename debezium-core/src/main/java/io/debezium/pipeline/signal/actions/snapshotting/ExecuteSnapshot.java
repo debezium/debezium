@@ -14,9 +14,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
 import io.debezium.document.Document;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
@@ -36,9 +38,11 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     public static final String NAME = "execute-snapshot";
 
     private final EventDispatcher<P, ? extends DataCollectionId> dispatcher;
+    private final ChangeEventSourceCoordinator<P, ? extends OffsetContext> changeEventSourceCoordinator;
 
-    public ExecuteSnapshot(EventDispatcher<P, ? extends DataCollectionId> dispatcher) {
+    public ExecuteSnapshot(EventDispatcher<P, ? extends DataCollectionId> dispatcher, ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator) {
         this.dispatcher = dispatcher;
+        this.changeEventSourceCoordinator = changeEventSourceCoordinator;
     }
 
     @Override
@@ -52,10 +56,14 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         Optional<String> surrogateKey = getSurrogateKey(signalPayload.data);
         LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}' and surrogate key '{}'", type, dataCollections,
                 additionalCondition.orElse("No condition passed"), surrogateKey.orElse("PK of table will be used"));
+
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
                         signalPayload, dataCollections, additionalCondition, surrogateKey);
+                break;
+            case INITIAL_BLOCKING:
+                changeEventSourceCoordinator.doBlockingSnapshot(signalPayload.partition, signalPayload.offsetContext);
                 break;
         }
         return true;

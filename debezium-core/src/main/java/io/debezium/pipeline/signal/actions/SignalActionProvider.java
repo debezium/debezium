@@ -8,6 +8,7 @@ package io.debezium.pipeline.signal.actions;
 import java.util.Map;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
@@ -16,7 +17,7 @@ import io.debezium.spi.schema.DataCollectionId;
  * This interface is used to provide custom signal actions:
  * Implementations must:
  *
- * providea map of signal action in the {@link #createActions(EventDispatcher, CommonConnectorConfig)} method.
+ * provide a map of signal action in the {@link #createActions(EventDispatcher, ChangeEventSourceCoordinator, CommonConnectorConfig)} method.
  *
  * @author Mario Fiore Vitale
  */
@@ -30,5 +31,7 @@ public interface SignalActionProvider {
      * @return a concrete action
      */
 
-    <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher, CommonConnectorConfig connectorConfig);
+    <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher,
+                                                                     ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
+                                                                     CommonConnectorConfig connectorConfig);
 }

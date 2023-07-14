@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.signal.actions;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,22 +25,20 @@ public abstract class AbstractSnapshotSignal<P extends Partition> implements Sig
     protected static final String FIELD_SURROGATE_KEY = "surrogate-key";
 
     public enum SnapshotType {
-        INCREMENTAL
+        INCREMENTAL,
+        INITIAL_BLOCKING
     }
 
     public static SnapshotType getSnapshotType(Document data) {
-        final String typeStr = data.getString(FIELD_TYPE);
-        SnapshotType type = SnapshotType.INCREMENTAL;
-        if (typeStr != null) {
-            for (SnapshotType option : SnapshotType.values()) {
-                if (option.name().equalsIgnoreCase(typeStr)) {
-                    return option;
-                }
-            }
-            LOGGER.warn("Detected an unexpected snapshot type '{}'", typeStr);
+
+        final String typeStr = Optional.ofNullable(data.getString(FIELD_TYPE)).orElse(SnapshotType.INCREMENTAL.toString());
+        try {
+            return SnapshotType.valueOf(typeStr);
+        }
+        catch (IllegalArgumentException e) {
+            LOGGER.warn("Detected an unexpected snapshot type '{}'. Signal will be skipped.", typeStr);
             return null;
         }
-        return type;
     }
 
 }
