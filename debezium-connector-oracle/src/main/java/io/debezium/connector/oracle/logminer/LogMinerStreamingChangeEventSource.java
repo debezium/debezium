@@ -193,6 +193,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             continue;
                         }
 
+                        final Duration deviation = connectorConfig.getLogMiningMaxScnDeviation();
+                        if (!deviation.isZero()) {
+                            Optional<Scn> deviatedScn = calculateDeviatedEndScn(startScn, endScn, deviation);
+                            if (deviatedScn.isEmpty()) {
+                                pauseBetweenMiningSessions();
+                                continue;
+                            }
+                            endScn = deviatedScn.get();
+                        }
+
                         flushStrategy.flush(jdbcConnection.getCurrentScn());
 
                         boolean restartRequired = false;
@@ -733,6 +743,53 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             LOGGER.debug("Using Top SCN calculation {} as end SCN. currentScn {}, startScn {}", topScnToMine, currentScn, startScn);
             return topScnToMine;
+        }
+    }
+
+    /**
+     * Calculates the deviated end scn based on the scn range and deviation.
+     *
+     * @param lowerboundsScn the mining range's lower bounds
+     * @param upperboundsScn the mining range's upper bounds
+     * @param deviation the time deviation
+     * @return an optional that contains the deviated scn or empty if the operation should be performed again
+     */
+    private Optional<Scn> calculateDeviatedEndScn(Scn lowerboundsScn, Scn upperboundsScn, Duration deviation) {
+        final Optional<Scn> calculatedDeviatedEndScn = getDeviatedMaxScn(upperboundsScn, deviation);
+        if (calculatedDeviatedEndScn.isEmpty() || calculatedDeviatedEndScn.get().isNull()) {
+            // This happens only if the deviation calculation is outside the flashback/undo area or an exception was thrown.
+            // In this case we have no choice but to use the upper bounds as a fallback.
+            LOGGER.warn("Mining session end SCN deviation calculation is outside undo space, using upperbounds {}. If this continues, " +
+                    "consider lowering the value of the '{}' configuration property.", upperboundsScn,
+                    OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS.name());
+            return Optional.of(upperboundsScn);
+        }
+        else if (calculatedDeviatedEndScn.get().compareTo(lowerboundsScn) <= 0) {
+            // This should also force the outer loop to recall this method again.
+            LOGGER.debug("Mining session end SCN deviation as {}, outside of mining range, recalculating.", calculatedDeviatedEndScn.get());
+            return Optional.empty();
+        }
+        else {
+            // Calculated SCN is after lower bounds and within flashback/undo area, safe to return.
+            return calculatedDeviatedEndScn;
+        }
+    }
+
+    /**
+     * Uses the provided Upperbound SCN and deviation to calculate an SCN that happened in the past at a
+     * time based on Oracle's {@code TIMESTAMP_TO_SCN} and {@code SCN_TO_TIMESTAMP} functions.
+     *
+     * @param upperboundsScn the upper bound system change number, should not be {@code null}
+     * @param deviation the time deviation to be applied, should not be {@code null}
+     * @return the newly calculated Scn
+     */
+    private Optional<Scn> getDeviatedMaxScn(Scn upperboundsScn, Duration deviation) {
+        try {
+            return Optional.of(jdbcConnection.getScnAdjustedByTime(upperboundsScn, deviation));
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to calculate deviated max SCN value from {}.", upperboundsScn);
+            return Optional.empty();
         }
     }
 

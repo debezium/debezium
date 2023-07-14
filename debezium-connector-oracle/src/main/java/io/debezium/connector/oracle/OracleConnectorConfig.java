@@ -535,6 +535,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "The maximum number of records that should be loaded into memory while streaming. A value of '0' uses the default JDBC fetch size, defaults to '2000'.")
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
+    public static final Field LOG_MINING_MAX_SCN_DEVIATION_MS = Field.createInternal("log.mining.max.scn.deviation.ms")
+            .withDisplayName("Allows applying a time-based deviation to the max mining scn")
+            .withType(Type.LONG)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("By default, LogMiner will apply no deviation, meaning that the connector can mine up to the CURRENT_SCN. " +
+                    "There are situations where this could be problematic if perhaps when asynchronous IO operations are at play. " +
+                    "By applying a time-based deviation, for example 3000, the connector will only mine up the SCN that is a result of " +
+                    "the formula of TIMESTAMP_TO_SCN(SCN_TO_TIMESTAMP(CURRENT_SCN)-(3000/86400000)). If this SCN is not available, the " +
+                    "connector will log a warning and proceed to use the CURRENT_SCN or previously calculated upper SCN regardless. " +
+                    "NOTE: This option is internal and should not be used for general use. Using this option will create a net latency " +
+                    "on change events increased by the deviation value specified.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -596,7 +611,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READ_ONLY,
                     LOG_MINING_FLUSH_TABLE_NAME,
                     LOG_MINING_QUERY_FILTER_MODE,
-                    LOG_MINING_RESTART_CONNECTION)
+                    LOG_MINING_RESTART_CONNECTION,
+                    LOG_MINING_MAX_SCN_DEVIATION_MS)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -660,6 +676,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String logMiningFlushTableName;
     private final LogMiningQueryFilterMode logMiningQueryFilterMode;
     private final Boolean logMiningRestartConnection;
+    private final Duration logMiningMaxScnDeviation;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -719,6 +736,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningFlushTableName = config.getString(LOG_MINING_FLUSH_TABLE_NAME);
         this.logMiningQueryFilterMode = LogMiningQueryFilterMode.parse(config.getString(LOG_MINING_QUERY_FILTER_MODE));
         this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
+        this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
     }
 
     private static String toUpperCase(String property) {
@@ -1670,6 +1688,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningRestartConnection() {
         return logMiningRestartConnection;
+    }
+
+    /**
+     * Returns the deviation in milliseconds that should be applied to the end SCN calculation.
+     * If this is {@code 0}, then there is no deviation applied.
+     *
+     * @return the deviation duration.
+     */
+    public Duration getLogMiningMaxScnDeviation() {
+        return logMiningMaxScnDeviation;
     }
 
     @Override
