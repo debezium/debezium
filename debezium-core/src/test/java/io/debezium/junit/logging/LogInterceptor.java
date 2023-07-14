@@ -9,6 +9,7 @@ import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +73,13 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
     public void setLoggerLevel(Class<?> loggerClass, Level level) {
         Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(loggerClass.getName());
         logger.setLevel(level);
+    }
+
+    public List<String> getLogEntriesThatContainsMessage(String text) {
+        return events.stream()
+                .filter(e -> e.getFormattedMessage().toString().contains(text))
+                .map(e -> e.getFormattedMessage().toString())
+                .collect(Collectors.toList());
     }
 
     public long countOccurrences(String text) {

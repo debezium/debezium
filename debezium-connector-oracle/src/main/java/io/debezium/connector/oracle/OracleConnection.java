@@ -10,6 +10,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -480,6 +481,26 @@ public class OracleConnection extends JdbcConnection {
                 return Optional.empty();
             }
             // Any other SQLException should be thrown
+            throw e;
+        }
+    }
+
+    public Scn getScnAdjustedByTime(Scn scn, Duration adjustment) throws SQLException {
+        try {
+            final String result = prepareQueryAndMap(
+                    "SELECT timestamp_to_scn(scn_to_timestamp(?) - (? / 86400000)) FROM DUAL",
+                    st -> {
+                        st.setString(1, scn.toString());
+                        st.setLong(2, adjustment.toMillis());
+                    },
+                    singleResultMapper(rs -> rs.getString(1), "Failed to get adjusted SCN from: " + scn));
+            return Scn.valueOf(result);
+        }
+        catch (SQLException e) {
+            if (e.getErrorCode() == 8181 || e.getErrorCode() == 8180) {
+                // This happens when the SCN provided is outside the flashback/undo area
+                return Scn.NULL;
+            }
             throw e;
         }
     }
