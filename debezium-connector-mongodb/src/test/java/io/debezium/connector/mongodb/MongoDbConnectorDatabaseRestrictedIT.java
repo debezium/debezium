@@ -8,12 +8,15 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.api.Assertions;
+import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -35,6 +38,8 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
@@ -43,9 +48,13 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorDatabaseRestrictedIT.class);
     public static final String AUTH_DATABASE = "admin";
     public static final String TEST_DATABASE = "dbit";
+    public static final String TEST_DATABASE2 = "dbother";
     public static final String TEST_COLLECTION = "items";
     public static final String TEST_ALLOWED_USER = "testUser";
     public static final String TEST_ALLOWED_PWD = "testSecret";
+
+    public static final String TEST_DISALLOWED_USER = "testOtherUser";
+    public static final String TEST_DISALLOWED_PWD = "testOtherSecret";
 
     public static final String TOPIC_PREFIX = "mongo";
     private static final int INIT_DOCUMENT_COUNT = 10;
@@ -62,6 +71,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
         mongo.start();
         LOGGER.info("Setting up users");
         mongo.createUser(TEST_ALLOWED_USER, TEST_ALLOWED_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE);
+        mongo.createUser(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD, AUTH_DATABASE, "read:" + TEST_DATABASE2);
     }
 
     @AfterClass
@@ -111,6 +121,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MongoDbConnectorConfig.CAPTURE_SCOPE, CaptureScope.DATABASE)
                 .with(MongoDbConnectorConfig.CAPTURE_TARGET, TEST_DATABASE)
+                .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 2)
                 .build();
     }
 
@@ -144,6 +155,24 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractConnectorTest 
 
         // Wait until we can consume the documents we just added ...
         consumeAndVerifyNotFromInitialSync(topic, NEW_DOCUMENT_COUNT);
+    }
+
+    @Test
+    public void shouldFailWithoutPermissions() {
+        var logInterceptor = new LogInterceptor(ErrorHandler.class);
+
+        // Populate collection
+        populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
+
+        // Use the DB configuration to define the connector's configuration ...
+        var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // Connector should fail after 2 retries
+        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !engine.isRunning());
+        Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSync(String topic, int expectedRecords) throws InterruptedException {
