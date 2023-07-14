@@ -24,7 +24,7 @@ public class PostgresErrorHandlerTest {
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new ChangeEventQueue.Builder<DataChangeEvent>().build());
+            new ChangeEventQueue.Builder<DataChangeEvent>().build(), null);
 
     @Test
     public void classifiedPSQLExceptionIsRetryable() {

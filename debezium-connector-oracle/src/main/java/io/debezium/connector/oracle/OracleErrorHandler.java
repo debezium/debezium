@@ -52,8 +52,8 @@ public class OracleErrorHandler extends ErrorHandler {
             "failed to exclusively lock system dictionary" // nested ORA-01327
     );
 
-    public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue) {
-        super(OracleConnector.class, connectorConfig, queue);
+    public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
+        super(OracleConnector.class, connectorConfig, queue, replacedErrorHandler);
     }
 
     @Override
