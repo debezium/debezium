@@ -651,4 +651,36 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C1")).isEqualTo(0);
     }
 
+    @Test
+    @FixFor("DBZ-6641")
+    public void shouldUseDefaultOrCustomTopicNamingStrategySchemaRecordPrefix() {
+        // table id with catalog and SchemaTopicNamingStrategy
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(topicNamingStrategy, table, null, null, null);
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("test.schema.table.Value");
+        assertThat(schema.getEnvelopeSchema().schema().name()).isEqualTo("test.schema.table.Envelope");
+
+        // custom topic naming strategy with custom record prefix
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(new CustomTopicNamingStrategy(topicProperties, null, "testSchemaPrefix"), table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("testSchemaPrefix.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("testSchemaPrefix.Value");
+        assertThat(schema.getEnvelopeSchema().schema().name()).isEqualTo("test.schema.table.Envelope");
+
+        // custom topic naming strategy with custom data change topic and schema prefix.
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
+                SchemaBuilder.struct().build(), defaultFieldNamer, false)
+                .create(new CustomTopicNamingStrategy(topicProperties, "testDataTopic", "testSchemaPrefix"), table, null, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("testSchemaPrefix.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("testSchemaPrefix.Value");
+        assertThat(schema.getEnvelopeSchema().schema().name()).isEqualTo("testDataTopic.Envelope");
+    }
 }
