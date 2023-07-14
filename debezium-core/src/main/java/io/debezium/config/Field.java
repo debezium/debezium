@@ -70,6 +70,24 @@ public final class Field {
         return new Set().with(fields);
     }
 
+    public static int isListOfMap(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+        int errors = 0;
+
+        if (!Strings.isNullOrBlank(value)) {
+            List<String> values = Strings.listOf(value, x -> x.split(","), String::trim);
+            for (String v : values) {
+                List<String> items = Strings.listOf(v, x -> x.split("="), String::trim);
+                if (items.size() != 2) {
+                    problems.accept(field, value, "A equivalent-separated map of valid " +
+                            "key/value pairs is expected, for example: k1=v1,k2=v2");
+                    return ++errors;
+                }
+            }
+        }
+        return errors;
+    }
+
     /**
      * A set of fields.
      */

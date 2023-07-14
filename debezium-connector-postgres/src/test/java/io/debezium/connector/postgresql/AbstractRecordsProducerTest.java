@@ -1351,8 +1351,16 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         waitForSnapshotToBeCompleted("postgres", "test_server");
     }
 
+    protected void waitForSnapshotWithCustomMetricsToBeCompleted(Map<String, String> props) throws InterruptedException {
+        waitForSnapshotWithCustomMetricsToBeCompleted("postgres", "test_server", props);
+    }
+
     protected void waitForStreamingToStart() throws InterruptedException {
         waitForStreamingRunning("postgres", "test_server");
+    }
+
+    protected void waitForStreamingWithCustomMetricsToStart(Map<String, String> props) throws InterruptedException {
+        waitForStreamingWithCustomMetricsToStart("postgres", "test_server", props);
     }
 
     protected void assertWithTask(Consumer<SourceTask> consumer) {

@@ -146,7 +146,7 @@
                     <images>
                         <image>
                             <!-- A Docker image using the Postgres Server with the DBZ decoderbufs plugin -->
-                            <name>debezium/postgres-server-test-database</name>
+                            <name>debezium/postgres</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>

@@ -7,6 +7,7 @@ package io.debezium.metrics;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -47,7 +48,8 @@ public abstract class Metrics {
     private volatile boolean registered = false;
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
-        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
+        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(),
+                contextName, taskContext.getCustomMetricTags());
     }
 
     protected Metrics(CdcSourceTaskContext taskContext, Map<String, String> tags) {
@@ -58,13 +60,15 @@ public abstract class Metrics {
         String connectorType = connectorConfig.getContextName();
         String connectorName = connectorConfig.getLogicalName();
         if (multiPartitionMode) {
-            this.name = metricName(connectorType, Collect.linkMapOf(
+            Map<String, String> tags = Collect.linkMapOf(
                     "server", connectorName,
                     "task", connectorConfig.getTaskId(),
-                    "context", contextName));
+                    "context", contextName);
+            tags.putAll(connectorConfig.getCustomMetricTags());
+            this.name = metricName(connectorType, tags);
         }
         else {
-            this.name = metricName(connectorType, connectorName, contextName);
+            this.name = metricName(connectorType, connectorName, contextName, connectorConfig.getCustomMetricTags());
         }
     }
 
@@ -135,8 +139,11 @@ public abstract class Metrics {
         }
     }
 
-    protected ObjectName metricName(String connectorType, String connectorName, String contextName) {
-        return metricName(connectorType, Collect.linkMapOf("context", contextName, "server", connectorName));
+    protected ObjectName metricName(String connectorType, String connectorName, String contextName, Map<String, String> customMetricTags) {
+        Map<String, String> tags = new HashMap<>();
+        tags = Collect.linkMapOf("context", contextName, "server", connectorName);
+        tags.putAll(customMetricTags);
+        return metricName(connectorType, tags);
     }
 
     /**

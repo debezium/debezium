@@ -10,7 +10,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -332,6 +335,17 @@ public abstract class CommonConnectorConfig {
                     " default behavior) allows Kafka to completely delete all events pertaining to the given key once" +
                     " the source record got deleted.");
 
+    public static final Field CUSTOM_METRIC_TAGS = Field.create("custom.metric.tags")
+            .withDisplayName("Customize metric tags")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 25))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfMap)
+            .withDescription("The custom metric tags will accept key-value pairs to customize the MBean object name "
+                    + "which should be appended the end of regular name, each key would represent a tag for the MBean object name, "
+                    + "and the corresponding value would be the value of that tag the key is. For example: k1=v1,k2=v2");
+
     public static final Field MAX_QUEUE_SIZE = Field.create("max.queue.size")
             .withDisplayName("Change event buffer size")
             .withType(Type.INT)
@@ -566,7 +580,8 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
                     RETRIABLE_RESTART_WAIT,
-                    QUERY_FETCH_SIZE)
+                    QUERY_FETCH_SIZE,
+                    CUSTOM_METRIC_TAGS)
             .events(
                     CUSTOM_CONVERTERS,
                     SANITIZE_FIELD_NAMES,
@@ -606,9 +621,12 @@ public abstract class CommonConnectorConfig {
     private final String transactionTopic;
     private final String taskId;
 
+    private final Map<String, String> customMetricTags;
+
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+        this.customMetricTags = createCustomMetricTags(config);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
@@ -952,5 +970,30 @@ public abstract class CommonConnectorConfig {
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public Map<String, String> getCustomMetricTags() {
+        return customMetricTags;
+    }
+
+    public Map<String, String> createCustomMetricTags(Configuration config) {
+        // Keep the map custom metric tags sequence
+        HashMap<String, String> result = new LinkedHashMap<>();
+
+        String rawValue = config.getString(CUSTOM_METRIC_TAGS);
+        if (Strings.isNullOrBlank(rawValue)) {
+            return result;
+        }
+
+        List<String> values = Strings.listOf(rawValue, x -> x.split(","), String::trim);
+        for (String v : values) {
+            List<String> items = Strings.listOf(v, x -> x.split("="), String::trim);
+            result.put(items.get(0), items.get(1));
+        }
+        if (result.size() < values.size()) {
+            LOGGER.warn("There are duplicated key-value pairs: {}", rawValue);
+        }
+
+        return result;
     }
 }
