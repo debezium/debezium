@@ -35,7 +35,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.management.JMException;
@@ -5449,6 +5452,110 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz6650_snapshot");
             TestHelper.dropTable(connection, "dbz6650_stream");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6660")
+    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+    public void shouldPauseAndWaitForDeviationCalculationIfBeforeMiningRange() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz6660");
+
+            connection.execute("CREATE TABLE dbz6660 (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz6660");
+
+            final Long deviationMs = 10000L;
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6660")
+                    .with(OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS, deviationMs.toString())
+                    .build();
+
+            final LogInterceptor sourceLogging = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            sourceLogging.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            final LogInterceptor processorLogging = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            processorLogging.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // This should be printed at the start of the streaming session while the back-fill is prepared.
+            // Based on the time given, this could be printed several times.
+            Awaitility.await().atMost(Duration.ofSeconds(60))
+                    .until(() -> sourceLogging.containsMessage("outside of mining range, recalculating."));
+
+            // Assert that every lag log entry is at least 10s behind due to deviation.
+            try {
+                final Pattern pattern = Pattern.compile("Lag: ([0-9]+)");
+                final AtomicInteger id = new AtomicInteger(1);
+                Awaitility.await()
+                        .pollInterval(Duration.ofSeconds(1))
+                        .atMost(Duration.ofSeconds(60)).until(() -> {
+                            // Provide some dummy captured data periodically
+                            connection.execute("INSERT INTO dbz6660 values (" + id.getAndIncrement() + ", 'data')");
+                            final List<String> entries = processorLogging.getLogEntriesThatContainsMessage("Processed in ");
+                            for (String entry : entries) {
+                                final Matcher matcher = pattern.matcher(entry);
+                                if (matcher.matches()) {
+                                    assertThat(Long.valueOf(matcher.group(1))).isGreaterThan(deviationMs);
+                                }
+                            }
+                            return false;
+                        });
+            }
+            catch (ConditionTimeoutException e) {
+                // ignored
+            }
+
+            // Just concerned that every iteration has lag greater than deviation.
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6660");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6660")
+    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+    public void shouldUseEndScnIfDeviationProducesScnOutsideOfUndoRetention() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz6660");
+
+            connection.execute("CREATE TABLE dbz6660 (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz6660");
+
+            // This is effectively 166666.667 minutes = 115.74 days
+            // No Oracle instance should have undo space this large :)
+            final Long deviationMs = 10000000000L;
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6660")
+                    .with(OracleConnectorConfig.LOG_MINING_MAX_SCN_DEVIATION_MS, deviationMs.toString())
+                    .build();
+
+            final LogInterceptor sourceLogging = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            sourceLogging.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // This should be printed at the start of the streaming session while the back-fill is prepared.
+            // Based on the time given, this could be printed several times.
+            Awaitility.await().atMost(Duration.ofSeconds(60))
+                    .until(() -> sourceLogging.containsMessage("outside undo space, using upperbounds"));
+
+            // Just concerned that every iteration has lag greater than deviation.
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6660");
         }
     }
 
