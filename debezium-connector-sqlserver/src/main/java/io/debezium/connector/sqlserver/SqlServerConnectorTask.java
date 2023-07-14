@@ -103,12 +103,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        if (errorHandler == null) {
-            errorHandler = new SqlServerErrorHandler(connectorConfig, queue);
-        }
-        else {
-            errorHandler = new SqlServerErrorHandler(connectorConfig, queue, errorHandler);
-        }
+        errorHandler = new SqlServerErrorHandler(connectorConfig, queue, errorHandler);
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 

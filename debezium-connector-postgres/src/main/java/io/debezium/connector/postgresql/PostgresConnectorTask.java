@@ -64,6 +64,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile ReplicationConnection replicationConnection = null;
+
+    private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
 
     @Override
@@ -172,7 +174,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            ErrorHandler errorHandler = new PostgresErrorHandler(connectorConfig, queue);
+            errorHandler = new PostgresErrorHandler(connectorConfig, queue, errorHandler);
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
