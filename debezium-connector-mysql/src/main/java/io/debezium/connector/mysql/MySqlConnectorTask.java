@@ -137,7 +137,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
                 .buffering()
                 .build();
 
-        errorHandler = new MySqlErrorHandler(connectorConfig, queue);
+        errorHandler = new MySqlErrorHandler(connectorConfig, queue, errorHandler);
 
         final MySqlEventMetadataProvider metadataProvider = new MySqlEventMetadataProvider();
 
