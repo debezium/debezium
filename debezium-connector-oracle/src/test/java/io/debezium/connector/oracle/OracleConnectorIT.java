@@ -5559,6 +5559,65 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6677")
+    public void shouldCaptureInvisibleColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz6677");
+        try {
+            connection.execute("CREATE TABLE dbz6677 (id number(9,0) primary key, data varchar2(50), data2 varchar2(50))");
+            connection.execute("INSERT INTO dbz6677 values (1, 'Daffy', 'Daffy')");
+            TestHelper.streamTable(connection, "dbz6677");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6677")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6677");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidRead(tableRecords.get(0), "ID", 1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.AFTER);
+            assertThat(after.get("DATA")).isEqualTo("Daffy");
+            assertThat(after.get("DATA2")).isEqualTo("Daffy");
+
+            connection.execute("ALTER TABLE dbz6677 modify data invisible");
+            connection.execute("UPDATE dbz6677 set DATA2 = 'Donald' WHERE id = 1");
+
+            records = consumeRecordsByTopic(1);
+
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6677");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidUpdate(tableRecords.get(0), "ID", 1);
+
+            after = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.AFTER);
+            assertThat(after.get("DATA")).isEqualTo("Daffy");
+            assertThat(after.get("DATA2")).isEqualTo("Donald");
+
+            connection.execute("ALTER TABLE dbz6677 modify data visible");
+            connection.execute("INSERT INTO dbz6677 values (3, 'Hewy', 'Hewy')");
+
+            records = consumeRecordsByTopic(1);
+
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ6677");
+            assertThat(tableRecords).hasSize(1);
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 3);
+
+            after = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.AFTER);
+            assertThat(after.get("DATA")).isEqualTo("Hewy");
+            assertThat(after.get("DATA2")).isEqualTo("Hewy");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6677");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
