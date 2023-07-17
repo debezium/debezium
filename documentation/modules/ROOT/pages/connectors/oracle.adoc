@@ -1370,7 +1370,7 @@ The following table describes how the connector maps basic character types.
 .Mappings for Oracle basic character types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1419,7 +1419,7 @@ The following table describes how the connector maps binary and character large 
 .Mappings for Oracle binary and character LOB types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1429,7 +1429,12 @@ The following table describes how the connector maps binary and character large 
 
 |`BLOB`
 |`BYTES`
-|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Depending on the setting of the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] property in the connector configuration, the connector maps LOB values of this type to one of the following semantic types:
+
+* Raw bytes (the default)
+* A base64-encoded string
+* A base64-url-safe-encoded string
+* A hex-encoded string
 
 |`CLOB`
 |`STRING`
@@ -1449,7 +1454,12 @@ The following table describes how the connector maps binary and character large 
 
 |`RAW`
 |n/a
-|Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+|Depending on the setting of the xref:oracle-property-binary-handling-mode[`binary.handling.mode`] property in the connector configuration, the connector maps LOB values of this type to one of the following semantic types:
+
+* Raw bytes (the default)
+* A base64-encoded string
+* A base64-url-safe-encoded string
+* A hex-encoded string
 
 |===
 
@@ -1478,7 +1488,7 @@ For more information, see the _Semantic type and Notes_ column in the following 
 .Mappings for Oracle numeric data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1755,7 +1765,7 @@ The following table describes how the connector maps ROWID (row address) data ty
 .Mappings for Oracle ROWID data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
@@ -1776,18 +1786,19 @@ endif::product[]
 |===
 
 [id="oracle-xml-types"]
-=== XML type
+=== XML types
 ifdef::community[]
 [NOTE]
 ====
-Support for `XMLTYPE` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
+Support for `XMLTYPE` is currently in an incubating state.
+Depending on the feedback that we receive, the exact semantics, configuration options, and so forth might change in future revisions.
 Please let us know if you encounter any problems while using these data types.
 ====
 endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-Use of the `XMLTYpE` with the {prodname} Oracle connector is a Technology Preview feature only.
+Use of the `XMLTYPE` with the {prodname} Oracle connector is a Technology Preview feature only.
 Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
 Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
 For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
@@ -1798,7 +1809,7 @@ The following table describes how the connector maps XMLTYPE data types.
 .Mappings for Oracle XMLTYPE data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
-|Oracle Data Type
+|Oracle data type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
