@@ -91,7 +91,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
                     notifications.add(r);
                 }
             });
-            return !notifications.isEmpty();
+            return notifications.size() == 2;
         });
 
         assertThat(notifications).hasSize(1);
