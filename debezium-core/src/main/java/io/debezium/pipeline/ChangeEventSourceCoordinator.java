@@ -71,6 +71,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
     protected final ExecutorService executor;
+    private final ExecutorService blockingSnapshotExecutor;
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
     protected final SignalProcessor<P, O> signalProcessor;
@@ -79,6 +80,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     private volatile boolean running;
     private volatile boolean paused;
+    private volatile boolean streaming;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
     protected final ReentrantLock commitOffsetLock = new ReentrantLock();
 
@@ -86,6 +88,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected StreamingChangeEventSourceMetrics<P> streamingMetrics;
     private ChangeEventSourceContext context;
     private SnapshotChangeEventSource<P, O> snapshotSource;
+    private AtomicReference<LoggingContext.PreviousContext> previousLogContext;
+    private CdcSourceTaskContext taskContext;
 
     public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
@@ -98,6 +102,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
+        this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
         this.signalProcessor = signalProcessor;
@@ -108,8 +113,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                    EventMetadataProvider metadataProvider) {
 
-        AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
+        previousLogContext = new AtomicReference<>();
         try {
+            this.taskContext = taskContext;
             this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
             this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
             running = true;
@@ -198,20 +204,23 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         // 4: resume the streaming DONE!
         // 5: This method should not block. Run it in a separate thread. DONE!
 
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        executorService.submit(() -> {
+        blockingSnapshotExecutor.submit(() -> {
+
+            previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+
             paused = true;
+            streaming = true;
 
             try {
 
                 context.waitStreamingPaused();
 
+                previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
                 LOGGER.info("Starting snapshot");
                 SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext);
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
-                    // TODO
-                    // previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+                    previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
                     paused = false;
                     context.resumeStreaming();
                 }
@@ -339,7 +348,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             lock.lock();
             try {
                 snapshotFinished.signalAll();
-                LOGGER.info("Streaming resumes after blocking snapshot");
+                LOGGER.trace("Streaming will now resumes.");
             }
             finally {
                 lock.unlock();
@@ -351,8 +360,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             lock.lock();
             try {
                 while (paused) {
-                    LOGGER.info("Requested a blocking snapshot. Streaming will be paused.");
+                    LOGGER.trace("Waiting for snapshot to be completed.");
                     snapshotFinished.await();
+                    streaming = true;
                 }
             }
             finally {
@@ -364,7 +374,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         public void streamingPaused() {
             lock.lock();
             try {
-                LOGGER.info("Streaming paused. Blocking snapshot can now start.");
+                LOGGER.trace("Streaming paused. Blocking snapshot can now start.");
+                streaming = false;
                 streamingPaused.signalAll();
             }
             finally {
@@ -376,10 +387,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         public void waitStreamingPaused() throws InterruptedException {
             lock.lock();
             try {
-                // while (running) { //TODO need to have another flag to avoid spurious wakeup
-                LOGGER.info("Requested a blocking snapshot. Wait streaming to be paused.");
-                streamingPaused.await();
-                // }
+                while (streaming) {
+                    LOGGER.trace("Requested a blocking snapshot. Waiting for streaming to be paused.");
+                    streamingPaused.await();
+                }
             }
             finally {
                 lock.unlock();
