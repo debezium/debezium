@@ -127,6 +127,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
 
+        // Several tests in this class expect the existence of the following tables and only these
+        // tables; however if other tests fail or end prematurely, they could taint the number of
+        // tables.
+        TestHelper.dropAllTables();
+
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.masked_hashed_column_table");
         TestHelper.dropTable(connection, "debezium.truncated_column_table");
