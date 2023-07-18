@@ -76,7 +76,7 @@ public class DebeziumOutboxCommonConfig {
     public DebeziumOutboxConfigTracingSpan tracingSpan;
 
     /**
-     * smallrye-opentracing configuration option
+     * OpenTelemetry configuration option
      */
     @ConfigItem(name = "tracing.enabled", defaultValue = "true")
     public boolean tracingEnabled;

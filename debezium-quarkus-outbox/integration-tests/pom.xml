@@ -69,7 +69,7 @@
 
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-opentracing</artifactId>
+            <artifactId>quarkus-opentelemetry</artifactId>
             <scope>test</scope>
         </dependency>
 
