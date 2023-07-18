@@ -1411,9 +1411,29 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 | 30000
 | Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
 
-|[[rabbitmq-routing-key]]<<rabbitmq-routing-key, `debezium.sink.rabbitmq.routingKey`>>
-|
+|[[rabbitmq-exchange]]<<rabbitmq-exchange, `debezium.sink.rabbitmq.exchange`>>
+| using topic name when not set value
 |(Optional) Routing key to use when publishing messages.
+
+|[[rabbitmq-routing-key]]<<rabbitmq-routing-key, `debezium.sink.rabbitmq.routingKey`>>
+| using topic name when not set value
+|(Optional) Routing key to use when publishing messages.
+
+|[[rabbitmq-autoCreateRoutingKey]]<<rabbitmq-autoCreateRoutingKey, `debezium.sink.rabbitmq.autoCreateRoutingKey`>>
+| false
+|(Optional) Set auto create routing key when not exist.
+
+|[[rabbitmq-routingKeyDurable]]<<rabbitmq-routingKeyDurable, `debezium.sink.rabbitmq.routingKeyDurable`>>
+| true
+|(Optional) Set existing routing key data into durable/restored due to Rabbitmq server restart.
+
+|[[rabbitmq-routingKeyFromTopicName]]<<rabbitmq-routingKeyFromTopicName, `debezium.sink.rabbitmq.routingKeyFromTopicName`>>
+| false
+|(Optional) Set routing key name using topic name from debezium message.
+
+|[[rabbitmq-deliveryMode]]<<rabbitmq-deliveryMode, `debezium.sink.rabbitmq.deliveryMode`>>
+| 2
+|(Optional) Config when Rabbitmq deliver message no consumer connected. 1 Non-persistent, 2 Persistent.
 
 |===
 
