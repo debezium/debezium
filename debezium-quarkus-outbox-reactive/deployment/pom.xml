@@ -37,7 +37,7 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-opentracing-deployment</artifactId>
+            <artifactId>quarkus-opentelemetry</artifactId>
             <scope>test</scope>
         </dependency>
 
