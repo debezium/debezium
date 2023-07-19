@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
@@ -260,7 +259,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         initStreamEvents(partition, offsetContext);
         LOGGER.info("Starting streaming");
-        // Maybe add a pause and restart method that should be called from the action through the coordinator
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
     }

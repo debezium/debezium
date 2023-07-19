@@ -187,7 +187,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      * @throws InterruptedException
      */
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
-        assert buffering : "Unsuported for queues with disabled buffering";
+        assert buffering : "Unsupported for queues with disabled buffering";
         T record = bufferedEvent.getAndSet(null);
         if (record != null) {
             doEnqueue(recordModifier.apply(record));
@@ -200,6 +200,13 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     public void disableBuffering() {
         assert bufferedEvent.get() == null : "Buffer must be flushed";
         buffering = false;
+    }
+
+    /**
+     * Enable buffering for the queue
+     */
+    public void enableBuffering() {
+        buffering = true;
     }
 
     protected void doEnqueue(T record) throws InterruptedException {

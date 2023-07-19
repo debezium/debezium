@@ -63,7 +63,11 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
                                                                                                       NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
         return new MySqlSnapshotChangeEventSource(configuration, connectionFactory, taskContext.getSchema(), dispatcher, clock,
-                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord, notificationService);
+                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, this::modifyAndFlushLastRecord, this::preSnapshot, notificationService);
+    }
+
+    private void preSnapshot() {
+        queue.enableBuffering();
     }
 
     private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
