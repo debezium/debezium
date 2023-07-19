@@ -244,7 +244,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 connection.commit();
             }
 
-            // LOGGER.info("Checking stream paused");
             if (context.isPaused()) {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();

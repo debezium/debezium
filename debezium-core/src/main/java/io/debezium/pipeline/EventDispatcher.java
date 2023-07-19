@@ -214,6 +214,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                      OffsetContext offset,
                                      ConnectHeaders headers)
                     throws InterruptedException {
+
+                LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+
                 eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
                 receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
             }
@@ -268,6 +271,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
+
+                        LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+
                         if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
 

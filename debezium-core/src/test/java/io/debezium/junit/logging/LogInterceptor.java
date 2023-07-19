@@ -7,6 +7,7 @@ package io.debezium.junit.logging;
 
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -93,6 +94,16 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
             }
         }
         return false;
+    }
+
+    public List<ILoggingEvent> getLoggingEvents(String text) {
+        List<ILoggingEvent> matchEvents = new ArrayList<>();
+        for (ILoggingEvent event : events) {
+            if (event.getFormattedMessage().toString().contains(text)) {
+                matchEvents.add(event);
+            }
+        }
+        return matchEvents;
     }
 
     public boolean containsWarnMessage(String text) {

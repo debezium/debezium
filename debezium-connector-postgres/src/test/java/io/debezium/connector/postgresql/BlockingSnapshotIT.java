@@ -6,28 +6,20 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.INITIAL_BLOCKING;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
-public class BlockingSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     private static final String TOPIC_NAME = "test_server.s1.a";
 
@@ -64,9 +56,7 @@ public class BlockingSnapshotIT extends AbstractIncrementalSnapshotTest<Postgres
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4")
-                // DBZ-4272 required to allow dropping columns just before an incremental snapshot
-                .with("database.autosave", "conservative");
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "s1.a42:pk1,pk2,pk3,pk4");
     }
 
     @Override
@@ -79,9 +69,7 @@ public class BlockingSnapshotIT extends AbstractIncrementalSnapshotTest<Postgres
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
-                // DBZ-4272 required to allow dropping columns just before an incremental snapshot
-                .with("database.autosave", "conservative");
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a");
     }
 
     @Override
@@ -120,12 +108,6 @@ public class BlockingSnapshotIT extends AbstractIncrementalSnapshotTest<Postgres
     }
 
     @Override
-    protected void waitForConnectorToStart() {
-        super.waitForConnectorToStart();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
-    }
-
-    @Override
     protected String connector() {
         return "postgres";
     }
@@ -135,63 +117,4 @@ public class BlockingSnapshotIT extends AbstractIncrementalSnapshotTest<Postgres
         return TestHelper.TEST_SERVER;
     }
 
-    @Test
-    public void executeBlockingSnapshot() throws Exception {
-        // Testing.Print.enable();
-
-        populateTable();
-
-        startConnectorWithSnapshot(x -> mutableConfig(false, false));
-
-        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
-
-        try (JdbcConnection connection = databaseConnection()) {
-            connection.setAutoCommit(false);
-            for (int i = 0; i < ROW_COUNT; i++) {
-                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
-                        i + ROW_COUNT + 1,
-                        i + ROW_COUNT));
-            }
-            connection.commit();
-        }
-
-        SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(ROW_COUNT * 2);
-        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(ROW_COUNT * 2);
-        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
-                .map(s -> ((Struct) s.value()).getStruct("after").getInt32("aa"))
-                .collect(Collectors.toList());
-        assertThat(actual).containsAll(IntStream.range(0, 1999).boxed().collect(Collectors.toList()));
-
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), INITIAL_BLOCKING, tableDataCollectionId());
-
-        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
-
-        snapshotAndStreamingRecords = consumeRecordsByTopic((ROW_COUNT * 2) + 1);
-        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo((ROW_COUNT * 2) + 1);
-        actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
-                .map(s -> ((Struct) s.value()).getStruct("after").getInt32("aa"))
-                .collect(Collectors.toList());
-        assertThat(actual).containsAll(IntStream.range(0, 1999).boxed().collect(Collectors.toList()));
-
-        try (JdbcConnection connection = databaseConnection()) {
-            connection.setAutoCommit(false);
-            for (int i = 0; i < ROW_COUNT; i++) {
-                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
-                        i + (ROW_COUNT * 2) + 1,
-                        i + (ROW_COUNT * 2)));
-            }
-            connection.commit();
-        }
-
-        snapshotAndStreamingRecords = consumeRecordsByTopic(ROW_COUNT + 1);
-        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(ROW_COUNT + 1);
-        actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
-                .map(s -> ((Struct) s.value()).getStruct("after").getInt32("aa"))
-                .collect(Collectors.toList());
-        assertThat(actual).containsAll(IntStream.range(2000, 2999).boxed().collect(Collectors.toList()));
-    }
 }
