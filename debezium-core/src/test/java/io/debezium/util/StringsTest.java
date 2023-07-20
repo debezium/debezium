@@ -399,6 +399,19 @@ public class StringsTest {
         assertThat(Strings.duration(541_934_321)).isEqualTo("150:32:14.321");
     }
 
+    @Test
+    public void testRevertUnicode() {
+        String unicodeName = "_u005fhello_u005f_u8bed_u8a00.";
+        String expectedName = "_hello_语言.";
+        String actualName = Strings.revertUnicode(unicodeName);
+        assertThat(actualName).isEqualTo(expectedName);
+
+        unicodeName = "CAR_u0024BRAND";
+        expectedName = "CAR$BRAND";
+        actualName = Strings.revertUnicode(unicodeName);
+        assertThat(actualName).isEqualTo(expectedName);
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);

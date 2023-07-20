@@ -51,7 +51,7 @@ public class ZonedTimestamp {
      * {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere from 0-9 digits in the
      * nanosecond part.
      *
-     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a ZonedDatetime
      *                        formatted string.
      * @return {@link DateTimeFormatter} containing exactly fractionalWidth number of digits in nanosecond part of the
      * datetime. If null, {@link DateTimeFormatter#ISO_OFFSET_DATE_TIME} formatter is used, which can have anywhere
@@ -126,7 +126,7 @@ public class ZonedTimestamp {
      *            null
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
-     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a ZonedDatetime
      *                        formatted string.
      * @return the microseconds past midnight
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
@@ -172,7 +172,7 @@ public class ZonedTimestamp {
      * @param timestamp the timestamp value
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
-     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a zoneddatetime
+     * @param fractionalWidth the optional component that specifies the exact number of digits to be present in a ZonedDatetime
      *                        formatted string.
      * @return the ISO 8601 formatted string
      */

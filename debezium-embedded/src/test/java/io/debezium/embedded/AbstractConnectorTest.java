@@ -621,7 +621,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * This is most useful in corner cases when there can be a duplicate records between snapshot
      * and streaming switch.
      *
-     * @param numRecords the number of records that should be consumed
+     * @param recordsToRead the number of records that should be consumed
      * @param tripCondition condition to satisfy to stop skipping records
      * @return the collector into which the records were captured; never null
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned

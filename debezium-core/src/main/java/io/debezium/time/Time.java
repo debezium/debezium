@@ -76,9 +76,9 @@ public class Time {
         // TODO only needed for SQL Server/Oracle, where we don't produce Duration right away;
         // this should go eventually, as the conversion to LocalTime is superfluous
         LocalTime time = Conversions.toLocalTime(value);
-        long micros = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MILLISECOND);
-        assert Math.abs(micros) < Integer.MAX_VALUE;
-        return (int) micros;
+        long millis = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MILLISECOND);
+        assert Math.abs(millis) < Integer.MAX_VALUE;
+        return (int) millis;
     }
 
     private Time() {

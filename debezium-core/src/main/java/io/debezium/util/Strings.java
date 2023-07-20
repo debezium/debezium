@@ -43,6 +43,8 @@ import io.debezium.text.TokenStream.Tokens;
 public final class Strings {
 
     private static final Pattern TIME_PATTERN = Pattern.compile("([0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
+    private static final Pattern UNICODE_PATTERN = Pattern.compile("(_u[a-fA-F0-9]{1,4})");
+    private static final Pattern UNDERSTORE_U_PATTERN = Pattern.compile("_u");
 
     /**
      * Generate the set of values that are included in the list.
@@ -1056,7 +1058,7 @@ public final class Strings {
 
     /**
      * Whether the given string begins with the given prefix, ignoring casing.
-     * Copied from https://github.com/spring-projects/spring-framework/blob/master/spring-core/src/main/java/org/springframework/util/StringUtils.java.
+     * Copied from <a href="https://github.com/spring-projects/spring-framework/blob/master/spring-core/src/main/java/org/springframework/util/StringUtils.java">StringUtils</a>.
      */
     public static boolean startsWithIgnoreCase(String str, String prefix) {
         return (str != null && prefix != null && str.length() >= prefix.length() &&
@@ -1108,6 +1110,30 @@ public final class Strings {
         return Arrays.stream(sensitives)
                 .filter(Objects::nonNull)
                 .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
+    }
+
+    /**
+     * Revert the unicode from {@link io.debezium.schema.UnicodeReplacementFunction} to original character
+     *
+     * @param str the raw data maybe be containing the unicode like "_uxxxx"
+     * @return original character
+     */
+    public static String revertUnicode(String str) {
+        String result = str;
+        Matcher matcher = UNICODE_PATTERN.matcher(result);
+        while (matcher.find()) {
+            String unicode = matcher.group(1);
+            String[] hex = UNDERSTORE_U_PATTERN.split(unicode);
+            assert hex.length == 2;
+            StringBuilder sb = new StringBuilder();
+            for (int i = 1; i < hex.length; i++) {
+                int data = Integer.parseInt(hex[i], 16);
+                sb.append((char) data);
+            }
+            result = result.replace(unicode, sb.toString());
+            matcher = UNICODE_PATTERN.matcher(result);
+        }
+        return result;
     }
 
     private Strings() {
