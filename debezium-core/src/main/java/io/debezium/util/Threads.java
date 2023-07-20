@@ -20,7 +20,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
+/**`
  * Utilities related to threads and threading.
  *
  * @author Randall Hauch
@@ -285,9 +285,9 @@ public class Threads {
                 if (indexed) {
                     threadName.append('-').append(index.getAndIncrement());
                 }
-                LOGGER.info("Creating thread {}", threadName);
-                final Thread t = new Thread(r, threadName.toString());
-                t.setDaemon(daemon);
+                LOGGER.info("Creating virtual thread {}", threadName);
+                final Thread t = Thread.ofVirtual().name(threadName.toString()).factory().newThread(r);
+                // t.setDaemon(daemon);
                 if (callback != null) {
                     callback.accept(t);
                 }
@@ -311,4 +311,5 @@ public class Threads {
     public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<? extends SourceConnector> connector, String connectorId, String name, boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(threadFactory(connector, connectorId, name, false, daemon));
     }
+
 }

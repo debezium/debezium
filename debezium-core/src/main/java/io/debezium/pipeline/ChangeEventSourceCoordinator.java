@@ -58,7 +58,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     /**
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(180);
 
     protected final Offsets<P, O> previousOffsets;
     protected final ErrorHandler errorHandler;
@@ -123,6 +123,12 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 }
                 catch (Throwable e) {
                     errorHandler.setProducerThrowable(e);
+                    try {
+                        Thread.sleep(20000);
+                    }
+                    catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
                 }
                 finally {
                     streamingConnected(false);

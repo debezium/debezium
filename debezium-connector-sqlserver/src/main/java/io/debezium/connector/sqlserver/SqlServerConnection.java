@@ -74,7 +74,7 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Queries the list of captured column names and their change table identifiers in the given database.
      */
-    private static final String GET_CAPTURED_COLUMNS = "SELECT object_id, column_name" +
+    private static final String GET_CAPTURED_COLUMNS = "SELECT object_id, LOWER(column_name)" +
             " FROM [#db].cdc.captured_columns" +
             " ORDER BY object_id, column_id";
 
@@ -103,7 +103,8 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
-    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}";
+    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT
+            + "};integratedSecurity=false;encrypt=true;trustServerCertificate=true;connectRetryCount=20;connectRetryInterval=40;loginTimeout=60;";
 
     private final SqlServerJdbcConfiguration config;
     private final boolean useSingleDatabase;
@@ -150,10 +151,12 @@ public class SqlServerConnection extends JdbcConnection {
                         skippedOps.add("4");
                         break;
                     case DELETE:
-                        skippedOps.add("1");
+                        // skippedOps.add("1");
                         break;
                 }
             });
+            // always ignoring deletes due the the way purge are happening at source
+            skippedOps.add("1");
             getAllChangesForTableStatement.append(String.join(",", skippedOps));
             getAllChangesForTableStatement.append(") order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC");
             get_all_changes_for_table = getAllChangesForTableStatement.toString();
@@ -211,15 +214,6 @@ public class SqlServerConnection extends JdbcConnection {
     @VisibleForTesting
     protected static String createUrlPattern(SqlServerJdbcConfiguration config, boolean useSingleDatabase) {
         String pattern = URL_PATTERN;
-        if (config.getInstance() != null) {
-            pattern += "\\" + config.getInstance();
-            if (config.getPortAsString() != null) {
-                pattern += ":${" + JdbcConfiguration.PORT + "}";
-            }
-        }
-        else {
-            pattern += ":${" + JdbcConfiguration.PORT + "}";
-        }
         if (useSingleDatabase) {
             pattern += ";databaseName=${" + JdbcConfiguration.DATABASE + "}";
         }
@@ -523,6 +517,7 @@ public class SqlServerConnection extends JdbcConnection {
         final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId()).stream()
                 .filter(column -> changeTable.getCapturedColumns().contains(column))
                 .collect(Collectors.toList());
+        LOGGER.info("Primary Key: {}", pkColumnNames);
         Collections.sort(columns);
         return Table.editor()
                 .tableId(changeTable.getSourceTableId())

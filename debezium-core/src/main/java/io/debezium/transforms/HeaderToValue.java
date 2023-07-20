@@ -144,11 +144,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     @Override
     public R apply(R record) {
 
-        if (record.value() == null) {
-            LOGGER.trace("Tombstone {} arrived and will be skipped", record.key());
-            return record;
-        }
-
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
         LOGGER.trace("Processing record {}", value);

@@ -400,31 +400,4 @@ public class HeaderToValueTest {
         assertThat(payloadStruct.getArray("f1")).contains("v1", "v2");
 
     }
-
-    @Test
-    @FixFor("DBZ-6588")
-    public void whenATombstoneRecordItShouldBeSkipped() {
-
-        headerToValue.configure(Map.of(
-                "headers", "h1",
-                "fields", "f1",
-                "operation", "copy"));
-
-        Struct row = new Struct(VALUE_SCHEMA)
-                .put("id", 101L)
-                .put("price", 20.0F)
-                .put("product", "a product");
-
-        Envelope createEnvelope = Envelope.defineSchema()
-                .withName("mysql-server-1.inventory.product.Envelope")
-                .withRecord(VALUE_SCHEMA)
-                .withSource(Schema.STRING_SCHEMA)
-                .build();
-
-        SourceRecord readRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), null);
-
-        SourceRecord transformedRecord = headerToValue.apply(readRecord);
-
-        assertThat(transformedRecord).isEqualTo(readRecord);
-    }
 }

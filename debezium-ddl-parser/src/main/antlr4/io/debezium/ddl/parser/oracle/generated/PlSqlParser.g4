@@ -2993,7 +2993,7 @@ alter_interval_partition
     ;
 
 partition_extended_names
-    : (PARTITION|PARTITIONS) partition_name (',' partition_name)*
+    : (PARTITION|PARTITIONS) partition_name
     | (PARTITION|PARTITIONS) '(' partition_name (',' partition_name)* ')'
     | (PARTITION|PARTITIONS) FOR '('? partition_key_value (',' partition_key_value)* ')'?
     ;
@@ -3151,19 +3151,13 @@ drop_column_clause
 
 modify_column_clauses
     : MODIFY ('(' modify_col_properties (',' modify_col_properties)* ')'
-             |'(' modify_col_visibility (',' modify_col_visibility)* ')'
              | modify_col_properties
-             | modify_col_visibility
              | modify_col_substitutable
              )
     ;
 
 modify_col_properties
     : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? //TODO alter_xmlschema_clause
-    ;
-
-modify_col_visibility
-    : column_name (VISIBLE|INVISIBLE)
     ;
 
 modify_col_substitutable

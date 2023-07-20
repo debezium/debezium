@@ -447,8 +447,7 @@ END -- //-- delimiter ;
 -- Create procedure
 -- delimiter //
 CREATE PROCEDURE doiterate(p1 INT)
--- label which can be parsed as a beginning of IPv6 address
-aaa:BEGIN
+label2:BEGIN
   label1:LOOP
     SET p1 = p1 + 1;
     IF p1 < 10 THEN ITERATE label1; END IF;
@@ -669,14 +668,4 @@ WITH my_values(val1, val2) AS (
            (2, 'Two')
 )
 SELECT v.val1, v.val2 FROM my_values v;
-#end
-
-#begin
-CREATE DEFINER=`gpuser`@`%` PROCEDURE `test_parse_array` (IN val INT)
-BEGIN
-DECLARE array VARCHAR(50);
-
-SELECT 1;
-
-END
 #end

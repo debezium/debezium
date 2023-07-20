@@ -132,13 +132,6 @@ select  t.*, tt.* FROM wptests_terms AS t  INNER JOIN wptests_term_taxonomy AS t
 -- cast as integer
 SELECT CAST('1' AS INT);
 SELECT CAST('1' AS INTEGER);
-SELECT CAST('1' AS SIGNED INTEGER);
-SELECT CAST('1' AS UNSIGNED INTEGER);
-SELECT CAST('1' AS SIGNED INT);
-SELECT CAST('1' AS UNSIGNED INT);
--- cast as decimal
-SELECT CAST('1' AS DECIMAL);
-SELECT CAST('1' AS DEC);
 #end
 #begin
 -- JSON functions

@@ -373,12 +373,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected Offsets<P, O> getPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
         Set<P> partitions = provider.getPartitions();
+        LOGGER.info("Partitions in basesourcetask:{}", partitions.size());
         OffsetReader<P, O, OffsetContext.Loader<O>> reader = new OffsetReader<>(
                 context.offsetStorageReader(), loader);
         Map<P, O> offsets = reader.offsets(partitions);
+        LOGGER.info("basesourcetask offsets:{}", offsets);
 
         boolean found = false;
         for (P partition : partitions) {
+            LOGGER.info("looking for partition offset:{}", partition);
             O offset = offsets.get(partition);
 
             if (offset != null) {

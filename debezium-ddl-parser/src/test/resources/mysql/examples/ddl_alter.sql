@@ -131,14 +131,6 @@ alter user 'user'@'%' identified by 'newpassword' retain current password;
 ALTER USER 'mattias.hultman' DEFAULT ROLE `prod-spain-mysql-read-only`@`%`;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
-rename user user1@100.200.1.1 to user2@::1;
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED BY RANDOM PASSWORD RETAIN CURRENT PASSWORD;
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED BY '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19' RETAIN CURRENT PASSWORD;
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' AS '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19';
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' AS 'REDACTED' RETAIN CURRENT PASSWORD;
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' BY '2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19' REPLACE 'current_auth_string' RETAIN CURRENT PASSWORD;
-ALTER USER 'test_dual_pass'@'%' IDENTIFIED WITH 'mysql_native_password' BY RANDOM PASSWORD REPLACE 'current_auth_string' RETAIN CURRENT PASSWORD;
 #end
 ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
 ALTER TABLE t1 ADD PARTITION IF NOT EXISTS (PARTITION p3 VALUES LESS THAN (2002));

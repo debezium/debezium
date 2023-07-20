@@ -148,7 +148,7 @@ public class MongoDbConnector extends SourceConnector {
 
             // Partitioning the replica sets amongst the number of tasks ...
             List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
-            ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
+            ReplicaSets replicaSets = monitorThread.getReplicaSets(120, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
                         replicaSets.size(), maxTasks);

@@ -7,12 +7,12 @@ package io.debezium.storage.redis.history;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +72,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     public synchronized void start() {
         super.start();
         LOGGER.info("Starting RedisSchemaHistory");
-        doWithRetry(() -> true, "Connection to Redis");
+        this.connect();
     }
 
     @Override
@@ -89,12 +89,47 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
             throw new SchemaHistoryException("Unable to write database schema history record");
         }
 
-        doWithRetry(() -> {
-            // write the entry to Redis
-            client.xadd(config.getRedisKeyName(), Collections.singletonMap("schema", line));
-            LOGGER.trace("Record written to database schema history in Redis: " + line);
-            return true;
-        }, "Writing to database schema history stream");
+        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+        boolean completedSuccessfully = false;
+
+        // loop and retry until successful
+        while (!completedSuccessfully) {
+            try {
+                if (client == null) {
+                    this.connect();
+                }
+
+                // write the entry to Redis
+                client.xadd(config.getRedisKeyName(), Collections.singletonMap("schema", line));
+                LOGGER.trace("Record written to database schema history in Redis: " + line);
+                completedSuccessfully = true;
+            }
+            catch (RedisClientConnectionException e) {
+                reconnect();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Writing to database schema history stream failed", e);
+                LOGGER.warn("Will retry");
+            }
+            if (!completedSuccessfully) {
+                // Failed to execute the transaction, retry...
+                delayStrategy.sleepWhen(!completedSuccessfully);
+            }
+
+        }
+    }
+
+    private void reconnect() {
+        LOGGER.warn("Attempting to reconnect to Redis");
+        try {
+            if (client != null) {
+                client.disconnect();
+            }
+        }
+        catch (Exception eDisconnect) {
+            LOGGER.info("Exception while disconnecting", eDisconnect);
+        }
+        client = null;
     }
 
     @Override
@@ -108,9 +143,34 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
 
     @Override
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
-        // read the entries from Redis
-        final List<Map<String, String>> entries = doWithRetry(() -> client.xrange(config.getRedisKeyName()),
-                "Writing to database schema history stream");
+        DelayStrategy delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
+        boolean completedSuccessfully = false;
+        List<Map<String, String>> entries = new ArrayList<>();
+
+        // loop and retry until successful
+        while (!completedSuccessfully) {
+            try {
+                if (client == null) {
+                    this.connect();
+                }
+
+                // read the entries from Redis
+                entries = client.xrange(config.getRedisKeyName());
+                completedSuccessfully = true;
+            }
+            catch (RedisClientConnectionException e) {
+                reconnect();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Reading from database schema history stream failed with " + e);
+                LOGGER.warn("Will retry");
+            }
+            if (!completedSuccessfully) {
+                // Failed to execute the transaction, retry...
+                delayStrategy.sleepWhen(!completedSuccessfully);
+            }
+
+        }
 
         for (Map<String, String> item : entries) {
             try {
@@ -121,6 +181,7 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
                 return;
             }
         }
+
     }
 
     @Override
@@ -131,38 +192,11 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     @Override
     public boolean exists() {
         // check if the stream is not empty
-        return doWithRetry(() -> (client != null) && (client.xlen(config.getRedisKeyName()) > 0), "Check if previous record exists");
-    }
-
-    private <T> T doWithRetry(Supplier<T> action, String description) {
-        final var delayStrategy = DelayStrategy.exponential(initialRetryDelay, maxRetryDelay);
-
-        // loop and retry until successful
-        for (;;) {
-            try {
-                if (client == null) {
-                    this.connect();
-                }
-
-                return action.get();
-            }
-            catch (RedisClientConnectionException e) {
-                LOGGER.warn("Connection to Redis failed, will try to reconnect");
-                try {
-                    if (client != null) {
-                        client.disconnect();
-                    }
-                }
-                catch (Exception eDisconnect) {
-                    LOGGER.info("Exception while disconnecting", eDisconnect);
-                }
-                client = null;
-            }
-            catch (Exception e) {
-                LOGGER.warn(description + " failed, will retry", e);
-            }
-            // Failed to execute the operation, retry...
-            delayStrategy.sleepWhen(true);
+        if (client != null && client.xlen(config.getRedisKeyName()) > 0) {
+            return true;
+        }
+        else {
+            return false;
         }
     }
 }

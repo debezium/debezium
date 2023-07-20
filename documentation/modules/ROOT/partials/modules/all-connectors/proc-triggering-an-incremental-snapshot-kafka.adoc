@@ -15,7 +15,7 @@ The signal type is `execute-snapshot`, and the `data` field must have the follow
 
 |`type`
 |`incremental`
-| The type of the snapshot to be executed.
+| The type of the snapshot to be executed. 
 Currently {prodname} supports only the `incremental` type.  +
 See the next section for more details.
 
@@ -49,18 +49,18 @@ When the snapshot request includes an `additional-condition`, the `additional-co
 
 `SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....`
 
-For example, given a `products` {data-collection} with the columns `id` (primary key), `color`, and `brand`, if you want a snapshot to include only content for which `color='blue'`, when you request the snapshot, you could append an `additional-condition` statement to filter the content:
+For example, given a `products` {data-collection} with the columns `id` (primary key), `color`, and `brand`, if you want a snapshot to include only content for which `color=blue`, when you request the snapshot, you could append an `additional-condition` statement to filter the content:
 ----
 Key = `test_connector`
 
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color='blue'"}}`
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue"}}`
 ----
 
 You can use the `additional-condition` statement to pass conditions based on multiple columns.
-For example, using the same `products` {data-collection} as in the previous example, if you want a snapshot to include only the content from the `products` {data-collection} for which `color='blue'`, and `brand='MyBrand'`, you could send the following request:
+For example, using the same `products` {data-collection} as in the previous example, if you want a snapshot to include only the content from the `products` {data-collection} for which `color=blue`, and `brand=MyBrand`, you could send the following request:
 
 ----
 Key = `test_connector`
 
-Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color='blue' AND brand='MyBrand'"}}`
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=MyBrand"}}`
 ----

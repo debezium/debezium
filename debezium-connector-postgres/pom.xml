@@ -3,11 +3,11 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.4.0-SNAPSHOT</version>
+        <version>2.3.0.Final</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>debezium-connector-postgres</artifactId>
+    <artifactId>debezium-connector-postgres-local</artifactId>
     <name>Debezium Connector for PostgreSQL</name>
     <packaging>jar</packaging>
     <properties>
@@ -26,7 +26,7 @@
         <postgres.system.lang>en_US.utf8</postgres.system.lang>
         <postgres.image>debezium/postgres:${version.postgres.server}</postgres.image>
         <postgres.config.file>/usr/share/postgresql/postgresql.conf.sample</postgres.config.file>
-        <docker.skip>false</docker.skip>
+        <docker.skip>true</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
         <docker.dbs>debezium/postgres-server-test-database</docker.dbs>
@@ -45,7 +45,8 @@
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-core-local</artifactId>
+            <version>2.3.0.Final</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -70,12 +71,6 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -135,6 +130,24 @@
 
     <build>
         <plugins>
+             <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <release>20</release>
+                        <compilerArgs>
+                            <arg>--enable-preview</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>20</source>
+                        <target>20</target>
+                    </configuration>
+                </plugin>
             <plugin>
                 <groupId>com.github.os72</groupId>
                 <artifactId>protoc-jar-maven-plugin</artifactId>
@@ -240,7 +253,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- 
+            <!--
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
             when there are failed integration tests. We rely upon this to always shut down the Docker container
             after the integration tests (defined as '*IT.java') are run.
@@ -458,6 +471,24 @@
             <build>
                 <plugins>
                     <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.12.0</version>
+                        <configuration>
+                            <release>20</release>
+                            <compilerArgs>
+                                <arg>--enable-preview</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <source>20</source>
+                            <target>20</target>
+                        </configuration>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
@@ -473,4 +504,5 @@
             </properties>
         </profile>
     </profiles>
+
 </project>

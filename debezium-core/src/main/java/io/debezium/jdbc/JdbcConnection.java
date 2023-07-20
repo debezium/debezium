@@ -1273,7 +1273,7 @@ public class JdbcConnection implements AutoCloseable {
         // Oracle drivers require this for LONG/LONGRAW to be fetched first.
         final String defaultValue = columnMetadata.getString(13);
 
-        final String columnName = columnMetadata.getString(4);
+        final String columnName = columnMetadata.getString(4).toLowerCase();
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             ColumnEditor column = Column.editor().name(columnName);
             column.type(columnMetadata.getString(6));
@@ -1325,7 +1325,7 @@ public class JdbcConnection implements AutoCloseable {
         final List<String> pkColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getPrimaryKeys(id.catalog(), id.schema(), id.table())) {
             while (rs.next()) {
-                String columnName = rs.getString(4);
+                String columnName = (rs.getString(4) != null) ? rs.getString(4).toLowerCase() : rs.getString(4);
                 int columnIndex = rs.getInt(5);
                 Collect.set(pkColumnNames, columnIndex - 1, columnName, null);
             }
@@ -1340,7 +1340,7 @@ public class JdbcConnection implements AutoCloseable {
             String firstIndexName = null;
             while (rs.next()) {
                 final String indexName = rs.getString(6);
-                final String columnName = rs.getString(9);
+                final String columnName = (rs.getString(9) != null) ? rs.getString(9).toLowerCase() : rs.getString(9);
                 final int columnIndex = rs.getInt(8);
 
                 // Some databases return a null index name record, often as the first row.

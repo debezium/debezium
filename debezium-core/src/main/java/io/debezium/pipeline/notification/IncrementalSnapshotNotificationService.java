@@ -25,7 +25,6 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     public static final String INCREMENTAL_SNAPSHOT = "Incremental Snapshot";
     public static final String DATA_COLLECTIONS = "data_collections";
-    public static final String SCANNED_COLLECTION = "scanned_collection";
     public static final String CURRENT_COLLECTION_IN_PROGRESS = "current_collection_in_progress";
     public static final String MAXIMUM_KEY = "maximum_key";
     public static final String LAST_PROCESSED_KEY = "last_processed_key";
@@ -109,7 +108,6 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
     public <T extends DataCollectionId> void notifyTableScanCompleted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext,
                                                                       long totalRowsScanned, TableScanCompletionStatus status) {
 
-        String scannedCollection = incrementalSnapshotContext.currentDataCollectionId().getId().identifier();
         String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
@@ -117,7 +115,6 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
         notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.TABLE_SCAN_COMPLETED,
                 Map.of(
                         DATA_COLLECTIONS, dataCollections,
-                        SCANNED_COLLECTION, scannedCollection,
                         TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned),
                         STATUS, status.name()),
                 offsetContext),

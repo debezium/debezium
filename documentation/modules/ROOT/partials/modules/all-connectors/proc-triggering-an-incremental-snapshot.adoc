@@ -60,7 +60,7 @@ values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
     "type":"incremental", // <5>
-    "additional-condition":"color='blue'", // <6>
+    "additional-condition":"color=blue", // <6>
     "surrogate-key":"tenant-id"}'); // <7>
 ----
 end::sql-based-snapshot[]
@@ -165,19 +165,19 @@ For example, suppose you have a `products` {data-collection} that contains the f
 * `color`
 * `quantity`
 
-If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color='blue'`, you can use the following SQL statement to trigger the snapshot:
+If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color='blue'"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue"}');
 ----
 
 The `additional-condition` parameter also enables you to pass conditions that are based on more than on column.
-For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color='blue'` and `quantity>10`:
+For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color='blue' AND quantity>10"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantity>10"}');
 ----
 
 end::sql-based-snapshot[]

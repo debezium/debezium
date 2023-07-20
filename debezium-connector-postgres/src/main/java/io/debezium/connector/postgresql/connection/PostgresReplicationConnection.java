@@ -208,8 +208,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (tableFilterString.isEmpty()) {
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
-            createOrUpdatePublicationStmt = isUpdate ? String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString)
-                    : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            createOrUpdatePublicationStmt = isUpdate ? String.format("--ALTER PUBLICATION \"%s\" SET TABLE %s;", publicationName, tableFilterString)
+                    : String.format("CREATE PUBLICATION \"%s\" FOR TABLE %s;", publicationName, tableFilterString);
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
             stmt.execute(createOrUpdatePublicationStmt);
         }

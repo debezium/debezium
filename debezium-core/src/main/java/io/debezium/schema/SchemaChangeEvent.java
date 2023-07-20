@@ -335,30 +335,6 @@ public class SchemaChangeEvent {
                 false);
     }
 
-    /**
-     * Create a schema change event for a {@code TRUNCATE TABLE} event.
-     *
-     * @param partition the partition
-     * @param offsetContext the offset context
-     * @param databaseName the database name
-     * @param schemaName the schema name
-     * @param ddl the schema change DDL statement
-     * @param table the affected relational table
-     * @return the schema change event
-     */
-    public static SchemaChangeEvent ofTruncate(Partition partition, OffsetContext offsetContext, String databaseName,
-                                               String schemaName, String ddl, Table table) {
-        return of(
-                SchemaChangeEventType.TRUNCATE,
-                partition,
-                offsetContext,
-                databaseName,
-                schemaName,
-                ddl,
-                table,
-                false);
-    }
-
     private static SchemaChangeEvent.SchemaChangeEventType toSchemaChangeEventType(TableChanges.TableChangeType type) {
         switch (type) {
             case CREATE:

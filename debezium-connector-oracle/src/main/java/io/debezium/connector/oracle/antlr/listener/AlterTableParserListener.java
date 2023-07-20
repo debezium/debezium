@@ -123,25 +123,21 @@ public class AlterTableParserListener extends BaseParserListener {
     public void enterModify_column_clauses(PlSqlParser.Modify_column_clausesContext ctx) {
         parser.runIfNotNull(() -> {
             List<PlSqlParser.Modify_col_propertiesContext> columns = ctx.modify_col_properties();
-            // This check is necessary because the DDL may have supplied modify_col_visibility clause or
-            // a modify_col_substitutable clause which won't affect the state of the relational model.
-            if (!columns.isEmpty()) {
-                columnEditors = new ArrayList<>(columns.size());
-                for (PlSqlParser.Modify_col_propertiesContext column : columns) {
-                    String columnName = getColumnName(column.column_name());
-                    Column existingColumn = tableEditor.columnWithName(columnName);
-                    if (existingColumn != null) {
-                        ColumnEditor columnEditor = existingColumn.edit();
-                        columnEditors.add(columnEditor);
-                    }
-                    else {
-                        throw new ParsingException(null, "trying to change column " + columnName + " in " +
-                                tableEditor.tableId().toString() + " table, which does not exist.  Query: " + getText(ctx));
-                    }
+            columnEditors = new ArrayList<>(columns.size());
+            for (PlSqlParser.Modify_col_propertiesContext column : columns) {
+                String columnName = getColumnName(column.column_name());
+                Column existingColumn = tableEditor.columnWithName(columnName);
+                if (existingColumn != null) {
+                    ColumnEditor columnEditor = existingColumn.edit();
+                    columnEditors.add(columnEditor);
                 }
-                columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parser, listeners);
-                listeners.add(columnDefinitionParserListener);
+                else {
+                    throw new ParsingException(null, "trying to change column " + columnName + " in " +
+                            tableEditor.tableId().toString() + " table, which does not exist.  Query: " + getText(ctx));
+                }
             }
+            columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parser, listeners);
+            listeners.add(columnDefinitionParserListener);
         }, tableEditor);
         super.enterModify_column_clauses(ctx);
     }

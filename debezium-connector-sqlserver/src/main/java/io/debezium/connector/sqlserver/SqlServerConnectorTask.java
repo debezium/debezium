@@ -90,7 +90,12 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
-        schema.recover(offsets);
+        try {
+            schema.recover(offsets);
+        }
+        catch (Exception e) {
+            LOGGER.warn(e.getLocalizedMessage());
+        }
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 

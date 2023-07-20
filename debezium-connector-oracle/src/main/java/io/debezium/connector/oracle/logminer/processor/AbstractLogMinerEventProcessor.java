@@ -718,19 +718,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
     private void processTruncateEvent(LogMinerEventRow row) {
         LOGGER.debug("Handling truncate event");
-
-        try {
-            // Truncate event is being treated as a DML.
-            Table table = getTableForDataEvent(row);
-            if (table == null) {
-                return;
-            }
-        }
-        catch (SQLException | InterruptedException e) {
-            LOGGER.warn("Failed to process truncate event.", e);
-            return;
-        }
-
         addToTransaction(row.getTransactionId(), row, () -> {
             final LogMinerDmlEntry dmlEntry = LogMinerDmlEntryImpl.forValuelessDdl();
             dmlEntry.setObjectName(row.getTableName());

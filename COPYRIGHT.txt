@@ -40,7 +40,6 @@ Angshuman Dey
 Anil Dasari
 Animesh Kumar
 Anisha Mohanty
-Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Arik Cohen
@@ -55,7 +54,6 @@ Aykut Farsak
 Babur Duisenov
 Balázs Németh
 Balázs Sipos
-Balint Bene
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
