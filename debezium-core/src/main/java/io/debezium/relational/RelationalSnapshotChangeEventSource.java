@@ -74,6 +74,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
     public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
+    public static final Pattern MATCH_ALL_PATTERN = Pattern.compile(".*");
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
@@ -241,25 +242,26 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .sorted();
     }
 
-    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) throws Exception {
+    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+
         String tableIncludeList = connectorConfig.tableIncludeList();
         String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
+
         List<Pattern> captureTablePatterns = new ArrayList<>();
         if (!Strings.isNullOrBlank(tableIncludeList)) {
             captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
         }
+        else {
+            captureTablePatterns.add(MATCH_ALL_PATTERN);
+        }
+
         if (!Strings.isNullOrBlank(signalingDataCollection)) {
             captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
         }
-        if (captureTablePatterns.size() > 0) {
-            return captureTablePatterns
-                    .stream()
-                    .flatMap(pattern -> toTableIds(capturedTables, pattern))
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-        }
-        return capturedTables
+
+        return captureTablePatterns
                 .stream()
-                .sorted()
+                .flatMap(pattern -> toTableIds(capturedTables, pattern))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 

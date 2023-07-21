@@ -1226,6 +1226,27 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .forEach(i -> VerifyRecord.isValidRead(recordsForTopicPart.remove(0), PK_FIELD, expectedPks[i]));
     }
 
+    @Test
+    @FixFor("DBZ-6669")
+    public void shouldGenerateSnapshotWhenSignalDataCollectionIsPresentWithoutTableIncludeList() throws Exception {
+
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE t1 (pk SERIAL, aa integer, PRIMARY KEY(pk)); INSERT INTO t1 VALUES (default, 11)");
+
+        buildWithStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "public.debezium_signal")
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, true));
+
+        TestConsumer consumer = testConsumer(1);
+
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        final SourceRecord first = consumer.remove();
+        VerifyRecord.isValidRead(first, PK_FIELD, 1);
+        assertRecordOffsetAndSnapshotSource(first, SnapshotRecord.LAST);
+    }
+
     private void buildNoStreamProducer(Configuration.Builder config) {
         alterConfig(config);
         start(PostgresConnector.class, config
