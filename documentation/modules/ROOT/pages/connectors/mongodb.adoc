@@ -125,7 +125,7 @@ Set the read preference based on the connection mode, as shown in the following 
 In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`. 
 For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
 When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
-It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in `mongodb.connection.string.shard.params`. 
+It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`]. 
 For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
 
 // Type: assembly
