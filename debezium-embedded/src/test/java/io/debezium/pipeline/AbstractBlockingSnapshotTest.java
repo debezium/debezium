@@ -39,7 +39,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
-import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest {
     private int signalingRecords;
@@ -123,10 +122,14 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
                 AbstractBlockingSnapshotTest.getExpectedValues(totalSnapshotRecords));
     }
 
+    protected int insertMaxSleep() {
+        return 2;
+    }
+
     private Runnable insertTask() {
         return () -> {
             try {
-                insertRecordsWithRandomSleep(ROW_COUNT, ROW_COUNT, 2);
+                insertRecordsWithRandomSleep(ROW_COUNT, ROW_COUNT, insertMaxSleep());
             }
             catch (Exception e) {
                 throw new RuntimeException(e);
@@ -155,8 +158,8 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         List<Integer> initialSnapShotValues = IntStream.rangeClosed(0, 999).boxed().collect(Collectors.toList());
         List<Integer> firstStreamingBatchValues = IntStream.rangeClosed(1000, 1999).boxed().collect(Collectors.toList());
         List<Integer> blockingSnapshotValues = Stream.of(
-                        initialSnapShotValues,
-                        IntStream.rangeClosed(1000, Math.toIntExact(totalSnapshotRecords)).boxed().collect(Collectors.toList())).flatMap(List::stream)
+                initialSnapShotValues,
+                IntStream.rangeClosed(1000, Math.toIntExact(totalSnapshotRecords)).boxed().collect(Collectors.toList())).flatMap(List::stream)
                 .collect(Collectors.toList());
         List<Integer> secondStreamingBatchValues = IntStream.rangeClosed(2000, 2999).boxed().collect(Collectors.toList());
         return Stream.of(initialSnapShotValues, firstStreamingBatchValues, blockingSnapshotValues, secondStreamingBatchValues).flatMap(List::stream)
@@ -225,9 +228,8 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
                 int sleepTime = ThreadLocalRandom.current().nextInt(1, maxSleep);
                 Thread.sleep(sleepTime);
             }
-            Testing.debug(String.format("Insert of %s records completed", rowCount));
         }
-        catch (InterruptedException e) {
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -63,7 +63,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         boolean snapshotData = true;
 
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+        if (previousOffset != null && !previousOffset.isSnapshotRunning() && false /* TODO check if streaming is pause */) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
             snapshotSchema = false;
             snapshotData = false;
