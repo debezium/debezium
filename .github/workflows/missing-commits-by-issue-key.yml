@@ -19,6 +19,7 @@ on:
 
 jobs:
   script:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout action
