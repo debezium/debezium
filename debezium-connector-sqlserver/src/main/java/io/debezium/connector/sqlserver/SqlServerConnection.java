@@ -64,6 +64,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM [#db].cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
 
     private static final String GET_MIN_LSN = "SELECT [#db].sys.fn_cdc_get_min_lsn('#')";
+    private static final String GET_TABLE_MAX_START_LSN = "select max([__$start_lsn]) from #";
     private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT [#db].sys.fn_cdc_increment_lsn(?)";
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
@@ -313,6 +314,18 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * @return the max log sequence number of table
+     */
+    public Lsn getTableMaxStartLsn(String quotedCtTable) throws SQLException {
+        String query = GET_TABLE_MAX_START_LSN.replace(STATEMENTS_PLACEHOLDER, quotedCtTable);
+        return queryAndMap(query, singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.debug("Table {} has a max __$start_lsn of: {}", quotedCtTable, ret);
+            return ret;
+        }, "GET_TABLE_MAX_START_LSN query must return exactly one value"));
+    }
+
+    /**
      * Provides all changes recorder by the SQL Server CDC capture process for a set of tables.
      *
      * @param databaseName - the name of the database to query
@@ -347,6 +360,7 @@ public class SqlServerConnection extends JdbcConnection {
 
             idx++;
         }
+        LOGGER.debug("Getting changes for {} tables", idx + 1);
         prepareQuery(queries, preparers, consumer);
     }
 

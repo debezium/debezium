@@ -302,6 +302,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(SqlServerSourceInfoStructMaker.class.getName());
 
+    public static final Field QUERY_ALL_TABLES = Field.create("query.all.tables")
+            .withDisplayName("Query all tables for changes")
+            .withDefault(false)
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription("Attempt to retrieve changes for all whitelisted tables rather than checking beforehand to "
+                    + "see which tables actually have changes to be retrieved. This should be turned on only when there "
+                    + "is confidence that a very high percentage of whitelisted tables will have changes in each iteration.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -320,7 +330,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    QUERY_FETCH_SIZE)
+                    QUERY_FETCH_SIZE,
+                    QUERY_ALL_TABLES)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -345,6 +356,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int maxTransactionsPerIteration;
     private final boolean optionRecompile;
     private final int queryFetchSize;
+    private final boolean queryAllTables;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -385,6 +397,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.optionRecompile = config.getBoolean(INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE);
+        this.queryAllTables = config.getBoolean(QUERY_ALL_TABLES);
     }
 
     public List<String> getDatabaseNames() {
@@ -434,6 +447,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public boolean getOptionRecompile() {
         return optionRecompile;
+    }
+
+    public boolean isQueryAllTables() {
+        return queryAllTables;
     }
 
     @Override
