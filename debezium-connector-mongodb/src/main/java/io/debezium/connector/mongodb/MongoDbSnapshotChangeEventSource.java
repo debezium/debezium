@@ -272,7 +272,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 rsOffsetCtx.initEvent(cursor);
             }
         });
-        rsOffsetCtx.initFromOpTimeIfNeeded(mongo.ping());
+        rsOffsetCtx.initFromOpTimeIfNeeded(mongo.hello());
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
