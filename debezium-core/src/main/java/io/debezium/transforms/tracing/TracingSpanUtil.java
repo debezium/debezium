@@ -17,7 +17,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.internal.ConfigUtil;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
@@ -32,10 +31,6 @@ public class TracingSpanUtil {
 
     private static final String DB_FIELDS_PREFIX = "db.";
     private static final String TX_LOG_WRITE_OPERATION_NAME = "db-log-write";
-    private static final String ARG_OTEL_JAVAAGENT_ENABLED = "otel.javaagent.enabled";
-    private static final String ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED = "otel.instrumentation.opentelemetry-api.enabled";
-    private static final boolean OPEN_TELEMETRY_JAVAAGENT_ENABLE = isOpenTelemetryJavaagentEnable();
-    private static final boolean OPEN_TELEMETRY_API_ENABLE = isOpenTelemetryApiEnable();
     private static final String TRACING_COMPONENT = TracingSpanUtil.class.getName();
     private static final OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
     private static final Tracer tracer = openTelemetry.getTracer(TRACING_COMPONENT);
@@ -45,14 +40,6 @@ public class TracingSpanUtil {
     }
 
     public static <R extends ConnectRecord<R>> R traceRecord(R connectRecord, Struct envelope, Struct source, String propagatedSpanContext, String operationName) {
-        if (!OPEN_TELEMETRY_JAVAAGENT_ENABLE && LOGGER.isDebugEnabled()) {
-            LOGGER.debug("OpenTelemetry javaagent is disabled. To enable, run your JVM with -D{}=true\"",
-                    ARG_OTEL_JAVAAGENT_ENABLED);
-        }
-        if (!OPEN_TELEMETRY_API_ENABLE && LOGGER.isDebugEnabled()) {
-            LOGGER.debug("OpenTelemetry API is disabled. To enable, run your JVM with -D{}=true\"",
-                    ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED);
-        }
 
         if (propagatedSpanContext != null) {
 
@@ -125,13 +112,5 @@ public class TracingSpanUtil {
             }
             span.setAttribute(targetFieldName, fieldValue.toString());
         }
-    }
-
-    private static boolean isOpenTelemetryJavaagentEnable() {
-        return Boolean.parseBoolean(ConfigUtil.getString(ARG_OTEL_JAVAAGENT_ENABLED, "true"));
-    }
-
-    private static boolean isOpenTelemetryApiEnable() {
-        return Boolean.parseBoolean(ConfigUtil.getString(ARG_OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED, "true"));
     }
 }
