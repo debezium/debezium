@@ -217,10 +217,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
                     try {
                         pause.pause();
+                        if (context.isPaused()) {
+                            LOGGER.info("Streaming will now pause");
+                            context.streamingPaused();
+                            context.waitSnapshotCompletion();
+                            LOGGER.info("Streaming resumed");
+                        }
                     }
                     catch (InterruptedException e) {
                         break;
                     }
+
                 }
             }
         }
