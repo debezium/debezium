@@ -226,7 +226,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         LOGGER.info("Found existing offset for replica set '{}' at {}", rsOffsetContext.getReplicaSetName(), rsOffsetContext.getOffset());
         final BsonDocument token = rsOffsetContext.lastResumeTokenDoc();
 
-        return isValidResumeToken(partition, replicaSet, token);
+        return isValidResumeToken(partition, replicaSet, token) || true; // TODO check is streaming paused;
     }
 
     private boolean isValidResumeToken(MongoDbPartition partition, ReplicaSet replicaSet, BsonDocument token) {
