@@ -224,9 +224,9 @@ public class MongoUtil {
         return client.watch(pipeline.getStages(), BsonDocument.class);
     }
 
-    public static BsonTimestamp ping(MongoClient client, String dbName) {
+    public static BsonTimestamp hello(MongoClient client, String dbName) {
         var database = client.getDatabase(dbName);
-        var result = database.runCommand(new Document("ping", 1), BsonDocument.class);
+        var result = database.runCommand(new Document("hello", 1), BsonDocument.class);
         return result.getTimestamp("operationTime");
     }
 
