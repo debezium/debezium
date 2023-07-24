@@ -28,7 +28,7 @@ pipelineJob('release/release-deploy-container-images') {
         stringParam('STREAMS_TO_BUILD_COUNT', '2', 'How many most recent streams should be built')
         stringParam('TAGS_PER_STREAM_COUNT', '1', 'How any most recent tags per stream should be built')
         stringParam('MULTIPLATFORM_PLATFORMS', 'linux/amd64,linux/arm64', 'Which platforms to build images for')
-        booleanParam('SKIP_UI', false, 'Should UI image be skipped?')
+        booleanParam('SKIP_UI', true, 'Should UI image be skipped (skipped by default due to build failure on CI)?')
     }
 
     definition {
