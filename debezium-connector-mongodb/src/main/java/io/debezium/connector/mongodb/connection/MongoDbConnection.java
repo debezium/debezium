@@ -180,10 +180,10 @@ public final class MongoDbConnection implements AutoCloseable {
      *
      * @return timestamp of the executed operation
      */
-    public BsonTimestamp ping() throws InterruptedException {
+    public BsonTimestamp hello() throws InterruptedException {
         return execute("ping on first available database", client -> {
             var dbName = databaseNames().stream().findFirst().orElse("admin");
-            return MongoUtil.ping(client, dbName);
+            return MongoUtil.hello(client, dbName);
         });
     }
 
