@@ -1,0 +1,146 @@
+# TMT test plan definition
+# https://tmt.readthedocs.io/en/latest/overview.html
+
+# Baseline common for all test plans
+#######################################################################
+summary: Debezium functional testsuite
+discover:
+  how: fmf
+
+# Required HW
+provision:
+  hardware:
+    memory: ">= 16 GiB"
+    cpu:
+      processors: ">= 4"
+
+# Install required packages and scripts for running debezium suite
+prepare:
+  - name: Install packages
+    how: install
+    package:
+      - wget
+      - java-17-openjdk-devel
+      - xz
+      - make
+      - git
+      - zip
+      - coreutils
+
+  - name: Install docker-ce
+    how: shell
+    script: |
+      OS=$(cat /etc/redhat-release || true)
+      if [[ ${OS} == *"CentOS"* ]]; then
+        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      else
+        sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+      fi
+      sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+      sudo systemctl enable docker --now
+
+  - name: Install mvn
+    how: shell
+    script: |
+      mkdir -p /usr/share/maven /usr/share/maven/ref
+      curl -fsSL -o /tmp/apache-maven.tar.gz https://apache.osuosl.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
+      tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1
+      rm -f /tmp/apache-maven.tar.gz
+      ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+
+  - name: Build strimzi images
+    how: shell
+    script: |
+      # build images
+      eval $(minikube docker-env)
+      ARCH=$(uname -m)
+      if [[ ${ARCH} == "aarch64" ]]; then
+        export DOCKER_BUILD_ARGS="--platform linux/arm64 --build-arg TARGETPLATFORM=linux/arm64"
+      fi
+      export MVN_ARGS="-B -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress"
+      export DOCKER_REGISTRY="localhost:5000"
+      export DOCKER_ORG="strimzi"
+      export DOCKER_TAG="test"
+      
+      make java_install
+      make docker_build
+      make docker_tag
+      make docker_push
+
+# Discover tmt defined tests in tests/ folder
+execute:
+  how: tmt
+
+# Post install step to copy logs
+finish:
+  how: shell
+  script: ./systemtest/tmt/scripts/copy-logs.sh
+#######################################################################
+
+/smoke:
+  summary: Run smoke strimzi test suite
+  provision:
+    hardware:
+      memory: ">= 8 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - smoke
+
+/regression-operators:
+  summary: Run regression strimzi test suite
+  discover+:
+    test:
+      - regression-operators
+
+/regression-components:
+  summary: Run regression strimzi test suite
+  discover+:
+    test:
+      - regression-components
+
+/kraft-operators:
+  summary: Run regression kraft strimzi test suite
+  discover+:
+    test:
+      - kraft-operators
+
+/kraft-components:
+  summary: Run regression kraft strimzi test suite
+  discover+:
+    test:
+      - kraft-components
+
+/acceptance:
+  summary: Run acceptance strimzi test suite
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - acceptance
+
+/sanity:
+  summary: Run sanity strimzi test suite
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - sanity
+
+/upgrade:
+  summary: Run upgrade strimzi test suite
+  provision:
+    hardware:
+      memory: ">= 8 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - upgrade

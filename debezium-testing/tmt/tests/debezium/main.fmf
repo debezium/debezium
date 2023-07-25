@@ -1,0 +1,49 @@
+test:
+  ./test.sh
+duration: 2h
+environment:
+  MAVEN_ARGS: "-U -am -fae -Papicurio -Dmaven.test.failure.ignore=true -Dinsecure.repositories=WARN -pl debezium-bom"
+
+/mysql:
+  summary: Run mysql connector functional tests
+  tags: [debezium. mysql]
+  duration: 4h
+  tier: 2
+  environment+:
+    TEST_PROFILE: mysql
+    MYSQL_VERSION: 8.0.32
+
+/postgres:
+  summary: Run postgresql connector functional tests
+  tags: [debezium, postgresql]
+  duration: 4h
+  tier: 2
+  environment+:
+    TEST_PROFILE: postgres
+    POSTGRESQL_VERSION: 15
+    DECODER_PLUGIN: decoderbufs
+
+/oracle:
+  summary: Run oracle connector functional tests
+  tags: [debezium, oracle]
+  duration: 4h
+  tier: 1
+  environment+:
+    TEST_PROFILE: oracle
+
+/sqlserver:
+  summary: Run sqlserver connector functional tests
+  tags: [debezium, sqlserver]
+  duration: 4h
+  tier: 2
+  environment+:
+    TEST_PROFILE: sqlserver
+    SQL_SERVER_VERSION: 2022
+
+/mongodb:
+  summary: Run mongodb connector functional tests
+  tags: [debezium, mongodb]
+  duration: 4h
+  tier: 2
+  environment+:
+    TEST_PROFILE: mongodb
