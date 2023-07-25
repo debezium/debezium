@@ -665,7 +665,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         completionResult.handle(false, msg, error);
     }
 
-    private void failRun(String msg, Throwable error) throws EmbeddedEngineRuntimeException {
+    private void failAndThrow(String msg, Throwable error) throws EmbeddedEngineRuntimeException {
         fail(msg, error);
         throw new EmbeddedEngineRuntimeException();
     }
@@ -703,7 +703,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             latch.countUp();
             try {
                 if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
-                    failRun("Failed to start connector with invalid configuration (see logs for actual errors)", null);
+                    failAndThrow("Failed to start connector with invalid configuration (see logs for actual errors)", null);
                 }
 
                 // Instantiate the connector ...
@@ -744,7 +744,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         final Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
                         String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
                                 + config;
-                        failRun(msg, t);
+                        failAndThrow(msg, t);
                     }
 
                     recordsSinceLastCommit = 0;
@@ -841,7 +841,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             return connectorClass.getDeclaredConstructor().newInstance();
         }
         catch (Throwable t) {
-            failRun("Unable to instantiate connector class '" + connectorClassName + "'", t);
+            failAndThrow("Unable to instantiate connector class '" + connectorClassName + "'", t);
         }
         return null;
     }
@@ -855,7 +855,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             String errors = configInfos.values().stream()
                     .flatMap(v -> v.configValue().errors().stream())
                     .collect(Collectors.joining(" "));
-            failRun("Connector configuration is not valid. " + errors, null);
+            failAndThrow("Connector configuration is not valid. " + errors, null);
         }
         return connectorConfig;
     }
@@ -884,7 +884,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
         }
         catch (Throwable t) {
-            failRun("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+            failAndThrow("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
         }
 
         // Initialize the offset store ...
@@ -908,7 +908,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         config.asProperties());
             }
             catch (Throwable t) {
-                failRun("Unable to instantiate OffsetCommitPolicy class '" + config.getString(OFFSET_STORAGE) + "'", t);
+                failAndThrow("Unable to instantiate OffsetCommitPolicy class '" + config.getString(OFFSET_STORAGE) + "'", t);
             }
         }
     }
@@ -939,7 +939,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             throws EmbeddedEngineRuntimeException, NoSuchMethodException, InvocationTargetException {
         if (taskConfigs.isEmpty()) {
             String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
-            failRun(msg, null);
+            failAndThrow(msg, null);
         }
 
         SourceTask task = null;
@@ -947,7 +947,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
         }
         catch (IllegalAccessException | InstantiationException t) {
-            failRun("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
+            failAndThrow("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
         }
         return task;
     }
