@@ -2,6 +2,84 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.Alpha1
+July 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409716)
+
+### New features since 2.3.0.Final
+
+* Capture & display critical connector metrics for Debezium UI [DBZ-5321](https://issues.redhat.com/browse/DBZ-5321)
+* Don't require cluster-wide privileges when watching a single database/collection [DBZ-6182](https://issues.redhat.com/browse/DBZ-6182)
+* Debezium Offset-Editor example application [DBZ-6338](https://issues.redhat.com/browse/DBZ-6338)
+* Notify about initial snapshot progress [DBZ-6416](https://issues.redhat.com/browse/DBZ-6416)
+* Set Readpreference tags in the MongoDB client  [DBZ-6468](https://issues.redhat.com/browse/DBZ-6468)
+* MySqlSnapshotChangeEventSource parallel execute createSchemaEventsForTables  [DBZ-6472](https://issues.redhat.com/browse/DBZ-6472)
+* Refactor errors.max.retries to common connector framework [DBZ-6573](https://issues.redhat.com/browse/DBZ-6573)
+* Explain failure on existing publication update when switching to `filtered` from `all_tables`  [DBZ-6577](https://issues.redhat.com/browse/DBZ-6577)
+* Debezium should honor read preference from connection string [DBZ-6578](https://issues.redhat.com/browse/DBZ-6578)
+* Document support for database restricted privileges for 2.4 [DBZ-6592](https://issues.redhat.com/browse/DBZ-6592)
+* Use source field in topic in table.format.name [DBZ-6595](https://issues.redhat.com/browse/DBZ-6595)
+* Support authentication with TC MongoDB deployments [DBZ-6596](https://issues.redhat.com/browse/DBZ-6596)
+* Support for getting primary key from header [DBZ-6602](https://issues.redhat.com/browse/DBZ-6602)
+* Support for custom tags in the connector metrics [DBZ-6603](https://issues.redhat.com/browse/DBZ-6603)
+* Update docs for new shard field [DBZ-6627](https://issues.redhat.com/browse/DBZ-6627)
+* Improve JDBC connector documentation [DBZ-6632](https://issues.redhat.com/browse/DBZ-6632)
+* Add configurable timeout to initialization procedure [DBZ-6653](https://issues.redhat.com/browse/DBZ-6653)
+* Introduce internal config option to control how close to CURRENT_SCN Oracle may mine [DBZ-6660](https://issues.redhat.com/browse/DBZ-6660)
+* Add support for XML_TYPE column type to Debezium connector for Oracle [DBZ-3605](https://issues.redhat.com/browse/DBZ-3605)
+
+### Breaking changes since 2.3.0.Final
+
+* MongoDB change stream pipeline not respecting hard coded `readPreference=secondaryPreferred` [DBZ-6521](https://issues.redhat.com/browse/DBZ-6521)
+* Add shard field to events [DBZ-6617](https://issues.redhat.com/browse/DBZ-6617)
+
+
+### Fixes since 2.3.0.Final
+
+* Mysql connector fails to parse statement FLUSH FIREWALL_RULES [DBZ-3925](https://issues.redhat.com/browse/DBZ-3925)
+* Snapshot result not saved if LAST record is filtered out [DBZ-5464](https://issues.redhat.com/browse/DBZ-5464)
+* CloudEventsConverter throws static error on Kafka Connect 3.5+ [DBZ-6517](https://issues.redhat.com/browse/DBZ-6517)
+* Dependency io.debezium:debezium-testing-testcontainers affects logback in tests [DBZ-6525](https://issues.redhat.com/browse/DBZ-6525)
+* Batches with DELETE statement first will skip everything else [DBZ-6576](https://issues.redhat.com/browse/DBZ-6576)
+* Oracle unsupported DDL statement - drop multiple partitions [DBZ-6585](https://issues.redhat.com/browse/DBZ-6585)
+* Only Struct objects supported for [Header field insertion], found: null [DBZ-6588](https://issues.redhat.com/browse/DBZ-6588)
+* Support PostgreSQL coercion for UUID, JSON, and JSONB data types [DBZ-6589](https://issues.redhat.com/browse/DBZ-6589)
+* MySQL parser cannot parse CAST AS dec [DBZ-6590](https://issues.redhat.com/browse/DBZ-6590)
+* Excessive Log Message 'Marking Processed Record for Topic' [DBZ-6597](https://issues.redhat.com/browse/DBZ-6597)
+* Fixed DataCollections for table scan completion notificaiton [DBZ-6605](https://issues.redhat.com/browse/DBZ-6605)
+* Oracle connector is not recoverable if ORA-01327 is wrapped by another JDBC or Oracle exception [DBZ-6610](https://issues.redhat.com/browse/DBZ-6610)
+* Fatal error when parsing Mysql (Percona 5.7.39-42) procedure [DBZ-6613](https://issues.redhat.com/browse/DBZ-6613)
+* Build of Potgres connector fails when building against Kafka 2.X [DBZ-6614](https://issues.redhat.com/browse/DBZ-6614)
+* Upgrade postgresql driver to v42.6.0 [DBZ-6619](https://issues.redhat.com/browse/DBZ-6619)
+* MySQL ALTER USER with RETAIN CURRENT PASSWORD fails with parsing exception [DBZ-6622](https://issues.redhat.com/browse/DBZ-6622)
+* Inaccurate documentation regarding additional-condition [DBZ-6628](https://issues.redhat.com/browse/DBZ-6628)
+* Oracle connection SQLRecoverableExceptions are not retried by default [DBZ-6633](https://issues.redhat.com/browse/DBZ-6633)
+* Cannot delete non-null interval value [DBZ-6648](https://issues.redhat.com/browse/DBZ-6648)
+* ConcurrentModificationException thrown in Debezium 2.3 [DBZ-6650](https://issues.redhat.com/browse/DBZ-6650)
+* Dbz crashes on parsing Mysql Procedure Code (Statement Labels) [DBZ-6651](https://issues.redhat.com/browse/DBZ-6651)
+* CloudEvents converter is broken for JSON message deserialization [DBZ-6654](https://issues.redhat.com/browse/DBZ-6654)
+* Vitess: Connector fails if table name is a mysql reserved word [DBZ-6656](https://issues.redhat.com/browse/DBZ-6656)
+* Junit conflicts cause by test-containers module using transitive Junit5 from quarkus [DBZ-6659](https://issues.redhat.com/browse/DBZ-6659)
+
+
+### Other changes since 2.3.0.Final
+
+* Add the API endpoint to expose running connector metrics [DBZ-5359](https://issues.redhat.com/browse/DBZ-5359)
+* Display critical connector metrics [DBZ-5360](https://issues.redhat.com/browse/DBZ-5360)
+* Define and document schema history topic messages schema [DBZ-5518](https://issues.redhat.com/browse/DBZ-5518)
+* Align query.fetch.size across connectors [DBZ-5676](https://issues.redhat.com/browse/DBZ-5676)
+* Upgrade to Apache Kafka 3.5.0 [DBZ-6047](https://issues.redhat.com/browse/DBZ-6047)
+* Remove downstream related code from UI Frontend code [DBZ-6394](https://issues.redhat.com/browse/DBZ-6394)
+* Make Signal actions extensible [DBZ-6417](https://issues.redhat.com/browse/DBZ-6417)
+* Cleanup duplicit jobs from jenkins [DBZ-6535](https://issues.redhat.com/browse/DBZ-6535)
+* Implement sharded mongo ocp deployment and integration tests  [DBZ-6538](https://issues.redhat.com/browse/DBZ-6538)
+* Refactor retry handling in Redis schema history [DBZ-6594](https://issues.redhat.com/browse/DBZ-6594)
+* Upgrade Quarkus to 3.2.0.Final [DBZ-6626](https://issues.redhat.com/browse/DBZ-6626)
+* Upgrade kcctl to 1.0.0.Beta3 [DBZ-6642](https://issues.redhat.com/browse/DBZ-6642)
+* Upgrade gRPC to 1.56.1 [DBZ-6649](https://issues.redhat.com/browse/DBZ-6649)
+* Disable Kafka 2.x CRON trigger [DBZ-6667](https://issues.redhat.com/browse/DBZ-6667)
+
+
+
 ## 2.3.0.Final
 June 20th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409293)
 

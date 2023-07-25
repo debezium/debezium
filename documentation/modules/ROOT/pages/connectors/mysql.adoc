@@ -141,6 +141,38 @@ You can configure a {prodname} MySQL connector to produce schema change events t
 The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the namespace specified in the xref:mysql-property-topic-prefix[`topic.prefix`] connector configuration property.
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the MySQL connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.mysql.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
 The payload of a schema change event message includes the following elements:
 
 `ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
@@ -3138,6 +3170,10 @@ Specify one of the following options:
 `descending`:: The connector snapshots tables in order, based on the number of rows from the highest to the lowest.
 `ascending`:: The connector snapshots tables in order, based on the number of rows, from lowest to highest.
 `disabled`:: The connector disregards row count when performing an initial snapshot.
+
+|[[mysql-property-custom-metric-tags]]<<mysql-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
 |===
 

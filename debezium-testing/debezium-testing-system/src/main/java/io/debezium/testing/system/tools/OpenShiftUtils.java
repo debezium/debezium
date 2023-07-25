@@ -6,6 +6,8 @@
 package io.debezium.testing.system.tools;
 
 import static io.debezium.testing.system.tools.WaitConditions.scaled;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
@@ -258,6 +260,28 @@ public class OpenShiftUtils {
         for (Pod p : pods) {
             client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
         }
+    }
+
+    public void scaleDeploymentToZero(Deployment deployment) {
+        client.apps()
+                .deployments()
+                .inNamespace(deployment.getMetadata().getNamespace())
+                .withName(deployment.getMetadata().getName())
+                .scale(0);
+        waitForDeploymentToScaleDown(deployment);
+    }
+
+    public void waitForDeploymentToScaleDown(Deployment deployment) {
+        String deploymentName = deployment.getMetadata().getName();
+        LOGGER.info("Waiting for deployment [" + deploymentName + "] to scale to 0");
+        Supplier<PodList> podListSupplier = () -> client.pods()
+                .inNamespace(deployment.getMetadata().getNamespace())
+                .withLabels(Map.of("deployment", deploymentName))
+                .list();
+        await().atMost(scaled(1), MINUTES)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> podListSupplier.get().getItems().isEmpty());
     }
 
     public static boolean isRunningFromOcp() {

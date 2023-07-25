@@ -15,10 +15,10 @@ toc::[]
 {prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace].
 For information about the Vitess versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 
-When the connector first connects to a Vitess cluster, it takes a consistent snapshot of the keyspace. 
-After that snapshot is complete, the connector continuously captures row-level changes that are committed to a Vitess keyspace to insert, update, or delete database content. 
-The connector generates data change event records and streams them to Kafka topics. 
-For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. 
+When the connector first connects to a Vitess cluster, it takes a consistent snapshot of the keyspace.
+After that snapshot is complete, the connector continuously captures row-level changes that are committed to a Vitess keyspace to insert, update, or delete database content.
+The connector generates data change event records and streams them to Kafka topics.
+For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table.
 Applications and services can then consume data change event records from the resulting topic.
 
 // Type: concept
@@ -35,15 +35,15 @@ The connector gives you the flexibility to choose to subscribe to the `MASTER` n
 
 The connector produces a change event for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
-The underlying MySQL implementation in Vitess purges binary logs based on some configurable period of time. 
+The underlying MySQL implementation in Vitess purges binary logs based on some configurable period of time.
 Because the contents of the binlog might not be complete, the connector requires another mechanism to ensure that it captures the complete content of a particular database.
-Thus, when the connector connects to a database for the first time, it performs a consistent snapshot of the database. 
-After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. 
+Thus, when the connector connects to a database for the first time, it performs a consistent snapshot of the database.
+After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made.
 In this way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
 
-The connector is tolerant of failures. 
-As the connector reads changes and produces events, it records the VGTID position for each event. 
-If the connector stops for any reason (including communication failures, network problems, or crashes), after the connectors restarts, it continues reading the WAL from the point at which it stopped. 
+The connector is tolerant of failures.
+As the connector reads changes and produces events, it records the Vitess global transaction ID (VGTID) position for each event.
+If the connector stops for any reason (including communication failures, network problems, or crashes), after the connector restarts, it continues reading from VStream from the last change event entry that it stored.
 This behavior does not apply to snapshots. If the connector stops during a snapshot, after a restart, the connector does not continue performing snapshots where it last left off.
 We'll talk later about how the connector behaves xref:{link-vitess-connector}#vitess-when-things-go-wrong[when things go wrong].
 
@@ -62,8 +62,8 @@ To optimally configure and run a {prodname} Vitess connector, it is helpful to u
 === Snapshot
 
 Typically, a MySQL server is not configured to retain the complete history of the database in the binary logs.
-As a result, the connector is unable to read the entire history of the database from the binary logs. 
-For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database. 
+As a result, the connector is unable to read the entire history of the database from the binary logs.
+For this reason, the first time that the connector starts, it performs an initial consistent snapshot of the database.
 You can change this behavior by setting the xref:{link-vitess-connector}#vitess-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 This snapshot feature is built on link:https://vitess.io/docs/design-docs/vreplication/vstream/vscopy/[VStream Copy] introduced in version 7.0.
 
@@ -474,9 +474,14 @@ The following example shows the value portion of a change event that the connect
                         "field": "ts_ms"
                     },
                     {
-                        "type": "boolean",
+                        "type": "string",
                         "optional": true,
-                        "default": false,
+                        "name": "io.debezium.data.Enum",
+                        "version": 1,
+                        "parameters": {
+                            "allowed": "true,last,false,incremental"
+                        },
+                        "default": "false",
                         "field": "snapshot"
                     },
                     {
@@ -486,13 +491,23 @@ The following example shows the value portion of a change event that the connect
                     },
                     {
                         "type": "string",
+                        "optional": true,
+                        "field": "sequence"
+                    },
+                    {
+                        "type": "string",
                         "optional": false,
-                        "field": "schema"
+                        "field": "keyspace"
                     },
                     {
                         "type": "string",
                         "optional": false,
                         "field": "table"
+                    },
+                    {
+                        "type": "string",
+                        "optional": false,
+                        "field": "shard"
                     },
                     {
                         "type": "int64",
@@ -531,10 +546,12 @@ The following example shows the value portion of a change event that the connect
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": false,
+            "snapshot": "false",
             "db": "",
+            "sequence": null,
             "keyspace": "commerce",
             "table": "customers",
+            "shard": "-80",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-45\"}]"
         },
         "op": "c", // <9>
@@ -590,9 +607,9 @@ a|Mandatory field that describes the source metadata for the event. This field c
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace) and table that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
-* Offset of the operation in the database binlog
+* VGTID of the operation
 * Timestamp for when the change was made in the database
 
 |9
@@ -639,10 +656,12 @@ The value of a change event for an update in the sample `customers` table has th
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": false,
+            "snapshot": "false",
             "db": "",
+            "sequence": null,
             "keyspace": "commerce",
             "table": "customers",
+            "shard": "-80",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-46\"}]"
         },
         "op": "u", // <4>
@@ -670,9 +689,9 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace) and table that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
-* Offset of the operation in the database log
+* VGTID of the operation
 * Timestamp for when the change was made in the database
 
 |4
@@ -714,10 +733,12 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
             "connector": "vitess",
             "name": "my_sharded_connector",
             "ts_ms": 1559033904863,
-            "snapshot": false,
+            "snapshot": "false",
             "db": "",
+            "sequence": null,
             "keyspace": "commerce",
             "table": "customers",
+            "shard": "-80",
             "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-47\"}]"
         },
         "op": "d", // <4>
@@ -745,9 +766,9 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 
 * {prodname} version
 * Connector type and name
-* Database (a.k.a keyspace) and table that contains the new row
+* Database (also known as keyspace), table, and shard that contains the new row
 * If the event was part of a snapshot (always `false`)
-* Offset of the operation in the database log
+* VGTID of the operation
 * Timestamp for when the change was made in the database
 
 |4
@@ -1039,13 +1060,13 @@ Following is the same example for a Vitess connector that connects to a Vitess (
     "database.port": "15991",
     "database.user": "vitess",
     "database.password": "vitess_password",
+    "topic.prefix": "fullfillment",
     "vitess.keyspace": "commerce",
     "vitess.tablet.type": "MASTER",
     "vitess.vtctld.host": "192.168.99.101",
     "vitess.vtctld.port": "15999",
     "vitess.vtctld.user": "vitess",
     "vitess.vtctld.password": "vitess_password",
-    "database.server.name": "fullfillment",
     "vitess.offset.storage.per.task": true, // <1>
     "vitess.offset.storage.task.key.gen": 1, // <2>
     "vitess.prev.num.tasks": 1, // <3>
@@ -1502,6 +1523,10 @@ See xref:vitess-data-types[how Vitess connectors map data types] for the list of
 _topic.prefix_._topic.transaction_ +
  +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
+
+|[[vitess-property-custom-metric-tags]]<<vitess-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
 |===
 

@@ -6,23 +6,29 @@
 package io.debezium.testing.system.tools.databases;
 
 import static io.debezium.testing.system.tools.OpenShiftUtils.isRunningFromOcp;
-import static io.debezium.testing.system.tools.WaitConditions.scaled;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.OpenShiftUtils;
+import io.debezium.testing.system.tools.WaitConditions;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.PortForward;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.ServiceResource;
+import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -77,21 +83,7 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
             }
         }
         LOGGER.info("Removing all pods of '" + name + "' deployment in namespace '" + project + "'");
-        ocp.apps().deployments().inNamespace(project).withName(name).scale(0);
-        await()
-                .atMost(scaled(30), SECONDS)
-                .pollDelay(5, SECONDS)
-                .pollInterval(3, SECONDS)
-                .until(() -> {
-                    var pods = ocp.pods()
-                            .inNamespace(project)
-                            .list()
-                            .getItems()
-                            .stream()
-                            .filter(p -> p.getMetadata().getLabels().containsValue(name))
-                            .collect(Collectors.toList());
-                    return pods.isEmpty();
-                });
+        ocpUtils.scaleDeploymentToZero(deployment);
         LOGGER.info("Restoring all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.apps().deployments().inNamespace(project).withName(name).scale(1);
         if (!isRunningFromOcp()) {
@@ -154,11 +146,11 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
                 .portForward(dbPort, localPort);
 
         for (Throwable e : forward.getClientThrowables()) {
-            LOGGER.error("Client error when forwarding DB port " + deployment, e);
+            LOGGER.warn("Client error when forwarding DB port " + deployment, e);
         }
 
         for (Throwable e : forward.getServerThrowables()) {
-            LOGGER.error("Server error when forwarding DB port" + dbPort, e);
+            LOGGER.warn("Server error when forwarding DB port" + deployment, e);
         }
         portForward = forward;
     }
@@ -168,6 +160,42 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
         LOGGER.info("Closing port forwards");
         portForward.close();
         portForward = null;
+    }
+
+    protected void executeInitCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        String containerName = deployment.getMetadata().getLabels().get("app");
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseInitListener(containerName, latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting until database is initialized");
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
+        }
+    }
+
+    protected void executeCommand(Deployment deployment, String... commands) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(1);
+        try (var ignored = prepareExec(deployment)
+                .usingListener(new DatabaseExecListener(deployment.getMetadata().getName(), latch))
+                .exec(commands)) {
+            LOGGER.info("Waiting on " + deployment.getMetadata().getName() + " for commands " + Arrays.toString(commands));
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
+        }
+    }
+
+    private TtyExecErrorChannelable<String, OutputStream, PipedInputStream, ExecWatch> prepareExec(Deployment deployment) {
+        var pods = ocpUtils.podsForDeployment(deployment);
+        if (pods.size() > 1) {
+            throw new IllegalArgumentException("Executing command on deployment scaled to more than 1");
+        }
+        Pod pod = pods.get(0);
+        return getPodResource(pod)
+                .inContainer(pod.getMetadata().getLabels().get("app"))
+                .writingError(System.err); // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 1 LINES
+    }
+
+    private PodResource<Pod> getPodResource(Pod pod) {
+        return ocp.pods().inNamespace(project).withName(pod.getMetadata().getName());
     }
 
     private int getOriginalDatabasePort() {
@@ -180,16 +208,6 @@ public abstract class AbstractOcpDatabaseController<C extends DatabaseClient<?, 
     private int getAvailablePort() throws IOException {
         try (var socket = new ServerSocket(0)) {
             return socket.getLocalPort();
-        }
-    }
-
-    private boolean isLocalPortFree(int port) {
-        try {
-            new ServerSocket(port).close();
-            return true;
-        }
-        catch (IOException e) {
-            return false;
         }
     }
 }

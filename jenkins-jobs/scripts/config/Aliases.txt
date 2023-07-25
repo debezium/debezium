@@ -214,3 +214,5 @@ angsdey2,Angshuman Dey
 jehrenzweig-pi,Jesse Ehrenzweig
 TechIsCool,David Beck
 cjmencias,Christian Jacob Mencias
+bdbene,Balint Bene
+agukasian,Artur Gukasian

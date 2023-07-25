@@ -80,6 +80,8 @@ public class CloudEventsConverterTest {
             // Convert the value and inspect it ...
             msg = "converting value using CloudEvents JSON converter";
             byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            msg = "deserializing value using CE deserializer";
+            final SchemaAndValue ceValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
             msg = "deserializing value using JSON deserializer";
 
             try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
@@ -177,6 +179,8 @@ public class CloudEventsConverterTest {
             // Convert the value and inspect it ...
             msg = "converting value using CloudEvents JSON converter";
             byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+            msg = "deserializing value using CE deserializer";
+            final SchemaAndValue ceValue = cloudEventsConverter.toConnectData(record.topic(), valueBytes);
             msg = "deserializing value using JSON deserializer";
 
             try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {

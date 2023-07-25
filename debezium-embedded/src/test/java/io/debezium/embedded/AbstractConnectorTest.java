@@ -1154,7 +1154,7 @@ public abstract class AbstractConnectorTest implements Testing {
         embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
         WorkerConfig workerConfig = new EmbeddedConfig(embeddedConfig);
 
-        FileOffsetBackingStore offsetStore = new FileOffsetBackingStore();
+        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
         offsetStore.configure(workerConfig);
         offsetStore.start();
         try {
@@ -1225,6 +1225,18 @@ public abstract class AbstractConnectorTest implements Testing {
         waitForSnapshotEvent(connector, server, "SnapshotCompleted", task, database);
     }
 
+    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, Map<String, String> props) throws InterruptedException {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> (boolean) mbeanServer
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server, props), "SnapshotCompleted"));
+    }
+
     private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -1249,15 +1261,24 @@ public abstract class AbstractConnectorTest implements Testing {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> isStreamingRunning(connector, server, contextName, task));
+    }
+
+    public static void waitForStreamingWithCustomMetricsToStart(String connector, String server, Map<String, String> props) {
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> isStreamingRunning(connector, server, props));
     }
 
     public static void waitForConnectorShutdown(String connector, String server) {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .until(() -> !isStreamingRunning(connector, server));
     }
 
@@ -1282,6 +1303,18 @@ public abstract class AbstractConnectorTest implements Testing {
         return false;
     }
 
+    public static boolean isStreamingRunning(String connector, String server, Map<String, String> props) {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        try {
+            ObjectName streamingMetricsObjectName = getStreamingMetricsObjectName(connector, server, props);
+            return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
+        }
+        catch (JMException ignored) {
+        }
+        return false;
+    }
+
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server);
     }
@@ -1291,6 +1324,11 @@ public abstract class AbstractConnectorTest implements Testing {
         Map<String, String> props = new HashMap<>();
         props.put("task", task);
         props.put("database", database);
+
+        return getSnapshotMetricsObjectName(connector, server, props);
+    }
+
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, Map<String, String> props) throws MalformedObjectNameException {
         String additionalProperties = props.entrySet().stream()
                 .filter(e -> e.getValue() != null)
                 .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
@@ -1313,6 +1351,20 @@ public abstract class AbstractConnectorTest implements Testing {
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, Map<String, String> props) throws MalformedObjectNameException {
+        String additionalProperties = props.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
+                .collect(Collectors.joining(","));
+
+        if (additionalProperties.length() != 0) {
+            return new ObjectName(
+                    "debezium." + connector + ":type=connector-metrics,context=" + getStreamingNamespace() + ",server=" + server + "," + additionalProperties);
+        }
+
+        return getStreamingMetricsObjectName(connector, server);
     }
 
     protected static String getStreamingNamespace() {

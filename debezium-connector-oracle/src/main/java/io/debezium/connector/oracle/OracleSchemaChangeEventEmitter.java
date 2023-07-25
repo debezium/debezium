@@ -25,6 +25,7 @@ import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
+import io.debezium.relational.ddl.DdlParserListener.TableTruncatedEvent;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
@@ -109,7 +110,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                             changeEvents.add(dropTableEvent(partition, tableBefore, (TableDroppedEvent) event));
                             break;
                         case TRUNCATE_TABLE:
-                            truncateReceiver.processTruncateEvent();
+                            changeEvents.add(truncateTableEvent(partition, (TableTruncatedEvent) event));
                             break;
                         default:
                             LOGGER.info("Skipped DDL event type {}: {}", event.type(), ddlText);
@@ -120,7 +121,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
             for (SchemaChangeEvent event : changeEvents) {
                 if (!schema.skipSchemaChangeEvent(event)) {
-                    receiver.schemaChangeEvent(event);
+                    if (SchemaChangeEvent.SchemaChangeEventType.TRUNCATE == event.getType()) {
+                        truncateReceiver.processTruncateEvent();
+                    }
+                    else {
+                        receiver.schemaChangeEvent(event);
+                    }
+
                 }
             }
         }
@@ -175,4 +182,16 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 event.statement(),
                 tableSchemaBeforeDrop);
     }
+
+    private SchemaChangeEvent truncateTableEvent(OraclePartition partition, TableTruncatedEvent event) {
+        offsetContext.tableEvent(tableId, changeTime);
+        return SchemaChangeEvent.ofTruncate(
+                partition,
+                offsetContext,
+                tableId.catalog(),
+                tableId.schema(),
+                event.statement(),
+                schema.tableFor(event.tableId()));
+    }
+
 }

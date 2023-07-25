@@ -231,6 +231,39 @@ You can configure a {prodname} Db2 connector to produce schema change events tha
 * During a xref:db2-schema-evolution[database schema update], there is a change in the schema for a table that is in capture mode.
 
 The connector writes schema change events to a Kafka schema change topic that has the name `_<topicPrefix>_` where `_<topicPrefix>_` is the topic prefix that is specified in the xref:db2-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the Db2 connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.db2.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
 Messages that the connector sends to the schema change topic contain a payload that includes the following elements:
 
 `databaseName`:: The name of the database to which the statements are applied.
@@ -442,7 +475,8 @@ In the following example, the `payload` field contains the key:
       }
     ],
     "optional": false,
-    "name": "io.debezium.connector.db2.SchemaChangeKey"
+    "name": "io.debezium.connector.db2.SchemaChangeKey",
+    "version": 1
   },
   "payload": {
     "databaseName": "TESTDB"
@@ -2481,6 +2515,11 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
+
+|[[db2-property-custom-metric-tags]]<<db2-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]

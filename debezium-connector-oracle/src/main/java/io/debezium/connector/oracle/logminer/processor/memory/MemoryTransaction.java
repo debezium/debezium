@@ -28,8 +28,8 @@ public class MemoryTransaction extends AbstractTransaction {
     private int numberOfEvents;
     private List<LogMinerEvent> events;
 
-    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName) {
-        super(transactionId, startScn, changeTime, userName);
+    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId) {
+        super(transactionId, startScn, changeTime, userName, redoThreadId);
         this.events = new ArrayList<>();
         start();
     }

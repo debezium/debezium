@@ -10,7 +10,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -60,7 +63,6 @@ public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
 
     /**
@@ -390,6 +392,10 @@ public abstract class CommonConnectorConfig {
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
 
+    public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
+    public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
+    private final int maxRetriesOnError;
+
     public static final Field TOPIC_PREFIX = Field.create("topic.prefix")
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
@@ -691,6 +697,28 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The name of the SourceInfoStructMaker class that returns SourceInfo schema and struct.");
 
+    public static final Field MAX_RETRIES_ON_ERROR = Field.create(ERRORS_MAX_RETRIES)
+            .withDisplayName("The maximum number of retries")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 24))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_MAX_RETRIES)
+            .withValidation(Field::isInteger)
+            .withDescription(
+                    "The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
+
+    public static final Field CUSTOM_METRIC_TAGS = Field.create("custom.metric.tags")
+            .withDisplayName("Customize metric tags")
+            .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 25))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfMap)
+            .withDescription("The custom metric tags will accept key-value pairs to customize the MBean object name "
+                    + "which should be appended the end of regular name, each key would represent a tag for the MBean object name, "
+                    + "and the corresponding value would be the value of that tag the key is. For example: k1=v1,k2=v2");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -705,7 +733,8 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
                     RETRIABLE_RESTART_WAIT,
-                    QUERY_FETCH_SIZE)
+                    QUERY_FETCH_SIZE,
+                    MAX_RETRIES_ON_ERROR)
             .events(
                     CUSTOM_CONVERTERS,
                     TOMBSTONES_ON_DELETE,
@@ -716,7 +745,8 @@ public abstract class CommonConnectorConfig {
                     SIGNAL_ENABLED_CHANNELS,
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
-                    SinkNotificationChannel.NOTIFICATION_TOPIC)
+                    SinkNotificationChannel.NOTIFICATION_TOPIC,
+                    CUSTOM_METRIC_TAGS)
             .create();
 
     private final Configuration config;
@@ -753,6 +783,7 @@ public abstract class CommonConnectorConfig {
 
     private final String notificationTopicName;
     private final List<String> enabledNotificationChannels;
+    private final Map<String, String> customMetricTags;
 
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -786,6 +817,8 @@ public abstract class CommonConnectorConfig {
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
+        this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
+        this.customMetricTags = createCustomMetricTags(config);
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -971,6 +1004,31 @@ public abstract class CommonConnectorConfig {
                 .orElseGet(Collections::emptySet);
     }
 
+    public Map<String, String> getCustomMetricTags() {
+        return customMetricTags;
+    }
+
+    public Map<String, String> createCustomMetricTags(Configuration config) {
+        // Keep the map custom metric tags sequence
+        HashMap<String, String> result = new LinkedHashMap<>();
+
+        String rawValue = config.getString(CUSTOM_METRIC_TAGS);
+        if (Strings.isNullOrBlank(rawValue)) {
+            return result;
+        }
+
+        List<String> values = Strings.listOf(rawValue, x -> x.split(","), String::trim);
+        for (String v : values) {
+            List<String> items = Strings.listOf(v, x -> x.split("="), String::trim);
+            result.put(items.get(0), items.get(1));
+        }
+        if (result.size() < values.size()) {
+            LOGGER.warn("There are duplicated key-value pairs: {}", rawValue);
+        }
+
+        return result;
+    }
+
     /**
      * @return true if the connector should emit messages about schema changes into a public facing
      * topic.
@@ -1127,8 +1185,7 @@ public abstract class CommonConnectorConfig {
     }
 
     public int getMaxRetriesOnError() {
-        // Limited retries currently supported by SQL Server connector only
-        return ErrorHandler.RETRIES_UNLIMITED;
+        return maxRetriesOnError;
     }
 
     public String getTaskId() {

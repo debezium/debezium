@@ -48,6 +48,7 @@ import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
+import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
@@ -727,9 +728,21 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
                 OffsetBackingStore offsetStore = null;
                 try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                    offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+                    // Kafka 3.5 no longer provides offset stores with non-parametric constructors
+                    if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
+                        offsetStore = KafkaConnectUtil.memoryOffsetBackingStore();
+                    }
+                    else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
+                        offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
+                    }
+                    else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
+                        offsetStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
+                    }
+                    else {
+                        @SuppressWarnings("unchecked")
+                        Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+                        offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+                    }
                 }
                 catch (Throwable t) {
                     fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);

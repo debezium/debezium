@@ -74,6 +74,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
     public static final Pattern SELECT_ALL_PATTERN = Pattern.compile("\\*");
+    public static final Pattern MATCH_ALL_PATTERN = Pattern.compile(".*");
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
@@ -82,6 +83,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final EventDispatcher<P, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
+    protected Queue<JdbcConnection> connectionPool;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
@@ -105,7 +107,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         Connection connection = null;
         Exception exceptionWhileSnapshot = null;
-        Queue<JdbcConnection> connectionPool = null;
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
 
@@ -122,6 +123,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
+            // Init jdbc connection pool for reading table schema and data
+            connectionPool = createConnectionPool(ctx);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
@@ -134,11 +137,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
             readTableStructure(context, ctx, previousOffset);
-
-            if (snapshottingTask.snapshotData()) {
-                LOGGER.info("Snapshot step 5.a - Creating connection pool");
-                connectionPool = createConnectionPool(ctx);
-            }
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
@@ -244,25 +242,26 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .sorted();
     }
 
-    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) throws Exception {
+    private Set<TableId> addSignalingCollectionAndSort(Set<TableId> capturedTables) {
+
         String tableIncludeList = connectorConfig.tableIncludeList();
         String signalingDataCollection = connectorConfig.getSignalingDataCollectionId();
+
         List<Pattern> captureTablePatterns = new ArrayList<>();
         if (!Strings.isNullOrBlank(tableIncludeList)) {
             captureTablePatterns.addAll(Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE));
         }
+        else {
+            captureTablePatterns.add(MATCH_ALL_PATTERN);
+        }
+
         if (!Strings.isNullOrBlank(signalingDataCollection)) {
             captureTablePatterns.addAll(getSignalDataCollectionPattern(signalingDataCollection));
         }
-        if (captureTablePatterns.size() > 0) {
-            return captureTablePatterns
-                    .stream()
-                    .flatMap(pattern -> toTableIds(capturedTables, pattern))
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-        }
-        return capturedTables
+
+        return captureTablePatterns
                 .stream()
-                .sorted()
+                .flatMap(pattern -> toTableIds(capturedTables, pattern))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 

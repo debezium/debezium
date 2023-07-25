@@ -1641,7 +1641,7 @@ alterUser
         )?
         (WITH userResourceOption+)?
         (userPasswordOption | userLockOption)*
-        (COMMENT STRING_LITERAL |  ATTRIBUTE STRING_LITERAL)?       #alterUserMysqlV80
+        (COMMENT STRING_LITERAL | ATTRIBUTE STRING_LITERAL)?        #alterUserMysqlV80
     | ALTER USER ifExists?
       (userName | uid) DEFAULT ROLE roleOption                      #alterUserMysqlV80
     ;
@@ -1729,17 +1729,21 @@ userSpecification
 
 userAuthOption
     : userName IDENTIFIED BY PASSWORD hashed=STRING_LITERAL         #hashAuthOption
-    | userName
-      IDENTIFIED BY STRING_LITERAL (RETAIN CURRENT PASSWORD)?       #stringAuthOption
-    | userName
-      IDENTIFIED (WITH | VIA)                                       // VIA is MariaDB-specific only
+    | userName IDENTIFIED BY RANDOM PASSWORD authOptionClause       #randomAuthOption
+    | userName IDENTIFIED BY STRING_LITERAL authOptionClause        #stringAuthOption
+    | userName IDENTIFIED (WITH | VIA)                              // VIA is MariaDB-specific only
       authenticationRule (OR authenticationRule)*                   #moduleAuthOption // OR is MariaDB-specific only
     | userName                                                      #simpleAuthOption
     ;
 
+authOptionClause
+    : (REPLACE STRING_LITERAL)? (RETAIN CURRENT PASSWORD)?
+    ;
+
 authenticationRule
     : authPlugin
-      ((BY | USING | AS) STRING_LITERAL)?                           #module
+      ((BY | USING | AS) (STRING_LITERAL | RANDOM PASSWORD)
+      authOptionClause)?                                            #module
     | authPlugin
       (USING | AS) passwordFunctionClause                           #passwordModuleOption // MariaDB
     ;
@@ -1994,6 +1998,8 @@ flushStatement
       flushOption (',' flushOption)*
     // MariaDB userstat plugin
     | FLUSH (USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS)
+    // Specific for Azure Database for MySQL Single Server instance.
+    | FLUSH FIREWALL_RULES
     ;
 
 killStatement
@@ -2772,7 +2778,7 @@ dataTypeBase
     ;
 
 keywordsCanBeId
-    : ACCOUNT | ACTION | ADMIN | AFTER | AGGREGATE | ALGORITHM | ANY | APPLICATION_PASSWORD_ADMIN | AT | AUDIT_ADMIN | AUDIT_ABORT_EXEMPT
+    : ACCOUNT | ACTION | ADMIN | AFTER | AGGREGATE | ALGORITHM | ANY | APPLICATION_PASSWORD_ADMIN | ARRAY | AT | AUDIT_ADMIN | AUDIT_ABORT_EXEMPT
     | AUTHENTICATION_POLICY_ADMIN | AUTHORS | AUTOCOMMIT| AUTOEXTEND_SIZE | AUTO_INCREMENT | AVG | AVG_ROW_LENGTH | ATTRIBUTE
     | BACKUP_ADMIN | BEGIN | BINLOG | BINLOG_ADMIN | BINLOG_ENCRYPTION_ADMIN | BIT | BIT_AND | BIT_OR | BIT_XOR | BLOCK | BOOL | BOOLEAN
     | BTREE | BUCKETS | CACHE | CASCADED | CHAIN | CHANGED | CHANNEL | CHECKSUM | PAGE_CHECKSUM | CATALOG_NAME | CIPHER | CLASS_ORIGIN
@@ -2821,7 +2827,7 @@ keywordsCanBeId
     | BINLOG_MONITOR | BINLOG_REPLAY | CURRENT_ROLE | CYCLE | ENCRYPTED | ENCRYPTION_KEY_ID | FEDERATED_ADMIN
     | INCREMENT | LASTVAL | LOCKED | MAXVALUE | MINVALUE | NEXTVAL | NOCACHE | NOCYCLE | NOMAXVALUE | NOMINVALUE
     | PERSISTENT | PREVIOUS | READ_ONLY_ADMIN | REPLICA | REPLICATION_MASTER_ADMIN | RESTART | SEQUENCE | SETVAL
-    | SKIP_ | STATEMENT | UUID | VIA | MONITOR | READ_ONLY| REPLAY | USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS
+    | SKIP_ | STATEMENT | UUID | VIA | MONITOR | READ_ONLY| REPLAY | USER_STATISTICS | CLIENT_STATISTICS | INDEX_STATISTICS | TABLE_STATISTICS | FIREWALL_RULES
     ;
 
 functionNameBase
@@ -2869,7 +2875,7 @@ functionNameBase
     | OVERLAPS | PERCENT_RANK | PERIOD_ADD | PERIOD_DIFF | PI | POINT
     | POINTFROMTEXT | POINTFROMWKB | POINTN | POLYFROMTEXT
     | POLYFROMWKB | POLYGON | POLYGONFROMTEXT | POLYGONFROMWKB
-    | POSITION | POW | POWER | QUARTER | QUOTE | RADIANS | RAND | RANK
+    | POSITION | POW | POWER | QUARTER | QUOTE | RADIANS | RAND | RANDOM | RANK
     | RANDOM_BYTES | RELEASE_LOCK | REVERSE | RIGHT | ROUND
     | ROW_COUNT | ROW_NUMBER | RPAD | RTRIM | SCHEMA | SECOND | SEC_TO_TIME
     | SESSION_USER | SESSION_VARIABLES_ADMIN

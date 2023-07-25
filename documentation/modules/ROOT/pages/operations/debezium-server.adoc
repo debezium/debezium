@@ -1335,7 +1335,7 @@ captured change events to a configured RocketMQ.
 
 |[[rocketmq-max-message-size]]<<rocketmq-max-message-size, `debezium.sink.rocketmq.producer.max.message.size`>>
 | 4M, Suggest less than 4 MB.
-|(Optional)Maximum number of bytes of sent message body.
+|(Optional) Maximum number of bytes of sent message body.
 
 |[[rocketmq-send-timeout]]<<rocketmq-send-timeout, `debezium.sink.rocketmq.producer.send.msg.timeout`>>
 | 3000ms
@@ -1411,9 +1411,37 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 | 30000
 | Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
 
+|[[rabbitmq-exchange]]<<rabbitmq-exchange, `debezium.sink.rabbitmq.exchange`>>
+| _topic name_
+|(Optional) Exchange name to use when publishing messages.
+
 |[[rabbitmq-routing-key]]<<rabbitmq-routing-key, `debezium.sink.rabbitmq.routingKey`>>
-|
-|(Optional) Routing key to use when publishing messages.
+| _empty string_
+|(Optional) Static routing key to use when publishing messages.
+
+|[[rabbitmq-auto-create-routing-key]]<<rabbitmq-auto-create-routing-key, `debezium.sink.rabbitmq.autoCreateRoutingKey`>>
+| false
+|(Optional) If `true` the non-existing routing key is automatically created.
+
+|[[rabbitmq-routing-key-durable]]<<rabbitmq-routing-key-durable, `debezium.sink.rabbitmq.routingKeyDurable`>>
+| true
+|(Optional) If `true` the target queue content will survive a RabbitMQ server restart.
+
+|[[rabbitmq-routing-key-from-topic-name]]<<rabbitmq-routing-key-from-topic-name, `debezium.sink.rabbitmq.routingKeyFromTopicName`>>
+| false
+|(Optional) If `true` the routing key is used from topic name instead of a static value.
+
+|[[rabbitmq-delivery-mode]]<<rabbitmq-delivery-mode, `debezium.sink.rabbitmq.deliveryMode`>>
+| 2
+|(Optional) The way how the message is delivered to and stored on a RabbitMQ server
+
+* 1 - Non-persistent
+* 2 - Persistent
+
+|[[rabbitmq-null-value]]<<rabbitmq-null-value, `debezium.sink.rabbitmq.null.value`>>
+|`default`
+|RabbitMQ does not support the notion of null payloads, as is the case with tombstone events.
+So this string will be used as value for records without a payload.
 
 |===
 
@@ -1431,7 +1459,7 @@ When the alternative implementations are not available then the default ones are
 
 |[[rabbitmq-ext-stream-name-mapper]]<<rabbitmq-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
-|Custom implementation maps the planned destination (stream) name into a RabbitMQ exchange name.
+|Custom implementation maps the planned destination (stream) name into a RabbitMQ exchange name and (if enabled) into the routing key name.
 By default the same name is used.
 |===
 

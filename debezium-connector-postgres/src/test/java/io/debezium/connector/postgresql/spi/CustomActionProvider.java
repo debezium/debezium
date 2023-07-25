@@ -26,10 +26,10 @@ public class CustomActionProvider implements SignalActionProvider {
     @Override
     public <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher,
                                                                             CommonConnectorConfig connectorConfig) {
-        return Map.of("customLog", new CustomAction());
+        return Map.of("customLog", new CustomAction<>());
     }
 
-    public class CustomAction implements SignalAction {
+    public class CustomAction<P extends Partition> implements SignalAction<P> {
 
         public CustomAction() {
         }
@@ -37,7 +37,7 @@ public class CustomActionProvider implements SignalActionProvider {
         private final Logger LOGGER = LoggerFactory.getLogger(CustomAction.class);
 
         @Override
-        public boolean arrived(SignalPayload signalPayload) throws InterruptedException {
+        public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
 
             LOGGER.info("[CustomLog] " + signalPayload.toString());
             return true;

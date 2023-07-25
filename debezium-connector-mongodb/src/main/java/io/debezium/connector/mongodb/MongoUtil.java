@@ -11,8 +11,12 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -31,6 +35,8 @@ import io.debezium.function.BlockingConsumer;
  * @author Randall Hauch
  */
 public class MongoUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoUtil.class);
 
     /**
      * Perform the given operation on each of the database names.
@@ -194,6 +200,34 @@ public class MongoUtil {
                 .map(ServerDescription::getSetName)
                 .filter(Objects::nonNull)
                 .findFirst();
+    }
+
+    /**
+     * Opens change stream based on {@link MongoDbConnectorConfig#getCaptureScope()}
+     *
+     * @param client mongodb client
+     * @param taskContext task context
+     * @return change stream iterable
+     */
+    public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
+        var config = taskContext.getConnectorConfig();
+        final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.filters().getConfig()).create();
+
+        // capture scope is database
+        if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
+            var database = config.getCaptureTarget().orElseThrow();
+            LOGGER.info("Change stream is restricted to '{}' database", database);
+            return client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
+        }
+
+        // capture scope is deployment
+        return client.watch(pipeline.getStages(), BsonDocument.class);
+    }
+
+    public static BsonTimestamp hello(MongoClient client, String dbName) {
+        var database = client.getDatabase(dbName);
+        var result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+        return result.getTimestamp("operationTime");
     }
 
     private MongoUtil() {

@@ -155,7 +155,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      * Returns whether the specified value is the unavailable value placeholder for an LOB column.
      */
     public boolean isColumnUnavailableValuePlaceholder(Column column, Object value) {
-        if (isClobColumn(column)) {
+        if (isClobColumn(column) || isXmlColumn(column)) {
             return valueConverters.getUnavailableValuePlaceholderString().equals(value);
         }
         else if (isBlobColumn(column)) {
@@ -169,6 +169,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      */
     public static boolean isLobColumn(Column column) {
         return isClobColumn(column) || isBlobColumn(column);
+    }
+
+    /**
+     * Return whether the provided relational column model is a XML data type.
+     */
+    public static boolean isXmlColumn(Column column) {
+        return column.jdbcType() == OracleTypes.SQLXML;
     }
 
     /**
@@ -192,6 +199,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 case OracleTypes.CLOB:
                 case OracleTypes.NCLOB:
                 case OracleTypes.BLOB:
+                case OracleTypes.SQLXML:
                     lobColumns.add(column);
                     break;
             }

@@ -32,10 +32,11 @@ public abstract class Metrics {
     private volatile boolean registered = false;
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
-        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
+        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName, taskContext.getCustomMetricTags());
     }
 
     protected Metrics(CdcSourceTaskContext taskContext, Map<String, String> tags) {
+        tags.putAll(taskContext.getCustomMetricTags());
         this.name = metricName(taskContext.getConnectorType(), tags);
     }
 
@@ -43,13 +44,15 @@ public abstract class Metrics {
         String connectorType = connectorConfig.getContextName();
         String connectorName = connectorConfig.getLogicalName();
         if (multiPartitionMode) {
-            this.name = metricName(connectorType, Collect.linkMapOf(
+            Map<String, String> tags = Collect.linkMapOf(
                     "server", connectorName,
                     "task", connectorConfig.getTaskId(),
-                    "context", contextName));
+                    "context", contextName);
+            tags.putAll(connectorConfig.getCustomMetricTags());
+            this.name = metricName(connectorType, tags);
         }
         else {
-            this.name = metricName(connectorType, connectorName, contextName);
+            this.name = metricName(connectorType, connectorName, contextName, connectorConfig.getCustomMetricTags());
         }
     }
 
@@ -76,8 +79,10 @@ public abstract class Metrics {
         }
     }
 
-    protected ObjectName metricName(String connectorType, String connectorName, String contextName) {
-        return metricName(connectorType, Collect.linkMapOf("context", contextName, "server", connectorName));
+    protected ObjectName metricName(String connectorType, String connectorName, String contextName, Map<String, String> customTags) {
+        Map<String, String> tags = Collect.linkMapOf("context", contextName, "server", connectorName);
+        tags.putAll(customTags);
+        return metricName(connectorType, tags);
     }
 
     /**

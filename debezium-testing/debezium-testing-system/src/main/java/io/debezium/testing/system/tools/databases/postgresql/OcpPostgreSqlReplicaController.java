@@ -12,19 +12,14 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.system.tools.WaitConditions;
-import io.debezium.testing.system.tools.databases.DatabaseInitListener;
 import io.debezium.testing.system.tools.databases.OcpSqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 public class OcpPostgreSqlReplicaController extends OcpSqlDatabaseController {
@@ -53,16 +48,6 @@ public class OcpPostgreSqlReplicaController extends OcpSqlDatabaseController {
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .file(INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
-
-        CountDownLatch latch = new CountDownLatch(1);
-        try (ExecWatch exec = ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
-                .inContainer("postgresql")
-                .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
-                .writingError(System.err)
-                .usingListener(new DatabaseInitListener("postgresql", latch))
-                .exec("psql", "-U", DATABASE_POSTGRESQL_USERNAME, "-d", DATABASE_POSTGRESQL_DBZ_DBNAME, "-f", INIT_SCRIPT_PATH_CONTAINER)) {
-            LOGGER.info("Waiting until database is initialized");
-            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
-        }
+        executeInitCommand(deployment, "psql", "-U", DATABASE_POSTGRESQL_USERNAME, "-d", DATABASE_POSTGRESQL_DBZ_DBNAME, "-f", INIT_SCRIPT_PATH_CONTAINER);
     }
 }

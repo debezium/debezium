@@ -58,6 +58,13 @@ public interface Transaction {
     int getNextEventId();
 
     /**
+     * Get the redo thread that the transaction participated on.
+     *
+     * @return the redo thread number
+     */
+    int getRedoThreadId();
+
+    /**
      * Helper method that resets the event identifier back to {@code 0}.
      *
      * This should be called when a transaction {@code START} event is detected in the event stream.

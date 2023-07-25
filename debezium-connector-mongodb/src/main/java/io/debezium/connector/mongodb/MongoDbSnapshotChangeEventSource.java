@@ -236,7 +236,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         try (MongoDbConnection mongo = connections.get(replicaSet, partition)) {
             return mongo.execute("Checking change stream", client -> {
-                ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
+                ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
                 stream.resumeAfter(token);
 
                 try (var ignored = stream.cursor()) {
@@ -267,12 +267,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         var rsOffsetCtx = snapshotCtx.offset.getReplicaSetOffsetContext(replicaSet);
 
         mongo.execute("Setting resume token", client -> {
-            ChangeStreamIterable<BsonDocument> stream = client.watch(BsonDocument.class);
+            ChangeStreamIterable<BsonDocument> stream = MongoUtil.openChangeStream(client, taskContext);
             try (MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor = stream.cursor()) {
                 rsOffsetCtx.initEvent(cursor);
             }
-            rsOffsetCtx.initFromOpTimeIfNeeded(client);
         });
+        rsOffsetCtx.initFromOpTimeIfNeeded(mongo.hello());
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,

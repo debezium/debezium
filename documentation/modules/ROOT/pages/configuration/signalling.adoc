@@ -332,7 +332,8 @@ You can use signaling to initiate the following actions:
 * xref:debezium-signaling-ad-hoc-snapshots[Trigger ad hoc snapshots].
 * xref:debezium-signaling-stop-ad-hoc-snapshots[Stop execution of an ad hoc snapshot].
 * xref:debezium-signaling-pause-incremental-snapshots[Pause incremental snapshots].
-* xref:debezium-signaling-resume-incremental-snapshots[Resume incremenal snapshots].
+* xref:debezium-signaling-resume-incremental-snapshots[Resume incremental snapshots].
+* xref:debezium-signaling-custom-action[Custom action].
 
 Some signals are not compatible with all connectors.
 
@@ -409,7 +410,7 @@ endif::community[]
 |Key | Value
 
 |test_connector
-|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color=blue AND brand=MyBrand"}}`
+|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color='blue' AND brand='MyBrand'"}}`
 
 |===
 
@@ -564,3 +565,88 @@ endif::community[]
 * {link-prefix}:{link-oracle-connector}#oracle-incremental-snapshots[Oracle connector incremental snapshots]
 * {link-prefix}:{link-postgresql-connector}#postgresql-incremental-snapshots[PostgreSQL connector incremental snapshots]
 * {link-prefix}:{link-sqlserver-connector}#sqlserver-incremental-snapshots[SQL Server connector incremental snapshots]
+
+// Type: procedure
+// ModuleID: debezium-signaling-defining-a-custom-action
+// Title: Defining a custom signal action
+[id="debezium-signaling-custom-action"]
+=== Defining a custom action
+
+Custom actions enable you to extend the {prodname} signaling framework to trigger actions that are not available in the default implementation.
+You can use a custom action with multiple connectors.
+
+To define a custom signal action, you must define the following interface:
+
+
+[source,java,indent=0]
+----
+@FunctionalInterface
+public interface SignalAction<P extends Partition> {
+
+    /**
+     * @param signalPayload the content of the signal
+     * @return true if the signal was processed
+     */
+    boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException;
+}
+
+----
+
+The `io.debezium.pipeline.signal.actions.SignalAction` exposes a single method with one parameter, which represents the message payloads sent through the signaling channel.
+
+After you define a custom signaling action, use the following SPI interface to make the custom action available to the signaling mechanism:  `io.debezium.pipeline.signal.actions.SignalActionProvider`.
+
+[source,java,indent=0]
+----
+public interface SignalActionProvider {
+
+    /**
+     * Create a map of signal action where the key is the name of the action.
+     *
+     * @param dispatcher the event dispatcher instance
+     * @param connectorConfig the connector config
+     * @return a concrete action
+     */
+
+    <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher, CommonConnectorConfig connectorConfig);
+}
+----
+
+Your implementation must return a map of the signal action.
+Set the map key to the name of the action.
+The key is used as the xref:debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[`type`] of the signal.
+
+// Type: concept
+[id="debezium-signaling-custom-action-core-module-dependencies"]
+=== {prodname} core module dependencies
+
+A custom actions Java project has compile dependencies on the {prodname} core module.
+Include the following compile dependencies in your project's `pom.xml` file:
+
+[source,xml]
+----
+<dependency>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-core</artifactId>
+    <version>${version.debezium}</version> // <1>
+</dependency>
+----
+<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+Declare your provider implementation in the `META-INF/services/io.debezium.pipeline.signal.actions.SignalActionProvider` file.
+
+// Type: procedure
+// ModuleID: debezium-signaling-deploying-a-custom-action
+// Title: Deploying a custom signal action
+[id="deploying-a-debezium-custom-action"]
+=== Deploying a custom action
+
+.Prerequisites
+* You have a custom actions Java program.
+
+.Procedure
+* To use a custom action with a {prodname} connector, export the Java project to a JAR file, and copy the file to the directory that contains the JAR file for each {prodname} connector that you want to use it with. +
+ +
+For example, in a typical deployment, the {prodname} connector files are stored in subdirectories of a Kafka Connect directory (`/kafka/connect`), with each connector JAR in its own subdirectory (`/kafka/connect/debezium-connector-db2`, `/kafka/connect/debezium-connector-mysql`, and so forth).
+
+NOTE: To use a custom action with multiple connectors, you must place a copy of the custom signaling channel JAR file in the subdirectory for each connector.

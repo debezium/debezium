@@ -113,6 +113,13 @@ You can use the `primary.key.fields` property to restrict the primary key to a s
 Because the value of a Kafka event is always a `Struct`, by default, all of the fields in the value become columns of the primary key.
 To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
 
+|`record_header`
+|The primary key is composed of the Kafka event's headers. +
+ +
+Kafka event's headers contains could contain multiple header that each one could be `Struct` or primitives data types,
+the connectors makes a  `Struct` of these headers. Hence, all fields in this `Struct` become columns of the primary key.
+To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
+
 |===
 
 [IMPORTANT]
@@ -495,7 +502,8 @@ The following example shows a JSON request for registering an instance of the {p
         "delete.enabled": "true",  // <8>
         "primary.key.mode": "record_key",  // <9>
         "schema.evolution": "basic",  // <10>
-        "database.time_zone": "UTC"  // <11>
+        "database.time_zone": "UTC",  // <11>
+        "topics": "orders" // <12>
     }
 }
 ----
@@ -513,6 +521,7 @@ For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mo
 <10> Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
 <11> Specifies the timezone used when writing temporal field types.
+<12> List of topics to consume, separated by commas.
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
@@ -530,9 +539,45 @@ The {prodname} JDBC sink connector has several configuration properties that you
 Many properties have default values.
 Information about the properties is organized as follows:
 
+* xref:jdbc-connector-properties-generic[]
 * xref:jdbc-connector-properties-connection[]
 * xref:jdbc-connector-properties-runtime[]
 * xref:jdbc-connector-properties-extendable[]
+
+[[jdbc-connector-properties-generic]]
+.Generic properties
+[cols="30%a,25%a,45%a"]
+|===
+|Property |Default |Description
+
+|[[jdbc-property-connection-name]]<<jdbc-property-connection-name, `+name+`>>
+|No default
+|Unique name for the connector. 
+A failure results if you attempt to reuse this name when registering a connector.   
+This property is required by all Kafka Connect connectors.
+
+|[[jdbc-property-connection-class]]<<jdbc-property-connection-class, `+connector.class+`>>
+|No default
+|The name of the Java class for the connector. 
+For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
+
+|[[jdbc-property-connection-task]]<<jdbc-property-connection-task, `+tasks.max+`>>
+|1
+|Maximum number of tasks to use for this connector.
+
+|[[jdbc-property-connection-topics]]<<jdbc-property-connection-topics, `+topics+`>>
+|No default
+|List of topics to consume, separated by commas.
+Do not use this property in combination with the xref:jdbc-property-connection-topics-regex[`topics.regex`] property.
+
+|[[jdbc-property-connection-topics-regex]]<<jdbc-property-connection-topics-regex, `+topics.regex+`>>
+|No default
+|A regular expression that specifies the topics to consume. 
+Internally, the regular expression is compiled to a `java.util.regex.Pattern`. 
+Do not use this property in combination with the xref:jdbc-property-connection-topics[`topics`] property.
+
+
+|===
 
 [[jdbc-connector-properties-connection]]
 .Connection properties

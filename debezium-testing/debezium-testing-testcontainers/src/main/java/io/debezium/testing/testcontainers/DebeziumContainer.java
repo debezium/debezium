@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.debezium.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;

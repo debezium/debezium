@@ -82,11 +82,6 @@ public class FabricKafkaConnectBuilder extends
         return new FabricKafkaConnectBuilder(builder);
     }
 
-    public FabricKafkaConnectBuilder withImage(String image) {
-        builder.editSpec().withImage(image).endSpec();
-        return self();
-    }
-
     public FabricKafkaConnectBuilder withBuild(OcpArtifactServerController artifactServer) {
         List<Plugin> plugins = new ArrayList<>(List.of(
                 artifactServer.createDebeziumPlugin("mysql"),

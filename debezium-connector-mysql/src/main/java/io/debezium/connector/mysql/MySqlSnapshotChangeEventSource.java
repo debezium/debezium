@@ -12,13 +12,20 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -227,7 +234,20 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             tableUnlock();
             if (!delayedSchemaSnapshotTables.isEmpty()) {
                 schemaEvents.clear();
-                createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
+                if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+                    createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
+                }
+                else {
+                    int snapshotMaxThreads = connectionPool.size();
+                    LOGGER.info("Creating delayed schema snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
+                    ExecutorService executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+                    try {
+                        createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false, executorService);
+                    }
+                    finally {
+                        executorService.shutdownNow();
+                    }
+                }
 
                 for (final SchemaChangeEvent event : schemaEvents) {
                     if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
@@ -336,38 +356,106 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
 
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
-        for (String database : databases) {
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while reading structure of schema " + databases);
-            }
 
-            LOGGER.info("Reading structure of database '{}'", database);
-            addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
-            final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(database));
-            final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
-            if (defaultDatabaseLocales != null) {
-                defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDddl);
-            }
-            addSchemaEvent(snapshotContext, database, createDatabaseDddl.toString());
-            addSchemaEvent(snapshotContext, database, "USE " + quote(database));
+        ExecutorService executorService = null;
+        if (!connectorConfig.getSnapshotLockingMode().usesLocking()) {
+            int snapshotMaxThreads = connectionPool.size();
+            LOGGER.info("Creating schema snapshot worker pool with {} worker thread(s)", snapshotMaxThreads);
+            executorService = Executors.newFixedThreadPool(snapshotMaxThreads);
+        }
+        try {
+            for (String database : databases) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while reading structure of schema " + databases);
+                }
 
-            createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
+                LOGGER.info("Reading structure of database '{}'", database);
+                addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
+                final StringBuilder createDatabaseDdl = new StringBuilder("CREATE DATABASE " + quote(database));
+                final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
+                if (defaultDatabaseLocales != null) {
+                    defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDdl);
+                }
+                addSchemaEvent(snapshotContext, database, createDatabaseDdl.toString());
+                addSchemaEvent(snapshotContext, database, "USE " + quote(database));
+
+                if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+                    createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
+                }
+                else {
+                    assert executorService != null;
+                    createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true, executorService);
+                }
+            }
+        }
+        finally {
+            if (executorService != null) {
+                executorService.shutdownNow();
+            }
         }
     }
 
-    void createSchemaEventsForTables(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
-                                     final Collection<TableId> tablesToRead, final boolean firstPhase)
-            throws SQLException {
-        for (TableId tableId : tablesToRead) {
-            if (firstPhase && delayedSchemaSnapshotTables.contains(tableId)) {
-                continue;
-            }
+    private void createSchemaEventsForTables(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
+                                             final Collection<TableId> tablesToRead, final boolean firstPhase)
+            throws Exception {
+        List<TableId> realTablesToRead = new ArrayList<>(tablesToRead);
+        if (firstPhase) {
+            realTablesToRead = realTablesToRead.stream()
+                    .filter(id -> !delayedSchemaSnapshotTables.contains(id))
+                    .collect(Collectors.toList());
+        }
+        for (TableId tableId : realTablesToRead) {
             connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
                 if (rs.next()) {
                     addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
                 }
             });
         }
+    }
+
+    private void createSchemaEventsForTables(RelationalSnapshotContext<MySqlPartition, MySqlOffsetContext> snapshotContext,
+                                             final Collection<TableId> tablesToRead, final boolean firstPhase,
+                                             ExecutorService executorService)
+            throws Exception {
+        List<TableId> realTablesToRead = new ArrayList<>(tablesToRead);
+        if (firstPhase) {
+            realTablesToRead = realTablesToRead.stream()
+                    .filter(id -> !delayedSchemaSnapshotTables.contains(id))
+                    .collect(Collectors.toList());
+        }
+        if (realTablesToRead.size() > 0) {
+            CompletionService<Map<TableId, String>> completionService = new ExecutorCompletionService<>(executorService);
+            for (TableId tableId : realTablesToRead) {
+                completionService.submit(createDdlForTableCallable(tableId, connectionPool));
+            }
+            Map<TableId, String> ddls = new HashMap<>();
+            for (int i = 0; i < realTablesToRead.size(); i++) {
+                Map<TableId, String> ddl = completionService.take().get();
+                if (ddl != null) {
+                    ddls.putAll(ddl);
+                }
+            }
+            ddls.forEach((key, value) -> addSchemaEvent(snapshotContext, key.catalog(), value));
+        }
+    }
+
+    private Callable<Map<TableId, String>> createDdlForTableCallable(TableId tableId, Queue<JdbcConnection> connectionPool) {
+        return () -> {
+            JdbcConnection connection = connectionPool.poll();
+            assert connection != null;
+            try {
+                Map<TableId, String> result = new HashMap<>();
+                connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
+                    if (rs.next()) {
+                        result.put(tableId, rs.getString(2));
+                    }
+                });
+                return result;
+            }
+            finally {
+                connectionPool.add(connection);
+            }
+        };
     }
 
     private boolean twoPhaseSchemaSnapshot() {

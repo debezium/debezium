@@ -3511,6 +3511,10 @@ For more information about the support scope of Red Hat Technology Preview featu
 ====
 endif::product[]
 
+|[[postgresql-property-custom-metric-tags]]<<postgresql-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+
 |===
 
 [id="postgresql-pass-through-properties"]

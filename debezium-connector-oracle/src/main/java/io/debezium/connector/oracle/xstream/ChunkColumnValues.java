@@ -6,12 +6,14 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 import io.debezium.DebeziumException;
 
+import oracle.sql.RAW;
 import oracle.streams.ChunkColumnValue;
 
 /**
@@ -70,6 +72,21 @@ public class ChunkColumnValues {
     }
 
     /**
+     * @return the chunk data as XML, may be {@code null} if the length of the data is zero.
+     * @throws SQLException if there is a database exception accessing the raw chunk value
+     */
+    public String getXmlValue() throws SQLException {
+        if (size == 0) {
+            return null;
+        }
+        StringBuilder data = new StringBuilder();
+        for (ChunkColumnValue value : values) {
+            data.append(new String(RAW.hexString2Bytes(value.getColumnData().stringValue()), StandardCharsets.UTF_8));
+        }
+        return data.toString();
+    }
+
+    /**
      * @return the chunk data as a byte array, may be {@code null} if the length of the data is zero.
      * @throws SQLException if there is a database exception accessing the raw chunk value
      */
@@ -105,7 +122,9 @@ public class ChunkColumnValues {
             switch (chunkColumnValue.getChunkType()) {
                 case ChunkColumnValue.CLOB:
                 case ChunkColumnValue.NCLOB:
+                case ChunkColumnValue.XMLTYPE:
                     return chunkColumnValue.getColumnData().stringValue().length();
+                case ChunkColumnValue.RAW:
                 case ChunkColumnValue.BLOB:
                     return chunkColumnValue.getColumnData().getBytes().length;
                 default:

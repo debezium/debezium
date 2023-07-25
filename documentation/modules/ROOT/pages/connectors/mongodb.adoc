@@ -95,6 +95,39 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 * link:https://docs.mongodb.com/manual/tutorial/remove-shards-from-cluster/[Shard removal]
 * link:https://docs.mongodb.com/manual/changeStreams/[Change Streams]
 
+// Type: concept
+// Title: Description of how the MongoDB connector uses the MongoDB read preference
+// ModuleID: description-of-how-the-mongodb-connector-uses-the-mongodb-read-preference
+[id="read-preference"]
+=== Read Preference
+
+You can specify MongoDB read preferences for a connection in the connector properties.
+The method that you use to set read preferences depends on the MongoDB topology, and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`].
+
+Replica set topology::
+Set the read preference in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+Sharded cluster topology:: 
+Set the read preference based on the connection mode, as shown in the following table:
++
+.Setting the read preference for a sharded cluster based on the `mongodb.connection.mode`
+[cols="3,6",options="header"]
+|===
+|Connection mode |Property for specifying read preference
+
+|`sharded`
+|`mongodb.connection.string`
+
+|`replica_set`
+|`mongodb.connection.string.shard.params`
+
+|===
++
+In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`. 
+For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
+When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
+It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`]. 
+For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
+
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
 // Title: How {prodname} MongoDB connectors work
@@ -180,6 +213,42 @@ The connector will work if the standalone server is converted to a replica set w
 MongoDB does not recommend running a standalone server in production.
 For more information, see the https://docs.mongodb.com/manual/core/replica-set-architectures/[MongoDB documentation].
 ====
+
+// Type: concept
+// ModuleID: mongodb-user-permissions-required-by-debezium-connectors
+// Title: User permissions required by {prodname} connectors
+[[required-user-permissions]]
+=== Required user permissions
+
+To capture data from MongoDB, {prodname} attaches to the database as a MongoDB user.
+The MongoDB user account that you create for {prodname} requires specific database permissions to read from the database. 
+The connector user requires the following permissions:
+
+* Read from the database.
+* Run the `ping` command.
+
+The connector user might also require the following permission:
+
+* Read from the `config.shards` system collection.
+
+.Database read permissions
+The connector user must be able to read from all databases, or to read from a specific database, depending on the value of the connector's xref:mongodb-property-capture-scope[`capture.scope`] property. 
+Assign one of the following permissions to the user, depending on the `capture.scope` setting:
+
+`capture.scope` is set to `deployment`::
+Grant the user permission to read any database. 
+
+`capture.scope` is set to `database`::
+Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
+
+.Permission to use the MongoDB `ping` command 
+
+Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+
+.Permission to read the `config.shards` collection
+
+For connectors that capture changes from a sharded MongoDB cluster, and for which the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`, you must grant the user permission to read the `config.shards` system collection.
+
 
 // Type: concept
 // Title: How {prodname} MongoDB connectors use logical names for replica sets and sharded clusters
@@ -1022,6 +1091,44 @@ You can use the {prodname} connector for MongoDB with https://www.mongodb.com/at
 Note that MongoDB Atlas only supports secure connections via SSL, i.e. the xref:mongodb-property-mongodb-ssl-enabled[`+mongodb.ssl.enabled`] connector option _must_ be set to `true`.
 endif::community[]
 
+
+[[mongodb-optimal-oplog-config]]
+=== Optimal Oplog Config
+
+
+The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set. 
+Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries. 
+If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position. 
+However, if last stream position was removed from the oplog, depending on the value specified in the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property, the connector might fail to start, reporting an xref:connector-error-invalid-resume-token[invalid resume token error].
+In the event of a failure, you must create a new connector to enable {prodname} to continue capturing records from the database.
+For more information, see xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
+
+To ensure that the oplog retains the offset values that {prodname} requires to resume streaming, you can use either of the following approaches:
+
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog]. 
+Based on your typical workloads, set the oplog size to a value that is greater than the peak number of oplog entries per hour.
+
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Increase the minimum number of hours that an oplog entry is retained] (MongoDB 4.4 and greater). 
+This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if the oplog reaches its maximum configured size. 
+Although this is generally the preferred option, for clusters with high workloads that are nearing capacity, specify the maximum oplog size. 
+
+To help prevent failures that are related to missing oplog entries, it's important to track metrics that report replication behavior, and to optimize the oplog size to support {prodname}. 
+In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window. 
+If {prodname} is offline for an interval that exceeds the value of the replication oplog window, and the primary oplog grows faster than {prodname} can consume entries, a connector failure can result.
+
+For information about how to monitor these metrics, see https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics[the MongoDB documentation].
+
+It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog (https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour[Oplog GB/Hour]), multiplied by the time that might be required to address a {prodname} failure.
+
+That is,
+  
+`_Oplog GB/Hour_` X  `_average reaction time to {prodname} failure_`
+
+For example, if the oplog size limit is set to 1GB, and the oplog grows by 3GB per hour, oplog entries are cleared three times per hour.
+If {prodname} were to fail during this time, its last oplog position is likely to be removed.
+
+If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two hours, you would thus set the oplog size to 3GB/hour X 2 hours, or 6GB.
+
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
 // Title: Deployment of {prodname} MongoDB connectors
@@ -1371,6 +1478,15 @@ Connectors that capture changes from a sharded MongoDB cluster use this connecti
 After the initial discovery process, connection strings are generated for each individual shard.
 ====
 
+|[[mongodb-property-mongodb-connection-string-shard-params]]<<mongodb-property-mongodb-connection-string-shard-params, `+mongodb.connection.string.shard.params+`>>
+|No default
+|Specifies the URL parameters of the https://www.mongodb.com/docs/manual/reference/connection-string/[connection string], including read preferences, that the connector uses to connect to individual shards of a MongoDB sharded cluster.
+
+[NOTE]
+====
+This property applies only when the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
+====
+
 |[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
 |`replica_set`
 |Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
@@ -1378,7 +1494,7 @@ Set this property to one of the following values:
 
 `replica_set`:: The connector establishes individual connections to the replica set for each shard.
 
-`sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb-connection-string`].+
+`sharded`:: The connector establishes a single connection to the database, based on the value of the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 [NOTE]
 ====
@@ -1517,6 +1633,25 @@ This property does not affect the behavior of incremental snapshots. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
+
+|[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
+|`deployment`
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
+Set this property to one of the following values:
+
+`deployment`:: Opens a change stream cursor for a deployment (either a replica set or a sharded cluster) to watch for changes to all non-system collections across all databases, except for `admin`, `local`, and `config`.
+
+`database`:: Opens a change stream cursor for a single database to watch for changes to all of its non-system collections.
++
+[WARNING]
+====
+If you set the value of this property to `database`, to use {prodname} signaling, you the signaling collection that you create must reside in the database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+====
+
+|[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
+|
+| Specifies the database that the connector monitors for changes.
+This property applies only if the xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`.
 
 |[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
@@ -1788,6 +1923,10 @@ _topic.prefix_._topic.transaction_ +
  +
 For example, if the topic prefix is `fulfillment`, the default topic name is `fulfillment.transaction`.
 
+|[[mongodb-property-custom-metric-tags]]<<mongodb-property-custom-metric-tags, `custom.metric.tags`>>
+|`No default`
+|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+
 |===
 
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
@@ -1942,6 +2081,24 @@ Each delay is double that of the prior delay, up to the maximum delay. Given the
 |15 |120|18:07
 |16 |120|20:07
 |===
+
+[id="connector-error-invalid-resume-token"]
+=== Connector Unable to Start - InvalidResumeToken or ChangeStreamHistoryLost
+
+A connector that is stopped for a long period fails to start, and reports the following exception:
+----
+Command failed with error 286 (ChangeStreamHistoryLost): 'PlanExecutor error during aggregation :: caused by :: Resume of change stream was not possible, as the resume point may no longer be in the oplog
+----
+The preceding exception indicates that the entry that corresponds to the connector's resume token is no longer present in the oplog. 
+Because the oplog no longer contains the last offset that the connector processed, the connector cannot resume streaming.
+
+You can use either of the following options to recover from the failure:
+
+* Delete the failed connector, and create a new connector with the same configuration but with a different connector name.
+
+* Pause the connector and then remove offsets, or change the offset topic.
+
+To help prevent failures related to missing resume tokens, xref:mongodb-optimal-oplog-config[optimize configuration of the oplog].
 
 [id="debezium-mongodb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully

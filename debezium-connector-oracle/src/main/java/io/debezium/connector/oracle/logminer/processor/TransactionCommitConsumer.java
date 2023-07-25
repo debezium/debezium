@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +27,14 @@ import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
+import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
+import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
+import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -41,7 +46,7 @@ import oracle.sql.RAW;
  * merging events that should be merged when LOB support is enabled, and then delegating the final
  * stream of events to a delegate consumer.
  *
- * When a table has a LOB field, Oracle LogMiner often supplies us with synthetic events that deal
+ * When a table has a LOB or XML field, Oracle LogMiner often supplies us with synthetic events that deal
  * with sub-tasks that occur in the database as a result of writing LOB data to the database.  We
  * would prefer to emit these synthetic events as a part of the overall logical event, whether that
  * is an insert or update.
@@ -80,10 +85,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final OracleConnectorConfig connectorConfig;
     private final OracleDatabaseSchema schema;
     private final Map<String, RowState> rows = new HashMap<>();
+    private final ConstructionDetails currentLobDetails = new ConstructionDetails();
+    private final ConstructionDetails currentXmlDetails = new ConstructionDetails();
 
-    private String currentLobRowId;
-    private String currentLobColumnName;
-    private int currentLobColumnPosition = -1;
     private int transactionIndex = 0;
     private int totalEvents = 0;
 
@@ -118,7 +122,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             acceptDmlEvent((DmlEvent) event);
         }
         else {
-            acceptLobManipulationEvent(event);
+            acceptManipulationEvent(event);
         }
     }
 
@@ -140,41 +144,50 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         DmlEvent accumulatorEvent = (null == rowState) ? null : rowState.event;
         if (!tryMerge(accumulatorEvent, event)) {
             prepareAndDispatch(accumulatorEvent);
-            if (rowId.equals(currentLobRowId)) {
-                currentLobRowId = null;
-                currentLobColumnName = null;
+            if (rowId.equals(currentLobDetails.rowId)) {
+                currentLobDetails.reset();
+            }
+            else if (rowId.equals(currentXmlDetails.rowId)) {
+                currentXmlDetails.reset();
             }
             rows.put(rowId, new RowState(event, transactionIndex));
             accumulatorEvent = event;
         }
 
         if (EventType.SELECT_LOB_LOCATOR == event.getEventType()) {
-            currentLobRowId = rowId;
-            currentLobColumnName = ((SelectLobLocatorEvent) event).getColumnName();
-            currentLobColumnPosition = LogMinerHelper.getColumnIndexByName(currentLobColumnName, table);
+            final String columnName = ((SelectLobLocatorEvent) event).getColumnName();
+            initConstructable(currentLobDetails, rowId, columnName, table, accumulatorEvent, LobUnderConstruction::fromInitialValue);
+        }
+        else if (EventType.XML_BEGIN == event.getEventType()) {
+            final String columnName = ((XmlBeginEvent) event).getColumnName();
+            initConstructable(currentXmlDetails, rowId, columnName, table, accumulatorEvent, XmlUnderConstruction::fromInitialValue);
+        }
+    }
 
-            // put a LobUnderConstruction in the accumulating event's newValues
-            Object[] values = newValues(accumulatorEvent);
-            Object prevValue = values[currentLobColumnPosition];
-            values[currentLobColumnPosition] = LobUnderConstruction.fromInitialValue(prevValue);
+    private void acceptManipulationEvent(LogMinerEvent event) {
+        if (event instanceof LobWriteEvent || event instanceof LobEraseEvent) {
+            acceptLobManipulationEvent(event);
+        }
+        else if (event instanceof XmlWriteEvent || event instanceof XmlEndEvent) {
+            acceptXmlManipulationEvent(event);
         }
     }
 
     private void acceptLobManipulationEvent(LogMinerEvent event) {
-        if (null == currentLobRowId || null == currentLobColumnName) {
+        if (!currentLobDetails.isInitialized()) {
             // should only happen when we start streaming in the middle of a LOB transaction (DBZ-4367)
             LOGGER.trace("Got LOB manipulation event without preceding LOB selector; ignoring {} {}.", event.getEventType(), event);
             return;
         }
 
         if (EventType.LOB_WRITE != event.getEventType()) {
-            LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentLobColumnName);
+            LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentLobDetails.columnName);
             LOGGER.trace("All LOB manipulation events apart from LOB_WRITE are currently ignored; ignoring {} {}.", event.getEventType(), event);
-            discardCurrentMergeState();
+            discardCurrentMergeState(currentLobDetails);
             return;
         }
 
-        LobUnderConstruction lob = (LobUnderConstruction) newValues(rows.get(currentLobRowId).event)[currentLobColumnPosition];
+        final LobUnderConstruction lob = (LobUnderConstruction) getConstructable(currentLobDetails);
         try {
             lob.add(new LobFragment(event));
         }
@@ -183,14 +196,56 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
     }
 
+    private void acceptXmlManipulationEvent(LogMinerEvent event) {
+        if (!currentXmlDetails.isInitialized()) {
+            // should only happen when we start streaming in the middle of an XML transaction (DBZ-4367)
+            LOGGER.trace("Got XML manipulation event without preceding XML begin; ignoring {} {}.", event.getEventType(), event);
+            return;
+        }
+
+        if (EventType.XML_WRITE != event.getEventType() && EventType.XML_END != event.getEventType()) {
+            LOGGER.warn("\t{} for table '{}' column '{}' is not supported.", event.getEventType(), event.getTableId(), currentXmlDetails.columnName);
+            LOGGER.trace("All LOB manipulation events apart from XML_WRITE are currently ignored; ignoring {} {}.", event.getEventType(), event);
+            discardCurrentMergeState(currentXmlDetails);
+            return;
+        }
+        else if (EventType.XML_END == event.getEventType()) {
+            // silently ignore it
+            return;
+        }
+
+        final XmlUnderConstruction xml = (XmlUnderConstruction) getConstructable(currentXmlDetails);
+        try {
+            xml.add(new XmlFragment(event));
+        }
+        catch (DebeziumException exception) {
+            LOGGER.warn("\tInvalid XML manipulation event: {} ; ignoring {} {}", exception, event.getEventType(), event);
+        }
+    }
+
+    private Object getConstructable(ConstructionDetails details) {
+        return newValues(rows.get(details.rowId).event)[details.columnPosition];
+    }
+
+    private void initConstructable(ConstructionDetails details, String rowId, String columnName, Table table,
+                                   DmlEvent accumulatorEvent, Function<Object, Object> constructor) {
+        details.rowId = rowId;
+        details.columnName = columnName;
+        details.columnPosition = LogMinerHelper.getColumnIndexByName(columnName, table);
+
+        Object[] values = newValues(accumulatorEvent);
+        Object prevValue = values[details.columnPosition];
+        values[details.columnPosition] = constructor.apply(prevValue);
+    }
+
     private void prepareAndDispatch(DmlEvent event) throws InterruptedException {
         if (null == event) { // we just added the first event for this row
             return;
         }
         Object[] values = newValues(event);
         for (int i = 0; i < values.length; i++) {
-            if (values[i] instanceof LobUnderConstruction) {
-                values[i] = ((LobUnderConstruction) values[i]).merge();
+            if (values[i] instanceof AbstractUnderConstruction) {
+                values[i] = ((AbstractUnderConstruction<?>) values[i]).merge();
             }
         }
         // don't emit change events for ignored LOB manipulations (i.e. event is SEL_LOB_LOCATOR
@@ -226,8 +281,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         switch (prev.getEventType()) {
             case INSERT:
             case UPDATE:
+            case XML_BEGIN:
             case SELECT_LOB_LOCATOR:
                 switch (next.getEventType()) {
+                    case XML_BEGIN:
                     case SELECT_LOB_LOCATOR:
                         merge = true;
                         break;
@@ -338,19 +395,54 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         return event.getDmlEntry().getOldValues();
     }
 
-    private void discardCurrentMergeState() {
-        final RowState state = rows.get(currentLobRowId);
+    private void discardCurrentMergeState(ConstructionDetails details) {
+        final RowState state = rows.get(details.rowId);
         if (state != null) {
-            LOGGER.trace("Discarding merge state for row id {}", currentLobRowId);
-            rows.remove(currentLobRowId);
-            currentLobRowId = null;
-            currentLobColumnName = null;
+            LOGGER.trace("Discarding merge state for row id {}", details.rowId);
+            rows.remove(details.rowId);
+            details.reset();
         }
     }
 
-    static class LobFragment {
-        boolean binary;
+    static class ConstructionDetails {
+        String rowId;
+        String columnName;
+        int columnPosition = -1;
+
+        boolean isInitialized() {
+            return rowId != null && columnName != null;
+        }
+
+        void reset() {
+            rowId = null;
+            columnName = null;
+            columnPosition = -1;
+        }
+    }
+
+    static class Fragment {
         String data;
+    }
+
+    static abstract class AbstractUnderConstruction<T extends Fragment> {
+        protected List<T> fragments = new LinkedList<>();
+        protected boolean isNull = true;
+
+        void add(T fragment) {
+            isNull = false;
+            doAdd(fragment);
+        }
+
+        abstract Object merge();
+
+        protected void doAdd(T fragment) {
+            fragments.add(fragment);
+        }
+
+    }
+
+    static class LobFragment extends Fragment {
+        boolean binary;
         byte[] bytes;
         int offset;
 
@@ -473,18 +565,15 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
     }
 
-    static class LobUnderConstruction {
-        final List<LobFragment> fragments = new LinkedList<>();
+    static class LobUnderConstruction extends AbstractUnderConstruction<LobFragment> {
         int start = 0;
         int end = 0;
         boolean binary = false;
-        boolean isNull = true; // result of #merge() should be null (for instances that are never written to)
 
         int middleInserts = 0;
 
-        void add(LobFragment fragment) {
-            isNull = false;
-
+        @Override
+        protected void doAdd(LobFragment fragment) {
             if (fragments.isEmpty()) { // first fragment to be added
                 fragments.add(fragment);
                 start = fragment.offset;
@@ -583,6 +672,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
          *  - a single byte[] from BLOB
          * Any holes will be filled with spaces (CLOB) or zero bytes (BLOB) as per the specification of DBMS_LOB.WRITE.
          */
+        @Override
         Object merge() {
             if (isNull) {
                 return null;
@@ -660,6 +750,51 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             LOGGER.trace("Don't know how to construct an initial LOB value from {}.", value);
             return new LobUnderConstruction();
         }
+    }
+
+    static class XmlFragment extends Fragment {
+        XmlFragment(final LogMinerEvent event) {
+            if (EventType.XML_WRITE != event.getEventType()) {
+                throw new IllegalArgumentException("can only construct XmlFragments from XML_WRITE events");
+            }
+            final XmlWriteEvent writeEvent = (XmlWriteEvent) event;
+            this.data = writeEvent.getXml();
+        }
+
+        XmlFragment(String data) {
+            this.data = data;
+        }
+    }
+
+    static class XmlUnderConstruction extends AbstractUnderConstruction<XmlFragment> {
+
+        static XmlUnderConstruction fromInitialValue(Object value) {
+            if (null == value) {
+                return new XmlUnderConstruction();
+            }
+            if (value instanceof XmlUnderConstruction) {
+                return (XmlUnderConstruction) value;
+            }
+            if (value instanceof String) {
+                XmlUnderConstruction lob = new XmlUnderConstruction();
+                lob.add(new XmlFragment((String) value));
+                return lob;
+            }
+
+            LOGGER.trace("Don't know how to construct an initial XML value from {}.", value);
+            return new XmlUnderConstruction();
+        }
+
+        @Override
+        Object merge() {
+            if (isNull) {
+                return null;
+            }
+            final StringBuilder builder = new StringBuilder();
+            fragments.forEach(fragment -> builder.append(fragment.data));
+            return builder.toString();
+        }
+
     }
 
     private static class RowState {

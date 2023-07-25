@@ -770,6 +770,9 @@ CLIENT_STATISTICS:                   'CLIENT_STATISTICS';
 INDEX_STATISTICS:                    'INDEX_STATISTICS';
 TABLE_STATISTICS:                    'TABLE_STATISTICS';
 
+// Azure Database for MySQL Single Server instance:
+FIREWALL_RULES:                      'FIREWALL_RULES';
+
 
 // PRIVILEGES
 
@@ -1087,6 +1090,7 @@ POWER:                               'POWER';
 QUOTE:                               'QUOTE';
 RADIANS:                             'RADIANS';
 RAND:                                'RAND';
+RANDOM:                              'RANDOM';
 RANDOM_BYTES:                        'RANDOM_BYTES';
 RELEASE_LOCK:                        'RELEASE_LOCK';
 REVERSE:                             'REVERSE';
@@ -1345,7 +1349,7 @@ STRING_USER_NAME:                    (
                                      );
 IP_ADDRESS:                          (
                                        [0-9]+ '.' [0-9.]+
-                                       | [0-9A-F:]+ ':' [0-9A-F:]+
+                                       | [0-9A-F]* ':' [0-9A-F]* ':' [0-9A-F:]+
                                      );
 STRING_USER_NAME_MARIADB:            (
                                         SQUOTA_STRING | DQUOTA_STRING

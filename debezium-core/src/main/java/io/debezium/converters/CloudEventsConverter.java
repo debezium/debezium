@@ -104,11 +104,20 @@ public class CloudEventsConverter implements Converter {
 
     static {
         try {
-            CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
+            // Use Kafka 3.5+ method signature
+            CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class, JsonConverterConfig.class);
             CONVERT_TO_CONNECT_METHOD.setAccessible(true);
+            LOGGER.info("Using up-to-date JsonConverter implementation");
         }
         catch (NoSuchMethodException e) {
-            throw new DataException(e.getCause());
+            try {
+                CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
+                CONVERT_TO_CONNECT_METHOD.setAccessible(true);
+                LOGGER.info("Using legacy JsonConverter implementation");
+            }
+            catch (NoSuchMethodException ei) {
+                throw new DataException(ei);
+            }
         }
 
         Map<String, CloudEventsProvider> tmp = new HashMap<>();
@@ -124,7 +133,10 @@ public class CloudEventsConverter implements Converter {
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
 
     private final JsonConverter jsonCloudEventsConverter = new JsonConverter();
+    private JsonConverterConfig jsonCloudEventsConverterConfig = null;
+
     private final JsonConverter jsonDataConverter = new JsonConverter();
+
     private boolean enableJsonSchemas;
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
@@ -157,7 +169,9 @@ public class CloudEventsConverter implements Converter {
         if (ceSerializerType == SerializerType.JSON) {
             Map<String, String> ceJsonConfig = jsonConfig.asMap();
             ceJsonConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
+            configureConverterType(isKey, ceJsonConfig);
             jsonCloudEventsConverter.configure(ceJsonConfig, isKey);
+            jsonCloudEventsConverterConfig = new JsonConverterConfig(ceJsonConfig);
         }
         else {
             usingAvro = true;
@@ -197,6 +211,11 @@ public class CloudEventsConverter implements Converter {
                 avroConverter.configure(avroConfig.asMap(), false);
             }
         }
+    }
+
+    protected Map<String, String> configureConverterType(boolean isKey, Map<String, String> config) {
+        config.put("converter.type", isKey ? "key" : "value");
+        return config;
     }
 
     @Override
@@ -293,44 +312,19 @@ public class CloudEventsConverter implements Converter {
     public SchemaAndValue toConnectData(String topic, byte[] value) {
         switch (ceSerializerType) {
             case JSON:
-                JsonNode jsonValue;
-
                 try {
-                    jsonValue = jsonDeserializer.deserialize(topic, value);
-                    byte[] data = jsonValue.get(CloudEventsMaker.FieldName.DATA).binaryValue();
-                    SchemaAndValue dataField = reconvertData(topic, data, dataSerializerType, enableJsonSchemas);
-                    Schema incompleteSchema = jsonCloudEventsConverter.asConnectSchema(jsonValue);
-                    SchemaBuilder builder = SchemaBuilder.struct();
+                    // JSON Cloud Events converter always disables schema.
+                    // The conversion back thus must be schemaless.
+                    // If data are in schema/payload envelope they are extracted
+                    final SchemaAndValue connectData = jsonCloudEventsConverter.toConnectData(topic, value);
 
-                    for (Field ceField : incompleteSchema.fields()) {
-                        if (ceField.name().equals(CloudEventsMaker.FieldName.DATA)) {
-                            builder.field(ceField.name(), dataField.schema());
-                        }
-                        else {
-                            builder.field(ceField.name(), ceField.schema());
-                        }
-                    }
-                    builder.name(incompleteSchema.name());
-                    builder.version(incompleteSchema.version());
-                    builder.doc(incompleteSchema.doc());
-                    for (Map.Entry<String, String> entry : incompleteSchema.parameters().entrySet()) {
-                        builder.parameter(entry.getKey(), entry.getValue());
-                    }
-                    Schema schema = builder.build();
+                    final JsonNode jsonValue = jsonDeserializer.deserialize(topic, value);
+                    SchemaAndValue dataField = reconvertData(topic, jsonValue.get(CloudEventsMaker.FieldName.DATA), dataSerializerType, enableJsonSchemas);
+                    ((Map<String, Object>) connectData.value()).put("data", dataField.value());
 
-                    Struct incompleteStruct = (Struct) CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, incompleteSchema, jsonValue);
-                    Struct struct = new Struct(schema);
-
-                    for (Field ceField : incompleteSchema.fields()) {
-                        if (ceField.name().equals(CloudEventsMaker.FieldName.DATA)) {
-                            struct.put(ceField, dataField.value());
-                        }
-                        struct.put(ceField, incompleteStruct.get(ceField));
-                    }
-
-                    return new SchemaAndValue(schema, value);
+                    return connectData;
                 }
-                catch (SerializationException | IOException | IllegalAccessException | InvocationTargetException e) {
+                catch (SerializationException e) {
                     throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
                 }
             case AVRO:
@@ -377,39 +371,45 @@ public class CloudEventsConverter implements Converter {
         return SchemaAndValue.NULL;
     }
 
-    private SchemaAndValue reconvertData(String topic, byte[] serializedData, SerializerType dataType, Boolean enableSchemas) {
-        switch (dataType) {
-            case JSON:
-                JsonNode jsonValue;
+    private SchemaAndValue reconvertData(String topic, JsonNode data, SerializerType dataType, Boolean enableSchemas) {
+        try {
+            final byte[] serializedData = data.isBinary() ? data.binaryValue() : null;
+            switch (dataType) {
+                case JSON:
+                    JsonNode jsonValue;
 
-                try {
-                    jsonValue = jsonDeserializer.deserialize(topic, serializedData);
-                }
-                catch (SerializationException e) {
-                    throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
-                }
+                    jsonValue = data.isBinary() ? jsonDeserializer.deserialize(topic, serializedData) : data;
 
-                if (!enableSchemas) {
-                    ObjectNode envelope = JsonNodeFactory.instance.objectNode();
-                    envelope.set(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME, null);
-                    envelope.set(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME, jsonValue);
-                    jsonValue = envelope;
-                }
+                    if (!enableSchemas) {
+                        ObjectNode envelope = JsonNodeFactory.instance.objectNode();
+                        envelope.set(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME, null);
+                        envelope.set(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME, jsonValue);
+                        jsonValue = envelope;
+                    }
 
-                Schema schema = jsonCloudEventsConverter.asConnectSchema(jsonValue.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME));
+                    Schema schema = jsonCloudEventsConverter.asConnectSchema(jsonValue.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME));
 
-                try {
-                    return new SchemaAndValue(
-                            schema,
-                            CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema, jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)));
-                }
-                catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new DataException(e.getCause());
-                }
-            case AVRO:
-                return avroConverter.toConnectData(topic, serializedData);
-            default:
-                throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
+                    try {
+                        // Kafka 3.5+ requires additional argument
+                        return new SchemaAndValue(schema,
+                                (CONVERT_TO_CONNECT_METHOD.getParameterCount() == 2)
+                                        ? CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema,
+                                                jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME))
+                                        : CONVERT_TO_CONNECT_METHOD.invoke(jsonCloudEventsConverter, schema,
+                                                jsonValue.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME),
+                                                jsonCloudEventsConverterConfig));
+                    }
+                    catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new DataException(e.getCause());
+                    }
+                case AVRO:
+                    return avroConverter.toConnectData(topic, serializedData);
+                default:
+                    throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
+            }
+        }
+        catch (IOException e) {
+            throw new DataException("Converting byte[] to Kafka Connect data failed due to serialization error: ", e);
         }
     }
 

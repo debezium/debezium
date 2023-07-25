@@ -3275,6 +3275,35 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(consumer.isEmpty()).isTrue();
     }
 
+    @Test
+    @FixFor("DBZ-6648")
+    public void shouldHandleNonNullIntervalFiledDelete() throws Exception {
+        TestHelper.execute("CREATE TABLE test_interval (pk SERIAL, i interval NOT NULL, PRIMARY KEY(pk));");
+        // add a new entry and remove both
+        String statements = "INSERT INTO test_interval (pk, i) VALUES (1, '2 Months 3 Days');" +
+                "DELETE FROM test_interval WHERE pk = 1;";
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INTERVAL_HANDLING_MODE, IntervalHandlingMode.STRING));
+        waitForStreamingToStart();
+
+        consumer = testConsumer(3);
+        executeAndWait(statements);
+
+        String topicPrefix = "public.test_interval";
+        String topicName = topicName(topicPrefix);
+        assertRecordInserted(topicPrefix, PK_FIELD, 1);
+
+        // entry removed
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 1);
+
+        // followed by a tombstone
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidTombstone(record, PK_FIELD, 1);
+    }
+
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
         assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
 

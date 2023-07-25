@@ -142,9 +142,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         LOGGER.info("Reading change stream for '{}'", replicaSet);
 
-        final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(rsOffsetContext, taskContext.getConnectorConfig(), taskContext.filters().getConfig())
-                .create();
-        final ChangeStreamIterable<BsonDocument> rsChangeStream = client.watch(pipeline.getStages(), BsonDocument.class);
+        final ChangeStreamIterable<BsonDocument> rsChangeStream = MongoUtil.openChangeStream(client, taskContext);
         if (taskContext.getCaptureMode().isFullUpdate()) {
             rsChangeStream.fullDocument(FullDocument.UPDATE_LOOKUP);
         }
@@ -224,7 +222,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                         break;
                     }
                 }
-
             }
         }
     }

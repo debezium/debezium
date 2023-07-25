@@ -32,12 +32,10 @@ class ChangeStreamPipelineFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeStreamPipelineFactory.class);
 
-    private final ReplicaSetOffsetContext rsOffsetContext;
     private final MongoDbConnectorConfig connectorConfig;
     private final FilterConfig filterConfig;
 
-    ChangeStreamPipelineFactory(ReplicaSetOffsetContext rsOffsetContext, MongoDbConnectorConfig connectorConfig, FilterConfig filterConfig) {
-        this.rsOffsetContext = rsOffsetContext;
+    ChangeStreamPipelineFactory(MongoDbConnectorConfig connectorConfig, FilterConfig filterConfig) {
         this.connectorConfig = connectorConfig;
         this.filterConfig = filterConfig;
     }

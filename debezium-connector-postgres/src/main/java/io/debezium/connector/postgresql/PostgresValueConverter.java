@@ -830,7 +830,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
+        Object fallback = intervalMode == IntervalHandlingMode.STRING ? Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(0)) : NumberConversions.LONG_FALSE;
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
             if (data instanceof Number) {
                 final long micros = ((Number) data).longValue();
                 if (intervalMode == IntervalHandlingMode.STRING) {

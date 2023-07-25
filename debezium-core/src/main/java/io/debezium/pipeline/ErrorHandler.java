@@ -48,11 +48,6 @@ public class ErrorHandler {
         }
     }
 
-    public ErrorHandler(Class<? extends SourceConnector> connectorType, CommonConnectorConfig connectorConfig,
-                        ChangeEventQueue<?> queue) {
-        this(connectorType, connectorConfig, queue, null);
-    }
-
     public void setProducerThrowable(Throwable producerThrowable) {
         LOGGER.error("Producer failure", producerThrowable);
 

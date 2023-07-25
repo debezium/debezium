@@ -34,6 +34,7 @@ public final class ConfigProperties {
 
     public static final String DOCKER_IMAGE_POSTGRESQL = System.getProperty("test.docker.image.postgresql", "quay.io/debezium/example-postgres:latest");
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:latest");
+    public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", "quay.io/debezium/example-mongodb:latest");
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
     public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
@@ -59,8 +60,6 @@ public final class ConfigProperties {
 
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
-    public static final boolean STRIMZI_KC_BUILD = booleanProperty("test.strimzi.kc.build", true);
-    public static final String STRIMZI_KC_IMAGE = System.getProperty("test.strimzi.kc.image");
 
     // Apicurio Registry configuration
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
@@ -120,14 +119,6 @@ public final class ConfigProperties {
     public static final String DATABASE_ORACLE_DBZ_PASSWORD = System.getProperty("test.database.oracle.dbz.password", "dbz");
     public static final String DATABASE_ORACLE_DBNAME = System.getProperty("test.database.oracle.dbname", "ORCLCDB");
     public static final String DATABASE_ORACLE_PDBNAME = System.getProperty("test.database.oracle.pdbname", "ORCLPDB1");
-
-    // Artifact Server
-    public static final String ARTIFACT_SERVER_URL = System.getProperty("test.as.url");
-    public static final String ARTIFACT_SERVER_DBZ_VERSION = System.getProperty("test.as.debezium.version");
-    public static final String ARTIFACT_SERVER_APC_VERSION = System.getProperty("test.as.apicurio.version");
-    public static final String ARTIFACT_SERVER_APC_URL = System.getProperty("test.as.apicurio.url");
-    public static final String ARTIFACT_SERVER_DB2_DRIVER_VERSION = System.getProperty("test.as.db2.driver.version");
-    public static final String ARTIFACT_SERVER_ORACLE_DRIVER_VERSION = System.getProperty("test.as.oracle.driver.version");
 
     private static boolean booleanProperty(String key) {
         return booleanProperty(key, false);

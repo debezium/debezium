@@ -53,8 +53,17 @@
       <groupId>io.debezium</groupId>
       <artifactId>debezium-core</artifactId>
       <type>test-jar</type>
+      <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>

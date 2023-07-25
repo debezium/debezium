@@ -3,6 +3,7 @@ Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
 Abhishek Hodavdekar
+Adam Strickland
 Addison Higham
 Adham
 Adrian Kreuziger
@@ -46,6 +47,7 @@ Anton Martynov
 Arik Cohen
 Arkoprabho Chakraborti
 artiship
+Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
 Ashmeet Lamba
@@ -55,6 +57,7 @@ Aykut Farsak
 Babur Duisenov
 Balázs Németh
 Balázs Sipos
+Balint Bene
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty

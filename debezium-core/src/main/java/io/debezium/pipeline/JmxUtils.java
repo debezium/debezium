@@ -7,6 +7,7 @@ package io.debezium.pipeline;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.stream.Collectors;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
@@ -15,6 +16,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.common.utils.Sanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,6 +115,13 @@ public class JmxUtils {
     }
 
     private static String getManagementJmxObjectName(String type, String context, CommonConnectorConfig connectorConfig) {
-        return String.format(JMX_OBJECT_NAME_FORMAT, connectorConfig.getContextName().toLowerCase(), type, context, connectorConfig.getLogicalName());
+        String tags = String.format(JMX_OBJECT_NAME_FORMAT, connectorConfig.getContextName().toLowerCase(), type, context, connectorConfig.getLogicalName());
+        if (connectorConfig.getCustomMetricTags().size() > 0) {
+            String customTags = connectorConfig.getCustomMetricTags().entrySet().stream()
+                    .map(e -> e.getKey() + "=" + Sanitizer.jmxSanitize(e.getValue()))
+                    .collect(Collectors.joining(","));
+            tags += "," + customTags;
+        }
+        return tags;
     }
 }

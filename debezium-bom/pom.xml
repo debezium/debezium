@@ -21,10 +21,12 @@
         <version.jetty>9.4.12.v20180830</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>12.0.0</version.vitess.grpc>
-        <version.grpc>1.33.0</version.grpc>
+        <version.vitess.grpc>17.0.0</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
+
+        <!-- Spanner and Vitess dependencies -->
+        <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
@@ -49,6 +51,8 @@
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
+        <version.junit5>5.9.1</version.junit5>
+        <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
         <version.assertj>3.11.1</version.assertj>
         <version.jmh>1.21</version.jmh>
@@ -210,10 +214,20 @@
                 <version>${version.sqlserver.driver}</version>
             </dependency>
 
-            <!-- Oracle JDBC driver, Oracle XStream -->
+            <!-- Oracle JDBC driver, XML support, Oracle XStream -->
             <dependency>
                 <groupId>com.oracle.database.jdbc</groupId>
                 <artifactId>ojdbc8</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xdb</artifactId>
+                <version>${version.oracle.driver}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.oracle.database.xml</groupId>
+                <artifactId>xmlparserv2</artifactId>
                 <version>${version.oracle.driver}</version>
             </dependency>
             <dependency>
@@ -483,6 +497,16 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.platform</groupId>
+                <artifactId>junit-platform-launcher</artifactId>
+                <version>${version.junit.platform.launcher}</version>
             </dependency>
             <dependency>
                 <groupId>io.rest-assured</groupId>

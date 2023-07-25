@@ -151,7 +151,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private void dispatchDataChangeEvent(RowLCR lcr, Map<String, Object> chunkValues) throws InterruptedException {
-        LOGGER.debug("Processing DML event {}", lcr);
+        LOGGER.info("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
             final Instant commitTimestamp = lcr.getSourceTime().timestampValue().toInstant();
@@ -395,6 +395,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         resolvedChunkValues.put(columnName, chunkValues.getStringValue());
                         break;
 
+                    case ChunkColumnValue.XMLTYPE:
+                        resolvedChunkValues.put(columnName, chunkValues.getXmlValue());
+                        break;
+
+                    case ChunkColumnValue.RAW:
                     case ChunkColumnValue.BLOB:
                         resolvedChunkValues.put(columnName, chunkValues.getByteArray());
                         break;
