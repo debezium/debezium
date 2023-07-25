@@ -17,7 +17,7 @@ If the `data-collections` array is empty, {prodname} detects that no action is r
 ====
 If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
  +
-For example, to include a data collection that exists in the `*public*` database, and that has the name `*MyCollection*`, use the following format: `*"public"."MyCollection"*`.
+For example, to include a data collection that exists in the `*public*` database, and that has the name `*My.Collection*`, use the following format: `*"public"."My.Collection"*`.
 ====
 
 .Prerequisites
