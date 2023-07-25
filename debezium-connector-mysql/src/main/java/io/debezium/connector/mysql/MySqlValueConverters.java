@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -43,6 +42,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -208,7 +208,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 case PRECISE:
                     // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
                     // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
-                    return Decimal.builder(0);
+                    return SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
             }
         }
         if ((matches(typeName, "FLOAT")
