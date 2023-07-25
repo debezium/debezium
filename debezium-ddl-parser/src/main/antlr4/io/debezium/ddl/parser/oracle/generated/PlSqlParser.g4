@@ -93,6 +93,7 @@ unit_statement
     | drop_table
     | drop_view
     | drop_index
+    | drop_user
 
     | rename_object
     | revoke_statement
@@ -890,6 +891,10 @@ alter_user
         )+
       ';'
       | user_object_name (',' user_object_name)* proxy_clause ';'
+    ;
+
+drop_user
+    : DROP USER user_object_name CASCADE?
     ;
 
 alter_identified_by
