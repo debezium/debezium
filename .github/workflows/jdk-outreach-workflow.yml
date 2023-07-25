@@ -11,6 +11,7 @@ on:
 
 jobs:
   sqlserver:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -28,6 +29,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mysql:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -45,6 +47,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   postgres-pgoutput:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -62,6 +65,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -79,6 +83,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   oracle:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -96,6 +101,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   cassandra:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -124,6 +130,7 @@ jobs:
       - name: Build Debezium Connectors Cassandra
         run: ./core/mvnw clean install -f cassandra/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   db2:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -149,6 +156,7 @@ jobs:
       - name: Build Debezium Connector Db2
         run: ./core/mvnw clean install -f db2/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   spanner:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -174,6 +182,7 @@ jobs:
       - name: Build Debezium Connector Spanner
         run: ./core/mvnw clean install -f spanner/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   vitess:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -199,6 +208,7 @@ jobs:
       - name: Build Debezium Connector Vitess
         run: ./core/mvnw clean install -f vitess/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   quarkus-outbox:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -216,6 +226,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,:debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   rest-extension:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -233,6 +244,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-connect-rest-extension -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   testing:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -250,6 +262,7 @@ jobs:
       - name: Maven Build
         run: ./mvnw clean install -B -pl debezium-bom,debezium-testing -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   server:
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     strategy:
       matrix:
