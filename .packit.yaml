@@ -1,0 +1,351 @@
+# Default packit instance is a prod and only this is used
+# stg instance is present for testing new packit features in forked repositories where stg is installed.
+packit_instances: ["prod", "stg"]
+upstream_project_url: https://github.com/debezium/debezium
+issue_repository: https://github.com/debezium/debezium
+jobs:
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "postgres-12-decoderbufs"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        tmt:
+          name: postgres
+      environments:
+        - variables:
+            POSTGRESQL_VERSION: 12
+            DECODER_PLUGIN: decoderbufs
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "postgres-12-pgoutput"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        tmt:
+          name: postgres
+      environments:
+        - variables:
+            POSTGRESQL_VERSION: 12
+            DECODER_PLUGIN: pgoutput
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "postgres-15-decoderbufs"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        tmt:
+          name: postgres
+      environments:
+        - variables:
+            POSTGRESQL_VERSION: 15
+            DECODER_PLUGIN: decoderbufs
+
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "postgres-15-pgoutput"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        tmt:
+          name: postgres
+      environments:
+        - variables:
+            POSTGRESQL_VERSION: 15
+            DECODER_PLUGIN: pgoutput
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mysql-8-none"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        tmt:
+          name: mysql
+      environments:
+        - variables:
+            MYSQL_VERSION: 8.0.32
+            PROFILE: none
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mysql-8-assembly"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        tmt:
+          name: mysql
+      environments:
+        - variables:
+            MYSQL_VERSION: 8.0.32
+            PROFILE: assembly
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mysql-5-none"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        tmt:
+          name: mysql
+      environments:
+        - variables:
+            MYSQL_VERSION: 5.7
+            PROFILE: none
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mysql-5-assembly"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        tmt:
+          name: mysql
+      environments:
+        - variables:
+            MYSQL_VERSION: 5.7
+            PROFILE: assembly
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "sqlserver-2017"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - sqlserver
+    tf_extra_params:
+      test:
+        tmt:
+          name: sqlserver
+      environments:
+        - variables:
+            SQL_SERVER_VERSION: 2017
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "sqlserver-2022"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - sqlserver
+    tf_extra_params:
+      test:
+        tmt:
+          name: sqlserver
+      environments:
+        - variables:
+            SQL_SERVER_VERSION: 2022
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mongodb-4"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        tmt:
+          name: mongodb
+      environments:
+        - variables:
+            MONGODB_VERSION: 4.4
+            TEST_PROFILE: mongodb
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mongodb-5"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        tmt:
+          name: mongodb
+      environments:
+        - variables:
+            MONGODB_VERSION: 5.0
+            TEST_PROFILE: mongodb
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "mongodb-6"
+    targets:
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        tmt:
+          name: mongodb
+      environments:
+        - variables:
+            MONGODB_VERSION: 6.0
+            TEST_PROFILE: mongodb
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-21"
+    targets:
+      centos-stream-8-x86_64:
+        distros: ["debezium-tf-2130"]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 21.3.0
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-21-xs"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-2130-xs" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 21.3.0-xs
+            TEST_PROFILE: oracle
+            ORACLE_ARG: "-Poracle-xstream"
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-xs"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930-xs" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0-xs
+            TEST_PROFILE: oracle
+            ORACLE_ARG: "-Poracle-xstream"
+
+  ###############################################################################################

@@ -1,0 +1,100 @@
+# TMT test plan definition
+# https://tmt.readthedocs.io/en/latest/overview.html
+
+# Baseline common for all test plans
+#######################################################################
+summary: Debezium functional testsuite
+discover:
+  how: fmf
+
+# Required HW
+provision:
+  hardware:
+    memory: ">= 24 GiB"
+    cpu:
+      processors: ">= 8"
+
+
+# Install required packages and scripts for running debezium suite
+prepare:
+  - name: Install packages
+    how: install
+    package:
+      - wget
+      - java-17-openjdk-devel
+      - xz
+      - make
+      - git
+      - zip
+      - coreutils
+
+  - name: Install docker-ce
+    how: shell
+    script: |
+      OS=$(cat /etc/redhat-release || true)
+      if [[ ${OS} == *"CentOS"* ]]; then
+        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      else
+        sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+      fi
+      sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+      sudo systemctl enable docker --now
+
+  - name: Install mvn
+    how: shell
+    script: |
+      mkdir -p /usr/share/maven /usr/share/maven/ref
+      curl -fsSL -o /tmp/apache-maven.tar.gz https://apache.osuosl.org/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz
+      tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1
+      rm -f /tmp/apache-maven.tar.gz
+      ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+
+# Discover tmt defined tests in tests/ folder
+execute:
+  how: tmt
+
+#######################################################################
+
+/mysql:
+  summary: Run mysql connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - mysql
+
+/postgres:
+  summary: Run postgresql connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - postgres
+
+/sqlserver:
+  summary: Run sqlserver connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - sqlserver
+
+/mongodb:
+  summary: Run mongodb connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - mongodb
