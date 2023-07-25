@@ -664,6 +664,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         completionResult.handle(false, msg, error);
     }
 
+    private void failRun(String msg, Throwable error) throws EmbeddedEngineRuntimeException {
+        fail(msg, error);
+        throw new EmbeddedEngineRuntimeException();
+    }
+
     private void succeed(String msg) {
         // don't use the completion callback here because we want to store the error and message only
         completionResult.handle(true, msg, null);
@@ -697,107 +702,24 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             latch.countUp();
             try {
                 if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
-                    fail("Failed to start connector with invalid configuration (see logs for actual errors)");
-                    return;
+                    failRun("Failed to start connector with invalid configuration (see logs for actual errors)", null);
                 }
 
                 // Instantiate the connector ...
-                SourceConnector connector = null;
-                try {
-                    @SuppressWarnings("unchecked")
-                    Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
-                    connector = connectorClass.getDeclaredConstructor().newInstance();
-                }
-                catch (Throwable t) {
-                    fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
-                    return;
-                }
-                Map<String, String> connectorConfig = workerConfig.originalsStrings();
-                Config validatedConnectorConfig = connector.validate(connectorConfig);
-                ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
-                        connector.config().groups());
-                if (configInfos.errorCount() > 0) {
-                    String errors = configInfos.values().stream()
-                            .flatMap(v -> v.configValue().errors().stream())
-                            .collect(Collectors.joining(" "));
-                    fail("Connector configuration is not valid. " + errors);
-                    return;
-                }
+                SourceConnector connector = instantiateConnector(connectorClassName);
+                Map<String, String> connectorConfig = getConnectorConfig(connector, connectorClassName);
 
                 // Instantiate the offset store ...
-                final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
-                OffsetBackingStore offsetStore = null;
-                try {
-                    // Kafka 3.5 no longer provides offset stores with non-parametric constructors
-                    if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-                        offsetStore = KafkaConnectUtil.memoryOffsetBackingStore();
-                    }
-                    else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
-                        offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
-                    }
-                    else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
-                        offsetStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
-                    }
-                    else {
-                        @SuppressWarnings("unchecked")
-                        Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                        offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
-                    }
-                }
-                catch (Throwable t) {
-                    fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
-                    return;
-                }
-
-                // Initialize the offset store ...
-                try {
-                    offsetStore.configure(workerConfig);
-                    offsetStore.start();
-                }
-                catch (Throwable t) {
-                    fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
-                    offsetStore.stop();
-                    return;
-                }
+                OffsetBackingStore offsetStore = initializeOffsetStore(connectorConfig);
 
                 // Set up the offset commit policy ...
-                if (offsetCommitPolicy == null) {
-                    try {
-                        offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
-                                config.asProperties());
-                    }
-                    catch (Throwable t) {
-                        fail("Unable to instantiate OffsetCommitPolicy class '" + offsetStoreClassName + "'", t);
-                        return;
-                    }
-                }
+                setOffsetCommitPolicy();
 
-                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
-                        keyConverter, valueConverter);
-
-                // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
-                ConnectorContext context = new SourceConnectorContext() {
-
-                    @Override
-                    public void requestTaskReconfiguration() {
-                        // Do nothing ...
-                    }
-
-                    @Override
-                    public void raiseError(Exception e) {
-                        fail(e.getMessage(), e);
-                    }
-
-                    @Override
-                    public OffsetStorageReader offsetStorageReader() {
-                        return offsetReader;
-                    }
-                };
-                connector.initialize(context);
-                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName,
-                        keyConverter, valueConverter);
-
+                // Set up offset reader and writer
                 Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
+                OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
+                OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
+                initializeConnector(connector, offsetReader);
 
                 try {
                     // Start the connector with the given properties and get the task configurations ...
@@ -991,6 +913,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     }
                 }
             }
+            catch (EmbeddedEngineRuntimeException e) {
+                LOGGER.debug("Failed to run EmbeddedEngine.", e);
+            }
             finally {
                 latch.countDown();
                 runningThread.set(null);
@@ -998,6 +923,107 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                 completionCallback.handle(completionResult.success(), completionResult.message(), completionResult.error());
             }
         }
+    }
+
+    private SourceConnector instantiateConnector(final String connectorClassName) throws EmbeddedEngineRuntimeException {
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
+            return connectorClass.getDeclaredConstructor().newInstance();
+        }
+        catch (Throwable t) {
+            failRun("Unable to instantiate connector class '" + connectorClassName + "'", t);
+        }
+        return null;
+    }
+
+    private Map<String, String> getConnectorConfig(final SourceConnector connector, final String connectorClassName) throws EmbeddedEngineRuntimeException {
+        Map<String, String> connectorConfig = workerConfig.originalsStrings();
+        Config validatedConnectorConfig = connector.validate(connectorConfig);
+        ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
+                connector.config().groups());
+        if (configInfos.errorCount() > 0) {
+            String errors = configInfos.values().stream()
+                    .flatMap(v -> v.configValue().errors().stream())
+                    .collect(Collectors.joining(" "));
+            failRun("Connector configuration is not valid. " + errors, null);
+        }
+        return connectorConfig;
+    }
+
+    /**
+     * Determines, which offset backing store should be used, instantiate it and start the offset store.
+     */
+    private OffsetBackingStore initializeOffsetStore(Map<String, String> connectorConfig) throws EmbeddedEngineRuntimeException {
+        final String offsetStoreClassName = config.getString(OFFSET_STORAGE);
+        OffsetBackingStore offsetStore = null;
+        try {
+            // Kafka 3.5 no longer provides offset stores with non-parametric constructors
+            if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
+                offsetStore = KafkaConnectUtil.memoryOffsetBackingStore();
+            }
+            else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
+                offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
+            }
+            else if (offsetStoreClassName.equals(KafkaOffsetBackingStore.class.getName())) {
+                offsetStore = KafkaConnectUtil.kafkaOffsetBackingStore(connectorConfig);
+            }
+            else {
+                @SuppressWarnings("unchecked")
+                Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
+                offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
+            }
+        }
+        catch (Throwable t) {
+            failRun("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
+        }
+
+        // Initialize the offset store ...
+        try {
+            offsetStore.configure(workerConfig);
+            offsetStore.start();
+        }
+        catch (Throwable t) {
+            fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
+            offsetStore.stop();
+            throw new EmbeddedEngineRuntimeException();
+        }
+
+        return offsetStore;
+    }
+
+    private void setOffsetCommitPolicy() throws EmbeddedEngineRuntimeException {
+        if (offsetCommitPolicy == null) {
+            try {
+                offsetCommitPolicy = Instantiator.getInstanceWithProperties(config.getString(EmbeddedEngine.OFFSET_COMMIT_POLICY),
+                        config.asProperties());
+            }
+            catch (Throwable t) {
+                failRun("Unable to instantiate OffsetCommitPolicy class '" + config.getString(OFFSET_STORAGE) + "'", t);
+            }
+        }
+    }
+
+    private void initializeConnector(final SourceConnector connector, final OffsetStorageReader offsetReader) {
+        // Initialize the connector using a context that does NOT respond to requests to reconfigure tasks ...
+        ConnectorContext context = new SourceConnectorContext() {
+
+            @Override
+            public void requestTaskReconfiguration() {
+                // Do nothing ...
+            }
+
+            @Override
+            public void raiseError(Exception e) {
+                fail(e.getMessage(), e);
+            }
+
+            @Override
+            public OffsetStorageReader offsetStorageReader() {
+                return offsetReader;
+            }
+        };
+        connector.initialize(context);
     }
 
     private int getErrorsMaxRetries() {
@@ -1224,6 +1250,12 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         protected EmbeddedConfig(Map<String, String> props) {
             super(CONFIG, props);
+        }
+    }
+
+    private static class EmbeddedEngineRuntimeException extends RuntimeException {
+        EmbeddedEngineRuntimeException() {
+            super();
         }
     }
 }
