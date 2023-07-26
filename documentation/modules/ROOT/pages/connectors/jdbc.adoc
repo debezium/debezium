@@ -53,7 +53,8 @@ When a delete event is consumed by the sink connector, no part of the event's pa
 
 [IMPORTANT]
 ====
-This connector is not meant to process `schema change` records. If your source connector is configured to capture schema changes then configure `topics` or `topics.regex` JDBC connector properties to exclude `schema change` topic.
+The {prodname} JDBC sink connector is not designed to read from schema change topics. 
+If your source connector is configured to capture schema changes, in the JDBC connector configuration, set the xref:jdbc-property-connection-topics[`topics`] or xref:jdbc-property-connection-topics-regex[`topics.regex`] properties so that the connector does not consume from schema change topics.
 ====
 
 [[jdbc-at-least-once-delivery]]
