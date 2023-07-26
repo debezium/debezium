@@ -696,6 +696,11 @@ The connector adds missing columns to the table by comparing the incoming event'
 |Specifies a string that determines how the destination table name is formatted, based on the topic name of the event.
 The placeholder, `${topic}`, is replaced by the topic name.
 
+|[[jdbc-property-dialect-postgres-postgis-schema]]<<jdbc-property-dialect-postgres-postgis-schema, `+dialect.postgres.postgis.schema+`>>
+|`public`
+|Specifies the schema name where the PostgreSQL PostGIS extension is installed.
+The default is `public`; however, if the PostGIS extension was installed in another schema, this property should be used to specify the alternate schema name.
+
 |===
 
 [[jdbc-connector-properties-extendable]]
