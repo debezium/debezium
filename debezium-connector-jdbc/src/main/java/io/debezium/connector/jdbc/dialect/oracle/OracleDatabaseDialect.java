@@ -152,9 +152,14 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     protected String resolveColumnNameFromField(String fieldName) {
         String columnName = super.resolveColumnNameFromField(fieldName);
-        if (getConfig().isQuoteIdentifiers()) {
-            // Oracle defaults to uppercase for identifiers
-            columnName = columnName.toUpperCase();
+        if (!getConfig().isQuoteIdentifiers()) {
+            // There are specific use cases where we explicitly quote the column name, even if the
+            // quoted identifiers is not enabled, such as the Kafka primary key mode column names.
+            // If they're quoted, we shouldn't uppercase the column name.
+            if (!getIdentifierHelper().toIdentifier(columnName).isQuoted()) {
+                // Oracle defaults to uppercase for identifiers
+                columnName = columnName.toUpperCase();
+            }
         }
         return columnName;
     }
