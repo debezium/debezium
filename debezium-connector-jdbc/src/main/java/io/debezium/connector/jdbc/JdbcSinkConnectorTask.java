@@ -15,6 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
@@ -33,6 +34,8 @@ import io.debezium.util.Strings;
 public class JdbcSinkConnectorTask extends SinkTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
+    public static final String SCHEMA_CHANGE_VALUE = "SchemaChangeValue";
+    public static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.";
 
     private enum State {
         RUNNING,
@@ -86,6 +89,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             final SinkRecord record = iterator.next();
             LOGGER.trace("Received {}", record);
             try {
+                validate(record);
                 changeEventSink.execute(record);
                 markProcessed(record);
             }
@@ -101,6 +105,18 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 markNotProcessed(iterator);
             }
         }
+    }
+
+    private void validate(SinkRecord record) {
+
+        if (isSchemaChange(record)) {
+            LOGGER.error(DETECT_SCHEMA_CHANGE_RECORD_MSG);
+            throw new DataException(DETECT_SCHEMA_CHANGE_RECORD_MSG);
+        }
+    }
+
+    private static boolean isSchemaChange(SinkRecord record) {
+        return record.valueSchema() != null && !Strings.isNullOrEmpty(record.valueSchema().name()) && SCHEMA_CHANGE_VALUE.contains(record.valueSchema().name());
     }
 
     @Override
