@@ -184,8 +184,13 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     protected String resolveColumnNameFromField(String fieldName) {
         String columnName = super.resolveColumnNameFromField(fieldName);
         if (!getConfig().isQuoteIdentifiers()) {
-            // By default PostgreSQL stores identifiers in lower case.
-            columnName = columnName.toLowerCase();
+            // There are specific use cases where we explicitly quote the column name, even if the
+            // quoted identifiers is not enabled, such as the Kafka primary key mode column names.
+            // If they're quoted, we shouldn't lowercase the column name.
+            if (!getIdentifierHelper().toIdentifier(columnName).isQuoted()) {
+                // PostgreSQL defaults to lower case for identifiers
+                columnName = columnName.toLowerCase();
+            }
         }
         return columnName;
     }
