@@ -621,23 +621,26 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-
-        final String columnName = getColumnNamingStrategy().resolveColumnName(fieldName);
-
-        if (record.getNonKeyFieldNames().contains(columnName)) {
-            Struct source = record.getAfterStruct();
-            return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName), source.get(fieldName));
+        final String columnName = resolveColumnNameFromField(fieldName);
+        final ColumnDescriptor column = table.getColumnByName(columnName);
+        if (column == null) {
+            throw new DebeziumException("Failed to find column " + columnName + " in table " + table.getId().getTableName());
         }
 
-        Object value = getValueFromKeyField(fieldName, record, columnName);
-        return record.getFields().get(fieldName).getQueryBinding(table.getColumnByName(columnName), value);
+        final Object value;
+        if (record.getNonKeyFieldNames().contains(fieldName)) {
+            value = getColumnValueFromValueField(fieldName, record);
+        }
+        else {
+            value = getColumnValueFromKeyField(fieldName, record, columnName);
+        }
+        return record.getFields().get(fieldName).getQueryBinding(column, value);
     }
 
-    private Object getValueFromKeyField(String fieldName, SinkRecordDescriptor record, String columnName) {
-
+    private Object getColumnValueFromKeyField(String fieldName, SinkRecordDescriptor record, String columnName) {
         Object value;
         if (connectorConfig.getPrimaryKeyMode() == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
-            value = getValueForColumn(columnName, record);
+            value = getColumnValueForKafkaKeyMode(columnName, record);
         }
         else {
             final Struct source = record.getKeyStruct(connectorConfig.getPrimaryKeyMode());
@@ -646,8 +649,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return value;
     }
 
-    private Object getValueForColumn(String columnName, SinkRecordDescriptor record) {
+    private Object getColumnValueFromValueField(String fieldName, SinkRecordDescriptor record) {
+        return record.getAfterStruct().get(fieldName);
+    }
 
+    private Object getColumnValueForKafkaKeyMode(String columnName, SinkRecordDescriptor record) {
         switch (columnName) {
             case "__connect_topic":
                 return record.getTopicName();
@@ -693,6 +699,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         else {
             throw new IllegalStateException("Expected at least table identifier to be non-null");
         }
+    }
+
+    protected String resolveColumnNameFromField(String fieldName) {
+        return columnNamingStrategy.resolveColumnName(fieldName);
     }
 
     protected boolean isIdentifierUppercaseWhenNotQuoted() {
