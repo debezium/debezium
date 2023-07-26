@@ -179,4 +179,15 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         // when no explicit size on the column is specified.
         return Integer.MAX_VALUE;
     }
+
+    @Override
+    protected String resolveColumnNameFromField(String fieldName) {
+        String columnName = super.resolveColumnNameFromField(fieldName);
+        if (!getConfig().isQuoteIdentifiers()) {
+            // By default PostgreSQL stores identifiers in lower case.
+            columnName = columnName.toLowerCase();
+        }
+        return columnName;
+    }
+
 }
