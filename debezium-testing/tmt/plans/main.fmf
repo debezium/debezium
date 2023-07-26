@@ -72,10 +72,6 @@ prepare:
 execute:
   how: tmt
 
-# Post install step to copy logs
-finish:
-  how: shell
-  script: ./systemtest/tmt/scripts/copy-logs.sh
 #######################################################################
 
 /mysql:
