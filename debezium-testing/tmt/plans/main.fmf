@@ -78,43 +78,8 @@ finish:
   script: ./systemtest/tmt/scripts/copy-logs.sh
 #######################################################################
 
-/smoke:
-  summary: Run smoke strimzi test suite
-  provision:
-    hardware:
-      memory: ">= 8 GiB"
-      cpu:
-        processors: ">= 4"
-  discover+:
-    test:
-      - smoke
-
-/regression-operators:
-  summary: Run regression strimzi test suite
-  discover+:
-    test:
-      - regression-operators
-
-/regression-components:
-  summary: Run regression strimzi test suite
-  discover+:
-    test:
-      - regression-components
-
-/kraft-operators:
-  summary: Run regression kraft strimzi test suite
-  discover+:
-    test:
-      - kraft-operators
-
-/kraft-components:
-  summary: Run regression kraft strimzi test suite
-  discover+:
-    test:
-      - kraft-components
-
-/acceptance:
-  summary: Run acceptance strimzi test suite
+/mysql:
+  summary: Run mysql connector functional tests
   provision:
     hardware:
       memory: ">= 16 GiB"
@@ -122,10 +87,10 @@ finish:
         processors: ">= 4"
   discover+:
     test:
-      - acceptance
+      - mysql
 
-/sanity:
-  summary: Run sanity strimzi test suite
+/postgres:
+  summary: Run postgresql connector functional tests
   provision:
     hardware:
       memory: ">= 16 GiB"
@@ -133,15 +98,37 @@ finish:
         processors: ">= 4"
   discover+:
     test:
-      - sanity
+      - postgres
 
-/upgrade:
-  summary: Run upgrade strimzi test suite
+/oracle:
+  summary: Run oracle connector functional tests
   provision:
     hardware:
-      memory: ">= 8 GiB"
+      memory: ">= 16 GiB"
       cpu:
         processors: ">= 4"
   discover+:
     test:
-      - upgrade
+      - oracle
+
+/sqlserver:
+  summary: Run sqlserver connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - sqlserver
+
+/mongodb:
+  summary: Run mongodb connector functional tests
+  provision:
+    hardware:
+      memory: ">= 16 GiB"
+      cpu:
+        processors: ">= 4"
+  discover+:
+    test:
+      - mongodb
