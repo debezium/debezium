@@ -11,7 +11,6 @@ environment:
   tier: 2
   environment+:
     TEST_PROFILE: mysql
-    MYSQL_VERSION: 8.0.32
 
 /postgres:
   summary: Run postgresql connector functional tests
@@ -20,8 +19,6 @@ environment:
   tier: 2
   environment+:
     TEST_PROFILE: postgres
-    POSTGRESQL_VERSION: 15
-    DECODER_PLUGIN: decoderbufs
 
 /oracle:
   summary: Run oracle connector functional tests
@@ -38,7 +35,6 @@ environment:
   tier: 2
   environment+:
     TEST_PROFILE: sqlserver
-    SQL_SERVER_VERSION: 2022
 
 /mongodb:
   summary: Run mongodb connector functional tests

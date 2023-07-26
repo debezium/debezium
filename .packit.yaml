@@ -1,0 +1,265 @@
+# Default packit instance is a prod and only this is used
+# stg instance is present for testing new packit features in forked repositories where stg is installed.
+packit_instances: ["prod", "stg"]
+upstream_project_url: https://github.com/debezium/debezium
+issue_repository: https://github.com/debezium/debezium
+jobs:
+  - job: postgres
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "12-decoderbufs"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        fmf:
+          name: postgres
+      environments:
+        POSTGRESQL_VERSION: 12
+        PLUGIN_NAME: decoderbufs
+
+  ###############################################################################################
+  - job: postgres
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "12-pgoutput"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        fmf:
+          name: postgres
+      environments:
+        POSTGRESQL_VERSION: 12
+        PLUGIN_NAME: pgoutput
+
+  ###############################################################################################
+  - job: postgres
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "15-decoderbufs"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        fmf:
+          name: postgres
+      environments:
+        POSTGRESQL_VERSION: 15
+        PLUGIN_NAME: decoderbufs
+
+
+  ###############################################################################################
+  - job: postgres
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "15-pgoutput"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - postgres
+    tf_extra_params:
+      test:
+        fmf:
+          name: postgres
+      environments:
+        POSTGRESQL_VERSION: 15
+        PLUGIN_NAME: pgoutput
+
+  ###############################################################################################
+  - job: mysql
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "8-none"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        fmf:
+          name: mysql
+      environments:
+        MYSQL_VERSION: 8.0.32
+        PROFILE: none
+
+  ###############################################################################################
+  - job: mysql
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "8-assembly"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        fmf:
+          name: mysql
+      environments:
+        MYSQL_VERSION: 8.0.32
+        PROFILE: assembly
+
+  ###############################################################################################
+  - job: mysql
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "5-none"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        fmf:
+          name: mysql
+      environments:
+        MYSQL_VERSION: 5.7
+        PROFILE: none
+
+  ###############################################################################################
+  - job: mysql
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "5-assembly"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mysql
+    tf_extra_params:
+      test:
+        fmf:
+          name: mysql
+      environments:
+        MYSQL_VERSION: 5.7
+        PROFILE: assembly
+
+  ###############################################################################################
+  - job: sqlserver
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "2017"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - sqlserver
+    tf_extra_params:
+      test:
+        fmf:
+          name: sqlserver
+      environments:
+        SQL_SEVER_VERSION: 2017
+
+  ###############################################################################################
+  - job: sqlserver
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "2022"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - sqlserver
+    tf_extra_params:
+      test:
+        fmf:
+          name: sqlserver
+      environments:
+        SQL_SEVER_VERSION: 2022
+
+  ###############################################################################################
+  - job: mongodb
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "4"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        fmf:
+          name: mongodb
+      environments:
+        MONGODB_VERSION: 4.4
+        TEST_PROFILE: mongodb
+
+  ###############################################################################################
+  - job: mongodb
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "5"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        fmf:
+          name: mongodb
+      environments:
+        MONGODB_VERSION: 5.0
+        TEST_PROFILE: mongodb
+
+  ###############################################################################################
+  - job: mongodb
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "6"
+    targets:
+      # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
+      - centos-stream-8-x86_64
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - mongodb
+    tf_extra_params:
+      test:
+        fmf:
+          name: mongodb
+      environments:
+        MONGODB_VERSION: 6.0
+        TEST_PROFILE: mongodb
+
+  ###############################################################################################

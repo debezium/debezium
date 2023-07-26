@@ -14,6 +14,7 @@ provision:
     cpu:
       processors: ">= 4"
 
+
 # Install required packages and scripts for running debezium suite
 prepare:
   - name: Install packages

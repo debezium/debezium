@@ -11,7 +11,8 @@ then
     -Dmysql.port=4301 \
     -Dmysql.replica.port=4301 \
     -Dmysql.gtid.port=4302 \
-    -Dmysql.gtid.replica.port=4303
+    -Dmysql.gtid.replica.port=4303 \
+    -P${PROFILE}
 elif [ "$TEST_PROFILE" = "postgres" ]
 then
   mvn clean install ${MAVEN_ARGS},debezium-connector-postgres \
