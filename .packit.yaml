@@ -4,10 +4,10 @@ packit_instances: ["prod", "stg"]
 upstream_project_url: https://github.com/debezium/debezium
 issue_repository: https://github.com/debezium/debezium
 jobs:
-  - job: postgres
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "12-decoderbufs"
+    identifier: "postgres-12-decoderbufs"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -24,10 +24,10 @@ jobs:
         PLUGIN_NAME: decoderbufs
 
   ###############################################################################################
-  - job: postgres
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "12-pgoutput"
+    identifier: "postgres-12-pgoutput"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -44,10 +44,10 @@ jobs:
         PLUGIN_NAME: pgoutput
 
   ###############################################################################################
-  - job: postgres
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "15-decoderbufs"
+    identifier: "postgres-15-decoderbufs"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -65,10 +65,10 @@ jobs:
 
 
   ###############################################################################################
-  - job: postgres
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "15-pgoutput"
+    identifier: "postgres-15-pgoutput"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -85,10 +85,10 @@ jobs:
         PLUGIN_NAME: pgoutput
 
   ###############################################################################################
-  - job: mysql
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "8-none"
+    identifier: "mysql-8-none"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -105,10 +105,10 @@ jobs:
         PROFILE: none
 
   ###############################################################################################
-  - job: mysql
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "8-assembly"
+    identifier: "mysql-8-assembly"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -125,10 +125,10 @@ jobs:
         PROFILE: assembly
 
   ###############################################################################################
-  - job: mysql
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "5-none"
+    identifier: "mysql-5-none"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -145,10 +145,10 @@ jobs:
         PROFILE: none
 
   ###############################################################################################
-  - job: mysql
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "5-assembly"
+    identifier: "mysql-5-assembly"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -165,10 +165,10 @@ jobs:
         PROFILE: assembly
 
   ###############################################################################################
-  - job: sqlserver
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "2017"
+    identifier: "sqlserver-2017"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -184,10 +184,10 @@ jobs:
         SQL_SEVER_VERSION: 2017
 
   ###############################################################################################
-  - job: sqlserver
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "2022"
+    identifier: "sqlserver-2022"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -203,10 +203,10 @@ jobs:
         SQL_SEVER_VERSION: 2022
 
   ###############################################################################################
-  - job: mongodb
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "4"
+    identifier: "mongodb-4"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -223,10 +223,10 @@ jobs:
         TEST_PROFILE: mongodb
 
   ###############################################################################################
-  - job: mongodb
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "5"
+    identifier: "mongodb-5"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
@@ -243,10 +243,10 @@ jobs:
         TEST_PROFILE: mongodb
 
   ###############################################################################################
-  - job: mongodb
+  - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "6"
+    identifier: "mongodb-6"
     targets:
       # This target is not used at all by our tests, but it has to be one of the available - https://packit.dev/docs/configuration/#aliases
       - centos-stream-8-x86_64
