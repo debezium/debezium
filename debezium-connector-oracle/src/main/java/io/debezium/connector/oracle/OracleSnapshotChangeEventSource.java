@@ -69,7 +69,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
         // found a previous offset and the earlier snapshot has completed
-        else if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+        else if (previousOffset != null && !previousOffset.isSnapshotRunning() && false /* TODO check if streaming is pause */) {
             LOGGER.info("The previous offset has been found.");
             snapshotSchema = databaseSchema.isStorageInitializationExecuted();
             snapshotData = false;

@@ -124,6 +124,13 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                     LOGGER.trace("Receiving LCR");
                     xsOut.receiveLCRCallback(eventHandler, XStreamOut.DEFAULT_MODE);
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+
+                    if (context.isPaused()) {
+                        LOGGER.info("Streaming will now pause");
+                        context.streamingPaused();
+                        context.waitSnapshotCompletion();
+                        LOGGER.info("Streaming resumed");
+                    }
                 }
             }
             finally {

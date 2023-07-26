@@ -79,11 +79,10 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
-        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
+        signalingRecords = 1;
+        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2) + signalingRecords);
 
         insertRecords(ROW_COUNT, (ROW_COUNT * 2));
-
-        signalingRecords = 1;
 
         assertStreamingRecordsArePresent(ROW_COUNT + signalingRecords);
 
@@ -109,7 +108,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
-        Long totalSnapshotRecords = getTotalSnapshotRecords(tableName(), connector(), server(), task(), database());
+        Long totalSnapshotRecords = getTotalSnapshotRecords(tableDataCollectionId(), connector(), server(), task(), database());
 
         batchInserts.get(120, TimeUnit.SECONDS);
 
@@ -119,7 +118,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
                 1; // from snapshot
 
         assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords),
-                AbstractBlockingSnapshotTest.getExpectedValues(totalSnapshotRecords));
+                getExpectedValues(totalSnapshotRecords));
     }
 
     protected int insertMaxSleep() {
@@ -194,7 +193,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
         SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(expectedRecords, 10);
         assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
         List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
-                .map(s -> ((Struct) s.value()).getStruct("after").getInt32("aa"))
+                .map(s -> ((Struct) s.value()).getStruct("after").getInt32(valueFieldName()))
                 .collect(Collectors.toList());
         assertThat(actual).containsAll(expectedValues);
     }
