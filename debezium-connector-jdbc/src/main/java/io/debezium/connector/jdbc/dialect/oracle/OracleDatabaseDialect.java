@@ -149,6 +149,16 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         return String.format(TO_TIMESTAMP_FF9_TZ, value);
     }
 
+    @Override
+    protected String resolveColumnNameFromField(String fieldName) {
+        String columnName = super.resolveColumnNameFromField(fieldName);
+        if (getConfig().isQuoteIdentifiers()) {
+            // Oracle defaults to uppercase for identifiers
+            columnName = columnName.toUpperCase();
+        }
+        return columnName;
+    }
+
     private String getUpsertIncomingClause(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
         final String columnName = columnNameFromField(fieldName, record);
         return toIdentifier(table.getId()) + "." + columnName + "=INCOMING." + columnName;
