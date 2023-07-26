@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.query.Query;
 
 public abstract class AbstractGeoType extends AbstractType {
@@ -35,7 +36,7 @@ public abstract class AbstractGeoType extends AbstractType {
             return 2;
         }
 
-        throwUnexpectedValue(value);
-        return 0;
+        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+                value, value.getClass().getName()));
     }
 }
