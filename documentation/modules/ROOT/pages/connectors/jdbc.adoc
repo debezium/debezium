@@ -51,6 +51,11 @@ If you run the {prodname} JDBC sink connector, it's not necessary to deploy the 
 When the JDBC sink connector consumes a complex change event from a {prodname} source connector, it extracts the values from the `after` section of the original `insert` or `update` event.
 When a delete event is consumed by the sink connector, no part of the event's payload is consulted.
 
+[IMPORTANT]
+====
+This connector is not meant to process `schema change` records. If your source connector is configured to capture schema changes then configure `topics` or `topics.regex` JDBC connector properties to exclude `schema change` topic.
+====
+
 [[jdbc-at-least-once-delivery]]
 === At-least-once delivery
 
