@@ -10,9 +10,9 @@ discover:
 # Required HW
 provision:
   hardware:
-    memory: ">= 16 GiB"
+    memory: ">= 24 GiB"
     cpu:
-      processors: ">= 4"
+      processors: ">= 8"
 
 
 # Install required packages and scripts for running debezium suite
