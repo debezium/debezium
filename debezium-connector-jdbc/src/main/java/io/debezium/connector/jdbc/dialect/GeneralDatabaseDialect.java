@@ -621,7 +621,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-        final String columnName = columnNameFromField(fieldName, record);
+
+        final String columnName = getColumnNamingStrategy().resolveColumnName(fieldName);
 
         if (record.getNonKeyFieldNames().contains(columnName)) {
             Struct source = record.getAfterStruct();
