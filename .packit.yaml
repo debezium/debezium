@@ -20,8 +20,9 @@ jobs:
         fmf:
           name: postgres
       environments:
-        POSTGRESQL_VERSION: 12
-        PLUGIN_NAME: decoderbufs
+        variables:
+          POSTGRESQL_VERSION: 12
+          PLUGIN_NAME: decoderbufs
 
   ###############################################################################################
   - job: tests
@@ -40,8 +41,9 @@ jobs:
         fmf:
           name: postgres
       environments:
-        POSTGRESQL_VERSION: 12
-        PLUGIN_NAME: pgoutput
+        variables:
+          POSTGRESQL_VERSION: 12
+          PLUGIN_NAME: pgoutput
 
   ###############################################################################################
   - job: tests
@@ -60,8 +62,9 @@ jobs:
         fmf:
           name: postgres
       environments:
-        POSTGRESQL_VERSION: 15
-        PLUGIN_NAME: decoderbufs
+        variables:
+          POSTGRESQL_VERSION: 15
+          PLUGIN_NAME: decoderbufs
 
 
   ###############################################################################################
@@ -81,8 +84,9 @@ jobs:
         fmf:
           name: postgres
       environments:
-        POSTGRESQL_VERSION: 15
-        PLUGIN_NAME: pgoutput
+        variables:
+          POSTGRESQL_VERSION: 15
+          PLUGIN_NAME: pgoutput
 
   ###############################################################################################
   - job: tests
@@ -101,8 +105,9 @@ jobs:
         fmf:
           name: mysql
       environments:
-        MYSQL_VERSION: 8.0.32
-        PROFILE: none
+        variables:
+          MYSQL_VERSION: 8.0.32
+          PROFILE: none
 
   ###############################################################################################
   - job: tests
@@ -121,8 +126,9 @@ jobs:
         fmf:
           name: mysql
       environments:
-        MYSQL_VERSION: 8.0.32
-        PROFILE: assembly
+        variables:
+          MYSQL_VERSION: 8.0.32
+          PROFILE: assembly
 
   ###############################################################################################
   - job: tests
@@ -141,8 +147,9 @@ jobs:
         fmf:
           name: mysql
       environments:
-        MYSQL_VERSION: 5.7
-        PROFILE: none
+        variables:
+          MYSQL_VERSION: 5.7
+          PROFILE: none
 
   ###############################################################################################
   - job: tests
@@ -161,8 +168,9 @@ jobs:
         fmf:
           name: mysql
       environments:
-        MYSQL_VERSION: 5.7
-        PROFILE: assembly
+        variables:
+          MYSQL_VERSION: 5.7
+          PROFILE: assembly
 
   ###############################################################################################
   - job: tests
@@ -181,7 +189,8 @@ jobs:
         fmf:
           name: sqlserver
       environments:
-        SQL_SEVER_VERSION: 2017
+        variables:
+          SQL_SEVER_VERSION: 2017
 
   ###############################################################################################
   - job: tests
@@ -200,7 +209,8 @@ jobs:
         fmf:
           name: sqlserver
       environments:
-        SQL_SEVER_VERSION: 2022
+        variables:
+          SQL_SEVER_VERSION: 2022
 
   ###############################################################################################
   - job: tests
@@ -219,8 +229,9 @@ jobs:
         fmf:
           name: mongodb
       environments:
-        MONGODB_VERSION: 4.4
-        TEST_PROFILE: mongodb
+        variables:
+          MONGODB_VERSION: 4.4
+          TEST_PROFILE: mongodb
 
   ###############################################################################################
   - job: tests
@@ -239,8 +250,9 @@ jobs:
         fmf:
           name: mongodb
       environments:
-        MONGODB_VERSION: 5.0
-        TEST_PROFILE: mongodb
+        variables:
+          MONGODB_VERSION: 5.0
+          TEST_PROFILE: mongodb
 
   ###############################################################################################
   - job: tests
@@ -259,7 +271,8 @@ jobs:
         fmf:
           name: mongodb
       environments:
-        MONGODB_VERSION: 6.0
-        TEST_PROFILE: mongodb
+        variables:
+          MONGODB_VERSION: 6.0
+          TEST_PROFILE: mongodb
 
   ###############################################################################################
