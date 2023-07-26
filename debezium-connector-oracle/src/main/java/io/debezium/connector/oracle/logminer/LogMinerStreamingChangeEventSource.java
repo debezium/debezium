@@ -244,6 +244,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             }
                             pauseBetweenMiningSessions();
                         }
+
+                        if (context.isPaused()) {
+                            LOGGER.info("Streaming will now pause");
+                            context.streamingPaused();
+                            context.waitSnapshotCompletion();
+                            LOGGER.info("Streaming resumed");
+                        }
+
                     }
                 }
             }
