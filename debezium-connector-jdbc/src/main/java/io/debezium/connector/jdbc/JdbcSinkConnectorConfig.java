@@ -60,7 +60,7 @@ public class JdbcSinkConnectorConfig {
     public static final String TABLE_NAMING_STRATEGY = "table.naming.strategy";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String DATABASE_TIME_ZONE = "database.time_zone";
-    public static final String POSTGRES_POSTGIS_SCHEMA = "database.postgres.postgis.schema";
+    public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
 
     // todo add support for the ValueConverter contract
 
