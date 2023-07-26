@@ -138,6 +138,16 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     LOGGER.info("   {} = {}", propName, propValue);
                 });
             }
+            try {
+                this.coordinator = start(config);
+                setTaskState(State.RUNNING);
+            }
+            catch (RetriableException e) {
+                LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
+                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
+                restartDelay.hasElapsed();
+                setTaskState(State.RESTARTING);
+            }
         }
         finally {
             stateLock.unlock();
@@ -166,14 +176,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     public final List<SourceRecord> poll() throws InterruptedException {
 
         try {
-            boolean started = startIfNeededAndPossible();
-
-            // in backoff period after a retriable exception
-            if (!started) {
-                // WorkerSourceTask calls us immediately after we return the empty list.
-                // This turns into a throttling so we need to make a pause before we return
-                // the control back.
-                Metronome.parker(Duration.of(2, ChronoUnit.SECONDS), Clock.SYSTEM).pause();
+            // in we fail to start, return empty list and try to start next poll() method call
+            if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
             }
 
@@ -233,10 +237,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
      */
-    private boolean startIfNeededAndPossible() {
+    private boolean startIfNeededAndPossible() throws InterruptedException {
         stateLock.lock();
 
-        boolean result;
+        boolean result = false;
         try {
             State currentState = getTaskState();
             if (currentState == State.RUNNING) {
@@ -248,28 +252,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     LOGGER.info("Attempting to restart task.");
                     this.coordinator = start(config);
                     LOGGER.info("Successfully restarted task");
+                    restartDelay = null;
+                    setTaskState(State.RUNNING);
                     result = true;
                 }
                 else {
                     LOGGER.info("Awaiting end of restart backoff period after a retriable error");
-                    result = false;
+                    Metronome.parker(retriableRestartWait, Clock.SYSTEM).pause();
                 }
-            }
-            else if (currentState == State.INITIAL) {
-                LOGGER.info("Attempting to start task");
-                this.coordinator = start(config);
-                LOGGER.info("Successfully started task");
-                result = true;
-            }
-            else {
-                LOGGER.warn("Attempting to start task but task has been stopped.");
-                result = false;
-            }
-
-            if (currentState != State.RUNNING && result) {
-                // we successfully started, clear restart state
-                restartDelay = null;
-                setTaskState(State.RUNNING);
             }
         }
         finally {
@@ -311,7 +301,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             if (restart) {
                 setTaskState(State.RESTARTING);
                 if (restartDelay == null) {
-                    restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
+                    restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
                     restartDelay.hasElapsed();
                 }
             }
