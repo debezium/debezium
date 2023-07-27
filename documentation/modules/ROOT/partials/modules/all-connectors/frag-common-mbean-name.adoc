@@ -1,28 +1,28 @@
 // Common
 tag::common-snapshot[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<topic.prefix>_`.
 end::common-snapshot[]
 
 tag::common-streaming[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<topic.prefix>_`.
 end::common-streaming[]
 
 
 // MongoDB
 tag::mongodb-snapshot[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<{context}.server.name>_,task=_<task.id>_`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=snapshot,server=_<topic.prefix>_,task=_<task.id>_`.
 end::mongodb-snapshot[]
 
 tag::mongodb-streaming[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<{context}.server.name>_,task=_<task.id>_`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=streaming,server=_<topic.prefix>_,task=_<task.id>_`.
 end::mongodb-streaming[]
 
 
 // SQL Server
 tag::sqlserver-snapshot[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<{context}.server.name>_,task=_<task.id>_,context=snapshot`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<topic.prefix>_,task=_<task.id>_,context=snapshot`.
 end::sqlserver-snapshot[]
 
 tag::sqlserver-streaming[]
-The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<{context}.server.name>_,task=_<task.id>_,context=streaming`.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,server=_<topic.prefix>_,task=_<task.id>_,context=streaming`.
 end::sqlserver-streaming[]
