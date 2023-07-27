@@ -382,15 +382,15 @@ However, the database schema can be changed at any time, which means that the co
 Also, a connector cannot necessarily apply the current schema to every event.
 If an event is relatively old, it's possible that it was recorded before the current schema was applied.
 
-To ensure correct processing of changes that occur after a schema change, Oracle includes in the redo log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
-As the connector reads the redo log and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
+To ensure correct processing of events that occur after a schema change, Oracle includes in the redo log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
+As the connector encounters these DDL statements in the redo log, it parses them and updates an in-memory representation of each table’s schema.
 The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
 In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the redo log where each DDL statement appeared.
 
 When the connector restarts after either a crash or a graceful stop, it starts reading the redo log from a specific position, that is, from a specific point in time.
 The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the redo log where the connector is starting.
 
-This database schema history topic is internal for connector use only.
+This database schema history topic is internal for internal connector use only.
 Optionally, the connector can also xref:oracle-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 .Additional resources
