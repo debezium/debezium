@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.1.Final
+July 27th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409857)
+
+### New features since 2.3.0.Final
+
+* Refactor errors.max.retries to common connector framework [DBZ-6573](https://issues.redhat.com/browse/DBZ-6573)
+* Log appropriate error when JDBC connector receive SchemaChange record  [DBZ-6655](https://issues.redhat.com/browse/DBZ-6655)
+* Introduce internal config option to control how close to CURRENT_SCN Oracle may mine [DBZ-6660](https://issues.redhat.com/browse/DBZ-6660)
+
+
+### Breaking changes since 2.3.0.Final
+
+None
+
+
+### Fixes since 2.3.0.Final
+
+* Batches with DELETE statement first will skip everything else [DBZ-6576](https://issues.redhat.com/browse/DBZ-6576)
+* Oracle unsupported DDL statement - drop multiple partitions [DBZ-6585](https://issues.redhat.com/browse/DBZ-6585)
+* Only Struct objects supported for [Header field insertion], found: null [DBZ-6588](https://issues.redhat.com/browse/DBZ-6588)
+* MySQL parser cannot parse CAST AS dec [DBZ-6590](https://issues.redhat.com/browse/DBZ-6590)
+* Excessive Log Message 'Marking Processed Record for Topic' [DBZ-6597](https://issues.redhat.com/browse/DBZ-6597)
+* Oracle DDL parser does not properly detect end of statement when comments obfuscate the semicolon [DBZ-6599](https://issues.redhat.com/browse/DBZ-6599)
+* Fixed DataCollections for table scan completion notificaiton [DBZ-6605](https://issues.redhat.com/browse/DBZ-6605)
+* Oracle connector is not recoverable if ORA-01327 is wrapped by another JDBC or Oracle exception [DBZ-6610](https://issues.redhat.com/browse/DBZ-6610)
+* Fatal error when parsing Mysql (Percona 5.7.39-42) procedure [DBZ-6613](https://issues.redhat.com/browse/DBZ-6613)
+* MySQL ALTER USER with RETAIN CURRENT PASSWORD fails with parsing exception [DBZ-6622](https://issues.redhat.com/browse/DBZ-6622)
+* Inaccurate documentation regarding additional-condition [DBZ-6628](https://issues.redhat.com/browse/DBZ-6628)
+* Oracle connection SQLRecoverableExceptions are not retried by default [DBZ-6633](https://issues.redhat.com/browse/DBZ-6633)
+* When Debezium Mongodb connector encounter authentication or under privilege errors, the connection between debezium and mongodb keeps going up. [DBZ-6643](https://issues.redhat.com/browse/DBZ-6643)
+* Cannot delete non-null interval value [DBZ-6648](https://issues.redhat.com/browse/DBZ-6648)
+* ConcurrentModificationException thrown in Debezium 2.3 [DBZ-6650](https://issues.redhat.com/browse/DBZ-6650)
+* Dbz crashes on parsing Mysql Procedure Code (Statement Labels) [DBZ-6651](https://issues.redhat.com/browse/DBZ-6651)
+* Vitess: Connector fails if table name is a mysql reserved word [DBZ-6656](https://issues.redhat.com/browse/DBZ-6656)
+* Retriable operations are retried infinitely since error handlers are not reused [DBZ-6670](https://issues.redhat.com/browse/DBZ-6670)
+* Oracle DDL parser does not support column visibility on ALTER TABLE [DBZ-6677](https://issues.redhat.com/browse/DBZ-6677)
+* MongoDB SRV protocol not working in Debezium Server [DBZ-6701](https://issues.redhat.com/browse/DBZ-6701)
+* Add tzdata-java to UI installation Dockerfile [DBZ-6713](https://issues.redhat.com/browse/DBZ-6713)
+
+
+### Other changes since 2.3.0.Final
+
+* Refactor retry handling in Redis schema history [DBZ-6594](https://issues.redhat.com/browse/DBZ-6594)
+* NotificationIT with Oracle xstream fails randomly [DBZ-6672](https://issues.redhat.com/browse/DBZ-6672)
+* Flaky Oracle test: shouldCaptureChangesForTransactionsAcrossSnapshotBoundaryWithoutReemittingDDLChanges [DBZ-6673](https://issues.redhat.com/browse/DBZ-6673)
+
+
+
 ## 2.3.0.Final
 June 20th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409293)
 
