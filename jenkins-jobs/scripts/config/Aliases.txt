@@ -217,3 +217,4 @@ cjmencias,Christian Jacob Mencias
 bdbene,Balint Bene
 agukasian,Artur Gukasian
 Ychopada,Yashashree Chopada
+gurpiarbassi, Gurps Bassi
