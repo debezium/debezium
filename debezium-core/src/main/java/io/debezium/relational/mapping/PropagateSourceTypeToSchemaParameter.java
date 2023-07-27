@@ -26,6 +26,7 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
     private static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
     private static final String COLUMN_COMMENT_PARAMETER_KEY = "__debezium.source.column.comment";
+    private static final String COLUMN_NAME_PARAMETER_KEY = "__debezium.source.column.name";
 
     @Override
     public ValueConverter create(Column column) {
@@ -48,5 +49,9 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
         if (!Strings.isNullOrEmpty(column.comment())) {
             schemaBuilder.parameter(COLUMN_COMMENT_PARAMETER_KEY, column.comment());
         }
+
+        // set original column name to schema parameters in case the mode "avro" or "avro_unicode"
+        // will rename column name from property "field.name.adjustment.mode"
+        schemaBuilder.parameter(COLUMN_NAME_PARAMETER_KEY, column.name());
     }
 }

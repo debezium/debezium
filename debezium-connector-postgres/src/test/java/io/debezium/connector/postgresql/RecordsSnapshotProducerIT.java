@@ -669,21 +669,25 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "salary")
                         .build(), 7.25),
                 new SchemaAndValueField("salary2", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "salary2")
                         .build(), 8.25),
                 new SchemaAndValueField("a", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "a")
                         .build(), 12345.123),
                 new SchemaAndValueField("area", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "FLOAT83")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "area")
                         .build(), 12345.123));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
@@ -710,6 +714,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARBIT2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), new byte[]{ 5 }));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
@@ -914,6 +919,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), "V1"));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_table", expected)));
@@ -941,6 +947,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), Arrays.asList("V1", "V2")));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_array_table", expected)));

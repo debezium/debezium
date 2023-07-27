@@ -2468,6 +2468,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY3")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "salary3")
                         .build(), 123.456));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
@@ -2532,6 +2533,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERICEX")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), 123.45));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
@@ -2725,6 +2727,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), "V1"));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
@@ -2763,6 +2766,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .defaultValue("V2")
                         .build(), "V2"));
 
@@ -2801,6 +2805,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), Arrays.asList("V1", "V2")));
         assertRecordSchemaAndValues(expectedInsert, insertRec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
@@ -2816,6 +2821,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .build(), Arrays.asList("V1")));
         assertRecordSchemaAndValues(expectedUpdate, updateRec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
@@ -2922,6 +2928,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
                         .defaultValue("V1")
                         .build(), "V1"));
 

@@ -459,6 +459,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "vc")
                         .build(),
                 "\u017E\u0161"),
                 new SchemaAndValueField("vcv",
@@ -466,6 +467,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                                 .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                                 .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
                                 .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                                .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "vcv")
                                 .build(),
                         "bb"),
                 new SchemaAndValueField("ch", Schema.OPTIONAL_STRING_SCHEMA, "cdef"),
@@ -493,6 +495,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "d")
                         .build(),
                 1.1d),
                 new SchemaAndValueField("dzs",
@@ -500,6 +503,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                                 .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                                 .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "4")
                                 .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                                .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "dzs")
                                 .build(),
                         10d),
                 new SchemaAndValueField("dvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10.1111d),
