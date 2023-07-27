@@ -28,6 +28,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.util.SchemaUtils;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 
@@ -117,15 +118,11 @@ public class SinkRecordDescriptor {
 
                 case RECORD_HEADER:
                     final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
-                    record.headers().forEach((Header header) -> {
-                        headerSchemaBuilder.field(header.key(), header.schema());
-                    });
+                    record.headers().forEach((Header header) -> headerSchemaBuilder.field(header.key(), header.schema()));
 
                     final Schema headerSchema = headerSchemaBuilder.build();
                     final Struct headerStruct = new Struct(headerSchema);
-                    record.headers().forEach((Header header) -> {
-                        headerStruct.put(header.key(), header.value());
-                    });
+                    record.headers().forEach((Header header) -> headerStruct.put(header.key(), header.value()));
                     return headerStruct;
             }
         }
@@ -167,7 +164,6 @@ public class SinkRecordDescriptor {
 
         private FieldDescriptor(Schema schema, String name, boolean key, DatabaseDialect dialect) {
             this.schema = schema;
-            this.name = name;
             this.key = key;
             this.dialect = dialect;
 
@@ -175,7 +171,9 @@ public class SinkRecordDescriptor {
             this.type = dialect.getSchemaType(schema);
             this.typeName = type.getTypeName(dialect, schema, key);
 
-            LOGGER.trace("Field [{}] with schema [{}]", name, schema.type());
+            this.name = SchemaUtils.getSourceColumnName(schema).orElse(name);
+
+            LOGGER.trace("Field [{}] with schema [{}]", this.name, schema.type());
             LOGGER.trace("    Type      : {}", type.getClass().getName());
             LOGGER.trace("    Optional  : {}", schema.isOptional());
 
@@ -244,9 +242,9 @@ public class SinkRecordDescriptor {
         private DatabaseDialect dialect;
 
         // Internal build state
-        private List<String> keyFieldNames = new ArrayList<>();
-        private List<String> nonKeyFieldNames = new ArrayList<>();
-        private Map<String, FieldDescriptor> allFields = new LinkedHashMap<>();
+        private final List<String> keyFieldNames = new ArrayList<>();
+        private final List<String> nonKeyFieldNames = new ArrayList<>();
+        private final Map<String, FieldDescriptor> allFields = new LinkedHashMap<>();
 
         public Builder withDialect(DatabaseDialect dialect) {
             this.dialect = dialect;
@@ -341,9 +339,7 @@ public class SinkRecordDescriptor {
             }
 
             final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
-            record.headers().forEach((Header header) -> {
-                headerSchemaBuilder.field(header.key(), header.schema());
-            });
+            record.headers().forEach((Header header) -> headerSchemaBuilder.field(header.key(), header.schema()));
             final Schema headerSchema = headerSchemaBuilder.build();
             applyRecordKeyAsPrimaryKey(headerSchema);
 
@@ -397,8 +393,9 @@ public class SinkRecordDescriptor {
         }
 
         private void addKeyField(String name, Schema schema) {
-            keyFieldNames.add(name);
-            allFields.put(name, new FieldDescriptor(schema, name, true, dialect));
+            FieldDescriptor fieldDescriptor = new FieldDescriptor(schema, name, true, dialect);
+            keyFieldNames.add(fieldDescriptor.getName());
+            allFields.put(fieldDescriptor.getName(), fieldDescriptor);
         }
 
         private void readSinkRecordNonKeyData(SinkRecord record, boolean flattened) {
@@ -424,8 +421,9 @@ public class SinkRecordDescriptor {
         private void applyNonKeyFields(Schema schema) {
             for (Field field : schema.fields()) {
                 if (!keyFieldNames.contains(field.name())) {
-                    nonKeyFieldNames.add(field.name());
-                    allFields.put(field.name(), new FieldDescriptor(field.schema(), field.name(), false, dialect));
+                    FieldDescriptor fieldDescriptor = new FieldDescriptor(field.schema(), field.name(), false, dialect);
+                    nonKeyFieldNames.add(fieldDescriptor.getName());
+                    allFields.put(fieldDescriptor.getName(), fieldDescriptor);
                 }
             }
         }
