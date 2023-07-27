@@ -137,7 +137,7 @@ For each change that the snapshot captures, the connector emits a `read` event t
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:db2-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
 You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
-If you configure a different snapshot mode, the completes the snapshot by using a modified version of this workflow.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 
 .Default workflow that the {prodname} Db2 connector uses to perform an initial snapshot
 
@@ -439,28 +439,18 @@ However, the database schema can be changed at any time, which means that the co
 Also, a connector cannot necessarily apply the current schema to every event.
 If an event is relatively old, it's possible that it was recorded before the current schema was applied.
 
-////
-{prodname}requires the schema history so that it can apply the table structure in effect at the time an event occurs.
-When the connector is stopped and restarted if the database metadata has changed so that the current structure of the table does not match the structure that was in effect at the point in time we're reading changes from; which is why the topic is needed.
+To ensure correct processing of events that occur after a schema change, the {prodname} Db2 connector stores a snapshot of the new schema based on the structures of the Db2 change data tables, which mirror the structures of their associated data tables.
+The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
+The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
 
-The connector reads offsets at start-up if they exist.
-It then uses the position to recover the schema history topic, but only up to the position specified by the offsets.
+When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the Db2 change data tables from the last position that it read.
+Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
 
-If you apply schema changes to a table after the position of the last event that is recorded in the offsets, when the connector restarts, it starts from its last known position, which, according to the offsets file, excludes the most recent schema data in the dbhistory file
-It ignores the subsequent schema changes, skipping over them without reporting their presence.
-So the connector tries to process the event at the next offset without having the schema data.
+If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+You must be a Db2 database administrator with elevated privileges to update database schema.
+For more information about how to update Db2 database schema in {prodname} environments, see xref:db2-schema-evolution[Schema history eveolution].
 
-////
-
-To ensure correct processing of changes that occur after a schema change, Db2 includes in the transaction log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
-As the connector reads the transaction log and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
-The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
-In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the transaction log where each DDL statement appeared.
-
-When the connector restarts after either a crash or a graceful stop, it starts reading the transaction log from a specific position, that is, from a specific point in time.
-The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the transaction log where the connector is starting.
-
-This database schema history topic is for connector use only.
+The database schema history topic is for internal connector use only.
 Optionally, the connector can also xref:about-the-debezium-db2-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 .Additional resources

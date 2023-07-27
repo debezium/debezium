@@ -86,7 +86,7 @@ To enable the connector to establish a baseline for the current state of the dat
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`]  configuration property is set to its default value, which is `initial`.
 You can customize the way that the connector creates snapshots by changig the value of the `snapshot.mode` property.
-If you configure a different snapshot mode, the completes the snapshot by using a modified version of this workflow.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 
 [NOTE]
 ====
@@ -390,7 +390,7 @@ In a separate database schema history Kafka topic, the connector records all DDL
 When the connector restarts after either a crash or a graceful stop, it starts reading the redo log from a specific position, that is, from a specific point in time.
 The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the redo log where the connector is starting.
 
-This database schema history topic is for connector use only.
+This database schema history topic is internal for connector use only.
 Optionally, the connector can also xref:oracle-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 .Additional resources
