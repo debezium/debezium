@@ -144,8 +144,9 @@ If you configure a different snapshot mode, the connector completes the snapshot
 1. Establish a connection to the database.
 
 2. Determine which tables are in capture mode and should be included in the snapshot.
-  By default, the connector captures all non-system tables.
-  To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:db2-property-table-include-list[`table.include.list`] or xref:db2-property-table-exclude-list[`table.exclude.list`].
+   By default, the connector captures the data for all non-system tables.
+   After the snapshot completes, the connector continues to stream data for the specified tables.
+   If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
 
 3. Obtain a lock on each of the tables in capture mode.
   This lock ensures that no schema changes can occur in those tables until the snapshot completes.
@@ -153,18 +154,16 @@ If you configure a different snapshot mode, the connector completes the snapshot
 
 4. Read the highest (most recent) LSN position in the server's transaction log.
 
-5. Capture the schema of all tables that are in capture mode.
-The connector persists this information in its internal database schema history topic.
+5. Capture the schema of all tables or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic.
 The schema history provides information about the structure that is in effect when a change event occurs. +
 +
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
-However, for tables that are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
 
-There is a benefit to persisting schema information for tables that you did not include in the initial snapshot.
-When {prodname} has information about the structure of all existing tables, it can readily capture events from any existing table should you later decide that is needed.
-If you're certain that it won't be necessary to capture data from other tables in the future, you can modify the default behavior by changing the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to `true`.
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
 
 6. Release any locks obtained in Step 3.
@@ -204,7 +203,7 @@ If the connector stops again for any reason, after it restarts, it resumes strea
 The initial snapshot that a connector runs captures two types of information:
 
 Table data::
-Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`] property.
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 Schema data::
 DDL statements that describe the structural changes that are applied to tables.
 Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
@@ -213,18 +212,17 @@ After you run an initial snapshot, you might notice that the snapshot captures s
 By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
 Connectors require that the table's schema is present in the schema history topic before they can capture a table.
 By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
-
-For tables that are designated for capture in the `snapshot.include.collection.list`, the snapshot captures only the table structure.
-It does not capture table data.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
 
 In some cases, you might want to limit schema capture in the initial snapshot.
 This can be useful when you want to reduce the time required to complete a snapshot.
-But if the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
 .Additional information
 * xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
 * xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
-* xref:{context}-property-database-history-store-only-captured-tables-ddl[Using the `schema.history.internal.store.only.captured.tables.ddl` property to configure schema capture in an initial snapshot.  ].
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
 
 // Type: procedure
 [id="db2-capturing-data-from-tables-not-captured-by-the-initial-snapshot"]
@@ -297,7 +295,7 @@ You can add the schema by running a new schema snapshot, or by running an initia
 .Procedure
 
 Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
-1. Edit the xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`] property to specify the tables that you want to capture.
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
 2. Restart the connector.
 3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
 
