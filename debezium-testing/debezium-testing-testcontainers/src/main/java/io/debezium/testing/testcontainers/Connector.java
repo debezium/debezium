@@ -21,7 +21,9 @@ public class Connector {
     public enum State {
         UNASSIGNED,
         RUNNING,
+        RESTARTING,
         PAUSED,
+        STOPPED,
         FAILED,
         DESTROYED
     }
