@@ -15,6 +15,7 @@ import org.hibernate.query.Query;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
+import io.debezium.connector.jdbc.util.SchemaUtils;
 
 /**
  * An abstract implementation of {@link Type}, which all types should extend.
@@ -22,10 +23,6 @@ import io.debezium.connector.jdbc.relational.ColumnDescriptor;
  * @author Chris Cranford
  */
 public abstract class AbstractType implements Type {
-
-    private static final String SCHEMA_PARAMETER_COLUMN_TYPE = "__debezium.source.column.type";
-    private static final String SCHEMA_PARAMETER_COLUMN_SIZE = "__debezium.source.column.length";
-    private static final String SCHEMA_PARAMETER_COLUMN_PRECISION = "__debezium.source.column.scale";
 
     private DatabaseDialect dialect;
 
@@ -76,15 +73,15 @@ public abstract class AbstractType implements Type {
     }
 
     protected Optional<String> getSourceColumnType(Schema schema) {
-        return getSchemaParameter(schema, SCHEMA_PARAMETER_COLUMN_TYPE);
+        return SchemaUtils.getSourceColumnType(schema);
     }
 
     protected Optional<String> getSourceColumnSize(Schema schema) {
-        return getSchemaParameter(schema, SCHEMA_PARAMETER_COLUMN_SIZE);
+        return SchemaUtils.getSourceColumnSize(schema);
     }
 
     protected Optional<String> getSourceColumnPrecision(Schema schema) {
-        return getSchemaParameter(schema, SCHEMA_PARAMETER_COLUMN_PRECISION);
+        return SchemaUtils.getSourceColumnPrecision(schema);
     }
 
     protected Optional<String> getSchemaParameter(Schema schema, String parameterName) {
