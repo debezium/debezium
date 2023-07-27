@@ -80,6 +80,11 @@ public final class TestHelper {
      */
     static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
+    /**
+     * Key for schema parameter used to store a source column's name.
+     */
+    static final String COLUMN_NAME_PARAMETER_KEY = "__debezium.source.column.name";
+
     private TestHelper() {
     }
 

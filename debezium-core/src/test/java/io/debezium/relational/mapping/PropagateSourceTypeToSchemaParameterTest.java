@@ -39,7 +39,7 @@ public class PropagateSourceTypeToSchemaParameterTest {
     }
 
     @Test
-    @FixFor({ "DBZ-1073", "DBZ-4000" })
+    @FixFor({ "DBZ-1073", "DBZ-4000", "DBZ-6680" })
     public void shouldAddColumnScale() {
         int length = 5;
         int scale = 2;
@@ -60,5 +60,6 @@ public class PropagateSourceTypeToSchemaParameterTest {
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.length")).isEqualTo(String.valueOf(length));
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.scale")).isEqualTo(String.valueOf(scale));
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.comment")).isEqualTo(comment);
+        assertThat(schemaBuilder.parameters().get("__debezium.source.column.name")).isEqualTo("col");
     }
 }
