@@ -966,8 +966,8 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |(Optional) A password (of respective user) used to communicate with Redis. A password must be set if a user is set.
 
 |[[redis-ssl-enabled]]<<redis-ssl-enabled, `debezium.sink.redis.ssl.enabled`>>
-|
-|(Optional) Use SSL to communicate with Redis. Default 'false'
+| false
+|(Optional) A Boolean value that specifies whether connections to Redis require SSL. 
 
 |[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
 |`default`
