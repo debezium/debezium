@@ -5,7 +5,7 @@
  */
 package io.debezium.pipeline;
 
-import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.INITIAL_BLOCKING;
+import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.BLOCKING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
@@ -75,7 +75,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), INITIAL_BLOCKING, tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), BLOCKING, tableDataCollectionId());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -102,7 +102,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         Thread.sleep(2000); // Let's start stream some insert
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), INITIAL_BLOCKING, tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), BLOCKING, tableDataCollectionId());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 

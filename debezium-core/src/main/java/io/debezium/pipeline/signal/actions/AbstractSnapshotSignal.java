@@ -26,14 +26,14 @@ public abstract class AbstractSnapshotSignal<P extends Partition> implements Sig
 
     public enum SnapshotType {
         INCREMENTAL,
-        INITIAL_BLOCKING
+        BLOCKING
     }
 
     public static SnapshotType getSnapshotType(Document data) {
 
         final String typeStr = Optional.ofNullable(data.getString(FIELD_TYPE)).orElse(SnapshotType.INCREMENTAL.toString());
         try {
-            return SnapshotType.valueOf(typeStr);
+            return SnapshotType.valueOf(typeStr.toUpperCase());
         }
         catch (IllegalArgumentException e) {
             LOGGER.warn("Detected an unexpected snapshot type '{}'. Signal will be skipped.", typeStr);

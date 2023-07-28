@@ -62,7 +62,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
                         signalPayload, dataCollections, additionalCondition, surrogateKey);
                 break;
-            case INITIAL_BLOCKING:
+            case BLOCKING:
                 changeEventSourceCoordinator.doBlockingSnapshot(signalPayload.partition, signalPayload.offsetContext);
                 break;
         }

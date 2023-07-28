@@ -86,29 +86,28 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
-        boolean snapshotSchema = true;
-        boolean snapshotData = true;
+    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset, boolean isBlockingSnapshot) {
+
+        if (isBlockingSnapshot) {
+            return new SnapshottingTask(true, true);
+        }
 
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning() && false /* TODO check if streaming is pause */) {
+        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotSchema = databaseSchema.isStorageInitializationExecuted();
-            snapshotData = false;
-        }
-        else {
-            LOGGER.info("No previous offset has been found");
-            if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
-            }
-            else {
-                LOGGER.info("According to the connector configuration only schema will be snapshotted");
-            }
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
-            snapshotSchema = connectorConfig.getSnapshotMode().includeSchema();
+            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false);
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        LOGGER.info("No previous offset has been found");
+        if (connectorConfig.getSnapshotMode().includeData()) {
+            LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
+        }
+        else {
+            LOGGER.info("According to the connector configuration only schema will be snapshotted");
+        }
+
+        return new SnapshottingTask(connectorConfig.getSnapshotMode().includeSchema(), connectorConfig.getSnapshotMode().includeData());
     }
 
     @Override
