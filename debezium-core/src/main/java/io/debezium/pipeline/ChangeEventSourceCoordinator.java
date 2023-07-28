@@ -23,6 +23,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -196,12 +197,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     public void doBlockingSnapshot(P partition, OffsetContext offsetContext) {
-        // TODO
-        // 1: Pass partition and offset from signal DONE!
-        // 2: In streaming while loop check if needed to pause DONE for PostgreSQL
-        // 3: Call doSnapshot only when I am sure the streaming is in pause (maybe a condition) DONE!
-        // 4: resume the streaming DONE!
-        // 5: This method should not block. Run it in a separate thread. DONE!
 
         blockingSnapshotExecutor.submit(() -> {
 
@@ -224,8 +219,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     context.resumeStreaming();
                 }
             }
-            catch (InterruptedException e) { // TODO manage it
-                throw new RuntimeException(e);
+            catch (InterruptedException e) {
+                throw new DebeziumException("Blocking snapshot has been interrupted");
             }
         });
     }
@@ -267,7 +262,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
-        streamingConnected(true); // TODO call this when pausing streaming?
+        streamingConnected(true);
         streamingSource.init(offsetContext);
 
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(streamingSource.getOffsetContext()));

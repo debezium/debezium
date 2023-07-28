@@ -294,7 +294,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
                 .map(x -> "\"" + x + "\"")
                 .collect(Collectors.joining(", "));
         insertDocuments("dbA", "signals",
-                Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {\"type\": \"INITIAL_BLOCKING\",\"data-collections\": [" + dataCollectionIdsList + "]}}"));
+                Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {\"type\": \"BLOCKING\",\"data-collections\": [" + dataCollectionIdsList + "]}}"));
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {

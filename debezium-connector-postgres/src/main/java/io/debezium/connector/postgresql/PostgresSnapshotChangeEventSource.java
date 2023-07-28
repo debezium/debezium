@@ -57,9 +57,13 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(PostgresPartition partition, PostgresOffsetContext previousOffset, boolean isBlockingSnapshot) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
+
+        if (isBlockingSnapshot) {
+            return new SnapshottingTask(true, true);
+        }
 
         snapshotData = snapshotter.shouldSnapshot();
         if (snapshotData) {

@@ -62,7 +62,8 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
 
     @Override
     public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
-        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset);
+
+        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset, context.isPaused());
 
         final SnapshotContext<P, O> ctx;
         try {
@@ -171,7 +172,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset, boolean isBlockingSnapshot);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.

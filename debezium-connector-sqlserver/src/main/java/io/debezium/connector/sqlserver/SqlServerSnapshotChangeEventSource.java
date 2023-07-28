@@ -58,12 +58,16 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset, boolean isBlockingSnapshot) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
+        if (isBlockingSnapshot) {
+            return new SnapshottingTask(true, true);
+        }
+
         // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning() && false /* TODO check if streaming is pause */) {
+        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
             snapshotSchema = false;
             snapshotData = false;
