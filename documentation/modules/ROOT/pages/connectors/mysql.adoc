@@ -2727,6 +2727,15 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
+|[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
+|jdbc:mysql
+|JDBC protocol used by the driver connection string for connecting to the database.
+
+|[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
+|com.mysql.cj.jdbc.Driver
+|The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
+
+
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
 |IP address or host name of the MySQL database server.

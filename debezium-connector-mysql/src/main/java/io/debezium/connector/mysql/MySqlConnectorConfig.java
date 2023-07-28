@@ -614,8 +614,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
 
-    public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
-            .withDisplayName("Jdbc Driver Class Name")
+    public static final Field JDBC_DRIVER = Field.create(DATABASE_CONFIG_PREFIX + "jdbc.driver")
+            .withDisplayName("JDBC Driver Class Name")
             .withType(Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
             .withWidth(Width.MEDIUM)
@@ -623,6 +623,15 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withValidation(Field::isClassName)
             .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
+
+    public static final Field JDBC_PROTOCOL = Field.create(DATABASE_CONFIG_PREFIX + "protocol")
+            .withDisplayName("JDBC Protocol")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 42))
+            .withWidth(Width.MEDIUM)
+            .withDefault("jdbc:mysql")
+            .withImportance(Importance.LOW)
+            .withDescription("JDBC protocol to use with the driver.");
 
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
