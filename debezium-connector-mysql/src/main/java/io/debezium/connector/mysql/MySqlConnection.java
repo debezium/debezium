@@ -53,7 +53,7 @@ public class MySqlConnection extends JdbcConnection {
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
 
-    protected static final String URL_PATTERN = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
+    protected static final String URL_PATTERN = "${protocol}://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
 
     private final Map<String, String> originalSystemProperties = new HashMap<>();
     private final MySqlConnectionConfiguration connectionConfig;
@@ -498,6 +498,7 @@ public class MySqlConnection extends JdbcConnection {
             final Configuration dbConfig = config
                     .edit()
                     .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
+                    .withDefault(MySqlConnectorConfig.JDBC_PROTOCOL, MySqlConnectorConfig.JDBC_PROTOCOL.defaultValue())
                     .build()
                     .subset(DATABASE_CONFIG_PREFIX, true)
                     .merge(config.subset(DRIVER_CONFIG_PREFIX, true));
@@ -532,8 +533,10 @@ public class MySqlConnection extends JdbcConnection {
                     .without("queryInterceptors");
 
             this.jdbcConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
-            String driverClassName = this.jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
-            factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader());
+            String driverClassName = this.config.getString(MySqlConnectorConfig.JDBC_DRIVER);
+            Field protocol = MySqlConnectorConfig.JDBC_PROTOCOL;
+
+            factory = JdbcConnection.patternBasedFactory(MySqlConnection.URL_PATTERN, driverClassName, getClass().getClassLoader(), protocol);
         }
 
         private static String determineConnectionTimeZone(final Configuration dbConfig) {
