@@ -1,0 +1,19 @@
+To provide more flexibility in managing snapshots, {prodname} includes a supplementary ad hoc snapshot mechanism, known as _blocking snapshot_.
+Blocking snapshots rely on the {prodname} mechanism for {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
+
+Blocking snapshot is similar to the _initial snapshot_ with the difference that you can trigger it at run time.
+
+You can choose to use this type of snapshot over the standard initial snapshot process when:
+
+* You need to run it at running time for adding a new {data-collection}.
+* The {data-collection} you want to add is big and the performance of _incremental snapshotting_ does not fit your requirements.
+
+.Blocking snapshot process
+When you run a blocking snapshot, {prodname} stops the streaming and the start the same steps of the _initial snapshot_ to snapshot the {data-collection} you need.
+After the snapshot completes, the streaming will be resumed.
+
+Currently, you need to use the `snapshot.*` properties to configure the snapshot.
+
+.Possible duplicates
+Since there will be some delay from the time you trigger the snapshot sending the signal, to the time when the streaming will effectively stops and the snapshot starts,
+can happen that after the snapshot completes the event streams emits some record that has been just snapshotted.

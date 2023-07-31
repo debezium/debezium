@@ -308,6 +308,12 @@ public interface Snapshotter {
 endif::community[]
 
 // Type: concept
+[id="postgresql-blocking-snapshots"]
+==== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
 // ModuleID: how-debezium-postgresql-connectors-stream-change-event-records
 // Title: How {prodname} PostgreSQL connectors stream change event records
 [[postgresql-streaming-changes]]

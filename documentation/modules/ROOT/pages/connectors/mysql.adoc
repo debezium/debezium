@@ -781,6 +781,12 @@ transforms.snapshotasinsert.type=io.debezium.connector.mysql.transforms.ReadToIn
 endif::community[]
 
 // Type: concept
+[id="mysql-blocking-snapshots"]
+==== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} MySQL change event records
 [[mysql-topic-names]]

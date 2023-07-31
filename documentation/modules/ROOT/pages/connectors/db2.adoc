@@ -378,6 +378,12 @@ include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-sna
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: concept
+[id="db2-blocking-snapshots"]
+==== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
 // Title: How {prodname} Db2 connectors read change-data tables
 [id="how-debezium-db2-connectors-read-change-data-tables"]
 === Change-data tables
