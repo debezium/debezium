@@ -36,13 +36,28 @@ public class DebeziumTracingProducerInterceptor<K, V> implements ProducerInterce
     private Object interceptorInstance;
     private Method onSendMethod;
 
+    /**
+     * The constructor for the DebeziumTracingProducerInterceptor.
+     * <p>
+     * In this interceptor, we use a dynamic approach to handle the OpenTelemetry tracing interceptor due to versioning issues.
+     * The problem arises because different versions of OpenTelemetry have their tracing interceptor in different packages.
+     * For example, in versions before 1.23.0, the tracing interceptor is in the "io.opentelemetry.instrumentation.kafkaclients" package,
+     * but from version 1.23.0 onwards, it is in the "io.opentelemetry.instrumentation.kafkaclients.v2_6" package.
+     * <p>
+     * The OpenTelemetry interceptor is also part of an alpha package, which means it's subject to change,
+     * and there is no guarantee of backward compatibility. That's why a dynamic approach is used here.
+     * We maintain an array of possible class names (InterceptorVersion) for the OpenTelemetry tracing interceptor,
+     * and we attempt to instantiate one of them at runtime. We also use reflection to access the 'onSend' method from the interceptor.
+     * <p>
+     * This allows the Debezium Kafka Connector to work with different versions of OpenTelemetry.
+     */
     public DebeziumTracingProducerInterceptor() {
-        InterceptorVersion[] versions = {
-                new InterceptorVersion("io.opentelemetry.instrumentation.kafkaclients.v2_6.TracingProducerInterceptor"),
-                new InterceptorVersion("io.opentelemetry.instrumentation.kafkaclients.TracingProducerInterceptor"),
+        OpenTelemetryInterceptorVersion[] versions = {
+                new OpenTelemetryInterceptorVersion("io.opentelemetry.instrumentation.kafkaclients.v2_6.TracingProducerInterceptor"),
+                new OpenTelemetryInterceptorVersion("io.opentelemetry.instrumentation.kafkaclients.TracingProducerInterceptor"),
         };
 
-        for (InterceptorVersion version : versions) {
+        for (OpenTelemetryInterceptorVersion version : versions) {
             interceptorInstance = version.createInstance();
             if (interceptorInstance != null) {
                 onSendMethod = version.getMethod("onSend", ProducerRecord.class);
@@ -52,7 +67,7 @@ public class DebeziumTracingProducerInterceptor<K, V> implements ProducerInterce
             }
         }
 
-        if (interceptorInstance == null || onSendMethod == null) {
+        if (onSendMethod == null) {
             LOGGER.error("Unable to instantiate any known version of the interceptor");
             throw new IllegalStateException("Unable to instantiate interceptor");
         }
