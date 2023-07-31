@@ -161,6 +161,12 @@ include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-sna
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+3]
 
 // Type: concept
+[id="oracle-blocking-snapshots"]
+==== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
 // Title: Default names of Kafka topics that receive {prodname} Oracle change event records
 [[oracle-topic-names]]

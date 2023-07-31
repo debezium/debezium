@@ -4,7 +4,7 @@ Any future change event data that the connector captures comes in through the st
 
 However, in some situations the data that the connector obtained during the initial snapshot might become stale, lost, or incomplete.
 To provide a mechanism for recapturing {data-collection} data, {prodname} includes an option to perform ad hoc snapshots.
-The following changes in a database might be cause for performing an ad hoc snapshot:
+The following changes in a database might because for performing an ad hoc snapshot:
 
 * The connector configuration is modified to capture a different set of {data-collection}s.
 * Kafka topics are deleted and must be rebuilt.
@@ -24,7 +24,12 @@ Also, the snapshot can capture a subset of the contents of the {data-collection}
 endif::[]
 
 You specify the {data-collection}s to capture by sending an `execute-snapshot` message to the signaling {data-collection}.
-Set the type of the `execute-snapshot` signal to `incremental`, and provide the names of the {data-collection}s to include in the snapshot, as described in the following table:
+Set the type of the `execute-snapshot` signal to `incremental` or `blocking`, and provide the names of the {data-collection}s to include in the snapshot, as described in the following table:
+
+[NOTE]
+====
+Currently `data-collections`, `additional-condition` and `surrogate-key' are only supported by `incremental` snapshot type. For the `blocking` snapshot please refer to the `snapshot.*` connectors properties.
+====
 
 .Example of an ad hoc `execute-snapshot` signal record
 [cols="2,2,6",options="header"]
@@ -34,8 +39,7 @@ Set the type of the `execute-snapshot` signal to `incremental`, and provide the 
 |`type`
 |`incremental`
 | Specifies the type of snapshot that you want to run. +
-Setting the type is optional.
-Currently, you can request only `incremental` snapshots.
+Currently, you can request `incremental` or `blocking` snapshots.
 
 
 |`data-collections`
@@ -58,14 +62,13 @@ endif::[]
 
 |===
 
-.Triggering an ad hoc snapshot
+.Triggering an ad hoc incremental snapshot
 
-You initiate an ad hoc snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
+You initiate an ad hoc incremental snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
 After the connector processes the message, it begins the snapshot operation.
 The snapshot process reads the first and last primary key values and uses those values as the start and end point for each {data-collection}.
 Based on the number of entries in the {data-collection}, and the configured chunk size, {prodname} divides the {data-collection} into chunks, and proceeds to snapshot each chunk, in succession, one at a time.
 
-Currently, the `execute-snapshot` action type triggers {link-prefix}:{link-signalling}#debezium-signaling-incremental-snapshots[incremental snapshots] only.
 For more information, see xref:#{context}-incremental-snapshots[Incremental snapshots].
 ////
 .Prerequisites
@@ -88,3 +91,11 @@ For example:
 INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema2.table2"]}')
 ----
 ////
+
+.Triggering an ad hoc blocking snapshot
+
+You initiate an ad hoc blocking snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
+After the connector processes the message, it begins the snapshot operation.
+The snapshot process stops the streaming and then execute the same operation of an initial snapshot. After the snapshot is finished the streaming will be resumed.
+
+For more information, see xref:#{context}-blocking-snapshots[Blocking snapshots].
