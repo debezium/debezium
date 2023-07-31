@@ -23,10 +23,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.antlr.listener.AlterTableParserListener;
 import io.debezium.connector.oracle.antlr.listener.CreateTableParserListener;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.olr.OpenLogReplicatorStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -1055,6 +1055,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             final LogInterceptor logminerlogInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
             final LogInterceptor errorLogInterceptor = new LogInterceptor(ErrorHandler.class);
             final LogInterceptor xstreamLogInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+            final LogInterceptor olrLogInterceptor = new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
 
             // These roles are needed in order to perform certain DDL operations below.
             // Any roles granted here should be revoked in the finally block.
@@ -1081,12 +1082,28 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             connection.execute("DROP PACKAGE pkgtest");
 
             // Resolve what text to look for depending on connector implementation
-            final String logText = ConnectorAdapter.LOG_MINER.equals(TestHelper.adapter()) ? "DDL: " : "Processing DDL event ";
+            final String logText;
+            final LogInterceptor interceptor;
+            switch (TestHelper.adapter()) {
+                case LOG_MINER:
+                    logText = "DDL: ";
+                    interceptor = logminerlogInterceptor;
+                    break;
+                case XSTREAM:
+                    logText = "Processing DDL event ";
+                    interceptor = xstreamLogInterceptor;
+                    break;
+                case OLR:
+                    logText = "Cannot process DDL";
+                    interceptor = olrLogInterceptor;
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected adapter: " + TestHelper.adapter());
+            }
 
             Awaitility.await()
                     .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                    .until(() -> logminerlogInterceptor.countOccurrences(logText) == expected
-                            || xstreamLogInterceptor.countOccurrences(logText) == expected);
+                    .until(() -> interceptor.countOccurrences(logText) == expected);
 
             stopConnector();
             waitForConnectorShutdown(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);

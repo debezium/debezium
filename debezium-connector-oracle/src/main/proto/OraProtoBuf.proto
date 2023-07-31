@@ -1,0 +1,157 @@
+/* Copyright (C) 2018-2023 Adam Leszczynski (aleszczynski@bersler.com)
+
+This file is part of OpenLogReplicator.
+
+OpenLogReplicator is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published
+by the Free Software Foundation; either version 3, or (at your option)
+any later version.
+
+OpenLogReplicator is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with OpenLogReplicator; see the file LICENSE;  If not see
+<http://www.gnu.org/licenses/>.  */
+
+syntax = "proto3";
+package OpenLogReplicator.pb;
+
+option java_package="io.debezium.connector.oracle.proto";
+option java_outer_classname = "OpenLogReplicatorProtocol";
+// option cc_enable_arenas = true;
+// option optimize_for = SPEED;
+
+enum Op {
+    BEGIN  = 0; //begin
+    COMMIT = 1; //commit
+    INSERT = 2; //c
+    UPDATE = 3; //u
+    DELETE = 4; //d
+    DDL = 5;    //ddl
+    CHKPT = 6; //checkpoint
+}
+
+enum ColumnType {
+    UNKNOWN = 0;
+    VARCHAR2 = 1; //1
+    NUMBER = 2; //2, FLOAT
+    LONG = 3;  //8
+    DATE = 4; //12
+    RAW = 5; //23
+    LONG_RAW = 6; //24
+    ROWID = 7; //69
+    CHAR = 8; //96, NCHAR
+    BINARY_FLOAT = 9; //100
+    BINARY_DOUBLE = 10; //101
+    CLOB = 11; //112, NCLOB
+    BLOB = 12; //113
+    TIMESTAMP = 13; //180
+    TIMESTAMP_WITH_TZ = 14; //181
+    INTERVAL_YEAR_TO_MONTH = 15; //182
+    INTERVAL_DAY_TO_SECOND = 16; //183
+    UROWID = 17; //208
+    TIMESTAMP_WITH_LOCAL_TZ = 18; //231
+}
+
+service OpenLogReplicator {
+    rpc Redo(stream RedoRequest) returns (stream RedoResponse);
+}
+
+enum RequestCode {
+    INFO = 0;
+    START = 1;
+    REDO = 2;
+    CONFIRM = 3;
+}
+
+enum ResponseCode {
+    READY = 0;
+    FAILED_START = 1;
+    STARTED = 2;
+    ALREADY_STARTED = 3;
+    STREAMING = 4;
+    PAYLOAD = 5;
+    INVALID_DATABASE = 6;
+    INVALID_COMMAND = 7;
+}
+
+message Value {
+    string name = 1;
+    oneof datum {
+        int64 value_int = 2;
+        float value_float = 3;
+        double value_double = 4;
+        string value_string = 5;
+        bytes value_bytes = 6;
+    }
+}
+
+message Column {
+    string name = 1;
+    ColumnType type = 2;
+    int32 length = 3;
+    int32 precision = 4;
+    int32 scale = 5;
+    bool nullable = 6;
+}
+
+message Schema {
+    string owner = 1;
+    string name = 2;
+    uint32 obj = 3;
+    oneof tm_val {
+        uint64 tm = 4;
+        string tms = 5;
+    }
+    repeated Column column = 6;
+}
+
+message Payload {
+    Op op = 1;
+    Schema schema = 2;
+    string rid = 3;
+    repeated Value before = 4;
+    repeated Value after = 5;
+    string ddl = 6;
+    uint32 seq = 7;
+    uint64 offset = 8;
+    bool redo = 9;
+    optional uint64 num = 10;
+}
+
+message SchemaRequest {
+    string mask = 1;
+    string filter = 2;
+}
+
+message RedoRequest {
+    RequestCode code = 1;
+    string database_name = 2;
+    oneof tm_val {
+        uint64 scn = 3;
+        string tms = 4;
+        int64 tm_rel = 5;
+    }
+    optional uint64 seq = 6;
+    repeated SchemaRequest schema = 7;
+}
+
+message RedoResponse {
+    ResponseCode code = 1;
+    oneof scn_val {
+        uint64 scn = 2;
+        string scns = 3;
+    }
+    oneof tm_val {
+        uint64 tm = 4;
+        string tms = 5;
+    }
+    oneof xid_val {
+        string xid = 6;
+        uint64 xidn = 7;
+    }
+    repeated Payload payload = 8;
+}

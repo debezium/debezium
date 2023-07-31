@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.logminer.processor.TruncateReceiver;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;

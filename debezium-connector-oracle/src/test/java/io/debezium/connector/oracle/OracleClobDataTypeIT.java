@@ -31,6 +31,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.processor.TransactionCommitConsumer;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -1073,6 +1074,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     @Test
     @FixFor({ "DBZ-2948", "DBZ-5773" })
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1115,10 +1117,69 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
                 "dbms_lob.erase(loc_c, amount, 1); end;");
 
         // Wait until the log has recorded the message.
-        // Wait until the log has recorded the message.
         Awaitility.await().atMost(Duration.ofMinutes(1))
                 .until(() -> logminerLogInterceptor.containsWarnMessage("LOB_ERASE for table")
                         || xstreamLogInterceptor.containsWarnMessage("LOB_ERASE for table"));
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor({ "DBZ-2948", "DBZ-5773" })
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
+    public void shouldStreamChangesWhenLobEraseIsDetected() throws Exception {
+        String ddl = "CREATE TABLE CLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_CLOB clob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.clob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert record
+        Clob clob1 = createClob(part(JSON_DATA, 0, 24000));
+        connection.prepareQuery("INSERT INTO debezium.clob_test values (1, ?)", p -> p.setClob(1, clob1), null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidInsert(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getClobString(clob1));
+
+        // Execute LOB_ERASE
+        connection.execute("DECLARE loc_c CLOB; amount integer; BEGIN "
+                + "SELECT \"VAL_CLOB\" INTO loc_c FROM CLOB_TEST WHERE ID = 1 for update; "
+                + "amount := 10;"
+                + "dbms_lob.erase(loc_c, amount, 1); end;");
+
+        // Wait until the log has recorded the message.
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        Struct before = before(record);
+        assertThat(before.get("ID")).isEqualTo(1);
+        assertThat(before.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+        after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
         assertNoRecordsToConsume();
     }
 

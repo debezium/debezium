@@ -1139,6 +1139,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
+        },
+
+        /**
+         * This is based on OpenLogReplicator project.
+         */
+        OLR("OLR") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.olr.OpenLogReplicatorAdapter",
+                        OracleConnectorConfig.class,
+                        connectorConfig);
+            }
         };
 
         public abstract String getConnectionUrl();

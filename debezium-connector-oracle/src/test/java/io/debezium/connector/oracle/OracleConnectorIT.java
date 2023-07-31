@@ -74,6 +74,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBou
 import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogMinerAdapter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
@@ -506,7 +507,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
             assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
 
-            if (ConnectorAdapter.LOG_MINER != adapter) {
+            if (ConnectorAdapter.XSTREAM == adapter) {
                 assertThat(record3.sourceOffset().containsKey(SourceInfo.LCR_POSITION_KEY)).isTrue();
                 assertThat(record3.sourceOffset().containsKey(SourceInfo.SCN_KEY)).isFalse();
             }
@@ -514,7 +515,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             source = (Struct) ((Struct) record3.value()).get("source");
             assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("false");
             assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
-            if (ConnectorAdapter.LOG_MINER != adapter) {
+            if (ConnectorAdapter.XSTREAM == adapter) {
                 assertThat(source.get(SourceInfo.LCR_POSITION_KEY)).isNotNull();
             }
 
@@ -1965,6 +1966,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3036")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "IOT tables are skipped")
     public void shouldHandleParentChildIndexOrganizedTables() throws Exception {
         TestHelper.dropTable(connection, "test_iot");
         try {
@@ -4423,6 +4425,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5441")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "binary objects are skipped")
     public void shouldGracefullySkipObjectBasedTables() throws Exception {
         TestHelper.dropTable(connection, "dbz5441");
         try {
