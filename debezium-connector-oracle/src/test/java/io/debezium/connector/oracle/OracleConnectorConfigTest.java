@@ -157,7 +157,7 @@ public class OracleConnectorConfigTest {
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
                         .build());
-        assertEquals(connectorConfig.getQueryFetchSize(), 2_000);
+        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
     }
 
     @Test
@@ -166,9 +166,9 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                        .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 10_000)
+                        .with(OracleConnectorConfig.QUERY_FETCH_SIZE, 15_000)
                         .build());
-        assertEquals(connectorConfig.getQueryFetchSize(), 10_000);
+        assertEquals(connectorConfig.getQueryFetchSize(), 15_000);
     }
 
     @Test
