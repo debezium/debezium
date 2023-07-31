@@ -1645,7 +1645,7 @@ Set this property to one of the following values:
 +
 [WARNING]
 ====
-If you set the value of this property to `database`, to use {prodname} signaling, you the signaling collection that you create must reside in the database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+To support {link-prefix}:{link-signalling}#[{prodname} signaling], if you set `capture.scope` is set to `database`, the xref:mongodb-property-signal-data-collection[signaling data collection] must reside in a database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
