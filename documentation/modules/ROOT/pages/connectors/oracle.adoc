@@ -3391,12 +3391,12 @@ After the connector inserts records into the configured table, it is able to rec
 Use this property to prevent snapshot interruptions when you start multiple connectors in a cluster, which might cause re-balancing of connectors.
 
 |[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
-|`2000`
+|`10000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector reads table contents in multiple batches of the specified size.
 
 |[[oracle-property-query-fetch-size]]<<oracle-property-query-fetch-size, `+query.fetch.size+`>>
-|`2000`
+|`10000`
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
 Using a value of `0` will use the JDBC driver's default fetch size.
 
