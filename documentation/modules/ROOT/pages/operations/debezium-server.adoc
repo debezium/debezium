@@ -485,7 +485,7 @@ The most frequent used are:
 [id="debezium-quarkus-http-port"]
 |`quarkus.http.port`
 |8080
-|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information. Health can be accessed on http://host:8080/q/health
+|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information. Health can be accessed on `\http://host:8080/q/health`.
 
 [id="debezium-quarkus-log-level"]
 |`quarkus.log.level`
