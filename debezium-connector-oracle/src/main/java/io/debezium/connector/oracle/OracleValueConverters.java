@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static io.debezium.util.NumberConversions.BYTE_FALSE;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -425,10 +426,12 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
-
-        if (data instanceof String) {
-            // In the case when the value is of String, convert it to a BigDecimal so that we can then
-            // aptly apply the scale adjustment below.
+        else if (data instanceof BigInteger) {
+            // OpenLogReplicator
+            data = toBigDecimal(column, fieldDefn, data.toString());
+        }
+        else if (data instanceof String) {
+            // LogMiner
             data = toBigDecimal(column, fieldDefn, data);
         }
 
@@ -620,6 +623,10 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             data = resolveTimestampStringAsInstant((String) data);
+        }
+        else if (data instanceof Long) {
+            // todo: should we do this in OpenLogReplicator?
+            data = Instant.ofEpochSecond(0, (long) data);
         }
         return super.convertTimestampToEpochNanos(column, fieldDefn, fromOracleTimeClasses(column, data));
     }

@@ -2968,8 +2968,10 @@ The connector is also unable to recover its database schema history topic.
 |`logminer`
 |The adapter implementation that the connector uses when it streams database changes.
 You can set the following values:
-`logminer`(default):: The connector uses the native Oracle LogMiner API.
+
+`logminer` (default):: The connector uses the native Oracle LogMiner API.
 ifdef::community[]
+`olr`:: The connector uses OpenLogReplicator.
 `xstream`:: The connector uses the Oracle XStreams API.
 endif::community[]
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
