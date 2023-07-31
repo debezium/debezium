@@ -122,27 +122,216 @@ endif::product[]
 === Snapshots
 
 SQL Server CDC is not designed to store a complete history of database changes.
-For the {prodname} SQL Server connector to establish a baseline for the current state of the database,
-it uses a process called _snapshotting_.
+For the {prodname} SQL Server connector to establish a baseline for the current state of the database, it uses a process called _snapshotting_.
+The initial snapshot captures the structure and data of the tables in the database.
 
-You can configure how the connector creates snapshots.
-By default, the connector's snapshot mode is set to `initial`.
-Based on this `initial` snapshot mode, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
-This initial snapshot captures the structure and data for any tables that match the criteria defined by the `include` and `exclude` properties that are configured for the connector (for example, `table.include.list`, `column.include.list`, `table.exclude.list`, and so forth).
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 
-When the connector creates a snapshot, it completes the following tasks:
+.Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
-1. Determines the tables to be captured.
-2. Obtains a lock on the SQL Server tables for which CDC is enabled to prevent structural changes from occurring during creation of the snapshot.
-The level of the lock is determined by `snapshot.isolation.mode` configuration option.
-3. Reads the maximum log sequence number (LSN) position in the server's transaction log.
-4. Captures the structure of all relevant tables.
-5. Releases the locks obtained in Step 2, if necessary. In most cases, locks are held for only a short period of time.
-6. Scans the SQL Server source tables and schemas to be captured based on the LSN position that was read in Step 3, generates a `READ` event for each row in the table, and writes the events to the Kafka topic for the table.
-7. Records the successful completion of the snapshot in the connector offsets.
+1.  Establish a connection to the database.
+
+2.  Determine the tables to be captured.
+   By default, the connector captures all non-system tables.
+   To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:sqlserver-property-table-include-list[`table.include.list`] or xref:sqlserver-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a lock on the SQL Server tables for which CDC is enabled to prevent structural changes from occurring during creation of the snapshot.
+   The level of the lock is determined by the xref:sqlserver-property-snapshot-isolation-mode[`snapshot.isolation.mode`] configuration property.
+
+4. Read the maximum log sequence number (LSN) position in the server's transaction log.
+
+5. Capture the structure of all non-system, or all tables that are designated for capture.
+The connector persists this information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+6. Release the locks obtained in Step 3, if necessary.
+Other database clients can now write to any previously locked tables.
+
+7. At the LSN position read in Step 4, the connector scans the tables to be captured.
+   During the scan, the connector completes the following tasks:
+
+.. Confirms that the table was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+   All `read` events contain the same LSN position, which is the LSN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the table.
+
+8. Records the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the tables that are enabled for CDC.
 From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+// Type: procedure
+[id="sqlserver-capturing-data-from-tables-not-captured-by-the-initial-snapshot"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
+For information about capturing data from a new table that has undergone structural changes, see xref:db2-capturing-data-from-new-tables-with-schema-changes[].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Apply the following changes to the connector configuration:
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
+This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables. +
++
+[NOTE]
+====
+Snapshots that capture the schema for all tables require more time to complete.
+====
+.. Add the tables that you want the connector to capture to xref:{context}-property-table-include-list[`table.include.list`].
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
+`initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
+If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
+`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+Unlike a full data snapshot, this option does not capture any table data.
+Use this option if ou want to restart the connector more quickly than with a full snapshot.
+
+5. Restart the connector.
+The connector completes the type of snapshot specified by the `snapshot.mode`.
+6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:{context}-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+The connector runs the snapshot while it continues to stream real-time changes from the tables.
+Running an incremental snapshot captures the following data changes:
++
+* For tables that the connector previously captured, the incremental snapsot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
+* For newly added tables, the incremental snapshot captures all existing table rows.
+
+// Type: procedure
+[id="sqlserver-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-sqlserver-ad-hoc-snapshots
@@ -255,6 +444,34 @@ If the default topic name do not meet your requirements, you can configure custo
 To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
+// Type: concept
+// ModuleID: how-debezium-sql-server-connectors-handle-database-schema-changes
+// Title: How {prodname} SQL Server connectors handle database schema changes
+[[sqlserver-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of change events that occur after a schema change, the {prodname} SQL Server connector stores a snapshot of the new schema based on the structure in the SQL Server change tables, which mirror the structure of their associated data tables.
+The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
+The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
+
+When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the SQL Server CDC tables from the last position that it read.
+Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
+
+If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+You must be a SQL Server database administrator with elevated privileges to update database schema.
+For more information about updating SQL Server database schema in {prodname} environmenbts, see xref:sqlserver-schema-evolution[Database schema evolution].
+
+The database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:about-the-debezium-sqlserver-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+.Additional resources
+
+* xref:sqlserver-topic-names[Default names for topics] that receive {prodname} event records.
 
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-uses-the-schema-change-topic
@@ -262,7 +479,7 @@ For more information about using the logical topic routing SMT to customize topi
 [[about-the-debezium-sqlserver-connector-schema-change-topic]]
 === Schema change topic
 
-For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of the schema change events that are applied to captured tables in the database.
+For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of the schema change events that are applied to tables in the database.
 The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the logical server name that is specified in the xref:sqlserver-property-topic-prefix[`topic.prefix`] configuration property.
 
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
@@ -2649,7 +2866,7 @@ Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-
 |`false`
 | Allow schema changes during an incremental snapshot. When enabled the connector will detect schema change during an incremental snapshot and re-select a current chunk to avoid locking DDLs. +
  +
-Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. Another limitation is that if a schema change affects only columns' default values, then the change won't be detected until the DDL is processed from the binlog stream. This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.
+Note that changes to a primary key are not supported and can cause incorrect results if performed during an incremental snapshot. Another limitation is that if a schema change affects only columns' default values, then the change won't be detected until the DDL is processed from the transaction log stream. This doesn't affect the snapshot events' values, but the schema of snapshot events may have outdated defaults.
 
 |[[sqlserver-property-incremental-snapshot-chunk-size]]<<sqlserver-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
