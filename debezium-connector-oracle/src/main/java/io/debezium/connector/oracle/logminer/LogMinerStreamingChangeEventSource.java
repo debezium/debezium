@@ -755,6 +755,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @return an optional that contains the deviated scn or empty if the operation should be performed again
      */
     private Optional<Scn> calculateDeviatedEndScn(Scn lowerboundsScn, Scn upperboundsScn, Duration deviation) {
+        if (archiveLogOnlyMode) {
+            // When archive-only mode is enabled, deviation should be ignored, even when enabled.
+            return Optional.of(upperboundsScn);
+        }
+
         final Optional<Scn> calculatedDeviatedEndScn = getDeviatedMaxScn(upperboundsScn, deviation);
         if (calculatedDeviatedEndScn.isEmpty() || calculatedDeviatedEndScn.get().isNull()) {
             // This happens only if the deviation calculation is outside the flashback/undo area or an exception was thrown.
@@ -785,6 +790,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     private Optional<Scn> getDeviatedMaxScn(Scn upperboundsScn, Duration deviation) {
         try {
+            final Scn currentScn = jdbcConnection.getCurrentScn();
+            final Optional<Instant> currentInstant = jdbcConnection.getScnToTimestamp(currentScn);
+            final Optional<Instant> upperInstant = jdbcConnection.getScnToTimestamp(upperboundsScn);
+            if (currentInstant.isPresent() && upperInstant.isPresent()) {
+                // If the upper bounds satisfies the deviation time
+                if (Duration.between(upperInstant.get(), currentInstant.get()).compareTo(deviation) >= 0) {
+                    LOGGER.trace("Upper bounds {} is within deviation period, using it.", upperboundsScn);
+                    return Optional.of(upperboundsScn);
+                }
+            }
             return Optional.of(jdbcConnection.getScnAdjustedByTime(upperboundsScn, deviation));
         }
         catch (SQLException e) {
