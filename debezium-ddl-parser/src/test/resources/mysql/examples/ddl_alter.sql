@@ -55,6 +55,7 @@ ALTER TABLE T1 ALTER CHECK C_CONS ENFORCED;
 ALTER TABLE T1 ALTER CHECK C_CONS NOT ENFORCED;
 ALTER TABLE T1 ALTER I SET VISIBLE;
 ALTER TABLE T1 ALTER I SET INVISIBLE;
+ALTER TABLE IF EXISTS `add_test` ADD COLUMN IF NOT EXISTS `new_col` TEXT DEFAULT 'my_default';
 #end
 #begin
 -- Alter database
@@ -128,6 +129,8 @@ alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE4
 alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
     require none password expire default account unlock password_lock_time unbounded;
 alter user 'user'@'%' identified by 'newpassword' retain current password;
+alter user if exists 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history default;
 ALTER USER 'mattias.hultman' DEFAULT ROLE `prod-spain-mysql-read-only`@`%`;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
