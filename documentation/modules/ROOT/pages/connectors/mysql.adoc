@@ -2989,31 +2989,6 @@ This option is deprecated, please use xref:mysql-property-event-processing-failu
  +
 `skip` passes over the problematic event and does not log anything.
 
-|[[mysql-property-max-batch-size]]<<mysql-property-max-batch-size, `+max.batch.size+`>>
-|`2048`
-|Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
-
-|[[mysql-property-max-queue-size]]<<mysql-property-max-queue-size, `+max.queue.size+`>>
-|`8192`
-|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
-When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
-The blocking queue can provide backpressure for reading change events from the database
-in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
-Events that are held in the queue are disregarded when the connector periodically records offsets.
-Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
-
-|[[mysql-property-max-queue-size-in-bytes]]<<mysql-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
-|`0`
-|A long integer value that specifies the maximum volume of the blocking queue in bytes.
-By default, volume limits are not specified for the blocking queue.
-To specify the number of bytes that the queue can consume, set this property to a positive long value. +
-If xref:mysql-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
-For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
-
-|[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
-
 |[[mysql-property-connect-timeout-ms]]<<mysql-property-connect-timeout-ms, `+connect.timeout.ms+`>>
 |`30000`
 |A positive integer value that specifies the maximum time in milliseconds this connector should wait after trying to connect to the MySQL database server before timing out. Defaults to 30 seconds.
@@ -3175,6 +3150,31 @@ If the size of the transaction is larger than the buffer then {prodname} must re
 NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
 endif::community[]
 
+|[[mysql-property-max-batch-size]]<<mysql-property-max-batch-size, `+max.batch.size+`>>
+|`2048`
+|Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
+
+|[[mysql-property-max-queue-size]]<<mysql-property-max-queue-size, `+max.queue.size+`>>
+|`8192`
+|Positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads events streamed from the database, it places the events in the blocking queue before it writes them to Kafka.
+The blocking queue can provide backpressure for reading change events from the database
+in cases where the connector ingests messages faster than it can write them to Kafka, or when Kafka becomes unavailable.
+Events that are held in the queue are disregarded when the connector periodically records offsets.
+Always set the value of `max.queue.size` to be larger than the value of xref:{context}-property-max-batch-size[`max.batch.size`].
+
+|[[mysql-property-max-queue-size-in-bytes]]<<mysql-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
+|`0`
+|A long integer value that specifies the maximum volume of the blocking queue in bytes.
+By default, volume limits are not specified for the blocking queue.
+To specify the number of bytes that the queue can consume, set this property to a positive long value. +
+If xref:mysql-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
+For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
+
+|[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `+poll.interval.ms+`>>
+|`500`
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
+
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
@@ -3309,7 +3309,7 @@ Use the following format to specify the collection name: +
 
 |[[mysql-property-signal-enabled-channels]]<<mysql-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
-|List of the signaling channel names that are enabled for the connector. 
+|List of the signaling channel names that are enabled for the connector.
 By default, the following channels are available:
 
 * `source`
@@ -3322,7 +3322,7 @@ Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-si
 |[[mysql-property-notification-enabled-channels]]<<mysql-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 | List of notification channel names that are enabled for the connector.
-By default, the following channels are available: 
+By default, the following channels are available:
 
 * `sink`
 * `log`
