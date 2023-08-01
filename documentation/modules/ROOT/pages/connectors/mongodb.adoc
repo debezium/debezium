@@ -1582,17 +1582,6 @@ To match the name of a namespace, {prodname} applies the regular expression that
 That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings that might be present in a database name. +
 If you include this property in the configuration, do not set the `collection.include.list` property.
 
-|[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
-|Specifies the criteria for performing a snapshot when the connector starts.
-Set the property to one of the following values:
-
-`initial`::
-When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
-
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
-
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
 |Specifies the method that the connector uses to capture `update` event changes from a MongoDB server.
@@ -1623,16 +1612,6 @@ The full document that the connector then receives in response to its query refl
 
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
-
-|[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
-| All collections specified in `collection.include.list`
-|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
-The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
-This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
-This property does not affect the behavior of incremental snapshots. +
-
-To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
 
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
@@ -1675,10 +1654,6 @@ This property has an effect only when the connector is connected to a sharded Mo
 When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded`, or if the connector is connected to an unsharded MongoDB replica set deployment, the connector ignores this setting, and defaults to using only a single task.
 ====
 
-|[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
-|`1`
-|Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
-
 |[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
 |Controls whether a _delete_ event is followed by a tombstone event. +
@@ -1688,17 +1663,6 @@ When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`
 `false` - only a _delete_ event is emitted. +
  +
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
-
-|[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
-|No default
-|An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
-Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
-
-|[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
-|`0`
-|Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
-The connector will read the collection contents in multiple batches of this size. +
-Defaults to 0, which indicates that the server chooses an appropriate fetch size.
 
 |[[mongodb-property-schema-name-adjustment-mode]]<<mongodb-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
@@ -1810,6 +1774,41 @@ By default, for consistency with other Debezium connectors, truncate operations 
 
 For each collection that you specify, also specify another configuration property: `snapshot.collection.filter.overrides._databaseName_._collectionName_`. For example, the name of the other configuration property might be: `snapshot.collection.filter.overrides.customers.orders`. Set this property to a valid filter expression that retrieves only the items that you want in the snapshot. When the connector performs a snapshot, it retrieves only the items that matches the filter expression.
 
+|[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
+|No default
+|An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
+Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
+
+|[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
+|`0`
+|Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
+The connector will read the collection contents in multiple batches of this size. +
+Defaults to 0, which indicates that the server chooses an appropriate fetch size.
+
+|[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All collections specified in `collection.include.list`
+|An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
+The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
+This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `never`. +
+This property does not affect the behavior of incremental snapshots. +
+
+To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
+That is, the specified expression is matched against the entire name string of the schema; it does not match substrings that might be present in a schema name.
+
+|[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
+|`1`
+|Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
+
+|[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
+|`initial`
+|Specifies the criteria for performing a snapshot when the connector starts.
+Set the property to one of the following values:
+
+`initial`::
+When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+
+`never`::
+When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
 
 |[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
