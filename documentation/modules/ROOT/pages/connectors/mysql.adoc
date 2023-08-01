@@ -3402,6 +3402,10 @@ Specify one of the following options:
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
+|[[mysql-property-errors-max-retires]]<<mysql-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
 |===
 
 [id="debezium-mysql-connector-database-history-configuration-properties"]
