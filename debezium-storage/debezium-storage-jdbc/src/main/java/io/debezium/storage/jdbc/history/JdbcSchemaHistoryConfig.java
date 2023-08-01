@@ -22,7 +22,7 @@ import io.debezium.util.Collect;
 public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private static final String DEFAULT_TABLE_NAME = "debezium_database_history";
-    private static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name")
+    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name")
             .withDescription("The database key that will be used to store the database schema history")
             .withDefault(DEFAULT_TABLE_NAME);
 
@@ -79,6 +79,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     private String tableSelect;
     private String tableDataExistsSelect;
     private String tableInsert;
+    private String databaseName;
 
     public JdbcSchemaHistoryConfig(Configuration config) {
         super(config, SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING);
@@ -87,7 +88,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     @Override
     protected void init(Configuration config) {
         super.init(config);
-        this.tableName = config.getString(PROP_TABLE_NAME);
+        splitDatabaseAndTableName(config.getString(PROP_TABLE_NAME));
         this.tableCreate = String.format(config.getString(PROP_TABLE_DDL), tableName);
         this.tableSelect = String.format(config.getString(PROP_TABLE_SELECT), tableName);
         this.tableDataExistsSelect = String.format(config.getString(PROP_TABLE_DATA_EXISTS_SELECT), tableName);
@@ -106,6 +107,10 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
         return tableName;
     }
 
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
     public String getTableCreate() {
         return tableCreate;
     }
@@ -120,5 +125,22 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     public String getTableInsert() {
         return tableInsert;
+    }
+
+    /**
+     * Function to split database and table name from the fully qualified table name.
+     * @param databaseAndTableName database and table name
+     */
+    private void splitDatabaseAndTableName(String databaseAndTableName) {
+        if (databaseAndTableName != null) {
+            String[] parts = databaseAndTableName.split("\\.");
+            if (parts.length == 2) {
+                databaseName = parts[0];
+                tableName = parts[1];
+            }
+            else {
+                tableName = databaseAndTableName;
+            }
+        }
     }
 }
