@@ -646,7 +646,7 @@ alterServer
 
 alterTable
     : ALTER intimeAction=(ONLINE | OFFLINE)?
-      IGNORE? TABLE tableName waitNowaitClause?
+      IGNORE? TABLE ifExists? tableName waitNowaitClause? // ifExists is MariaDB-specific
       (alterSpecification (',' alterSpecification)*)?
       partitionDefinitions?
     ;
