@@ -289,7 +289,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             // Clear interrupt flag so the graceful termination is always attempted
             Thread.interrupted();
             executor.shutdown();
+            blockingSnapshotExecutor.shutdown();
             boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            boolean isBlockingSnapshotShutdown = blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
             if (!isShutdown) {
                 LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
@@ -298,6 +300,15 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 Thread.interrupted();
                 executor.shutdownNow();
                 executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            }
+
+            if (!isBlockingSnapshotShutdown) {
+                LOGGER.warn("Coordinator didn't stop in the expected time, shutting down blocking snapshot executor now");
+
+                // Clear interrupt flag so the forced termination is always attempted
+                Thread.interrupted();
+                blockingSnapshotExecutor.shutdownNow();
+                blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             }
 
             Optional<SignalProcessor<P, O>> processor = getSignalProcessor(previousOffsets);
@@ -341,7 +352,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             lock.lock();
             try {
                 snapshotFinished.signalAll();
-                LOGGER.trace("Streaming will now resumes.");
+                LOGGER.trace("Streaming will now resume.");
             }
             finally {
                 lock.unlock();
