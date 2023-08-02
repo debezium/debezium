@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.MongoCredential;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.config.Configuration;
@@ -39,9 +38,7 @@ public class ConnectionContext {
         this.config = config;
         this.connectorConfig = new MongoDbConnectorConfig(config);
 
-        final String username = config.getString(MongoDbConnectorConfig.USER);
-        final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
-        final String adminDbName = config.getString(MongoDbConnectorConfig.AUTH_SOURCE);
+        final MongoDbAuthProvider authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
         final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
         final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
 
@@ -49,6 +46,8 @@ public class ConnectionContext {
         final int heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
         final int socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
         final int serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
+
+        authProvider.init(config);
 
         // Set up the client pool so that it ...
         clientFactory = MongoDbClientFactory.create(settings -> {
@@ -59,10 +58,8 @@ public class ConnectionContext {
                     .applyToServerSettings(
                             builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
 
-            // Use credential if provided as properties
-            if (username != null || password != null) {
-                settings.credential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
-            }
+            authProvider.addAuthConfig(settings);
+
             if (useSSL) {
                 settings.applyToSslSettings(
                         builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
