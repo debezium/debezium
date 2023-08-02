@@ -38,6 +38,8 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
+import ch.qos.logback.classic.Level;
+
 /**
  * Integration tests for the Oracle DDL and schema migration.
  *
@@ -1056,6 +1058,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             final LogInterceptor errorLogInterceptor = new LogInterceptor(ErrorHandler.class);
             final LogInterceptor xstreamLogInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
             final LogInterceptor olrLogInterceptor = new LogInterceptor(OpenLogReplicatorStreamingChangeEventSource.class);
+            olrLogInterceptor.setLoggerLevel(OpenLogReplicatorStreamingChangeEventSource.class, Level.TRACE);
 
             // These roles are needed in order to perform certain DDL operations below.
             // Any roles granted here should be revoked in the finally block.

@@ -25,6 +25,8 @@ public class StreamingEvent {
     @JsonProperty("tm")
     private String timestamp;
     private String xid;
+    @JsonProperty("db")
+    private String databaseName;
     private List<PayloadEvent> payload;
 
     public String getScn() {
@@ -39,6 +41,10 @@ public class StreamingEvent {
         return xid;
     }
 
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
     public List<PayloadEvent> getPayload() {
         return payload;
     }
@@ -49,6 +55,7 @@ public class StreamingEvent {
                 "scn='" + scn + '\'' +
                 ", timestamp='" + timestamp + '\'' +
                 ", xid='" + xid + '\'' +
+                ", databaseName='" + databaseName + '\'' +
                 ", payload=" + payload +
                 '}';
     }

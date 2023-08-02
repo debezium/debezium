@@ -130,6 +130,8 @@ public class OlrNetworkClient {
             event = readNextEvent();
         }
 
+        LOGGER.trace("Received Event: {}", event);
+
         confirm(Long.parseLong(event.getScn()));
         return event;
     }
