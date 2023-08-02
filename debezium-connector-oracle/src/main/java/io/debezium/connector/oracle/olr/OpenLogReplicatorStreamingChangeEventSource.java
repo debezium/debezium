@@ -223,7 +223,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     private void onMutationEvent(StreamingEvent event, AbstractMutationEvent mutationEvent) throws Exception {
         final Type eventType = mutationEvent.getType();
-        final TableId tableId = mutationEvent.getSchema().getTableId(connectorConfig.getCatalogName());
+        final TableId tableId = mutationEvent.getSchema().getTableId(event.getDatabaseName());
         if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
             return;
         }
@@ -295,14 +295,14 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
         final TableId tableId;
         if (payloadSchema == null) {
-            tableId = getTableIdFromDdlEvent(schemaEvent.getSql());
+            tableId = getTableIdFromDdlEvent(event.getDatabaseName(), schemaEvent.getSql());
             if (tableId == null) {
                 LOGGER.trace("Cannot process DDL due to missing schema: {}", schemaEvent.getSql());
                 return;
             }
         }
         else {
-            tableId = payloadSchema.getTableId(connectorConfig.getCatalogName());
+            tableId = payloadSchema.getTableId(event.getDatabaseName());
         }
 
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
@@ -478,7 +478,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             return;
         }
 
-        final TableId tableId = ddlEvent.getSchema().getTableId(connectorConfig.getCatalogName());
+        final TableId tableId = ddlEvent.getSchema().getTableId(event.getDatabaseName());
         if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
             LOGGER.warn("Truncate event ignored, table is no included.");
             return;
@@ -525,13 +525,13 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     // todo: this is a hack to get around the fact OLR does not provide schema details in DDL events
     // ideally this needs to be changed because we're also needing to hardcode values here :/
-    private TableId getTableIdFromDdlEvent(String ddl) {
+    private TableId getTableIdFromDdlEvent(String catalogName, String ddl) {
         final OracleDdlParser parser = schema.getDdlParser();
         final DdlChanges ddlChanges = parser.getDdlChanges();
         try {
             Tables tables = new Tables();
             ddlChanges.reset();
-            parser.setCurrentDatabase(connectorConfig.getCatalogName());
+            parser.setCurrentDatabase(catalogName);
             parser.setCurrentSchema("DEBEZIUM");
             parser.parse(ddl, tables);
 
