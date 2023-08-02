@@ -133,6 +133,10 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
         return MongoDbConnector.class;
     }
 
+    public static int waitTimeForRecords() {
+        return 3;
+    }
+
     protected Configuration.Builder config() {
         return TestHelper.getConfiguration(mongo)
                 .edit()

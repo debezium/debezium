@@ -168,7 +168,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.partition, ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
-        catch (final Throwable e) {
+        catch (final Exception | AssertionError e) {
             LOGGER.error("Error during snapshot", e);
             exceptionWhileSnapshot = e;
             throw e;
