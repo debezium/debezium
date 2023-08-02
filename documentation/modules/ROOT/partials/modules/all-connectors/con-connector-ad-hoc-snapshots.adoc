@@ -4,7 +4,7 @@ Any future change event data that the connector captures comes in through the st
 
 However, in some situations the data that the connector obtained during the initial snapshot might become stale, lost, or incomplete.
 To provide a mechanism for recapturing {data-collection} data, {prodname} includes an option to perform ad hoc snapshots.
-The following changes in a database might because for performing an ad hoc snapshot:
+You might want to perform an ad hoc snapshot after any of the following changes occur in your {prodname} environment:
 
 * The connector configuration is modified to capture a different set of {data-collection}s.
 * Kafka topics are deleted and must be rebuilt.
@@ -28,7 +28,8 @@ Set the type of the `execute-snapshot` signal to `incremental` or `blocking`, an
 
 [NOTE]
 ====
-Currently `data-collections`, `additional-condition` and `surrogate-key' are only supported by `incremental` snapshot type. For the `blocking` snapshot please refer to the `snapshot.*` connectors properties.
+Unlike incremental snapshot type, a blocking snapshot  does not support the `data-collections`, `additional-condition`, or `surrogate-key' parameters.  
+For details about the parameters supported for blocking snapshots, see the `snapshot.*` connectors properties.
 ====
 
 .Example of an ad hoc `execute-snapshot` signal record
@@ -96,6 +97,7 @@ INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"d
 
 You initiate an ad hoc blocking snapshot by adding an entry with the `execute-snapshot` signal type to the signaling {data-collection}.
 After the connector processes the message, it begins the snapshot operation.
-The snapshot process stops the streaming and then execute the same operation of an initial snapshot. After the snapshot is finished the streaming will be resumed.
+The connector temporarily stops streaming, and then initiates a snapshot of the specified {data-collection}, following the same process that it uses during an initial snapshot.
+After the snapshot completes, the connector resumes streaming.
 
 For more information, see xref:#{context}-blocking-snapshots[Blocking snapshots].

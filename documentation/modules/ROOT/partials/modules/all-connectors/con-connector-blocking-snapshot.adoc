@@ -1,19 +1,19 @@
-To provide more flexibility in managing snapshots, {prodname} includes a supplementary ad hoc snapshot mechanism, known as _blocking snapshot_.
+To provide more flexibility in managing snapshots, {prodname} includes a supplementary ad hoc snapshot mechanism, known as a _blocking snapshot_.
 Blocking snapshots rely on the {prodname} mechanism for {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 
-Blocking snapshot is similar to the _initial snapshot_ with the difference that you can trigger it at run time.
+A blocking snapshot behaves just like an _initial snapshot_, except that you can trigger it at run time.
 
-You can choose to use this type of snapshot over the standard initial snapshot process when:
+You might want to run a blocking snapshot rather than use the standard initial snapshot process in the following situations:
 
-* You need to run it at running time for adding a new {data-collection}.
-* The {data-collection} you want to add is big and the performance of _incremental snapshotting_ does not fit your requirements.
+* You add a new {data-collection} and you want to complete the snapshot while the connector is running.
+* You add a large {data-collection}, and you want the snapshot to complete in less time than is possible with an incremental snapshot.
 
 .Blocking snapshot process
-When you run a blocking snapshot, {prodname} stops the streaming and the start the same steps of the _initial snapshot_ to snapshot the {data-collection} you need.
-After the snapshot completes, the streaming will be resumed.
+When you run a blocking snapshot, {prodname} stops streaming, and then initiates a snapshot of the specified {data-collection}, following the same process that it uses during an initial snapshot.
+After the snapshot completes, the streaming is resumed.
 
-Currently, you need to use the `snapshot.*` properties to configure the snapshot.
+Use the `snapshot.*` properties in the connector configuration to control the behavior of the snapshot.
 
 .Possible duplicates
-Since there will be some delay from the time you trigger the snapshot sending the signal, to the time when the streaming will effectively stops and the snapshot starts,
-can happen that after the snapshot completes the event streams emits some record that has been just snapshotted.
+A delay might exist between the time that you send the signal to trigger the snapshot, and the time when streaming stops and the snapshot starts.
+As a result of this delay, after the snapshot completes, the connector might emit some event records that duplicate records captured by the snapshot.
