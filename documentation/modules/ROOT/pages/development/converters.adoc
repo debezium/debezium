@@ -45,13 +45,19 @@ You configure custom converters to act on all columns of a certain type, or you 
 The converter function intercepts data type conversion requests for any columns that match a specified criteria, and then performs the specified conversion.
 The converter ignores columns that do not match the specified criteria.
 
-Custom converters are Java classes that implement the Debezium service provider interface (SPI).
+Custom converters are Java classes that implement the {prodname} service provider interface (SPI).
 You enable and configure a custom converter by setting the `converters` property in the connector configuration.
 The `converters` property specifies the converters that are available to a connector, and can include sub-properties that further modify conversion behavior.
 
 After you start a connector, the converters that are enabled in the connector configuration are instantiated and are added to a registry.
 The registry associates each converter with the columns or fields for it to process.
 Whenever {prodname} processes a new change event, it invokes the configured converter to convert the columns or fields for which it is registered.
+
+[NOTE]
+====
+The instructions that follow apply to {prodname} relational database connectors only.
+You cannot use this information to create a custom converter for the {prodname} MongoDB connector.
+====
 
 // Type: assembly
 // Title: Creating a {prodname} custom data type converter
