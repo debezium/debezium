@@ -32,6 +32,7 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
 import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
@@ -489,6 +490,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDefault(10_000)
             .withDescription("The frequency that the cluster monitor attempts to reach each server. Defaults to 10 seconds (10,000 ms).");
+
+    public static final Field AUTH_PROVIDER_CLASS = Field.create("mongodb.authentication.class")
+            .withDisplayName("Authentication Provider Custom Class")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 5))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DefaultMongoDbAuthProvider.class.getName())
+            .withDescription(
+                    "This class must implement the 'MongoDbAuthProvider' interface and is called on each app boot to provide the MongoDB credentials from the provided config.");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
