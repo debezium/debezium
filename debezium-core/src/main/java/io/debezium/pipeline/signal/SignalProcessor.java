@@ -16,6 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
@@ -52,6 +53,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private final CommonConnectorConfig connectorConfig;
 
+    private final List<SignalChannelReader> enabledChannelReaders;
+
     private final List<SignalChannelReader> signalChannelReaders;
 
     private final ScheduledExecutorService signalProcessorExecutor;
@@ -74,15 +77,23 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
         this.previousOffsets = previousOffsets;
         this.signalProcessorExecutor = Threads.newSingleThreadScheduledExecutor(connector, config.getLogicalName(), SignalProcessor.class.getSimpleName(), false);
 
-        signalChannelReaders.stream()
-                .filter(isEnabled())
-                .forEach(signalChannelReader -> signalChannelReader.init(connectorConfig));
+        // filter single channel reader based on configuration
+        this.enabledChannelReaders = getEnabledChannelReaders();
+
+        // initialize single channel reader with connector config
+        this.enabledChannelReaders.forEach(signalChannelReader -> signalChannelReader.init(connectorConfig));
 
         this.signalActions.putAll(signalActions);
     }
 
     private Predicate<SignalChannelReader> isEnabled() {
         return reader -> connectorConfig.getEnabledChannels().contains(reader.name());
+    }
+
+    private List<SignalChannelReader> getEnabledChannelReaders() {
+        return signalChannelReaders.stream()
+                .filter(isEnabled())
+                .collect(Collectors.toList());
     }
 
     public void setContext(O offset) {
@@ -98,8 +109,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     public void stop() throws InterruptedException {
 
         // The close must run with same thread of the read otherwise Kafka client will detect multi-thread and throw and exception
-        signalProcessorExecutor.submit(() -> signalChannelReaders.stream()
-                .filter(isEnabled())
+        signalProcessorExecutor.submit(() -> enabledChannelReaders
                 .forEach(SignalChannelReader::close));
 
         signalProcessorExecutor.shutdown();
@@ -127,8 +137,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
         executeWithSemaphore(() -> {
             LOGGER.trace("SignalProcessor processing");
-            signalChannelReaders.stream()
-                    .filter(isEnabled())
+            enabledChannelReaders.stream()
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
                     .forEach(this::processSignal);
@@ -139,9 +148,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
         executeWithSemaphore(() -> {
             LOGGER.trace("Processing source signals");
-            signalChannelReaders.stream()
+            enabledChannelReaders.stream()
                     .filter(isSignal(SourceSignalChannel.class))
-                    .filter(isEnabled())
                     .map(SignalChannelReader::read)
                     .flatMap(Collection::stream)
                     .forEach(this::processSignal);
