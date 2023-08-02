@@ -6,6 +6,8 @@
 package io.debezium.connector.oracle.olr;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -404,10 +406,20 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 }
             }
             else if (column.jdbcType() == OracleTypes.TIMESTAMPTZ) {
-                // todo: For now these values are being provided as long values but we have no
-                // way to get the original timezone in these cases, so this creates a
-                // change in behavior.
-                return null;
+                // Currently we expect the OpenLogReplicator configuration to configure 'timestamp-tz'
+                // with a value of "0" so that the value is provided in nanosecond precision and the
+                // timezone detail using the format '<ns-precision>,<timezone>', where the time zone
+                // is in "+/-HH:MM" format.
+                final String valueStr = (String) value;
+                if (!valueStr.contains(",")) {
+                    throw new DebeziumException("Unexpected timestamptz value: " + value);
+                }
+                // index 0 is the timestamp value
+                // index 1 is the timezone detail
+                final String[] valueBits = valueStr.split(",");
+                final Instant instant = Instant.ofEpochSecond(0, Long.parseLong(valueBits[0]));
+                // todo: should we use an explicit format here?
+                value = OffsetDateTime.ofInstant(instant, ZoneOffset.of(valueBits[1])).toString();
             }
             else if (column.jdbcType() == OracleTypes.BLOB) {
                 // Data is provided as bytes encoded as hex.
