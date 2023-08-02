@@ -110,9 +110,13 @@
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
+        <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
+        <quarkus.version.extension>3.0.0.Final</quarkus.version.extension>
+
+        <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version>3.0.0.Final</quarkus.version>
+        <quarkus.version.runtime>3.0.0.Final</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>2.4.1.Final</version.apicurio>
