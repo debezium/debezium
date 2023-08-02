@@ -397,12 +397,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 }
                 else {
                     // TIMESTAMP(n)
-                    if (column.length() > 3 && column.length() <= 6) {
-                        value = ((Long) value / ((long) Math.pow(10, 3)));
-                    }
-                    else if (column.length() > 0 && column.length() <= 3) {
-                        value = ((Long) value / ((long) Math.pow(10, 6)));
-                    }
+                    value = Instant.ofEpochSecond(0, (Long) value);
                 }
             }
             else if (column.jdbcType() == OracleTypes.TIMESTAMPTZ) {
