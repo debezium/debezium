@@ -38,7 +38,7 @@ import io.debezium.util.Strings;
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(
-            "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "lonblob");
+            "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "longblob");
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
