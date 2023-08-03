@@ -163,7 +163,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (context.isRunning()) {
                 commitTransaction();
                 final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
-                LOGGER.info("Polling cycle started, toLsn is {}", toLsn);
+                LOGGER.trace("Polling cycle started, toLsn is {}", toLsn);
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
                     if (checkAgent) {
@@ -225,8 +225,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 }
 
                 try {
-                    final SqlServerChangeTable[] tables;
-                    tables = tablesToQueryForChanges.get();
+                    final SqlServerChangeTable[] tables = tablesToQueryForChanges.get();
                     dataConnection.getChangesForTables(databaseName, tables, fromLsn, toLsn, resultSets -> {
 
                         long eventSerialNoInInitialTx = 1;
@@ -484,9 +483,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             try {
                 final Lsn tableMaxStartLsn = dataConnection.getTableMaxStartLsn(quotedCtTable);
                 LOGGER.debug("Comparing table and DB LSNs - table: {}, tableMaxStartLSN: {}, table startLsn: {}, fromLSN: {}",
-                        table.getChangeTableId().table(), tableMaxStartLsn.toString(), fromLsn.toString(), table.getStartLsn().toString());
+                        table.getChangeTableId().table(), tableMaxStartLsn, fromLsn, table.getStartLsn());
 
-                if (table.getStartLsn().compareTo(fromLsn) >= 0 || (tableMaxStartLsn.toString() != "NULL" && tableMaxStartLsn.compareTo(fromLsn) >= 0)) {
+                if (table.getStartLsn().compareTo(fromLsn) >= 0 || (tableMaxStartLsn.isAvailable() && tableMaxStartLsn.compareTo(fromLsn) >= 0)) {
                     tablesWithChanges.add(table);
                 }
 
@@ -496,7 +495,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 tablesWithChanges.add(table);
             }
         }
-        LOGGER.info("Number of whitelisted tables with changes: {}", tablesWithChanges.size());
+        LOGGER.debug("Number of included tables with changes: {}", tablesWithChanges.size());
 
         return new AtomicReference<io.debezium.connector.sqlserver.SqlServerChangeTable[]>(tablesWithChanges.toArray(new SqlServerChangeTable[tablesWithChanges.size()]));
     }

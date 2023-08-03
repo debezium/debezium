@@ -2921,7 +2921,7 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
 
 |[[sqlserver-property-query-all-tables]]<<sqlserver-property-query-all-tables, `+query.all.tables+`>>
 |`false`
-|Attempt to retrieve changes for all whitelisted tables rather than checking beforehand to see which tables actually have changes to be retrieved. This should be turned on only when there is confidence that a very high percentage of whitelisted tables will have changes in each iteration.
+|Attempt to retrieve changes for all included tables rather than checking beforehand to see which tables actually have changes to be retrieved. This should be turned on only when there is confidence that a very high percentage of included tables will have changes in each iteration.
 
 |[[sqlserver-property-topic-naming-strategy]]<<sqlserver-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`

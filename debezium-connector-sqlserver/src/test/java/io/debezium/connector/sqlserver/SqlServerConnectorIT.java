@@ -224,7 +224,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         }
 
-        assertThat(logInterceptor.containsWarnMessage("Getting changes for 1 tables"));
+        assertThat(logInterceptor.containsMessage("Getting changes for 1 table(s)"));
 
         stopConnector();
     }

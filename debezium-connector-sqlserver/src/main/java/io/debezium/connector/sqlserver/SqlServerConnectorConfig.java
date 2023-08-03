@@ -308,9 +308,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withType(Type.BOOLEAN)
             .withImportance(Importance.LOW)
             .withValidation(Field::isBoolean)
-            .withDescription("Attempt to retrieve changes for all whitelisted tables rather than checking beforehand to "
+            .withDescription("Attempt to retrieve changes for all included tables rather than checking beforehand to "
                     + "see which tables actually have changes to be retrieved. This should be turned on only when there "
-                    + "is confidence that a very high percentage of whitelisted tables will have changes in each iteration.");
+                    + "is confidence that a very high percentage of included tables will have changes in each iteration.");
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")

@@ -360,7 +360,7 @@ public class SqlServerConnection extends JdbcConnection {
 
             idx++;
         }
-        LOGGER.debug("Getting changes for {} tables", idx + 1);
+        LOGGER.debug("Getting changes for {} table(s)", idx + 1);
         prepareQuery(queries, preparers, consumer);
     }
 
