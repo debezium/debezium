@@ -113,6 +113,19 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
+    public void shouldSplitDatabaseAndTableName() {
+        JdbcSchemaHistory schemaHistory = new JdbcSchemaHistory();
+        schemaHistory.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_TABLE_NAME.name(), "public.employee")
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        assertTrue(schemaHistory.getConfig().getDatabaseName().equalsIgnoreCase("public"));
+        assertTrue(schemaHistory.getConfig().getTableName().equalsIgnoreCase("employee"));
+    }
+
+    @Test
     public void shouldNotFailMultipleInitializeStorage() {
         history.initializeStorage();
         history.initializeStorage();
