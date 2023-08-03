@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
@@ -184,7 +185,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         boolean sExists = false;
         try {
             DatabaseMetaData dbMeta = conn.getMetaData();
-            ResultSet tableExists = dbMeta.getTables(null, null, config.getTableName(), null);
+            String databaseName = config.getDatabaseName();
+            ResultSet tableExists = dbMeta.getTables(databaseName,
+                    null, config.getTableName(), null);
             if (tableExists.next()) {
                 sExists = true;
             }
@@ -215,6 +218,11 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
         }
 
         return isExists;
+    }
+
+    @VisibleForTesting
+    JdbcSchemaHistoryConfig getConfig() {
+        return config;
     }
 
     @Override
