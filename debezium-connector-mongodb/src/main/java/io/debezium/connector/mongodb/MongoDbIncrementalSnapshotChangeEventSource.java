@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -37,6 +36,7 @@ import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.OpenIncrementalSnapshotWindow;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -389,31 +389,31 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void addDataCollectionNamesToSnapshot(SignalPayload<MongoDbPartition> signalPayload,
-                                                 List<String> dataCollectionIds,
-                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
+                                                 SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
         final MongoDbPartition partition = signalPayload.partition;
         final OffsetContext offsetContext = signalPayload.offsetContext;
         final String correlationId = signalPayload.id;
 
-        if (additionalCondition != null && additionalCondition.isPresent()) {
+        if (!snapshotConfiguration.getAdditionalConditions().isEmpty()) {
             throw new UnsupportedOperationException("Additional condition not supported for MongoDB");
         }
 
-        if (surrogateKey != null && surrogateKey.isPresent()) {
+        if (!Strings.isNullOrEmpty(snapshotConfiguration.getSurrogateKey())) {
             throw new UnsupportedOperationException("Surrogate key not supported for MongoDB");
         }
 
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
         final String rsName = replicaSets.all().get(0).replicaSetName();
-        dataCollectionIds = dataCollectionIds
+        List<String> dataCollectionIds = snapshotConfiguration.getDataCollections()
                 .stream()
-                .map(x -> rsName + "." + x)
+                .map(x -> rsName + "." + x.toString())
                 .collect(Collectors.toList());
-        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, dataCollectionIds, Optional.empty(),
-                Optional.empty());
+
+        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, dataCollectionIds, List.of(), "");
+
         if (shouldReadChunk) {
 
             progressListener.snapshotStarted(partition);
@@ -442,10 +442,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
+
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         if (context.snapshotRunning()) {
-            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+            if (dataCollectionPatterns == null || dataCollectionPatterns.isEmpty()) {
                 LOGGER.info("Stopping incremental snapshot.");
                 try {
                     // This must be called prior to closeWindow to ensure that the correct state is set
@@ -467,9 +468,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 }
             }
             else {
-                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionIds);
+                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionPatterns);
                 final String rsName = replicaSets.all().get(0).replicaSetName();
-                dataCollectionIds = dataCollectionIds.stream().map(x -> rsName + "." + x).collect(Collectors.toList());
+                final List<String> dataCollectionIds = dataCollectionPatterns.stream().map(x -> rsName + "." + x.toString()).collect(Collectors.toList());
+
                 for (String dataCollectionId : dataCollectionIds) {
                     final CollectionId collectionId = CollectionId.parse(dataCollectionId);
                     if (currentCollection != null && currentCollection.id().equals(collectionId)) {
@@ -489,11 +491,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                     }
                 }
 
-                List<String> finalDataCollectionIds = dataCollectionIds;
                 notifyReplicaSets(
                         (incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext) -> notificationService.incrementalSnapshotNotificationService()
                                 .notifyAborted(incrementalSnapshotContext, replicaSetPartition, replicaSetOffsetContext,
-                                        finalDataCollectionIds),
+                                        dataCollectionIds),
                         offsetContext);
             }
         }

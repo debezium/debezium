@@ -46,6 +46,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -55,6 +56,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
@@ -109,6 +111,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Throwable exceptionWhileSnapshot = null;
         try {
 
+            Set<Pattern> dataCollectionsToBeSnapshotted = getDataCollectionPattern(snapshottingTask.getDataCollections());
+
+            Map<DataCollectionId, String> snapshotSelectOverridesByTable = snapshottingTask.getFilterQueries().entrySet().stream()
+                    .collect(Collectors.toMap(e -> TableId.parse(e.getKey()), Map.Entry::getValue));
+
             preSnapshot();
 
             LOGGER.info("Snapshot step 1 - Preparing");
@@ -124,7 +131,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
-            determineCapturedTables(ctx);
+            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
             // Init jdbc connection pool for reading table schema and data
             connectionPool = createConnectionPool(ctx);
@@ -155,7 +162,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx, connectionPool);
+                createDataEvents(context, ctx, connectionPool, snapshotSelectOverridesByTable);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
@@ -268,9 +275,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, Set<Pattern> dataCollectionsToBeSnapshotted) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
-        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds).collect(Collectors.toSet());
+        Set<TableId> snapshottedTableIds = determineDataCollectionsToBeSnapshotted(allTableIds, dataCollectionsToBeSnapshotted).collect(Collectors.toSet());
 
         Set<TableId> capturedTables = new HashSet<>();
         Set<TableId> capturedSchemaTables = new HashSet<>();
@@ -393,7 +400,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     private void createDataEvents(ChangeEventSourceContext sourceContext,
                                   RelationalSnapshotContext<P, O> snapshotContext,
-                                  Queue<JdbcConnection> connectionPool)
+                                  Queue<JdbcConnection> connectionPool, Map<DataCollectionId, String> snapshotSelectOverridesByTable)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
 
@@ -407,7 +414,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         Map<TableId, String> queryTables = new HashMap<>();
         Map<TableId, OptionalLong> rowCountTables = new LinkedHashMap<>();
         for (TableId tableId : snapshotContext.capturedTables) {
-            final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, tableId);
+            final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, tableId, snapshotSelectOverridesByTable);
             if (selectStatement.isPresent()) {
                 LOGGER.info("For table '{}' using select statement: '{}'", tableId, selectStatement.get());
                 queryTables.put(tableId, selectStatement.get());
@@ -626,10 +633,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * defaulting to a statement provided by the DB-specific change event source.
      *
      * @param tableId the table to generate a query for
+     * @param snapshotSelectOverridesByTable the select overrides by table
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId) {
-        String overriddenSelect = getSnapshotSelectOverridesByTable(tableId);
+    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext<P, O> snapshotContext, TableId tableId,
+                                                     Map<DataCollectionId, String> snapshotSelectOverridesByTable) {
+        String overriddenSelect = getSnapshotSelectOverridesByTable(tableId, snapshotSelectOverridesByTable);
         if (overriddenSelect != null) {
             return Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId));
         }
@@ -639,8 +648,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         return getSnapshotSelect(snapshotContext, tableId, columns);
     }
 
-    protected String getSnapshotSelectOverridesByTable(TableId tableId) {
-        Map<TableId, String> snapshotSelectOverrides = connectorConfig.getSnapshotSelectOverridesByTable();
+    protected String getSnapshotSelectOverridesByTable(TableId tableId, Map<DataCollectionId, String> snapshotSelectOverrides) {
         String overriddenSelect = snapshotSelectOverrides.get(tableId);
 
         // try without catalog id, as this might or might not be populated based on the given connector

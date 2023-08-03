@@ -50,8 +50,12 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
+
+    private static final String COLLECTION2_NAME = "c2";
     private static final String SIGNAL_COLLECTION_NAME = DATABASE_NAME + ".signals";
     private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + COLLECTION_NAME;
+
+    private static final String FULL_COLLECTION2_NAME = DATABASE_NAME + "." + COLLECTION2_NAME;
 
     private static final String DOCUMENT_ID = "_id";
 
@@ -82,7 +86,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
 
-        sendAdHocBlockingSnapshotSignal(fullDataCollectionName());
+        sendAdHocBlockingSnapshotSignal("[A-z].*" + fullDataCollectionName());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -90,9 +94,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         insertRecords(ROW_COUNT, (ROW_COUNT * 2));
 
-        int signalingRecords = 1;
-
-        assertStreamingRecordsArePresent(ROW_COUNT + signalingRecords);
+        assertStreamingRecordsArePresent(ROW_COUNT);
 
     }
 
@@ -110,7 +112,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         Thread.sleep(2000); // Let's start stream some insert
 
-        sendAdHocBlockingSnapshotSignal(fullDataCollectionName());
+        sendAdHocBlockingSnapshotSignal("[A-z].*" + fullDataCollectionName());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -122,11 +124,32 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         insertRecords(ROW_COUNT, (ROW_COUNT * 2));
 
-        int signalingRecords = 1 + // from streaming
-                1; // from snapshot
+        int signalingRecords = 1; // from streaming
 
         assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords),
-                getExpectedValues(totalSnapshotRecords));
+                getExpectedValues(totalSnapshotRecords), topicName());
+    }
+
+    @Test
+    public void executeBlockingSnapshotWithAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection(dataCollectionNames().get(1).toString());
+
+        startConnector(Function.identity());
+
+        waitForStreamingRunning("mongodb", "mongo1", getStreamingNamespace(), "0");
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(fullDataCollectionNames().get(1), "{ aa: { $lt: 500 } }"),
+                "[A-z].*" + fullDataCollectionNames().get(1));
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        int signalingRecords = 1; // from streaming
+
+        assertRecordsWithValuesPresent(500 + signalingRecords, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1));
+
     }
 
     protected Class<MongoDbConnector> connectorClass() {
@@ -141,10 +164,11 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
         return TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE_NAME)
-                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, fullDataCollectionName())
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, String.join(",", fullDataCollectionNames()))
                 .with(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION, SIGNAL_COLLECTION_NAME)
                 .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(MongoDbConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL);
     }
 
@@ -152,12 +176,24 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
         return COLLECTION_NAME;
     }
 
+    protected List<String> dataCollectionNames() {
+        return List.of(COLLECTION_NAME, COLLECTION2_NAME);
+    }
+
     protected String fullDataCollectionName() {
         return FULL_COLLECTION_NAME;
     }
 
+    protected List<String> fullDataCollectionNames() {
+        return List.of(FULL_COLLECTION_NAME, FULL_COLLECTION2_NAME);
+    }
+
     protected String topicName() {
         return "mongo1" + "." + fullDataCollectionName();
+    }
+
+    protected List<String> topicNames() {
+        return fullDataCollectionNames().stream().map(x -> "mongo1." + x).collect(Collectors.toList());
     }
 
     protected void populateDataCollection(String dataCollectionName) {
@@ -230,19 +266,19 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
     private void assertStreamingRecordsArePresent(int expectedRecords) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()));
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName());
     }
 
     private void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 2).boxed().collect(Collectors.toList()));
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 2).boxed().collect(Collectors.toList()), topicName());
     }
 
-    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues) throws InterruptedException {
+    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName) throws InterruptedException {
 
         SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(expectedRecords, 10);
         assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
-        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
+        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName).stream()
                 .map(record -> extractFieldValue(record, "aa"))
                 .collect(Collectors.toList());
         assertThat(actual).containsAll(expectedValues);
@@ -299,6 +335,19 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
                 .collect(Collectors.joining(", "));
         insertDocuments("dbA", "signals",
                 Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {\"type\": \"BLOCKING\",\"data-collections\": [" + dataCollectionIdsList + "]}}"));
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map<String, String> additionalConditions, String... dataCollectionIds) {
+
+        final String conditions = additionalConditions.entrySet().stream()
+                .map(e -> String.format("{\"data-collection\": \"%s\", \"filter\": \"%s\"}", e.getKey(), e.getValue())).collect(
+                        Collectors.joining(","));
+        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                .map(x -> "\"" + x + "\"")
+                .collect(Collectors.joining(", "));
+        insertDocuments("dbA", "signals",
+                Document.parse("{\"type\": \"execute-snapshot\", \"payload\": {\"type\": \"BLOCKING\",\"data-collections\": [" + dataCollectionIdsList
+                        + "], \"additional-conditions\": [" + conditions + "]}}"));
     }
 
     protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {

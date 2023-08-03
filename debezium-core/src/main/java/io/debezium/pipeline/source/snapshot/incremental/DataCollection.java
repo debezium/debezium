@@ -8,6 +8,8 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.debezium.util.Strings;
+
 /**
  * A class describing DataCollection for incremental snapshot
  *
@@ -18,15 +20,15 @@ public class DataCollection<T> {
 
     private final T id;
 
-    private final Optional<String> additionalCondition;
+    private final String additionalCondition;
 
-    private final Optional<String> surrogateKey;
+    private final String surrogateKey;
 
     public DataCollection(T id) {
-        this(id, Optional.empty(), Optional.empty());
+        this(id, "", "");
     }
 
-    public DataCollection(T id, Optional<String> additionalCondition, Optional<String> surrogateKey) {
+    public DataCollection(T id, String additionalCondition, String surrogateKey) {
         Objects.requireNonNull(additionalCondition);
         Objects.requireNonNull(surrogateKey);
 
@@ -40,11 +42,11 @@ public class DataCollection<T> {
     }
 
     public Optional<String> getAdditionalCondition() {
-        return additionalCondition;
+        return Strings.isNullOrEmpty(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);
     }
 
     public Optional<String> getSurrogateKey() {
-        return surrogateKey;
+        return Strings.isNullOrEmpty(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);
     }
 
     @Override

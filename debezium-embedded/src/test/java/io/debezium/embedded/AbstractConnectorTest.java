@@ -603,6 +603,19 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Try to consume and capture all available records from the connector.
+     *
+     *
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeAvailableRecordsByTopic() throws InterruptedException {
+        SourceRecords records = new SourceRecords();
+        consumeAvailableRecords(records::add);
+        return records;
+    }
+
+    /**
      * Try to consume and capture exactly the specified number of records from the connector.
      *
      * @param numRecords the number of records that should be consumed

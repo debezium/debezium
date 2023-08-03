@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -25,6 +26,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -59,18 +61,18 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset, boolean isBlockingSnapshot) {
+    public SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData;
 
-        if (isBlockingSnapshot) {
-            return new SnapshottingTask(true, true);
-        }
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
-        if (OracleConnectorConfig.SnapshotMode.ALWAYS == connectorConfig.getSnapshotMode()) {
+        if (OracleConnectorConfig.SnapshotMode.ALWAYS == this.connectorConfig.getSnapshotMode()) {
             LOGGER.info("Snapshot mode is set to ALWAYS, not checking exiting offset.");
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+            snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
         // found a previous offset and the earlier snapshot has completed
         else if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -80,7 +82,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
         else {
             LOGGER.info("No previous offset has been found.");
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+            snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
 
         if (snapshotData && snapshotSchema) {
@@ -90,7 +92,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             LOGGER.info("According to the connector configuration only schema will be snapshot.");
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
     }
 
     @Override

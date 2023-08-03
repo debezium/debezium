@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -709,7 +708,33 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of(String.format("\"aa = %s\"", expectedValue)), Optional.empty(),
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "",
+                tableDataCollectionId());
+
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
+                x -> true, null);
+        assertEquals(expectedCount, dbChanges.size());
+        assertTrue(dbChanges.values().stream().allMatch(v -> (((Struct) v.value()).getStruct("after")
+                .getInt32(valueFieldName())).equals(expectedValue)));
+    }
+
+    @Test
+    public void snapshotWithNewAdditionalConditionsField() throws Exception {
+        // Testing.Print.enable();
+
+        int expectedCount = 10, expectedValue = 12345678;
+        populateTable();
+        populateTableWithSpecificValue(2000, expectedCount, expectedValue);
+        waitForCdcTransactionPropagation(3);
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForConnectorToStart();
+
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
@@ -728,7 +753,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         final int recordsCount = ROW_COUNT;
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of("\"\""), Optional.empty(), tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("\"\"", "", tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(recordsCount,
                 x -> true, null);
@@ -751,8 +776,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of(String.format("\"aa = %s\"", expectedValue)), Optional.empty(),
-                tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "", tableDataCollectionId());
 
         final AtomicInteger recordCounter = new AtomicInteger();
         final AtomicBoolean restarted = new AtomicBoolean();
@@ -778,7 +802,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         populateTable();
         startConnector();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.of("\"aa\""), tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "\"aa\"", tableDataCollectionId());
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
@@ -803,8 +827,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.of(String.format("\"aa = %s\"", expectedValue)), Optional.of("\"aa\""),
-                tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String.format("\"aa = %s\"", expectedValue), "\"aa\"", tableDataCollectionId());
 
         final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(expectedCount,
                 x -> true, null);

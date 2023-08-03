@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -29,6 +28,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
+import io.debezium.util.Strings;
 
 public abstract class AbstractSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
@@ -114,6 +114,12 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     protected void populateTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
+        }
+    }
+
+    protected void populateTable(String table) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, table);
         }
     }
 
@@ -285,16 +291,22 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     }
 
     protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), dataCollectionIds);
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", dataCollectionIds);
     }
 
-    protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional<String> additionalCondition, Optional<String> surrogateKey,
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String additionalCondition, String surrogateKey,
                                                                                   String... dataCollectionIds) {
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(additionalCondition, surrogateKey, AbstractSnapshotSignal.SnapshotType.INCREMENTAL,
                 dataCollectionIds);
     }
 
-    protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional<String> additionalCondition, Optional<String> surrogateKey,
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map<String, String> additionalConditions, String surrogateKey,
+                                                                                   String... dataCollectionIds) {
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(additionalConditions, surrogateKey, AbstractSnapshotSignal.SnapshotType.INCREMENTAL,
+                dataCollectionIds);
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(String additionalCondition, String surrogateKey,
                                                                                   AbstractSnapshotSignal.SnapshotType snapshotType,
                                                                                   String... dataCollectionIds) {
         final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
@@ -302,20 +314,20 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
                 .collect(Collectors.joining(", "));
         try (JdbcConnection connection = databaseConnection()) {
             String query;
-            if (additionalCondition.isPresent() && surrogateKey.isPresent()) {
+            if (!Strings.isNullOrEmpty(additionalCondition) && !Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
                         "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s, \"surrogate-key\": %s}')",
-                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition.get(), surrogateKey.get());
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition, surrogateKey);
             }
-            else if (additionalCondition.isPresent()) {
+            else if (!Strings.isNullOrEmpty(additionalCondition)) {
                 query = String.format(
                         "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-condition\": %s}')",
-                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition.get());
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, additionalCondition);
             }
-            else if (surrogateKey.isPresent()) {
+            else if (!Strings.isNullOrEmpty(surrogateKey)) {
                 query = String.format(
                         "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": %s}')",
-                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey.get());
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey);
             }
             else {
                 query = String.format(
@@ -328,5 +340,48 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         catch (Exception e) {
             logger.warn("Failed to send signal", e);
         }
+    }
+
+    protected void sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map<String, String> additionalConditions, String surrogateKey,
+                                                                                   AbstractSnapshotSignal.SnapshotType snapshotType,
+                                                                                   String... dataCollectionIds) {
+        final String dataCollectionIdsList = Arrays.stream(dataCollectionIds)
+                .map(x -> '"' + x + '"')
+                .collect(Collectors.joining(", "));
+        try (JdbcConnection connection = databaseConnection()) {
+            String query;
+            if (!additionalConditions.isEmpty() && !Strings.isNullOrEmpty(surrogateKey)) {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-conditions\": [%s], \"surrogate-key\": %s}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, buildAdditionalConditions(additionalConditions), surrogateKey);
+            }
+            else if (!additionalConditions.isEmpty()) {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"additional-conditions\": [%s]}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, buildAdditionalConditions(additionalConditions));
+            }
+            else if (!Strings.isNullOrEmpty(surrogateKey)) {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s], \"surrogate-key\": %s}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList, surrogateKey);
+            }
+            else {
+                query = String.format(
+                        "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"type\": \"%s\",\"data-collections\": [%s]}')",
+                        signalTableName(), snapshotType.toString(), dataCollectionIdsList);
+            }
+            logger.info("Sending signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send signal", e);
+        }
+    }
+
+    private static String buildAdditionalConditions(Map<String, String> additionalConditions) {
+
+        return additionalConditions.entrySet().stream()
+                .map(cond -> String.format("{\"data-collection\": \"%s\", \"filter\": \"%s\"}", cond.getKey(), cond.getValue()))
+                .collect(Collectors.joining(","));
     }
 }

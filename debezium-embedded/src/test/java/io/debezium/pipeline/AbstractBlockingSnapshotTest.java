@@ -12,7 +12,6 @@ import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
@@ -75,16 +74,17 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2);
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), BLOCKING, tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
         signalingRecords = 1;
+
         assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2) + signalingRecords);
 
-        insertRecords(ROW_COUNT, (ROW_COUNT * 2));
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
 
-        assertStreamingRecordsArePresent(ROW_COUNT + signalingRecords);
+        assertStreamingRecordsArePresent(ROW_COUNT);
 
     }
 
@@ -102,7 +102,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         Thread.sleep(2000); // Let's start stream some insert
 
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey(Optional.empty(), Optional.empty(), BLOCKING, tableDataCollectionId());
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -114,11 +114,32 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         insertRecords(ROW_COUNT, (ROW_COUNT * 2));
 
-        signalingRecords = 1 + // from streaming
-                1; // from snapshot
+        signalingRecords = 1; // from streaming
 
         assertRecordsWithValuesPresent((int) ((ROW_COUNT * 3) + totalSnapshotRecords + signalingRecords),
-                getExpectedValues(totalSnapshotRecords));
+                getExpectedValues(totalSnapshotRecords), topicName());
+    }
+
+    @Test
+    public void executeBlockingSnapshotWithAdditionalCondition() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable(tableNames().get(1).toString());
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(tableDataCollectionIds().get(1), String.format("SELECT * FROM %s WHERE aa < 500", tableNames().get(1))), "", BLOCKING,
+                tableDataCollectionIds().get(1).toString());
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        signalingRecords = 1; // from streaming
+
+        assertRecordsWithValuesPresent(500 + signalingRecords, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1).toString());
+
     }
 
     protected int insertMaxSleep() {
@@ -180,21 +201,21 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
     private void assertStreamingRecordsArePresent(int expectedRecords) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()));
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName());
     }
 
     private void assertRecordsFromSnapshotAndStreamingArePresent(int expectedRecords) throws InterruptedException {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 1).boxed().collect(Collectors.toList()));
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(0, expectedRecords - 1).boxed().collect(Collectors.toList()), topicName());
     }
 
-    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues) throws InterruptedException {
+    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName) throws InterruptedException {
 
         SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(expectedRecords, 10);
-        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
-        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName()).stream()
+        List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName).stream()
                 .map(s -> ((Struct) s.value()).getStruct("after").getInt32(valueFieldName()))
                 .collect(Collectors.toList());
+        assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
         assertThat(actual).containsAll(expectedValues);
     }
 

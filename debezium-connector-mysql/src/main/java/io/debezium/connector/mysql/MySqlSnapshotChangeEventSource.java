@@ -44,6 +44,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
@@ -86,28 +87,30 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset, boolean isBlockingSnapshot) {
+    public SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
 
-        if (isBlockingSnapshot) {
-            return new SnapshottingTask(true, true);
-        }
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
 
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false);
+            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
         }
 
         LOGGER.info("No previous offset has been found");
-        if (connectorConfig.getSnapshotMode().includeData()) {
+        if (this.connectorConfig.getSnapshotMode().includeData()) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
         }
         else {
             LOGGER.info("According to the connector configuration only schema will be snapshotted");
         }
 
-        return new SnapshottingTask(connectorConfig.getSnapshotMode().includeSchema(), connectorConfig.getSnapshotMode().includeData());
+        return new SnapshottingTask(this.connectorConfig.getSnapshotMode().includeSchema(), this.connectorConfig.getSnapshotMode().includeData(),
+                dataCollectionsToBeSnapshotted,
+                snapshotSelectOverridesByTable);
     }
 
     @Override
@@ -560,7 +563,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected OptionalLong rowCountForTable(TableId tableId) {
-        if (getSnapshotSelectOverridesByTable(tableId) != null) {
+        if (getSnapshotSelectOverridesByTable(tableId, connectorConfig.getSnapshotSelectOverridesByTable()) != null) {
             return super.rowCountForTable(tableId);
         }
         OptionalLong rowCount = connection.getEstimatedTableSize(tableId);

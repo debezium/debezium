@@ -25,6 +25,7 @@ import io.debezium.connector.sqlserver.SqlServerOffsetContext.Loader;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -58,13 +59,13 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset, boolean isBlockingSnapshot) {
+    public SnapshottingTask getSnapshottingTask(SqlServerPartition partition, SqlServerOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
-        if (isBlockingSnapshot) {
-            return new SnapshottingTask(true, true);
-        }
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
+        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -74,16 +75,16 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         }
         else {
             LOGGER.info("No previous offset has been found");
-            if (connectorConfig.getSnapshotMode().includeData()) {
+            if (this.connectorConfig.getSnapshotMode().includeData()) {
                 LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
             }
             else {
                 LOGGER.info("According to the connector configuration only schema will be snapshotted");
             }
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
+            snapshotData = this.connectorConfig.getSnapshotMode().includeData();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable);
     }
 
     @Override

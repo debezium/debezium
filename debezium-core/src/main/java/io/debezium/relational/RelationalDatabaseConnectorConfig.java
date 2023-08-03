@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
@@ -40,6 +42,7 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
@@ -49,6 +52,8 @@ import io.debezium.util.Strings;
  * @author Gunnar Morling
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RelationalDatabaseConnectorConfig.class);
 
     protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
     protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
@@ -734,7 +739,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     /**
      * Returns any SELECT overrides, if present.
      */
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+
         List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
         if (tableValues == null) {
@@ -744,9 +750,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableValues) {
+
+            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            if (statementOverride == null) {
+                LOGGER.warn("Detected snapshot.select.statement.overrides for {} but no statement property {} defined",
+                        SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
+                continue;
+            }
+
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);

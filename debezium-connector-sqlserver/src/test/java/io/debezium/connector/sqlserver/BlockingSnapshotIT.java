@@ -31,6 +31,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE a (pk int primary key, aa int)",
+                "CREATE TABLE b (pk int primary key, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(2048))");
         TestHelper.enableTableCdc(connection, "debezium_signal");
         TestHelper.adjustCdcPollingInterval(connection, POLLING_INTERVAL);
@@ -69,7 +70,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> topicNames() {
-        return List.of("server1.testDB1.dbo.a");
+        return List.of("server1.testDB1.dbo.a", "server1.testDB1.dbo.b");
     }
 
     @Override
@@ -79,7 +80,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> tableNames() {
-        return List.of("testDB1.dbo.a");
+        return List.of("testDB1.dbo.a", "testDB1.dbo.b");
     }
 
     @Override
@@ -106,7 +107,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
-                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE_TABLES, tableName())
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 

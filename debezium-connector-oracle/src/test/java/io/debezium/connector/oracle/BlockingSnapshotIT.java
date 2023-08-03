@@ -33,9 +33,13 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "a");
+        TestHelper.dropTable(connection, "b");
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE b (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("GRANT INSERT on a to " + TestHelper.getConnectorUserName());
+        connection.execute("GRANT INSERT on b to " + TestHelper.getConnectorUserName());
         TestHelper.streamTable(connection, "a");
+        TestHelper.streamTable(connection, "b");
 
         TestHelper.dropTable(connection, "debezium_signal");
         connection.execute("CREATE TABLE debezium_signal (id varchar2(64), type varchar2(32), data varchar2(2048))");
@@ -52,6 +56,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "a");
+            TestHelper.dropTable(connection, "b");
             TestHelper.dropTable(connection, "debezium_signal");
             connection.close();
         }
@@ -85,7 +90,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> topicNames() {
-        return List.of("server1.DEBEZIUM.A");
+        return List.of("server1.DEBEZIUM.A", "server1.DEBEZIUM.B");
     }
 
     @Override
@@ -95,7 +100,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> tableNames() {
-        return List.of("DEBEZIUM.A");
+        return List.of("DEBEZIUM.A", "DEBEZIUM.B");
     }
 
     @Override
@@ -105,7 +110,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> tableDataCollectionIds() {
-        return List.of(TestHelper.getDatabaseName() + ".DEBEZIUM.A");
+        return List.of(TestHelper.getDatabaseName() + ".DEBEZIUM.A", TestHelper.getDatabaseName() + ".DEBEZIUM.B");
     }
 
     @Override
@@ -118,7 +123,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A")
+                .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE_TABLES, TestHelper.getDatabaseName() + ".DEBEZIUM.A")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 

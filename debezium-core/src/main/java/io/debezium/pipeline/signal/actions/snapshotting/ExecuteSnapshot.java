@@ -7,6 +7,7 @@ package io.debezium.pipeline.signal.actions.snapshotting;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
 import io.debezium.document.Document;
+import io.debezium.document.Value;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
@@ -36,6 +38,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     private static final Logger LOGGER = LoggerFactory.getLogger(ExecuteSnapshot.class);
 
     public static final String NAME = "execute-snapshot";
+    private static final String MATCH_ALL_PATTERN = ".*";
 
     private final EventDispatcher<P, ? extends DataCollectionId> dispatcher;
     private final ChangeEventSourceCoordinator<P, ? extends OffsetContext> changeEventSourceCoordinator;
@@ -47,29 +50,62 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
 
     @Override
     public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
+
         final List<String> dataCollections = getDataCollections(signalPayload.data);
         if (dataCollections == null) {
             return false;
         }
         SnapshotType type = getSnapshotType(signalPayload.data);
-        Optional<String> additionalCondition = getAdditionalCondition(signalPayload.data);
+
+        List<AdditionalCondition> additionalConditions = getAdditionalConditions(signalPayload.data, type);
         Optional<String> surrogateKey = getSurrogateKey(signalPayload.data);
-        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional condition '{}' and surrogate key '{}'", type, dataCollections,
-                additionalCondition.orElse("No condition passed"), surrogateKey.orElse("PK of table will be used"));
+
+        LOGGER.info("Requested '{}' snapshot of data collections '{}' with additional conditions '{}' and surrogate key '{}'", type, dataCollections,
+                additionalConditions, surrogateKey.orElse("PK of table will be used"));
+
+        SnapshotConfiguration.Builder snapsthoConfigurationBuilder = SnapshotConfiguration.Builder.builder();
+        snapsthoConfigurationBuilder.dataCollections(dataCollections);
+        snapsthoConfigurationBuilder.surrogateKey(surrogateKey.orElse(""));
+        additionalConditions.forEach(snapsthoConfigurationBuilder::addCondition);
 
         switch (type) {
             case INCREMENTAL:
                 dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
-                        signalPayload, dataCollections, additionalCondition, surrogateKey);
+                        signalPayload, snapsthoConfigurationBuilder.build());
                 break;
             case BLOCKING:
-                changeEventSourceCoordinator.doBlockingSnapshot(signalPayload.partition, signalPayload.offsetContext);
+                changeEventSourceCoordinator.doBlockingSnapshot(signalPayload.partition, signalPayload.offsetContext, snapsthoConfigurationBuilder.build());
                 break;
         }
         return true;
     }
 
+    private List<AdditionalCondition> getAdditionalConditions(Document data, SnapshotType type) {
+
+        // TODO remove in 2.5 release
+        Optional<String> oldAdditionalConditionField = getAdditionalCondition(data);
+        if (oldAdditionalConditionField.isPresent() && type.equals(SnapshotType.INCREMENTAL)) {
+            return List.of(AdditionalCondition.AdditionalConditionBuilder.builder()
+                    .dataCollection(Pattern.compile(MATCH_ALL_PATTERN, Pattern.CASE_INSENSITIVE))
+                    .filter(oldAdditionalConditionField.orElse(""))
+                    .build());
+        }
+
+        return Optional.ofNullable(data.getArray(FIELD_ADDITIONAL_CONDITIONS)).orElse(Array.create()).streamValues()
+                .map(this::buildAdditionalCondition)
+                .collect(Collectors.toList());
+    }
+
+    private AdditionalCondition buildAdditionalCondition(Value value) {
+
+        return AdditionalCondition.AdditionalConditionBuilder.builder()
+                .dataCollection(Pattern.compile(value.asDocument().getString(FIELD_DATA_COLLECTION), Pattern.CASE_INSENSITIVE))
+                .filter(value.asDocument().getString(FIELD_FILTER))
+                .build();
+    }
+
     public static List<String> getDataCollections(Document data) {
+
         final Array dataCollectionsArray = data.getArray(FIELD_DATA_COLLECTIONS);
         if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
             LOGGER.warn(
@@ -82,6 +118,11 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 .collect(Collectors.toList());
     }
 
+    /**
+     * TODO remove in 2.5 release
+     * @deprecated Use {getAdditionalConditions} instead.
+     */
+    @Deprecated
     public static Optional<String> getAdditionalCondition(Document data) {
         String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
         return Strings.isNullOrBlank(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);

@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
@@ -189,9 +191,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                         LinkedHashMap<String, String> map = new LinkedHashMap<>();
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
-                                x.getAdditionalCondition().orElse(null));
-                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY,
-                                x.getSurrogateKey().orElse(null));
+                                x.getAdditionalCondition().isEmpty() ? null : x.getAdditionalCondition().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().isEmpty() ? null : x.getSurrogateKey().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -207,8 +208,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
             List<DataCollection<T>> dataCollectionsList = dataCollections.stream()
                     .map(x -> new DataCollection<T>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)),
-                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY))))
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
+                            Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
                     .collect(Collectors.toList());
             return dataCollectionsList;
         }
@@ -237,14 +238,26 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> additionalCondition,
-                                                                    Optional<String> surrogateKey) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
+                                                                    String surrogateKey) {
+
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) TableId.parse(x, useCatalogBeforeSchema), additionalCondition, surrogateKey))
+                .map(buildDataCollection(additionalCondition, surrogateKey))
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         this.correlationId = correlationId;
         return newDataCollectionIds;
+    }
+
+    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+        return expandedCollectionName -> {
+            String filter = additionalCondition.stream()
+                    .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
+                    .map(AdditionalCondition::getFilter)
+                    .findFirst()
+                    .orElse("");
+            return new DataCollection<T>((T) TableId.parse(expandedCollectionName, useCatalogBeforeSchema), filter, surrogateKey);
+        };
     }
 
     @Override

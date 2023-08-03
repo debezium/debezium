@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -19,6 +18,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -221,13 +221,12 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     @Override
     public void addDataCollectionNamesToSnapshot(SignalPayload<MySqlPartition> signalPayload,
-                                                 List<String> dataCollectionIds,
-                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
+                                                 SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
         final Map<String, Object> additionalData = signalPayload.additionalData;
 
-        super.addDataCollectionNamesToSnapshot(signalPayload, dataCollectionIds, additionalCondition, surrogateKey);
+        super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
 
         getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }

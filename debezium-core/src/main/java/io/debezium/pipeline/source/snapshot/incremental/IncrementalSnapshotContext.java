@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
 
 public interface IncrementalSnapshotContext<T> {
@@ -17,8 +18,8 @@ public interface IncrementalSnapshotContext<T> {
 
     DataCollection<T> nextDataCollection();
 
-    List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> additionalCondition,
-                                                             Optional<String> surrogateKey);
+    List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
+                                                             String surrogateKey);
 
     int dataCollectionsToBeSnapshottedCount();
 

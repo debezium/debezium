@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.relational.Table;
@@ -185,7 +186,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
                         LinkedHashMap<String, String> map = new LinkedHashMap<>();
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
-                                x.getAdditionalCondition().orElse(null));
+                                x.getAdditionalCondition().isEmpty() ? null : x.getAdditionalCondition().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -230,8 +231,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     @SuppressWarnings("unchecked")
-    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, Optional<String> _additionalCondition,
-                                                                    Optional<String> surrogateKey) {
+    public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
+                                                                    String surrogateKey) {
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(x -> new DataCollection<T>((T) CollectionId.parse(x)))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name

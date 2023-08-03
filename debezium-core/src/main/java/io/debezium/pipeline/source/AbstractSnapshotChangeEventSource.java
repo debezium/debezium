@@ -7,8 +7,10 @@ package io.debezium.pipeline.source;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -27,6 +29,7 @@ import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -61,9 +64,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     }
 
     @Override
-    public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
-
-        SnapshottingTask snapshottingTask = getSnapshottingTask(partition, previousOffset, context.isPaused());
+    public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset, SnapshottingTask snapshottingTask) throws InterruptedException {
 
         final SnapshotContext<P, O> ctx;
         try {
@@ -118,9 +119,9 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
     }
 
-    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections) {
-        final Set<Pattern> snapshotAllowedDataCollections = connectorConfig.getDataCollectionsToBeSnapshotted();
-        if (snapshotAllowedDataCollections.size() == 0) {
+    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections,
+                                                                                             Set<Pattern> snapshotAllowedDataCollections) {
+        if (snapshotAllowedDataCollections.isEmpty()) {
             return allDataCollections.stream();
         }
         else {
@@ -172,7 +173,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset, boolean isBlockingSnapshot);
+    public abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
@@ -206,6 +207,13 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     protected void aborted(SnapshotContext<P, O> snapshotContext) {
     }
 
+    protected Set<Pattern> getDataCollectionPattern(List<String> dataCollections) {
+        return dataCollections.stream()
+                .map(tables -> Strings.setOfRegex(tables, Pattern.CASE_INSENSITIVE))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+    }
+
     /**
      * Mutable context which is populated in the course of snapshotting
      */
@@ -222,46 +230,4 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         }
     }
 
-    /**
-     * A configuration describing the task to be performed during snapshotting.
-     */
-    public static class SnapshottingTask {
-
-        private final boolean snapshotSchema;
-        private final boolean snapshotData;
-
-        public SnapshottingTask(boolean snapshotSchema, boolean snapshotData) {
-            this.snapshotSchema = snapshotSchema;
-            this.snapshotData = snapshotData;
-        }
-
-        /**
-         * Whether data (rows in captured tables) should be snapshotted.
-         */
-        public boolean snapshotData() {
-            return snapshotData;
-        }
-
-        /**
-         * Whether the schema of captured tables should be snapshotted.
-         */
-        public boolean snapshotSchema() {
-            return snapshotSchema;
-        }
-
-        /**
-         * Whether to skip the snapshot phase.
-         *
-         * By default this method will skip performing a snapshot if both {@link #snapshotSchema()} and
-         * {@link #snapshotData()} return {@code false}.
-         */
-        public boolean shouldSkipSnapshot() {
-            return !snapshotSchema() && !snapshotData();
-        }
-
-        @Override
-        public String toString() {
-            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + "]";
-        }
-    }
 }
