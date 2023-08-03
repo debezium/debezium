@@ -67,6 +67,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     private Configuration config;
 
+    private static String connectionTimeZone = "US/Samoa";
+
     @Before
     public void beforeEach() {
         stopConnector();
@@ -663,6 +665,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.DATABASE_CONNECTION_TIME_ZONE, connectionTimeZone)
                 .build();
         start(MySqlConnector.class, config);
 
@@ -694,17 +697,17 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         String value2 = "2018-01-03 00:00:10";
         long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)),
-                MySqlValueConverters::adjustTemporal);
+                MySqlValueConverters::adjustTemporal, DATABASE.timezone());
         assertThat(schemaC.defaultValue()).isEqualTo(toEpochMillis1);
 
         String value3 = "2018-01-03 00:00:10.7";
         long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)),
-                MySqlValueConverters::adjustTemporal);
+                MySqlValueConverters::adjustTemporal, DATABASE.timezone());
         assertThat(schemaD.defaultValue()).isEqualTo(toEpochMillis2);
 
         String value4 = "2018-01-03 00:00:10.123456";
         long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)),
-                MySqlValueConverters::adjustTemporal);
+                MySqlValueConverters::adjustTemporal, DATABASE.timezone());
         assertThat(schemaE.defaultValue()).isEqualTo(toEpochMicro);
 
         assertThat(schemaF.defaultValue()).isEqualTo(2001);
@@ -732,6 +735,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.DATABASE_CONNECTION_TIME_ZONE, connectionTimeZone)
                 .build();
         start(MySqlConnector.class, config);
 
@@ -762,14 +766,14 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         LocalDateTime localDateTimeC = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse("2018-01-03 00:00:10"));
-        assertThat(schemaC.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeC, MySqlValueConverters::adjustTemporal)));
+        assertThat(schemaC.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeC, MySqlValueConverters::adjustTemporal, DATABASE.timezone())));
 
         LocalDateTime localDateTimeD = LocalDateTime.from(DateTimeFormatter
                 .ofPattern("yyyy-MM-dd HH:mm:ss.S").parse("2018-01-03 00:00:10.7"));
-        assertThat(schemaD.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeD, MySqlValueConverters::adjustTemporal)));
+        assertThat(schemaD.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeD, MySqlValueConverters::adjustTemporal, DATABASE.timezone())));
 
         LocalDateTime localDateTimeE = LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse("2018-01-03 00:00:10.123456"));
-        assertThat(schemaE.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeE, MySqlValueConverters::adjustTemporal)));
+        assertThat(schemaE.defaultValue()).isEqualTo(new java.util.Date(Timestamp.toEpochMillis(localDateTimeE, MySqlValueConverters::adjustTemporal, DATABASE.timezone())));
 
         assertThat(schemaF.defaultValue()).isEqualTo(2001);
 

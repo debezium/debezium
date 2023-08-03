@@ -216,3 +216,6 @@ TechIsCool,David Beck
 cjmencias,Christian Jacob Mencias
 bdbene,Balint Bene
 agukasian,Artur Gukasian
+Ychopada,Yashashree Chopada
+gurpiarbassi, Gurps Bassi
+xie-shujian,谢曙见

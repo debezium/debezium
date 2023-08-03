@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 
@@ -66,11 +67,27 @@ public class MicroTimestamp {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
     public static long toEpochMicros(Object value, TemporalAdjuster adjuster) {
+        return toEpochMicros(value, adjuster, ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the number of microseconds past epoch of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
+     * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
+     * {@link java.sql.Timestamp}.
+     *
+     * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
+     * @param zoneId database timezone
+     * @return the epoch microseconds
+     * @throws IllegalArgumentException if the value is not an instance of the acceptable types
+     */
+    public static long toEpochMicros(Object value, TemporalAdjuster adjuster, ZoneId zoneId) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
-        return Conversions.toEpochMicros(dateTime.toInstant(ZoneOffset.UTC));
+        return Conversions.toEpochMicros(dateTime.atZone(zoneId).toInstant());
     }
 
     private MicroTimestamp() {
