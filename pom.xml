@@ -111,12 +111,12 @@
 
         <!-- Quarkus -->
         <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
-        <quarkus.version.extension>3.2.0.Final</quarkus.version.extension>
+        <quarkus.version.extension>3.2.3.Final</quarkus.version.extension>
 
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.2.0.Final</quarkus.version.runtime>
+        <quarkus.version.runtime>3.2.3.Final</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>2.4.3.Final</version.apicurio>
