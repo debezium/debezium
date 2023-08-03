@@ -748,66 +748,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     }
 
                     recordsSinceLastCommit = 0;
-                    Throwable handlerError = null, retryError = null;
+                    HandlerErrors errros = new HandlerErrors(null, null);
                     try {
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
                         final RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
-                        while (runningThread.get() != null) {
-                            List<SourceRecord> changeRecords = null;
-                            try {
-                                LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
-                                changeRecords = task.poll(); // blocks until there are values ...
-                                LOGGER.debug("Embedded engine returned from polling task for records");
-                            }
-                            catch (InterruptedException e) {
-                                // Interrupted while polling ...
-                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
-                                if (this.runningThread.get() == Thread.currentThread()) {
-                                    // this thread is still set as the running thread -> we were not interrupted
-                                    // due the stop() call -> probably someone else called the interrupt on us ->
-                                    // -> we should raise the interrupt flag
-                                    Thread.currentThread().interrupt();
-                                }
-                                break;
-                            }
-                            catch (RetriableException e) {
-                                retryError = handleRetries(e, taskConfigs);
-                                if (retryError != null) {
-                                    throw retryError;
-                                }
-                            }
-                            try {
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} records from the task", changeRecords.size());
-                                    changeRecords = changeRecords.stream()
-                                            .map(transformations::transform)
-                                            .filter(x -> x != null)
-                                            .collect(Collectors.toList());
-                                }
-
-                                if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
-
-                                    try {
-                                        handler.handleBatch(changeRecords, committer);
-                                    }
-                                    catch (StopConnectorException e) {
-                                        break;
-                                    }
-                                }
-                                else {
-                                    LOGGER.debug("Received no records from the task");
-                                }
-                            }
-                            catch (Throwable t) {
-                                // There was some sort of unexpected exception, so we should stop work
-                                handlerError = t;
-                                break;
-                            }
-                        }
+                        pollRecords(taskConfigs, committer, errros);
                     }
                     finally {
-                        setCompletionResult(connectorClassName, handlerError, retryError);
+                        setCompletionResult(connectorClassName, errros);
                         stopTaskAndCommitOffset(offsetWriter, commitTimeout, connectorCallback);
                     }
                 }
@@ -1014,14 +962,70 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         return retryError;
     }
 
-    private void setCompletionResult(final String connectorClassName, final Throwable handlerError, final Throwable retryError) {
-        if (handlerError != null) {
-            // There was an error in the handler so make sure it's always captured...
-            fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
-                    handlerError);
+    private void pollRecords(List<Map<String, String>> taskConfigs, RecordCommitter committer, HandlerErrors errors) throws Throwable {
+        while (runningThread.get() != null) {
+            List<SourceRecord> changeRecords = null;
+            try {
+                LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
+                changeRecords = task.poll(); // blocks until there are values ...
+                LOGGER.debug("Embedded engine returned from polling task for records");
+            }
+            catch (InterruptedException e) {
+                // Interrupted while polling ...
+                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
+                if (this.runningThread.get() == Thread.currentThread()) {
+                    // this thread is still set as the running thread -> we were not interrupted
+                    // due the stop() call -> probably someone else called the interrupt on us ->
+                    // -> we should raise the interrupt flag
+                    Thread.currentThread().interrupt();
+                }
+                break;
+            }
+            catch (RetriableException e) {
+                errors.retryError = handleRetries(e, taskConfigs);
+                if (errors.retryError != null) {
+                    throw errors.retryError;
+                }
+            }
+            try {
+                if (changeRecords != null && !changeRecords.isEmpty()) {
+                    LOGGER.debug("Received {} records from the task", changeRecords.size());
+                    changeRecords = changeRecords.stream()
+                            .map(transformations::transform)
+                            .filter(x -> x != null)
+                            .collect(Collectors.toList());
+                }
+
+                if (changeRecords != null && !changeRecords.isEmpty()) {
+                    LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
+
+                    try {
+                        handler.handleBatch(changeRecords, committer);
+                    }
+                    catch (StopConnectorException e) {
+                        break;
+                    }
+                }
+                else {
+                    LOGGER.debug("Received no records from the task");
+                }
+            }
+            catch (Throwable t) {
+                // There was some sort of unexpected exception, so we should stop work
+                errors.handlerError = t;
+                break;
+            }
         }
-        else if (retryError != null) {
-            fail("Stopping connector after retry error: " + retryError.getMessage(), retryError);
+    }
+
+    private void setCompletionResult(final String connectorClassName, final HandlerErrors errors) {
+        if (errors.handlerError != null) {
+            // There was an error in the handler so make sure it's always captured...
+            fail("Stopping connector after error in the application's handler method: " + errors.handlerError.getMessage(),
+                    errors.handlerError);
+        }
+        else if (errors.retryError != null) {
+            fail("Stopping connector after retry error: " + errors.retryError.getMessage(), errors.retryError);
         }
         else {
             // We stopped normally ...
@@ -1294,6 +1298,16 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         protected EmbeddedConfig(Map<String, String> props) {
             super(CONFIG, props);
+        }
+    }
+
+    private class HandlerErrors {
+        private Throwable handlerError;
+        private Throwable retryError;
+
+        HandlerErrors(Throwable handlerError, Throwable retryError) {
+            this.handlerError = handlerError;
+            this.retryError = retryError;
         }
     }
 
