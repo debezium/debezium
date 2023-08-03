@@ -7,11 +7,13 @@ package io.debezium.connector.oracle.olr;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +29,6 @@ import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.olr.client.OlrNetworkClient;
 import io.debezium.connector.oracle.olr.client.PayloadEvent;
 import io.debezium.connector.oracle.olr.client.PayloadEvent.Type;
@@ -45,11 +46,6 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlChanges;
-import io.debezium.relational.ddl.DdlParserListener;
-import io.debezium.text.MultipleParsingExceptions;
-import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
@@ -295,16 +291,14 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private void onSchemaChangeEvent(StreamingEvent event, SchemaChangeEvent schemaEvent) throws Exception {
         final PayloadSchema payloadSchema = schemaEvent.getSchema();
 
-        final TableId tableId;
-        if (payloadSchema == null) {
-            tableId = getTableIdFromDdlEvent(event.getDatabaseName(), schemaEvent.getSql());
-            if (tableId == null) {
-                LOGGER.trace("Cannot process DDL due to missing schema: {}", schemaEvent.getSql());
-                return;
-            }
+        final TableId tableId = payloadSchema.getTableId(event.getDatabaseName());
+        if (tableId.schema() == null || tableId.table().startsWith("OBJ_")) {
+            LOGGER.trace("Cannot process DDL due to missing schema: {}", schemaEvent.getSql());
+            return;
         }
-        else {
-            tableId = payloadSchema.getTableId(event.getDatabaseName());
+        else if (tableId.table().startsWith("BIN$") && tableId.table().endsWith("==$0")) {
+            LOGGER.trace("Skipping DDL for recycling bin table: {}", schemaEvent.getSql());
+            return;
         }
 
         final Instant timestamp = Instant.ofEpochMilli(Long.parseLong(event.getTimestamp()));
@@ -318,14 +312,19 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         streamingMetrics.addProcessedRows(1L);
 
         final String sqlStatement = schemaEvent.getSql().toLowerCase().trim();
-        if (isRecycleBinAlterStatement(sqlStatement)) {
-            LOGGER.trace("Skipping internal DDL: {}", schemaEvent.getSql());
-            return;
-        }
 
         // todo: do we want to let other ddl statements be emitted for non-tables?
         if (!isTableSqlStatement(sqlStatement)) {
             LOGGER.trace("Skipping internal DDL: {}", schemaEvent.getSql());
+            return;
+        }
+
+        if (sqlStatement.contains("rename constraint ")) {
+            LOGGER.trace("Ignoring constraint rename: {}", schemaEvent.getSql());
+            return;
+        }
+        else if (sqlStatement.contains("rename to \"bin$")) {
+            LOGGER.trace("Ignoring table rename to recycling object: {}", schemaEvent.getSql());
             return;
         }
 
@@ -346,13 +345,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                         Instant.ofEpochMilli(Long.parseLong(event.getTimestamp())),
                         streamingMetrics,
                         () -> processTruncateEvent(event, schemaEvent)));
-    }
-
-    private boolean isRecycleBinAlterStatement(String sqlStatement) {
-        if (!Strings.isNullOrBlank(sqlStatement)) {
-            return sqlStatement.startsWith("alter ") && sqlStatement.endsWith("==$0\"");
-        }
-        return false;
     }
 
     private boolean isTableSqlStatement(String sqlStatement) {
@@ -413,8 +405,19 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 // index 1 is the timezone detail
                 final String[] valueBits = valueStr.split(",");
                 final Instant instant = Instant.ofEpochSecond(0, Long.parseLong(valueBits[0]));
-                // todo: should we use an explicit format here?
-                value = OffsetDateTime.ofInstant(instant, ZoneOffset.of(valueBits[1])).toString();
+
+                // Sometimes the values provided are "HH:MM", and other times they're "Region/Area".
+                final ZoneId zoneId;
+                if (valueBits[1].contains(":")) {
+                    zoneId = ZoneOffset.of(valueBits[1]);
+                }
+                else {
+                    zoneId = TimeZone.getTimeZone(valueBits[1]).toZoneId();
+                }
+                final OffsetDateTime odt = OffsetDateTime.ofInstant(instant, zoneId);
+                // todo: cache the formatter likely based on scale.
+                final String secondsFormat = Strings.pad("", column.scale().orElse(6), 'S');
+                value = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss." + secondsFormat + "xxxxx").format(odt);
             }
             else if (column.jdbcType() == OracleTypes.BLOB) {
                 // Data is provided as bytes encoded as hex.
@@ -528,41 +531,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                         table,
                         schema,
                         clock));
-    }
-
-    // todo: this is a hack to get around the fact OLR does not provide schema details in DDL events
-    // ideally this needs to be changed because we're also needing to hardcode values here :/
-    private TableId getTableIdFromDdlEvent(String catalogName, String ddl) {
-        final OracleDdlParser parser = schema.getDdlParser();
-        final DdlChanges ddlChanges = parser.getDdlChanges();
-        try {
-            Tables tables = new Tables();
-            ddlChanges.reset();
-            parser.setCurrentDatabase(catalogName);
-            parser.setCurrentSchema("DEBEZIUM");
-            parser.parse(ddl, tables);
-
-            if (!ddlChanges.isEmpty()) {
-                AtomicReference<TableId> tableId = new AtomicReference<>();
-                ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
-                    if (events.size() != 1) {
-                        throw new ParsingException(null, "Expected at least one DDL event");
-                    }
-                    final DdlParserListener.Event event = events.get(0);
-                    if (event instanceof DdlParserListener.TableEvent) {
-                        if (event.type() == DdlParserListener.EventType.CREATE_TABLE) {
-                            tableId.set(((DdlParserListener.TableEvent) event).tableId());
-                        }
-                    }
-                });
-                return tableId.get();
-            }
-            return null;
-        }
-        catch (ParsingException | MultipleParsingExceptions e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
 }
