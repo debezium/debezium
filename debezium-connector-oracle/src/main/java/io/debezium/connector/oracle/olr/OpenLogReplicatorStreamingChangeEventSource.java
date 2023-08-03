@@ -423,7 +423,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 // Data is provided as bytes encoded as hex.
                 value = RAW.hexString2Bytes((String) value);
             }
-            else if (column.jdbcType() == OracleTypes.VARBINARY) {
+            else if (column.jdbcType() == OracleTypes.VARBINARY || column.jdbcType() == OracleTypes.RAW) {
                 // RAW data type support
                 value = RAW.hexString2Bytes((String) value);
             }
