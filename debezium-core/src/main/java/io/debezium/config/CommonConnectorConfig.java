@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -998,10 +997,10 @@ public abstract class CommonConnectorConfig {
         return skippedOperations;
     }
 
-    public Set<Pattern> getDataCollectionsToBeSnapshotted() {
+    public List<String> getDataCollectionsToBeSnapshotted() {
         return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
-                .map(tables -> Strings.setOfRegex(tables, Pattern.CASE_INSENSITIVE))
-                .orElseGet(Collections::emptySet);
+                .map(expr -> Arrays.asList(Strings.RegExSplitter.split(expr)))
+                .orElseGet(Collections::emptyList);
     }
 
     public Map<String, String> getCustomMetricTags() {

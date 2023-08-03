@@ -8,12 +8,16 @@ package io.debezium.connector.mongodb;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.bson.BsonDocument;
@@ -40,7 +44,10 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -145,7 +152,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             executor.submit(() -> {
                 try {
                     taskContext.configureLoggingContext(replicaSet.replicaSetName());
-                    snapshotReplicaSet(context, mongoDbSnapshotContext, replicaSet);
+                    snapshotReplicaSet(context, mongoDbSnapshotContext, replicaSet, snapshottingTask);
                 }
                 catch (Throwable t) {
                     LOGGER.error("Snapshot for replica set {} failed", replicaSet.replicaSetName(), t);
@@ -177,21 +184,28 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext offsetContext, boolean isBlockingSnapshot) {
+    public SnapshottingTask getBlockingSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext previousOffset, SnapshotConfiguration snapshotConfiguration) {
 
-        if (isBlockingSnapshot) {
-            return new MongoDbSnapshottingTask(replicaSets.all());
-        }
+        Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
+                .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
+
+        return new MongoDbSnapshottingTask(replicaSets.all(), snapshotConfiguration.getDataCollections(), filtersByTable);
+    }
+
+    @Override
+    public SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+
+        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
 
         // If no snapshot should occur, return task with no replica sets
-        if (connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
+        if (this.connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
             LOGGER.info("According to the connector configuration, no snapshot will occur.");
-            return new MongoDbSnapshottingTask(Collections.emptyList());
+            return new MongoDbSnapshottingTask(Collections.emptyList(), dataCollectionsToBeSnapshotted, Map.of());
         }
 
         if (offsetContext == null) {
             LOGGER.info("No previous offset has been found");
-            return new MongoDbSnapshottingTask(replicaSets.all());
+            return new MongoDbSnapshottingTask(replicaSets.all(), dataCollectionsToBeSnapshotted, connectorConfig.getSnapshotFilterQueryByCollection());
         }
 
         // Collect which replica-sets require being snapshotted
@@ -199,7 +213,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 .filter(replicaSet -> isSnapshotExpected(partition, replicaSet, offsetContext))
                 .collect(Collectors.toList());
 
-        return new MongoDbSnapshottingTask(replicaSetsToSnapshot);
+        return new MongoDbSnapshottingTask(replicaSetsToSnapshot, dataCollectionsToBeSnapshotted, connectorConfig.getSnapshotFilterQueryByCollection());
     }
 
     @Override
@@ -207,9 +221,11 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         return new MongoDbSnapshotContext(partition);
     }
 
-    private void snapshotReplicaSet(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet) throws InterruptedException {
+    private void snapshotReplicaSet(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
+                                    SnapshottingTask snapshottingTask)
+            throws InterruptedException {
         try (MongoDbConnection mongo = connections.get(replicaSet, snapshotCtx.partition)) {
-            createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo);
+            createDataEvents(sourceCtx, snapshotCtx, replicaSet, mongo, snapshottingTask);
         }
     }
 
@@ -281,13 +297,13 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void createDataEvents(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, ReplicaSet replicaSet,
-                                  MongoDbConnection mongo)
+                                  MongoDbConnection mongo, SnapshottingTask snapshottingTask)
             throws InterruptedException {
         initReplicaSetSnapshotStartOffsets(snapshotCtx, replicaSet, mongo);
         SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotCtx.offset.preSnapshotStart();
 
-        createDataEventsForReplicaSet(sourceCtx, snapshotCtx, snapshotReceiver, replicaSet, mongo);
+        createDataEventsForReplicaSet(sourceCtx, snapshotCtx, snapshotReceiver, replicaSet, mongo, snapshottingTask);
 
         snapshotCtx.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
@@ -300,12 +316,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void createDataEventsForReplicaSet(ChangeEventSourceContext sourceContext,
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
-                                               ReplicaSet replicaSet, MongoDbConnection mongo)
+                                               ReplicaSet replicaSet, MongoDbConnection mongo, SnapshottingTask snapshottingTask)
             throws InterruptedException {
 
         final String rsName = replicaSet.replicaSetName();
 
-        final MongoDbOffsetContext offsetContext = (MongoDbOffsetContext) snapshotContext.offset;
+        final MongoDbOffsetContext offsetContext = snapshotContext.offset;
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         snapshotContext.lastCollection = false;
@@ -313,7 +329,10 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         LOGGER.info("Beginning snapshot of '{}' at {}", rsName, rsOffsetContext.getOffset());
 
-        final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(mongo.collections()).collect(Collectors.toList());
+        Set<Pattern> dataCollectionPattern = getDataCollectionPattern(snapshottingTask.getDataCollections());
+
+        final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(mongo.collections(), dataCollectionPattern)
+                .collect(Collectors.toList());
         snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, collections);
         if (connectorConfig.getSnapshotMaxThreads() > 1) {
             // Since multiple snapshot threads are to be used, create a thread pool and initiate the snapshot.
@@ -351,7 +370,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                     snapshotReceiver,
                                     replicaSet,
                                     id,
-                                    mongo);
+                                    mongo, snapshottingTask.getFilterQueries());
                         }
                     }
                     catch (InterruptedException e) {
@@ -396,7 +415,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                         snapshotReceiver,
                         replicaSet,
                         collectionId,
-                        mongo);
+                        mongo, snapshottingTask.getFilterQueries());
             }
         }
 
@@ -406,7 +425,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private void createDataEventsForCollection(ChangeEventSourceContext sourceContext,
                                                MongoDbSnapshotContext snapshotContext,
                                                SnapshotReceiver<MongoDbPartition> snapshotReceiver,
-                                               ReplicaSet replicaSet, CollectionId collectionId, MongoDbConnection mongo)
+                                               ReplicaSet replicaSet, CollectionId collectionId, MongoDbConnection mongo,
+                                               Map<String, String> snapshotFilterQueryForCollection)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
@@ -419,7 +439,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
 
             long docs = 0;
-            Bson filterQuery = Document.parse(connectorConfig.getSnapshotFilterQueryForCollection(collectionId).orElseGet(() -> "{}"));
+            Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId.dbName() + "." + collectionId.name()));
+            Bson filterQuery = Document.parse(snapshotFilterForCollectionId.orElse("{}"));
 
             try (MongoCursor<BsonDocument> cursor = collection.find(filterQuery).batchSize(batchSize).iterator()) {
                 snapshotContext.lastRecordInCollection = false;
@@ -474,14 +495,14 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     /**
      * A configuration describing the task to be performed during snapshotting.
      *
-     * @see AbstractSnapshotChangeEventSource.SnapshottingTask
+     * @see SnapshottingTask
      */
     public static class MongoDbSnapshottingTask extends SnapshottingTask {
 
         private final List<ReplicaSet> replicaSetsToSnapshot;
 
-        public MongoDbSnapshottingTask(List<ReplicaSet> replicaSetsToSnapshot) {
-            super(false, !replicaSetsToSnapshot.isEmpty());
+        public MongoDbSnapshottingTask(List<ReplicaSet> replicaSetsToSnapshot, List<String> dataCollections, Map<String, String> filterQueries) {
+            super(false, !replicaSetsToSnapshot.isEmpty(), dataCollections, filterQueries);
             this.replicaSetsToSnapshot = replicaSetsToSnapshot;
         }
 

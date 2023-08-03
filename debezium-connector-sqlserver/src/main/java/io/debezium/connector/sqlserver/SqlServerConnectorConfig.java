@@ -33,6 +33,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Strings;
 
 /**
@@ -488,7 +489,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    public Map<DataCollectionId, String> getSnapshotSelectOverridesByTable() {
+
         List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
         if (tableValues == null) {
@@ -498,9 +500,18 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
         for (String table : tableValues) {
+
+            String statementOverride = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+            if (statementOverride == null) {
+                LOGGER.warn("Detected snapshot.select.statement.overrides for {} but no statement property {} defined",
+                        SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table, table);
+                continue;
+            }
+
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table, new SqlServerTableIdPredicates()),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
+
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);

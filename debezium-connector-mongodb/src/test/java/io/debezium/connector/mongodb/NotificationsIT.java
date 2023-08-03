@@ -58,7 +58,6 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
 
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
-    private static final String SIGNAL_COLLECTION_NAME = DATABASE_NAME + ".signals";
     private static final String FULL_COLLECTION_NAME = DATABASE_NAME + "." + COLLECTION_NAME;
 
     @Before

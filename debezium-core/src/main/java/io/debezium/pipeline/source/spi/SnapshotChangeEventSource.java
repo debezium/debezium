@@ -5,6 +5,12 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
@@ -22,15 +28,28 @@ public interface SnapshotChangeEventSource<P extends Partition, O extends Offset
      * the case, they should abort their processing and perform any clean-up needed, such as rolling back pending
      * transactions, releasing locks etc.
      *
-     * @param context
-     *            contextual information for this source's execution
-     * @param partition
-     *            the source partition from which the snapshot should be taken
-     * @param previousOffset
-     *            previous offset restored from Kafka
+     * @param context          contextual information for this source's execution
+     * @param partition        the source partition from which the snapshot should be taken
+     * @param previousOffset   previous offset restored from Kafka
+     * @param snapshottingTask
      * @return an indicator to the position at which the snapshot was taken
-     * @throws InterruptedException
-     *             in case the snapshot was aborted before completion
+     * @throws InterruptedException in case the snapshot was aborted before completion
      */
-    SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException;
+    SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset, SnapshottingTask snapshottingTask) throws InterruptedException;
+
+    /**
+     * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
+     */
+    SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
+
+    /**
+     * Returns the blocking snapshotting task based on the snapshot configuration from the signal.
+     */
+    default SnapshottingTask getBlockingSnapshottingTask(P partition, O previousOffset, SnapshotConfiguration snapshotConfiguration) {
+
+        Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
+                .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
+
+        return new SnapshottingTask(true, true, snapshotConfiguration.getDataCollections(), filtersByTable);
+    }
 }

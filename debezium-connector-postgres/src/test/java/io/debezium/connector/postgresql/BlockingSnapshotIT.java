@@ -24,7 +24,9 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     private static final String TOPIC_NAME = "test_server.s1.a";
 
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
-            "CREATE SCHEMA s1;CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+            "CREATE SCHEMA s1;" +
+            "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+            "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048))";
 
     @Before
@@ -49,7 +51,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -69,7 +71,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a");
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a");
     }
 
     @Override

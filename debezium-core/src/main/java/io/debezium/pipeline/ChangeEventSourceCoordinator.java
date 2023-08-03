@@ -34,6 +34,8 @@ import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.actions.SignalActionProvider;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
+import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -196,7 +198,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
-    public void doBlockingSnapshot(P partition, OffsetContext offsetContext) {
+    public void doBlockingSnapshot(P partition, OffsetContext offsetContext, SnapshotConfiguration snapshotConfiguration) {
 
         blockingSnapshotExecutor.submit(() -> {
 
@@ -211,7 +213,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
                 previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
                 LOGGER.info("Starting snapshot");
-                SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext);
+
+                SnapshottingTask snapshottingTask = snapshotSource.getBlockingSnapshottingTask(partition, (O) offsetContext, snapshotConfiguration);
+                SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
                     previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
@@ -227,6 +231,16 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     protected SnapshotResult<O> doSnapshot(SnapshotChangeEventSource<P, O> snapshotSource, ChangeEventSourceContext context, P partition, O previousOffset)
             throws InterruptedException {
+
+        SnapshottingTask snapshottingTask = snapshotSource.getSnapshottingTask(partition, previousOffset);
+
+        return doSnapshot(snapshotSource, context, partition, previousOffset, snapshottingTask);
+    }
+
+    protected SnapshotResult<O> doSnapshot(SnapshotChangeEventSource<P, O> snapshotSource, ChangeEventSourceContext context, P partition, O previousOffset,
+                                           SnapshottingTask snapshottingTask)
+            throws InterruptedException {
+
         CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(context, snapshotSource, partition, previousOffset);
         if (catchUpStreamingResult.performedCatchUpStreaming) {
             streamingConnected(false);
@@ -235,7 +249,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             commitOffsetLock.unlock();
         }
         eventDispatcher.setEventListener(snapshotMetrics);
-        SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
+
+        SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset, snapshottingTask);
         LOGGER.info("Snapshot ended with {}", snapshotResult);
 
         if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {

@@ -38,6 +38,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -489,8 +490,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, List<String> dataCollectionIds,
-                                                 Optional<String> additionalCondition, Optional<String> surrogateKey)
+    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
         final OffsetContext offsetContext = signalPayload.offsetContext;
@@ -500,13 +500,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = !context.snapshotRunning();
 
-        List<String> expandedDataCollectionIds = expandDataCollectionIds(dataCollectionIds);
-        if (expandedDataCollectionIds.size() > dataCollectionIds.size()) {
-            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", dataCollectionIds, expandedDataCollectionIds);
+        List<String> expandedDataCollectionIds = expandDataCollectionIds(snapshotConfiguration.getDataCollections());
+        if (expandedDataCollectionIds.size() > snapshotConfiguration.getDataCollections().size()) {
+            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", snapshotConfiguration.getDataCollections(), expandedDataCollectionIds);
         }
 
-        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds, additionalCondition,
-                surrogateKey);
+        final List<DataCollection<T>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds,
+                snapshotConfiguration.getAdditionalConditions(),
+                snapshotConfiguration.getSurrogateKey());
         if (shouldReadChunk) {
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
@@ -523,6 +524,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @Override
     @SuppressWarnings("unchecked")
     public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         LOGGER.trace("Stopping incremental snapshot with context {}", context);
         if (context.snapshotRunning()) {
@@ -604,6 +606,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * all matching explicit data collection ids.
      */
     private List<String> expandDataCollectionIds(List<String> dataCollectionIds) {
+
         return dataCollectionIds
                 .stream()
                 .flatMap(x -> {

@@ -71,8 +71,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE_TABLES, DATABASE.qualifiedTableName("a"))
                 .with(CommonConnectorConfig.SCHEMA_NAME_ADJUSTMENT_MODE, CommonConnectorConfig.SchemaNameAdjustmentMode.AVRO);
     }
 
@@ -103,7 +103,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> topicNames() {
-        return List.of(DATABASE.topicForTable("a"), DATABASE.topicForTable("c"));
+        return List.of(DATABASE.topicForTable("a"), DATABASE.topicForTable("b"));
     }
 
     @Override
@@ -114,7 +114,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Override
     protected List<String> tableNames() {
         final String tableA = TableId.parse(DATABASE.qualifiedTableName("a")).toQuotedString('`');
-        final String tableB = TableId.parse(DATABASE.qualifiedTableName("c")).toQuotedString('`');
+        final String tableB = TableId.parse(DATABASE.qualifiedTableName("b")).toQuotedString('`');
         return List.of(tableA, tableB);
     }
 
@@ -135,7 +135,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected List<String> tableDataCollectionIds() {
-        return List.of(tableNameId().toString(), tableNameId("c").toString());
+        return List.of(tableNameId().toString(), tableNameId("b").toString());
     }
 
     private TableId tableNameId() {
