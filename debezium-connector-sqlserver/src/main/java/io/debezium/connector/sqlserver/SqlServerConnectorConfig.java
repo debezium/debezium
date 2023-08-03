@@ -314,8 +314,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    QUERY_FETCH_SIZE)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
