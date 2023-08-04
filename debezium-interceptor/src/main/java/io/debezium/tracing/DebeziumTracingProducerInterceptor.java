@@ -46,7 +46,7 @@ public class DebeziumTracingProducerInterceptor<K, V> implements ProducerInterce
      * <p>
      * The OpenTelemetry interceptor is also part of an alpha package, which means it's subject to change,
      * and there is no guarantee of backward compatibility. That's why a dynamic approach is used here.
-     * We maintain an array of possible class names (InterceptorVersion) for the OpenTelemetry tracing interceptor,
+     * We maintain an array of possible class names ({@link OpenTelemetryInterceptorVersion}) for the OpenTelemetry tracing interceptor,
      * and we attempt to instantiate one of them at runtime. We also use reflection to access the 'onSend' method from the interceptor.
      * <p>
      * This allows the Debezium Kafka Connector to work with different versions of OpenTelemetry.
