@@ -7,6 +7,8 @@ package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -50,6 +52,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      * to connector to disable it on its own.
      */
     static final String TEST_DISABLE_GLOBAL_LOCKING = "test.disable.global.locking";
+
+    public static final String DATABASE_CONNECTION_TIME_ZONE = "database.connectionTimeZone";
 
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
@@ -959,6 +963,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final boolean readOnlyConnection;
+    private final ZoneId zoneId;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -991,6 +996,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
         this.storeOnlyCapturedDatabasesDdl = config.getBoolean(STORE_ONLY_CAPTURED_DATABASES_DDL);
+
+        //set up time zone offset from database.connectionTimeZone
+        ZoneId tmpZoneId = ZoneOffset.UTC;
+        String connectionTimeZone = config.getString(DATABASE_CONNECTION_TIME_ZONE);
+        if(connectionTimeZone != null){
+            tmpZoneId = ZoneId.of(connectionTimeZone);
+        }
+        this.zoneId = tmpZoneId;
     }
 
     public boolean useCursorFetch() {
@@ -1184,5 +1197,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      */
     boolean useGlobalLock() {
         return !"true".equals(config.getString(TEST_DISABLE_GLOBAL_LOCKING));
+    }
+
+    public ZoneId getZoneId() {
+        return zoneId;
     }
 }
