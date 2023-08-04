@@ -38,17 +38,24 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 
 |[[{context}-property-database-history-store-only-captured-tables-ddl]]<<{context}-property-database-history-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
 |`false`
-|A Boolean value that specifies whether the connector should record all DDL statements from specified schema or database +
+|A Boolean value that specifies whether the connector records schema structures from all tables in a schema or database, or only from tables that are designated for capture. +
+Specify one of the following values:
 
-`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
+`false` (default):: During a database snapshot, the connector records the schema data for all non-system tables in the database, including tables that are not designated for capture.
+It's best to retain the default setting.
+If you later decide to capture changes from tables that you did not originally designate for capture, the connector can easily begin to capture data from those tables, because their schema structure is already stored in the schema history topic.
+{prodname} requires the schema history of a table so that it can identify the structure that was present at the time that a change event occurred.
 
-The safe default is `false`.
+`true`:: During a database snapshot, the connector records the table schemas only for the tables from which {prodname} captures change events.
+If you change the default value, and you later configure the connector to capture data from other tables in the database, the connector lacks the schema information that it requires to capture change events from the tables. +
 
 |[[{context}-property-database-history-store-only-captured-databases-ddl]]<<{context}-property-database-history-store-only-captured-databases-ddl, `+schema.history.internal.store.only.captured.databases.ddl+`>>
 |`false`
-|A Boolean value that specifies whether the connector should record all DDL statements +
+|A Boolean value that specifies whether the connector records schema structures from all logical databases in the database instance. +
+Specify one of the following values:
 
-`true` records only those DDL statements that are relevant to database/schema's tables whose changes are being captured by {prodname}. `false` will store all incoming DDL statements. +
+`true`:: The connector records schema structures only for tables in the logical database and schema from which {prodname} captures change events.
+`false`:: The connector records schema structures for all logical databases. +
 
 NOTE: The default value is `true` for MySQL Connector +
 

@@ -106,7 +106,7 @@ The method that you use to set read preferences depends on the MongoDB topology,
 
 Replica set topology::
 Set the read preference in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
-Sharded cluster topology:: 
+Sharded cluster topology::
 Set the read preference based on the connection mode, as shown in the following table:
 +
 .Setting the read preference for a sharded cluster based on the `mongodb.connection.mode`
@@ -122,10 +122,10 @@ Set the read preference based on the connection mode, as shown in the following 
 
 |===
 +
-In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`. 
+In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`.
 For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
 When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
-It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`]. 
+It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`].
 For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
 
 // Type: assembly
@@ -221,7 +221,7 @@ For more information, see the https://docs.mongodb.com/manual/core/replica-set-a
 === Required user permissions
 
 To capture data from MongoDB, {prodname} attaches to the database as a MongoDB user.
-The MongoDB user account that you create for {prodname} requires specific database permissions to read from the database. 
+The MongoDB user account that you create for {prodname} requires specific database permissions to read from the database.
 The connector user requires the following permissions:
 
 * Read from the database.
@@ -232,16 +232,16 @@ The connector user might also require the following permission:
 * Read from the `config.shards` system collection.
 
 .Database read permissions
-The connector user must be able to read from all databases, or to read from a specific database, depending on the value of the connector's xref:mongodb-property-capture-scope[`capture.scope`] property. 
+The connector user must be able to read from all databases, or to read from a specific database, depending on the value of the connector's xref:mongodb-property-capture-scope[`capture.scope`] property.
 Assign one of the following permissions to the user, depending on the `capture.scope` setting:
 
 `capture.scope` is set to `deployment`::
-Grant the user permission to read any database. 
+Grant the user permission to read any database.
 
 `capture.scope` is set to `database`::
 Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
-.Permission to use the MongoDB `ping` command 
+.Permission to use the MongoDB `ping` command
 
 Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
 
@@ -1096,24 +1096,24 @@ endif::community[]
 === Optimal Oplog Config
 
 
-The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set. 
-Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries. 
-If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position. 
+The {prodname} MongoDB connector reads https://www.mongodb.com/docs/manual/changeStreams/[change streams] to obtain oplog data for a replica set.
+Because the oplog is a fixed-sized, capped collection, if it exceeds its maximum configured size, it begins to overwrite its oldest entries.
+If the connector is stopped for any reason, when it restarts, it attempts to resume streaming from the last oplog stream position.
 However, if last stream position was removed from the oplog, depending on the value specified in the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property, the connector might fail to start, reporting an xref:connector-error-invalid-resume-token[invalid resume token error].
 In the event of a failure, you must create a new connector to enable {prodname} to continue capturing records from the database.
 For more information, see xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[Connector fails after it is stopped for a long interval if snapshot.mode is set to initial].
 
 To ensure that the oplog retains the offset values that {prodname} requires to resume streaming, you can use either of the following approaches:
 
-* https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog]. 
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/[Increase the size of the oplog].
 Based on your typical workloads, set the oplog size to a value that is greater than the peak number of oplog entries per hour.
 
-* https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Increase the minimum number of hours that an oplog entry is retained] (MongoDB 4.4 and greater). 
-This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if the oplog reaches its maximum configured size. 
-Although this is generally the preferred option, for clusters with high workloads that are nearing capacity, specify the maximum oplog size. 
+* https://www.mongodb.com/docs/manual/core/replica-set-oplog/#std-label-replica-set-minimum-oplog-size/[Increase the minimum number of hours that an oplog entry is retained] (MongoDB 4.4 and greater).
+This setting is time-based, such that entries in the last _n_ hours are guaranteed to be available even if the oplog reaches its maximum configured size.
+Although this is generally the preferred option, for clusters with high workloads that are nearing capacity, specify the maximum oplog size.
 
-To help prevent failures that are related to missing oplog entries, it's important to track metrics that report replication behavior, and to optimize the oplog size to support {prodname}. 
-In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window. 
+To help prevent failures that are related to missing oplog entries, it's important to track metrics that report replication behavior, and to optimize the oplog size to support {prodname}.
+In particular, you should monitor the values of Oplog GB/Hour and Replication Oplog Window.
 If {prodname} is offline for an interval that exceeds the value of the replication oplog window, and the primary oplog grows faster than {prodname} can consume entries, a connector failure can result.
 
 For information about how to monitor these metrics, see https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#mongodb-replication-metrics[the MongoDB documentation].
@@ -1121,7 +1121,7 @@ For information about how to monitor these metrics, see https://www.mongodb.com/
 It's best to set the maximum oplog size to a value that is based on the anticipated hourly growth of the oplog (https://www.mongodb.com/basics/how-to-monitor-mongodb-and-what-metrics-to-monitor#oplog-gbhour[Oplog GB/Hour]), multiplied by the time that might be required to address a {prodname} failure.
 
 That is,
-  
+
 `_Oplog GB/Hour_` X  `_average reaction time to {prodname} failure_`
 
 For example, if the oplog size limit is set to 1GB, and the oplog grows by 3GB per hour, oplog entries are cleared three times per hour.
@@ -1645,7 +1645,7 @@ Set this property to one of the following values:
 +
 [WARNING]
 ====
-If you set the value of this property to `database`, to use {prodname} signaling, you the signaling collection that you create must reside in the database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
+To support {link-prefix}:{link-signalling}#[{prodname} signaling], if you set `capture.scope` to `database`, the xref:mongodb-property-signal-data-collection[signaling data collection] must reside in a database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
 ====
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
@@ -1864,7 +1864,7 @@ endif::product[]
 
 |[[mongodb-property-signal-enabled-channels]]<<mongodb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |source
-| List of the signaling channel names that are enabled for the connector. 
+| List of the signaling channel names that are enabled for the connector.
 By default, the following channels are available:
 
 * `source`
@@ -1877,7 +1877,7 @@ Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-si
 |[[mongodb-property-notification-enabled-channels]]<<mongodb-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
 | List of notification channel names that are enabled for the connector.
-By default, the following channels are available: 
+By default, the following channels are available:
 
 * `sink`
 * `log`
@@ -1927,6 +1927,10 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
+|[[mongodb-property-errors-max-retires]]<<mongodb-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
 |===
 
 [id="debezium-{context}-connector-kafka-signals-configuration-properties"]
@@ -1936,8 +1940,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 
 [id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
 ==== {prodname} connector sink notifications configuration properties
-
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
 
@@ -2089,7 +2091,7 @@ A connector that is stopped for a long period fails to start, and reports the fo
 ----
 Command failed with error 286 (ChangeStreamHistoryLost): 'PlanExecutor error during aggregation :: caused by :: Resume of change stream was not possible, as the resume point may no longer be in the oplog
 ----
-The preceding exception indicates that the entry that corresponds to the connector's resume token is no longer present in the oplog. 
+The preceding exception indicates that the entry that corresponds to the connector's resume token is no longer present in the oplog.
 Because the oplog no longer contains the last offset that the connector processed, the connector cannot resume streaming.
 
 You can use either of the following options to recover from the failure:

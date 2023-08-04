@@ -68,7 +68,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected final static int DEFAULT_TRANSACTION_EVENTS_THRESHOLD = 0;
 
-    protected final static int DEFAULT_QUERY_FETCH_SIZE = 2_000;
+    protected final static int DEFAULT_QUERY_FETCH_SIZE = 10_000;
 
     protected final static Duration MAX_SLEEP_TIME = Duration.ofMillis(3_000);
     protected final static Duration DEFAULT_SLEEP_TIME = Duration.ofMillis(1_000);
@@ -684,6 +684,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 new SystemTablesPredicate(config),
                 x -> x.schema() + "." + x.table(),
                 true,
+                DEFAULT_QUERY_FETCH_SIZE,
                 ColumnFilterMode.SCHEMA,
                 false);
 

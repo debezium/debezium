@@ -59,9 +59,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(OraclePartition partition, OracleOffsetContext previousOffset, boolean isBlockingSnapshot) {
         boolean snapshotSchema = true;
-        boolean snapshotData = true;
+        boolean snapshotData;
+
+        if (isBlockingSnapshot) {
+            return new SnapshottingTask(true, true);
+        }
 
         // for ALWAYS snapshot mode don't use exiting offset to have up-to-date SCN
         if (OracleConnectorConfig.SnapshotMode.ALWAYS == connectorConfig.getSnapshotMode()) {

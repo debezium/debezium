@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.SignalAction;
@@ -25,6 +26,7 @@ public class CustomActionProvider implements SignalActionProvider {
 
     @Override
     public <P extends Partition> Map<String, SignalAction<P>> createActions(EventDispatcher<P, ? extends DataCollectionId> dispatcher,
+                                                                            ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
                                                                             CommonConnectorConfig connectorConfig) {
         return Map.of("customLog", new CustomAction<>());
     }
@@ -37,7 +39,7 @@ public class CustomActionProvider implements SignalActionProvider {
         private final Logger LOGGER = LoggerFactory.getLogger(CustomAction.class);
 
         @Override
-        public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
+        public boolean arrived(SignalPayload<P> signalPayload) {
 
             LOGGER.info("[CustomLog] " + signalPayload.toString());
             return true;

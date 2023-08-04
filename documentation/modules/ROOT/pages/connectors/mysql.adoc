@@ -112,24 +112,27 @@ Because these hosted options do not allow a global read lock, table-level locks 
 
 When a database client queries a database, the client uses the database’s current schema.
 However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
-Also, a connector cannot just use the current schema because the connector might be processing events that are relatively old that were recorded before the tables' schemas were changed.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
 
-To ensure correct processing of changes that occur after a schema change, MySQL includes in the binlog not only the row-level changes to the data, but also the DDL statements that are applied to the database.
-As the connector reads the binlog and comes across these DDL statements, it parses them and updates an in-memory representation of each table’s schema.
+To ensure correct processing of events that occur after a schema change, MySQL includes in the transaction log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
+As the connector encounters these DDL statements in the binlog, it parses them and updates an in-memory representation of each table’s schema.
 The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
 In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
 
-When the connector restarts after having crashed or been stopped gracefully, the connector starts reading the binlog from a specific position, that is, from a specific point in time.
+When the connector restarts after either a crash or a graceful stop, it starts reading the binlog from a specific position, that is, from a specific point in time.
 The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
-This database schema history topic is for connector use only.
-The connector can optionally xref:mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+This database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
-The connector needs to be configured to capture change to these helper tables.
-If consumers do not need the records generated for helper tables, then a single message transform can be applied to filter them out.
+You must configure the connector to capture changes that occur in these helper tables.
+If consumers do not need the records the the connector generates for helper tables, configure a {link-prefix}:{link-filtering}#message-filtering[single message transform (SMT)] to remove these records from the messages that the connector emits.
 
-For more information, see xref:mysql-topic-names[default names for topics] that receive {prodname} event records.
+.Additional resources
+
+* xref:mysql-topic-names[Default names for topics] that receive {prodname} event records.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-expose-database-schema-changes
@@ -137,7 +140,7 @@ For more information, see xref:mysql-topic-names[default names for topics] that 
 [id="mysql-schema-change-topic"]
 === Schema change topic
 
-You can configure a {prodname} MySQL connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
+You can configure a {prodname} MySQL connector to produce schema change events that describe schema changes that are applied to tables in the database.
 The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the namespace specified in the xref:mysql-property-topic-prefix[`topic.prefix`] connector configuration property.
 Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
 
@@ -405,89 +408,313 @@ For more information, see xref:mysql-schema-history-topic[schema history topic].
 [[mysql-snapshots]]
 === Snapshots
 
-When a {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database. The following flow describes how the connector creates this snapshot. This flow is for the default snapshot mode, which is `initial`.
-For information about other snapshot modes, see the xref:mysql-property-snapshot-mode[MySQL connector `snapshot.mode` configuration property].
+When a {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database.
+This snapshot enables the connector to establish a baseline for the current state of the database.
 
-.Workflow for performing an initial snapshot with a global read lock
-[cols="1,9",options="header",subs="+attributes"]
+{prodname} can use different modes when it runs a snapshot.
+The snapshot mode is determined by the xref:mysql-property-snapshot-mode[`snapshot.mode`] configuration property.
+The default value of the property is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+
+The connector completes a series of tasks when it performs the snapshot.
+The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
+The {prodname} MySQL connector completes different steps when it performs an initial snapshot that uses a xref:initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:initial-snapshot-workflow-with-table-level-locks[table-level locks].
+
+// Type: concept
+[id="initial-snapshot-workflow-with-global-read-lock"]
+==== Initial snapshots that use a global read lock
+The following workflow lists the steps that {prodname} takes to create a snapshot with a global read lock.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+
+.Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with a global read lock
+[cols="1a,9a",options="header",subs="+attributes"]
 |===
 |Step |Action
 
 |1
-a| Grabs a global read lock that blocks _writes_ by other database clients. +
+a|Establish a connection to the database.
+
+|2
+|Determine the tables to be captured.
+By default, the connector captures the data for all non-system tables.
+After the snapshot completes, the connector continues to stream data for the specified tables.
+If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+|3
+|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients. +
+
+The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas.
+The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
+
+|4
+a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
  +
-The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas. The connector keeps the global read lock while it reads the binlog position, and releases the lock as described in a later step.
-
-|2
-a|Starts a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
-
-|3
-a|Reads the current binlog position.
-
-|4
-a|Reads the schema of the databases and tables for which the connector is configured to capture changes.
+[NOTE]
+====
+The use of these isolation semantics can slow the progress of the snapshot.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:"mysql-incremental-snapshots[incremental snapshot] instead.
+====
 
 |5
-a|Releases the global read lock. Other database clients can now write to the database.
+|Read the current binlog position.
 
 |6
-a|If applicable, writes the DDL changes to the schema change topic, including all necessary `DROP...` and `CREATE...` DDL statements.
+a|Capture the structure of all tables in the database, or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The schema history provides information about the structure that is in effect when a change event occurs.
+ +
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
 
 |7
-a|Scans the database tables. For each row, the connector emits `CREATE` events to the relevant table-specific Kafka topics.
+|Release the global read lock obtained in Step 3.
+Other database clients can now write to the database.
 
 |8
-a|Commits the transaction.
+a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+. Confirms that the table was created before the snapshot began.
+   If the table was created after the snapshot began, the connector skips the table.
+   After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+. Produces a `read` event for each row that is captured from a table.
+   All `read` events contain the same binlog position, which is the position that was obtained in step 5.
+. Emits each `read` event to the Kafka topic for the source table.
+. Releases data table locks, if applicable.
 
 |9
-a|Records the completed snapshot in the connector offsets.
-
-|===
-
-Connector restarts::
-If the connector fails, stops, or is rebalanced while performing the _initial snapshot_, then after the connector restarts, it performs a new snapshot. After that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates.
-+
-If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:mysql-when-things-go-wrong[behavior when things go wrong].
-
-Global read locks not allowed::
-Some environments do not allow global read locks. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method. This requires the database user for the {prodname} connector to have `LOCK TABLES` privileges.
-+
-.Workflow for performing an initial snapshot with table-level locks
-[cols="1,9",options="header",subs="+attributes"]
-|===
-|Step |Action
-
-|1
-|Obtains table-level locks.
-
-|2
-a|Starts a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
-
-|3
-|Reads and filters the names of the databases and tables.
-
-|4
-a|Reads the current binlog position.
-
-|5
-a|Reads the schema of the databases and tables for which the connector is configured to capture changes.
-
-|6
-a|If applicable, writes the DDL changes to the schema change topic, including all necessary `DROP...` and `CREATE...` DDL statements.
-
-|7
-a|Scans the database tables. For each row, the connector emits `CREATE` events to the relevant table-specific Kafka topics.
-
-|8
-a|Commits the transaction.
-
-|9
-|Releases the table-level locks.
+|Commit the transaction.
 
 |10
-a|Records the completed snapshot in the connector offsets.
+|Record the successful completion of the snapshot in the connector offsets.
 
 |===
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 5 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+After the connector restarts, if the logs have been pruned, the connector's position in the logs might no longer available.
+The connector then fails, and returns an error that indicates that a new snapshot is required.
+To configure the connector to automatically initiate a snapshot in this situation, set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `when_needed`.
+For more tips on troubleshooting the {prodname} MySQL connector, see xref:mysql-when-things-go-wrong[behavior when things go wrong].
+
+// Type: concept
+[id="initial-snapshot-workflow-with-table-level-locks"]
+==== Initial snapshots that use table-level locks
+
+In some database environments administrators do not permit global read locks.
+If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks when it performs snapshots.
+For the connector to perform a snapshot that uses table-level locks, the database account that the {prodname} connector uses to connect to MySQL must have `LOCK TABLES` privileges.
+
+.Default workflow that the {prodname} MySQL connector uses to perform an initial snapshot with table-level locks
+The following workflow lists the steps that {prodname} takes to create a snapshot with table-level read locks.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:default-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+
+[id="snapshot-workflow-with-table-level-locks"]
+[cols="1,9",options="header",subs="+attributes"]
+|===
+|Step |Action
+
+|1
+|Establish a connection to the database.
+
+|2
+|Determine the tables to be captured.
+By default, the connector captures all non-system tables.
+To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:mysql-property-table-include-list[`table.include.list`] or xref:mysql-property-table-exclude-list[`table.exclude.list`].
+
+|3
+|Obtain table-level locks.
+
+|4
+a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
+
+//  |5
+//  |Read and filter the names of the databases and tables.
+
+|5
+a|Read the current binlog position.
+
+|6
+a|Read the schema of the databases and tables for which the connector is configured to capture changes.
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The schema history provides information about the structure that is in effect when a change event occurs.
+ +
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+|7
+a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+. Confirms that the table was created before the snapshot began.
+   If the table was created after the snapshot began, the connector skips the table.
+   After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+. Produces a `read` event for each row that is captured from a table.
+   All `read` events contain the same binlog position, which is the position that was obtained in step 5.
+. Emits each `read` event to the Kafka topic for the source table.
+. Releases data table locks, if applicable.
+
+|8
+a|Commit the transaction.
+
+|9
+|Release the table-level locks.
+Other database clients can now write to any previously locked tables.
+
+|10
+a|Record the successful completion of the snapshot in the connector offsets.
+
+|===
+
+// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+
+// Type: procedure
+[id="mysql-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* In the transaction log, all entries for the table use the same schema.
+For information about capturing data from a new table that has undergone structural changes, see xref:mysql-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Apply the following changes to the connector configuration:
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `schema_only_recovery`.
+.. Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+.. Add the tables that you want the connector to capture to `table.include.list`.
+This guarantees that in the future, the connector can reconstruct the schema history for all tables.
+4. Restart the connector.
+The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
+5. (Optional) After the snapshot completes, initiate an xref:{context}-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
+
+// Type: procedure
+[id="mysql-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-mysql-ad-hoc-snapshots
@@ -2500,6 +2727,15 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
+|[[mysql-property-database-protocol]]<<mysql-property-database-protocol, `+database.protocol+`>>
+|jdbc:mysql
+|JDBC protocol used by the driver connection string for connecting to the database.
+
+|[[mysql-property-database-jdbc-driver]]<<mysql-property-database-jdbc-driver, `+database.jdbc.driver+`>>
+|com.mysql.cj.jdbc.Driver
+|The driver class name to use. This can be useful when using an alternative driver to the one packaged with the connector.
+
+
 |[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `+database.hostname+`>>
 |No default
 |IP address or host name of the MySQL database server.
@@ -3174,6 +3410,10 @@ Specify one of the following options:
 |[[mysql-property-custom-metric-tags]]<<mysql-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+
+|[[mysql-property-errors-max-retires]]<<mysql-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
 
 |===
 

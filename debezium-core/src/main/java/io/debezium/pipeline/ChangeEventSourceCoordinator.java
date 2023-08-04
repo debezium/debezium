@@ -6,17 +6,24 @@
 package io.debezium.pipeline;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -26,6 +33,7 @@ import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.signal.actions.SignalActionProvider;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -63,17 +71,25 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
     protected final ExecutorService executor;
+    private final ExecutorService blockingSnapshotExecutor;
     protected final EventDispatcher<P, ?> eventDispatcher;
     protected final DatabaseSchema<?> schema;
     protected final SignalProcessor<P, O> signalProcessor;
     protected final NotificationService<P, O> notificationService;
+    protected final CommonConnectorConfig connectorConfig;
 
     private volatile boolean running;
+    private volatile boolean paused;
+    private volatile boolean streaming;
     protected volatile StreamingChangeEventSource<P, O> streamingSource;
     protected final ReentrantLock commitOffsetLock = new ReentrantLock();
 
     protected SnapshotChangeEventSourceMetrics<P> snapshotMetrics;
     protected StreamingChangeEventSourceMetrics<P> streamingMetrics;
+    private ChangeEventSourceContext context;
+    private SnapshotChangeEventSource<P, O> snapshotSource;
+    private AtomicReference<LoggingContext.PreviousContext> previousLogContext;
+    private CdcSourceTaskContext taskContext;
 
     public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
@@ -86,17 +102,20 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
+        this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
         this.signalProcessor = signalProcessor;
         this.notificationService = notificationService;
+        this.connectorConfig = connectorConfig;
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                    EventMetadataProvider metadataProvider) {
 
-        AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
+        previousLogContext = new AtomicReference<>();
         try {
+            this.taskContext = taskContext;
             this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
             this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
             running = true;
@@ -109,10 +128,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     streamingMetrics.register();
                     LOGGER.info("Metrics registered");
 
-                    ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
+                    context = new ChangeEventSourceContextImpl();
                     LOGGER.info("Context created");
 
-                    SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService);
+                    snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService);
                     executeChangeEventSources(taskContext, snapshotSource, previousOffsets, previousLogContext, context);
                 }
                 catch (InterruptedException e) {
@@ -127,13 +146,31 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 }
             });
 
-            getSignalProcessor(previousOffsets).ifPresent(SignalProcessor::start); // this will run on a separate thread
+            getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                    eventDispatcher, this, connectorConfig));
         }
         finally {
             if (previousLogContext.get() != null) {
                 previousLogContext.get().restore();
             }
         }
+    }
+
+    protected void registerSignalActionsAndStartProcessor(SignalProcessor<P, O> signalProcessor, EventDispatcher<P, ? extends DataCollectionId> dispatcher,
+                                                          ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator, CommonConnectorConfig connectorConfig) {
+
+        // Maybe this can be moved on task
+        List<SignalActionProvider> actionProviders = StreamSupport.stream(ServiceLoader.load(SignalActionProvider.class).spliterator(), false)
+                .collect(Collectors.toList());
+
+        actionProviders.stream()
+                .map(provider -> provider.createActions(dispatcher, changeEventSourceCoordinator, connectorConfig))
+                .flatMap(e -> e.entrySet().stream())
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
+                .forEach(signalProcessor::registerSignalAction);
+
+        signalProcessor.start(); // this will run on a separate thread
+
     }
 
     public Optional<SignalProcessor<P, O>> getSignalProcessor(Offsets<P, O> previousOffset) { // Signal processing only work with one partition
@@ -157,6 +194,35 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
             streamEvents(context, partition, snapshotResult.getOffset());
         }
+    }
+
+    public void doBlockingSnapshot(P partition, OffsetContext offsetContext) {
+
+        blockingSnapshotExecutor.submit(() -> {
+
+            previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+
+            paused = true;
+            streaming = true;
+
+            try {
+
+                context.waitStreamingPaused();
+
+                previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
+                LOGGER.info("Starting snapshot");
+                SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext);
+
+                if (running && snapshotResult.isCompletedOrSkipped()) {
+                    previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+                    paused = false;
+                    context.resumeStreaming();
+                }
+            }
+            catch (InterruptedException e) {
+                throw new DebeziumException("Blocking snapshot has been interrupted");
+            }
+        });
     }
 
     protected SnapshotResult<O> doSnapshot(SnapshotChangeEventSource<P, O> snapshotSource, ChangeEventSourceContext context, P partition, O previousOffset)
@@ -223,7 +289,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             // Clear interrupt flag so the graceful termination is always attempted
             Thread.interrupted();
             executor.shutdown();
+            blockingSnapshotExecutor.shutdown();
             boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            boolean isBlockingSnapshotShutdown = blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
             if (!isShutdown) {
                 LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
@@ -232,6 +300,15 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 Thread.interrupted();
                 executor.shutdownNow();
                 executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            }
+
+            if (!isBlockingSnapshotShutdown) {
+                LOGGER.warn("Coordinator didn't stop in the expected time, shutting down blocking snapshot executor now");
+
+                // Clear interrupt flag so the forced termination is always attempted
+                Thread.interrupted();
+                blockingSnapshotExecutor.shutdownNow();
+                blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             }
 
             Optional<SignalProcessor<P, O>> processor = getSignalProcessor(previousOffsets);
@@ -256,9 +333,72 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     public class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
 
+        private final Lock lock = new ReentrantLock();
+        private final Condition snapshotFinished = lock.newCondition();
+        private final Condition streamingPaused = lock.newCondition();
+
+        @Override
+        public boolean isPaused() {
+            return paused;
+        }
+
         @Override
         public boolean isRunning() {
             return running;
+        }
+
+        @Override
+        public void resumeStreaming() {
+            lock.lock();
+            try {
+                snapshotFinished.signalAll();
+                LOGGER.trace("Streaming will now resume.");
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+
+        @Override
+        public void waitSnapshotCompletion() throws InterruptedException {
+            lock.lock();
+            try {
+                while (paused) {
+                    LOGGER.trace("Waiting for snapshot to be completed.");
+                    snapshotFinished.await();
+                    streaming = true;
+                }
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+
+        @Override
+        public void streamingPaused() {
+            lock.lock();
+            try {
+                LOGGER.trace("Streaming paused. Blocking snapshot can now start.");
+                streaming = false;
+                streamingPaused.signalAll();
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+
+        @Override
+        public void waitStreamingPaused() throws InterruptedException {
+            lock.lock();
+            try {
+                while (streaming) {
+                    LOGGER.trace("Requested a blocking snapshot. Waiting for streaming to be paused.");
+                    streamingPaused.await();
+                }
+            }
+            finally {
+                lock.unlock();
+            }
         }
     }
 

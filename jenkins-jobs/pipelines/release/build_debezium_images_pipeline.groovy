@@ -187,11 +187,17 @@ node('Slave') {
                 echo "Building images for tag $tag"
                 stage(tag.toString()) {
                     dir(IMAGES_DIR) {
+                        // Disable IPv6 as Node.js has problems downloading dependencies using it
+                        sh """
+                            sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+                            sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+                        """
                         sh """
                             git checkout v$tag
                             git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
                             git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-mongo-multiplatform.sh build-postgres-multiplatform.sh
-                            RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
+                            echo '========== Building UI only for linux/amd64, arm64 not working =========='
+                            DEBEZIUM_UI_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
                             git reset --hard
                         """
                     }

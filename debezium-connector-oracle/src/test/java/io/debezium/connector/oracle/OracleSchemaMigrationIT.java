@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
@@ -1188,8 +1189,8 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
             SourceRecord record = records.recordsForTopic(topicName("DEBEZIUM", "DBZ4037")).get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isNull();
-            assertThat(after.get("DATA2")).isNull();
+            assertThat(after.get("DATA")).isEqualTo(ByteBuffer.wrap("Test".getBytes()));
+            assertThat(after.get("DATA2")).isEqualTo(ByteBuffer.wrap("T".getBytes()));
             assertThat(after.get("NAME")).isEqualTo("Acme 123");
 
             assertNoRecordsToConsume();

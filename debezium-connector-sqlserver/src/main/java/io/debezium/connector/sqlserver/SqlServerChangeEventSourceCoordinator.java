@@ -109,9 +109,7 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                 previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
 
                 if (context.isRunning()) {
-                    if (streamingSource.executeIteration(context, partition, previousOffset)) {
-                        streamedEvents = true;
-                    }
+                    streamedEvents = streamingSource.executeIteration(context, partition, previousOffset);
                 }
             }
 
@@ -122,6 +120,14 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
             if (errorHandler.getProducerThrowable() == null) {
                 firstStreamingIterationCompletedSuccessfully.set(true);
             }
+
+            if (context.isPaused()) {
+                LOGGER.info("Streaming will now pause");
+                context.streamingPaused();
+                context.waitSnapshotCompletion();
+                LOGGER.info("Streaming resumed");
+            }
+
         }
 
         LOGGER.info("Finished streaming");

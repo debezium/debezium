@@ -101,28 +101,28 @@ Note that you might need to create this directory to prevent an error on startup
 When the server is started it generates a seqeunce of log messages like this:
 
 ----
-__  ____  __  _____   ___  __ ____  ______ 
- --/ __ \/ / / / _ | / _ \/ //_/ / / / __/ 
- -/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \   
---\___\_\____/_/ |_/_/|_/_/|_|\____/___/   
+__  ____  __  _____   ___  __ ____  ______
+ --/ __ \/ / / / _ | / _ \/ //_/ / / / __/
+ -/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \
+--\___\_\____/_/ |_/_/|_/_/|_|\____/___/
 2020-05-15 11:33:12,189 INFO  [io.deb.ser.kin.KinesisChangeConsumer] (main) Using 'io.debezium.server.kinesis.KinesisChangeConsumer$$Lambda$119/0x0000000840130c40@f58853c' stream name mapper
 2020-05-15 11:33:12,628 INFO  [io.deb.ser.kin.KinesisChangeConsumer] (main) Using default KinesisClient 'software.amazon.awssdk.services.kinesis.DefaultKinesisClient@d1f74b8'
 2020-05-15 11:33:12,628 INFO  [io.deb.ser.DebeziumServer] (main) Consumer 'io.debezium.server.kinesis.KinesisChangeConsumer' instantiated
-2020-05-15 11:33:12,754 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,754 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = key
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = true
 
-2020-05-15 11:33:12,757 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,757 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = value
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = false
 
-2020-05-15 11:33:12,763 INFO  [io.deb.emb.EmbeddedEngine$EmbeddedConfig] (main) EmbeddedConfig values: 
-	access.control.allow.methods = 
-	access.control.allow.origin = 
+2020-05-15 11:33:12,763 INFO  [io.deb.emb.EmbeddedEngine$EmbeddedConfig] (main) EmbeddedConfig values:
+	access.control.allow.methods =
+	access.control.allow.origin =
 	admin.listeners = null
 	bootstrap.servers = [localhost:9092]
 	client.dns.lookup = default
@@ -142,7 +142,7 @@ __  ____  __  _____   ___  __ ____  ______
 	offset.storage.file.filename = data/offsets.dat
 	offset.storage.partitions = null
 	offset.storage.replication.factor = null
-	offset.storage.topic = 
+	offset.storage.topic =
 	plugin.path = null
 	rest.advertised.host.name = null
 	rest.advertised.listener = null
@@ -158,13 +158,13 @@ __  ____  __  _____   ___  __ ____  ______
 
 2020-05-15 11:33:12,763 INFO  [org.apa.kaf.con.run.WorkerConfig] (main) Worker configuration property 'internal.key.converter' is deprecated and may be removed in an upcoming release. The specified value 'org.apache.kafka.connect.json.JsonConverter' matches the default, so this property can be safely removed from the worker configuration.
 2020-05-15 11:33:12,763 INFO  [org.apa.kaf.con.run.WorkerConfig] (main) Worker configuration property 'internal.value.converter' is deprecated and may be removed in an upcoming release. The specified value 'org.apache.kafka.connect.json.JsonConverter' matches the default, so this property can be safely removed from the worker configuration.
-2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = key
 	decimal.format = BASE64
 	schemas.cache.size = 1000
 	schemas.enable = true
 
-2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values: 
+2020-05-15 11:33:12,765 INFO  [org.apa.kaf.con.jso.JsonConverterConfig] (main) JsonConverterConfig values:
 	converter.type = value
 	decimal.format = BASE64
 	schemas.cache.size = 1000
@@ -185,7 +185,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.port = 5432
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    schema.include.list = inventory
 2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server 1.2.0-SNAPSHOT (powered by Quarkus 1.4.1.Final) started in 1.198s. Listening on: http://0.0.0.0:8080
-2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Profile prod activated. 
+2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Profile prod activated.
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Installed features: [cdi, smallrye-health]
 ----
 
@@ -485,7 +485,7 @@ The most frequent used are:
 [id="debezium-quarkus-http-port"]
 |`quarkus.http.port`
 |8080
-|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information.
+|The port on which {prodname} exposes Microprofile Health endpoint and other exposed status information. Health can be accessed on `\http://host:8080/q/health`.
 
 [id="debezium-quarkus-log-level"]
 |`quarkus.log.level`
@@ -618,7 +618,7 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 
 |[[flowControl-enabled]]<<flowControl-enabled, `debezium.sink.pubsub.flowControl.enabled`>>
 |`false`
-|When enabled, configures your publisher client with flow control to limit the rate of publish requests. 
+|When enabled, configures your publisher client with flow control to limit the rate of publish requests.
 
 |[[flowControl-max-outstanding-messages]]<<flowControl-max-outstanding-messages, `debezium.sink.pubsub.flowControl.max.outstanding.messages`>>
 |`Long.MAX_VALUE`
@@ -642,7 +642,7 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 
 |[[retry-max-delay-ms]]<<retry-max-delay-ms, `debezium.sink.pubsub.retry.max.delay.ms`>>
 |`Long.MAX_VALUE`
-|The maximum amount of time to wait before retrying. 
+|The maximum amount of time to wait before retrying.
 i.e. after this value is reached, the wait time will not increase further by the multiplier.
 
 |[[retry-initial-rpc-timeout-ms]]<<retry-initial-rpc-timeout-ms, `debezium.sink.pubsub.retry.initial.rpc.timeout.ms`>>
@@ -665,7 +665,7 @@ i.e. after this value is reached, the wait time will not increase further by the
 |
 |The address of the pubsub emulator.
 Only to be used in a dev or test environment with the https://cloud.google.com/pubsub/docs/emulator[pubsub emulator].
-Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment. 
+Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment.
 
 |===
 
@@ -857,11 +857,11 @@ The `topic` is set by {prodname}.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pulsar so a surrogate key must be used.
 
-|[[pulsar-tenant]]<<pulsar-tenant, `debezium.sink.pusar.tenant`>>
+|[[pulsar-tenant]]<<pulsar-tenant, `debezium.sink.pulsar.tenant`>>
 |`public`
 |The target tenant used to deliver the message.
 
-|[[pulsar-namespace]]<<pulsar-namespace, `debezium.sink.pusar.namespace`>>
+|[[pulsar-namespace]]<<pulsar-namespace, `debezium.sink.pulsar.namespace`>>
 |`default`
 |The target namespace used to deliver the message.
 
@@ -966,8 +966,8 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |(Optional) A password (of respective user) used to communicate with Redis. A password must be set if a user is set.
 
 |[[redis-ssl-enabled]]<<redis-ssl-enabled, `debezium.sink.redis.ssl.enabled`>>
-|
-|(Optional) Use SSL to communicate with Redis. Default 'false'
+| false
+|(Optional) A Boolean value that specifies whether connections to Redis require SSL. 
 
 |[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
 |`default`
@@ -1019,7 +1019,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 
 |[[redis-message-format]]<<redis-message-format, `debezium.sink.redis.message.format`>>
 |`compact`
-|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format). 
+|The format of the message sent to the Redis stream. Possible values are `extended`(newer format) and `compact`(the until now, old format).
 Read more about the message format xref:#p-redis-message-format[below].
 
 |[[redis-memory-threshold-percentage]]<<redis-memory-threshold-percentage, `debezium.sink.redis.memory.threshold.percentage`>>
@@ -1080,7 +1080,7 @@ By default the same name is used.
 
 ==== NATS Streaming
 
-https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language. 
+https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===

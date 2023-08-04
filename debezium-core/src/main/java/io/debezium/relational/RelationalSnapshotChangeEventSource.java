@@ -106,8 +106,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final RelationalSnapshotContext<P, O> ctx = (RelationalSnapshotContext<P, O>) snapshotContext;
 
         Connection connection = null;
-        Exception exceptionWhileSnapshot = null;
+        Throwable exceptionWhileSnapshot = null;
         try {
+
+            preSnapshot();
+
             LOGGER.info("Snapshot step 1 - Preparing");
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
@@ -165,7 +168,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.partition, ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
-        catch (final Exception e) {
+        catch (final Exception | AssertionError e) {
             LOGGER.error("Error during snapshot", e);
             exceptionWhileSnapshot = e;
             throw e;
@@ -748,5 +751,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     }
 
     protected void postSnapshot() throws InterruptedException {
+    }
+
+    protected void preSnapshot() throws InterruptedException {
+
     }
 }

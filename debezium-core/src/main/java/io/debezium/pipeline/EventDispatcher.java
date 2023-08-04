@@ -8,15 +8,11 @@ package io.debezium.pipeline;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -33,7 +29,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.signal.SignalProcessor;
-import io.debezium.pipeline.signal.actions.SignalActionProvider;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -152,7 +147,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueTransactionMessage, topicNamingStrategy.transactionTopic());
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            registerSignalActions();
             this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
@@ -160,8 +154,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             this.sourceSignalChannel = null;
         }
         this.heartbeat = heartbeat;
-
-        // TODO this should be the place where this queue must be passed to KafkaNotificationChannel
 
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
 
@@ -189,7 +181,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.transactionMonitor = transactionMonitor;
         this.signalProcessor = signalProcessor;
         if (signalProcessor != null) {
-            registerSignalActions();
             this.sourceSignalChannel = signalProcessor.getSignalChannel(SourceSignalChannel.class);
             this.sourceSignalChannel.init(connectorConfig);
         }
@@ -199,19 +190,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.heartbeat = heartbeat;
         schemaChangeKeySchema = SchemaFactory.get().schemaHistoryConnectorKeySchema(schemaNameAdjuster, connectorConfig);
         schemaChangeValueSchema = SchemaFactory.get().schemaHistoryConnectorValueSchema(schemaNameAdjuster, connectorConfig, tableChangesSerializer);
-    }
-
-    public void registerSignalActions() {
-
-        List<SignalActionProvider> actionProviders = StreamSupport.stream(ServiceLoader.load(SignalActionProvider.class).spliterator(), false)
-                .collect(Collectors.toList());
-
-        actionProviders.stream()
-                .map(provider -> provider.createActions(this, connectorConfig))
-                .flatMap(e -> e.entrySet().stream())
-                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
-                .forEach(signalProcessor::registerSignalAction);
-
     }
 
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
@@ -236,6 +214,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                      OffsetContext offset,
                                      ConnectHeaders headers)
                     throws InterruptedException {
+
+                LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+
                 eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
                 receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
             }
@@ -290,6 +271,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
+
+                        LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+
                         if (operation == Operation.CREATE && connectorConfig.isSignalDataCollection(dataCollectionId) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
 

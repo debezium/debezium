@@ -254,7 +254,7 @@ Adding a signaling channel involves several steps:
 
 // Type: procedure
 // Title: Providing a custom {prodname} signaling channel
-// ModuleID: debezium-signaling-providing-a custom-signaling-channel
+// ModuleID: debezium-signaling-providing-a-custom-signaling-channel
 [id="debezium-signaling-enabling-custom-signaling-channel"]
 === Provide custom signaling channel
 

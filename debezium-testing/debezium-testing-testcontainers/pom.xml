@@ -102,7 +102,7 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-test-common</artifactId>
-      <version>${quarkus.version}</version>
+      <version>${quarkus.version.runtime}</version>
       <exclusions>
         <exclusion>
           <groupId>org.jboss.slf4j</groupId>

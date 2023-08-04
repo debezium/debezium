@@ -79,7 +79,7 @@ that enable SQL Replication in Db2. A capture agent:
 * Generates change-data tables for tables that are in capture mode.
 * Monitors tables in capture mode and stores change events for updates to those tables in their corresponding change-data tables.
 
-The {prodname} connector uses a SQL interface to query change-data tables for  change events.
+The {prodname} connector uses a SQL interface to query change-data tables for change events.
 
 The database administrator must put the tables for which you want to capture changes into capture mode.
 For convenience and for automating testing, there are xref:db2-management[{prodname} management user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
@@ -91,9 +91,16 @@ For convenience and for automating testing, there are xref:db2-management[{prodn
 
 Alternatively, you can use Db2 control commands to accomplish these tasks.
 
-After the tables of interest are in capture mode, the connector reads their corresponding change-data tables to obtain change events for table updates. The connector emits a change event for each row-level insert, update, and delete operation to a Kafka topic that has the same name as the changed table. This is default behavior that you can modify. Client applications read the Kafka topics that correspond to the database tables of interest and can react to each row-level change event.
+After the tables of interest are in capture mode, the connector reads their corresponding change-data tables to obtain change events for table updates.
+The connector emits a change event for each row-level insert, update, and delete operation to a Kafka topic that has the same name as the changed table.
+This is default behavior that you can modify.
+Client applications read the Kafka topics that correspond to the database tables of interest and can react to each row-level change event.
 
-Typically, the database administrator puts a table into capture mode in the middle of the life of a table. This means that the connector does not have the complete history of all changes that have been made to the table. Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each table that is in capture mode. After the connector completes the snapshot, the connector streams change events from the point at which the snapshot was made. In this way, the connector starts with a consistent view of the tables that are in capture mode, and does not drop any changes that were made while it was performing the snapshot.
+Typically, the database administrator puts a table into capture mode in the middle of the life of a table.
+This means that the connector does not have the complete history of all changes that have been made to the table.
+Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each table that is in capture mode.
+After the connector completes the snapshot, the connector streams change events from the point at which the snapshot was made.
+In this way, the connector starts with a consistent view of the tables that are in capture mode, and does not drop any changes that were made while it was performing the snapshot.
 
 {prodname} connectors are tolerant of failures. As the connector reads and produces change events, it records the log sequence number (LSN) of the change-data table entry. The LSN is the position of the change event in the database log. If the connector stops for any reason, including communication failures, network problems, or crashes, upon restarting it continues reading the change-data tables where it left off. This includes snapshots. That is, if the snapshot was not complete when the connector stopped, upon restart the connector begins a new snapshot.
 
@@ -122,21 +129,223 @@ endif::product[]
 [[db2-snapshots]]
 === Snapshots
 
-Db2`s replication feature is not designed to store the complete history of database changes. Consequently, when a {prodname} Db2 connector connects to a database for the first time, it takes a consistent snapshot of tables that are in capture mode and streams this state to Kafka. This establishes the baseline for table content.
+Db2`s replication feature is not designed to store the complete history of database changes.
+As a result, the {prodname} Db2 connector cannot retrieve the entire history of the database from the logs.
+To enable the connector to establish a baseline for the current state of the database, the first time that the connector starts, it performs an initial _consistent snapshot_ of the tables that are in xref:putting-tables-in-capture-mode[capture mode].
+For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
 
-By default, when a Db2 connector performs a snapshot, it does the following:
+The following workflow lists the steps that {prodname} takes to create a snapshot.
+These steps describe the process for a snapshot when the xref:db2-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 
-. Determines which tables are in capture mode, and thus must be included in the snapshot. By default, all non-system tables are in capture mode. Connector configuration properties, such as `table.exclude.list` and `table.include.list` let you specify which tables should be in capture mode.
-. Obtains a lock on each of the tables in capture mode. This ensures that no schema changes can occur in those tables during the snapshot.
-The level of the lock is determined by the `snapshot.isolation.mode` connector  configuration property.
-. Reads the highest (most recent) LSN position in the server's transaction log.
-. Captures the schema of all tables that are in capture mode. The connector persists this information in its internal database schema history topic.
-. Optional, releases the locks obtained in step 2. Typically, these locks are held for only a short time.
-. At the LSN position read in step 3, the connector scans the capture mode tables as well as their schemas. During the scan, the connector:
-.. Confirms that the table was created before the start of the snapshot. If it was not, the snapshot skips that table. After the snapshot is complete, and the connector starts emitting change events, the connector produces change events for any tables that were created during the snapshot.
-.. Produces a _read_ event for each row in each table that is in capture mode. All _read_ events contain the same LSN position, which is the LSN position that was obtained in step 3.
-.. Emits each _read_ event to the Kafka topic that has the same name as the table.
-. Records the successful completion of the snapshot in the connector offsets.
+.Default workflow that the {prodname} Db2 connector uses to perform an initial snapshot
+
+1. Establish a connection to the database.
+
+2. Determine which tables are in capture mode and should be included in the snapshot.
+   By default, the connector captures the data for all non-system tables.
+   After the snapshot completes, the connector continues to stream data for the specified tables.
+   If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+3. Obtain a lock on each of the tables in capture mode.
+  This lock ensures that no schema changes can occur in those tables until the snapshot completes.
+  The level of the lock is determined by the `snapshot.isolation.mode` connector configuration property.
+
+4. Read the highest (most recent) LSN position in the server's transaction log.
+
+5. Capture the schema of all tables or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic.
+The schema history provides information about the structure that is in effect when a change event occurs. +
++
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+6. Release any locks obtained in Step 3.
+  Other database clients can now write to any previously locked tables.
+
+7. At the LSN position read in Step 4, the connector scans the tables that are designated for capture.
+  During the scan, the connector completes the following tasks:
+
+.. Confirms that the table was created before the snapshot began.
+  If the table was created after the snapshot began, the connector skips the table.
+  After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+
+.. Produces a `read` event for each row that is captured from a table.
+  All `read` events contain the same LSN position, which is the LSN position that was obtained in step 4.
+
+.. Emits each `read` event to the Kafka topic for the source table.
+
+.. Releases data table locks, if applicable.
+
+8. Record the successful completion of the snapshot in the connector offsets.
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 4 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+// ModuleID: {context}-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+
+// Type: procedure
+[id="db2-capturing-data-from-tables-not-captured-by-the-initial-snapshot"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
+For information about capturing data from a new table that has undergone structural changes, see xref:db2-capturing-data-from-new-tables-with-schema-changes[].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Apply the following changes to the connector configuration:
+.. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
+This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables. +
++
+[NOTE]
+====
+Snapshots that capture the schema for all tables require more time to complete.
+====
+.. Add the tables that you want the connector to capture to xref:{context}-property-table-include-list[`table.include.list`].
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to one of the following values:
+`initial`:: When you restart the connector, it takes a full snapshot of the database that captures the table data and table structures. +
+If you select this option, consider setting the value of the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] property to `false` to enable the connector to capture the schema of all tables.
+`schema_only`:: When you restart the connector, it takes a snapshot that captures only the table schema.
+Unlike a full data snapshot, this option does not capture any table data.
+Use this option if ou want to restart the connector more quickly than with a full snapshot.
+
+5. Restart the connector.
+The connector completes the type of snapshot specified by the `snapshot.mode`.
+6. (Optional) If the connector performed a `schema_only` snapshot, after the snapshot completes, initiate an xref:{context}-incremental-snapshots[incremental snapshot] to capture data from the tables that you added.
+The connector runs the snapshot while it continues to stream real-time changes from the tables.
+Running an incremental snapshot captures the following data changes:
++
+* For tables that the connector previously captured, the incremental snapsot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
+* For newly added tables, the incremental snapshot captures all existing table rows.
+
+// Type: procedure
+[id="db2-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:{context}-incremental-snapshots[incremental snapshot].
 
 // Type: concept
 // ModuleID: debezium-db2-ad-hoc-snapshots
@@ -218,11 +427,40 @@ To configure custom topic names, you specify regular expressions in the logical 
 For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
 
 // Type: concept
+// ModuleID: how-debezium-db2-connectors-handle-database-schema-changes
+// Title: How {prodname} Db2 connectors handle database schema changes
+[[db2-schema-history-topic]]
+=== Schema history topic
+
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of events that occur after a schema change, the {prodname} Db2 connector stores a snapshot of the new schema based on the structures of the Db2 change data tables, which mirror the structures of their associated data tables.
+The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
+The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
+
+When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the Db2 change data tables from the last position that it read.
+Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
+
+If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+You must be a Db2 database administrator with elevated privileges to update database schema.
+For more information about how to update Db2 database schema in {prodname} environments, see xref:db2-schema-evolution[Schema history eveolution].
+
+The database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:about-the-debezium-db2-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+.Additional resources
+
+* xref:db2-topic-names[Default names for topics] that receive {prodname} event records.
+
+// Type: concept
 // Title: About the {prodname} Db2 connector schema change topic
 [id="about-the-debezium-db2-connector-schema-change-topic"]
 === Schema change topic
 
-You can configure a {prodname} Db2 connector to produce schema change events that describe schema changes that are applied to captured tables in the database.
+You can configure a {prodname} Db2 connector to produce schema change events that describe schema changes that are applied to tables in the database.
 
 {prodname} emits a message to the schema change topic when:
 
@@ -268,7 +506,7 @@ Messages that the connector sends to the schema change topic contain a payload t
 
 `databaseName`:: The name of the database to which the statements are applied.
 The value of `databaseName` serves as the message key.
-`pos`:: The position in the binlog where the statements appear.
+`pos`:: The position in the transaction log where the statements appear.
 `tableChanges`::  A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
@@ -1167,7 +1405,7 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 [[db2-data-types]]
 == Data type mappings
 
-Db2's data types are described in https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html[Db2 SQL Data Types].
+For a complete description of the data types that Db2 supports, see https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html[Data Types] in the Db2 documentation.
 
 The Db2 connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the Db2 data type of the column. This section describes these mappings.
 If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
@@ -1185,7 +1423,7 @@ endif::product[]
 [id="db2-basic-types"]
 === Basic types
 
-The following table describes how the connector maps each of the Db2 data types to a _literal type_ and a _semantic type_ in event fields.
+The following table describes how the connector maps each Db2 data type to a _literal type_ and a _semantic type_ in event fields.
 
 * _literal type_ describes how the value is represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
@@ -1296,7 +1534,8 @@ endif::community[]
 [[db2-temporal-types]]
 === Temporal types
 
-Other than Db2's `DATETIMEOFFSET` data type, which contains time zone information, how temporal types are mapped depends on the value of the `time.precision.mode` connector configuration property. The following sections describe these mappings:
+Except for the `DATETIMEOFFSET` data type, which contains time zone information, Db2 maps temporal types based on the value of the `time.precision.mode` connector configuration property.
+The following sections describe these mappings:
 
 * xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:db2-time-precision-mode-connect[`time.precision.mode=connect`]
@@ -1425,6 +1664,7 @@ endif::product[]
 // Type: procedure
 // ModuleID: configuring-db2-tables-for-change-data-capture
 // Title: Configuring Db2 tables for change data capture
+[id="putting-tables-in-capture-mode"]
 === Putting tables into capture mode
 
 To put tables into capture mode, {prodname} provides a set of user-defined functions (UDFs) for your convenience.
@@ -2520,6 +2760,10 @@ endif::product[]
 |`No default`
 |The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
 
+|[[db2-property-errors-max-retires]]<<db2-property-errors-max-retires, `errors.max.retries`>>
+|`-1`
+|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]
@@ -2631,7 +2875,7 @@ Do this after you put a table into capture mode or after you remove a table from
 
 While a {prodname} Db2 connector can capture schema changes, to update a schema, you must collaborate with a database administrator to ensure that the connector continues to produce change events. This is required by the way that Db2 implements replication.
 
-For each table in capture mode, Db2's replication feature creates a change-data table that contains all changes to that source table. However, change-data table schemas are static. If you update the schema for a table in capture mode then you must also update the schema of its corresponding change-data table. A {prodname} Db2 connector cannot do this. A database administrator with elevated privileges must update schemas for tables that are in capture mode.
+For each table in capture mode, the replication feature in Db2 creates a change-data table that contains all changes to that source table. However, change-data table schemas are static. If you update the schema for a table in capture mode then you must also update the schema of its corresponding change-data table. A {prodname} Db2 connector cannot do this. A database administrator with elevated privileges must update schemas for tables that are in capture mode.
 
 [WARNING]
 ====

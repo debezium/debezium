@@ -177,7 +177,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+    protected SnapshottingTask getSnapshottingTask(MongoDbPartition partition, MongoDbOffsetContext offsetContext, boolean isBlockingSnapshot) {
+
+        if (isBlockingSnapshot) {
+            return new MongoDbSnapshottingTask(replicaSets.all());
+        }
+
         // If no snapshot should occur, return task with no replica sets
         if (connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
             LOGGER.info("According to the connector configuration, no snapshot will occur.");

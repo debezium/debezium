@@ -72,4 +72,17 @@
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
+
+    <!-- For debug purpose -->
+    <logger
+            name="io.debezium.pipeline.ChangeEventSourceCoordinator"
+            level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <logger
+            name="io.debezium.pipeline.EventDispatcher"
+            level="off" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
 </configuration>

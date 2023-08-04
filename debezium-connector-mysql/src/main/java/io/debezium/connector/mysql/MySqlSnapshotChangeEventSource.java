@@ -67,11 +67,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
+    private final Runnable preSnapshotAction;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<MySqlConnection> connectionFactory,
                                           MySqlDatabaseSchema schema, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor,
+                                          Runnable preSnapshotAction,
                                           NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService);
         this.connectorConfig = connectorConfig;
@@ -80,32 +82,32 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         this.metrics = metrics;
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
+        this.preSnapshotAction = preSnapshotAction;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset) {
-        boolean snapshotSchema = true;
-        boolean snapshotData = true;
+    protected SnapshottingTask getSnapshottingTask(MySqlPartition partition, MySqlOffsetContext previousOffset, boolean isBlockingSnapshot) {
+
+        if (isBlockingSnapshot) {
+            return new SnapshottingTask(true, true);
+        }
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
+
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotSchema = databaseSchema.isStorageInitializationExecuted();
-            snapshotData = false;
-        }
-        else {
-            LOGGER.info("No previous offset has been found");
-            if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
-            }
-            else {
-                LOGGER.info("According to the connector configuration only schema will be snapshotted");
-            }
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
-            snapshotSchema = connectorConfig.getSnapshotMode().includeSchema();
+            return new SnapshottingTask(databaseSchema.isStorageInitializationExecuted(), false);
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        LOGGER.info("No previous offset has been found");
+        if (connectorConfig.getSnapshotMode().includeData()) {
+            LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
+        }
+        else {
+            LOGGER.info("According to the connector configuration only schema will be snapshotted");
+        }
+
+        return new SnapshottingTask(connectorConfig.getSnapshotMode().includeSchema(), connectorConfig.getSnapshotMode().includeData());
     }
 
     @Override
@@ -650,6 +652,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             return record;
         });
         super.postSnapshot();
+    }
+
+    @Override
+    protected void preSnapshot() throws InterruptedException {
+        preSnapshotAction.run();
+        super.preSnapshot();
     }
 
     @Override

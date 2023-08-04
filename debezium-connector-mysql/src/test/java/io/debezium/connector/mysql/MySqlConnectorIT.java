@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -118,6 +120,42 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             assertThat(success).isFalse();
             assertThat(error).isNotNull();
         });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    public void shouldNotStartWithUnknownJdbcDriver() {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.JDBC_DRIVER, "foo.bar")
+                .build();
+
+        final AtomicBoolean successResult = new AtomicBoolean();
+        final AtomicReference<String> message = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, msg, error) -> {
+            successResult.set(success);
+            message.set(msg);
+        });
+
+        assertThat(successResult.get()).isEqualTo(false);
+        assertThat(message.get()).contains("java.lang.ClassNotFoundException: foo.bar");
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    public void shouldNotStartWithWrongProtocol() {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.JDBC_PROTOCOL, "foo:bar")
+                .build();
+
+        final AtomicBoolean successResult = new AtomicBoolean();
+        final AtomicReference<String> message = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, msg, error) -> {
+            successResult.set(success);
+            message.set(msg);
+        });
+
+        assertThat(successResult.get()).isEqualTo(false);
+        assertThat(message.get()).contains("Unable to obtain a JDBC connection");
         assertConnectorNotRunning();
     }
 
