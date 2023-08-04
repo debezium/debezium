@@ -45,6 +45,7 @@ Anton Kondratev
 Anton Martynov
 Arik Cohen
 Arkoprabho Chakraborti
+Artur Gukasian
 artiship
 Ashhar Hasan
 Ashique Ansari
@@ -152,6 +153,7 @@ Fabian Aussems
 Fabian Martinez
 Fabio Cantarini
 Fahim Farook
+Fai Ho Fu
 Faizan
 Farid Uyar
 Fatih Güçlü Akkaya
@@ -358,6 +360,7 @@ Oscar Romero
 Oskar Polak
 Patrick Chu
 Pavel Strashkin
+Paul Cheung
 Paul Mellor
 Paul Tzen
 Paweł Malon
@@ -489,6 +492,7 @@ Xinquan She
 Xuan Shen
 Yang Wu
 Yang Yang
+Yanjie Wang
 yangrong688
 yangsanity
 Yashashree Chopada

@@ -2,6 +2,38 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.3.2.Final
+August 4th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12411058)
+
+### New features since 2.3.1.Final
+
+None
+
+
+### Breaking changes since 2.3.1.Final
+
+* Increase Oracle default query fetch size from 2000 to 10000 [DBZ-6729](https://issues.redhat.com/browse/DBZ-6729)
+
+
+### Fixes since 2.3.1.Final
+
+* Should use topic.prefix rather than connector.server.name in MBean namings [DBZ-6690](https://issues.redhat.com/browse/DBZ-6690)
+* Custom properties step not working correctly in validation of the properties added by user [DBZ-6711](https://issues.redhat.com/browse/DBZ-6711)
+* Oracle fails to process a DROP USER [DBZ-6716](https://issues.redhat.com/browse/DBZ-6716)
+* Oracle LogMiner mining distance calculation should be skipped when upper bounds is not within distance [DBZ-6733](https://issues.redhat.com/browse/DBZ-6733)
+* MariaDB: Unparseable DDL statement (ALTER TABLE IF EXISTS) [DBZ-6736](https://issues.redhat.com/browse/DBZ-6736)
+* SQL Server fail to start due to duplicate definition of query.fetch.size [DBZ-6743](https://issues.redhat.com/browse/DBZ-6743)
+* MySQL dialect does not properly recognize non-default value longblob types due to typo [DBZ-6753](https://issues.redhat.com/browse/DBZ-6753)
+
+
+### Other changes since 2.3.1.Final
+
+* Highlight information about how to configure the schema history topic to store data only for intended tables [DBZ-6219](https://issues.redhat.com/browse/DBZ-6219)
+* Upstream documentation missing types for configurations [DBZ-6707](https://issues.redhat.com/browse/DBZ-6707)
+* Decouple Debezium Server and Extension Quarkus versions [DBZ-6744](https://issues.redhat.com/browse/DBZ-6744)
+
+
+
 ## 2.3.1.Final
 July 27th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409857)
 

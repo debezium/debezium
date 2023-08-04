@@ -216,3 +216,6 @@ TechIsCool,David Beck
 cjmencias,Christian Jacob Mencias
 bdbene,Balint Bene
 Ychopada,Yashashree Chopada
+paul cheung,Paul Cheung
+faihofu,Fai Ho Fu
+j2gg0s,Yanjie Wang
