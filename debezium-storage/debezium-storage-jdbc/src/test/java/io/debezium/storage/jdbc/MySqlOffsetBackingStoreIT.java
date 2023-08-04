@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.storage.jdbc;
 
 import io.debezium.config.Configuration;
@@ -17,7 +22,10 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.sql.SQLException;
 
-public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT{
+/**
+ * Integration test for JdbcOffsetBackingStore using MySQL.
+ */
+public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlOffsetBackingStoreIT.class);
 
@@ -69,7 +77,7 @@ public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT{
     }
 
     @Override
-    Configuration.Builder config(String jdbcUrl) {
+    protected Configuration.Builder config(String jdbcUrl) {
         Configuration.Builder builder = getBasicConfig()
                 .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), jdbcUrl)
                 .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), MYSQL_OFFSET_USER)
@@ -108,7 +116,7 @@ public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT{
 
 
     @Override
-    String getJdbcUrl() {
+    protected String getJdbcUrl() {
         return mySQLContainer.getJdbcUrl();
     }
 }

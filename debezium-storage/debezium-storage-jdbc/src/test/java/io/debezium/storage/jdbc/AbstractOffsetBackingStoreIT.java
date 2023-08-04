@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.storage.jdbc;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -11,16 +16,26 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.IOException;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.ResultSet;
 import java.time.Duration;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 
+/**
+ * Abstract Integration test class for OffsetBackingStore implementations.
+ */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public abstract class AbstractOffsetBackingStoreIT extends AbstractConnectorTest {
     protected static final String TOPIC_PREFIX = "test";
@@ -112,7 +127,6 @@ public abstract class AbstractOffsetBackingStoreIT extends AbstractConnectorTest
         consumeRecordsByTopic(4);
         validateIfDataIsCreatedInJDBCDatabase(jdbcUrl, jdbcUser, jdbcPassword, "offsets_jdbc");
     }
-
 
     /**
      * Function to validate the offset storage data that is created

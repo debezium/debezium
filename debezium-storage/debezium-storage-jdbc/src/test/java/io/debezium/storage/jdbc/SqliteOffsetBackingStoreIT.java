@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.storage.jdbc;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -17,6 +22,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.SQLException;
 
+/**
+ * Integration test for JdbcOffsetBackingStore using Sqlite.
+ */
 public class SqliteOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
 
     private static final String DBNAME = "inventory";
@@ -62,7 +70,7 @@ public class SqliteOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
     }
 
     @Override
-    Configuration.Builder config(String jdbcUrl) {
+    protected Configuration.Builder config(String jdbcUrl) {
         final Configuration.Builder builder = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
                 .with(MySqlConnectorConfig.PORT, container.getMappedPort(PORT))
@@ -96,7 +104,7 @@ public class SqliteOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
     }
 
     @Override
-    String getJdbcUrl() throws IOException {
+    protected String getJdbcUrl() throws IOException {
         File dbFile = File.createTempFile("test-", "db");
         String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
 
