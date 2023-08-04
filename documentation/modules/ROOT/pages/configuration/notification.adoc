@@ -22,10 +22,21 @@ LogNotificationChannel:: Notifications are appended to the log.
 JmxNotificationChannel:: Notifications are exposed as an attribute in a JMX bean.
 Custom:: Notifications are sent to a xref:debezium-notification-custom-channel[custom channel] that you implement.
 
+ifdef::product[]
+For details about {prodname} notifications, see the following topics::
+
+* xref:debezium-notifications-description-of-the-format-of-debezium-notifications[]
+* xref:debezium-notifications-types-of-debezium-notifications[]
+* xref:debezium-notifications-enabling-debezium-to-emit-events-to-notification-channels[]
+* xref:debezium-notification-custom-channel[]
+
+endif::product[]
 
 // Type: concept
+// ModuleID: debezium-notifications-description-of-the-format-of-debezium-notifications
+// Title: Description of the format of {prodname} notifications
 [id="debezium-notification-format"]
-== Debezium notification format
+== {prodname} notification format
 
 Notification messages contain the following information:
 
@@ -47,14 +58,17 @@ In domain-driven design, exported events should always refer to an aggregate.
 For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
 |===
 
-// Type: concept
+// Type: assembly
+// Title: Types of {prodname} notifications
+// ModuleID: debezium-notifications-types-of-debezium-notifications
 [id="debezium-available-notifications"]
-=== Available notifications
+== Available notifications
 
-{prodname} notifications deliver information about the progress of xref:debezium-notifications-about-the-status-of-an-initial-snapshot[initial snapshots] or xref:debezium-notifications-about-the-progress-of-incremental-snapshot[incremental snapshots].
+{prodname} notifications deliver information about the progress of xref:debezium-notifications-about-the-status-of-an-initial-snapshot[initial snapshots] or xref:debezium-notifications-about-the-progress-of-incremental-snapshots[incremental snapshots].
 
-
-==== Status of an initial snapshot
+// Title: Example: {prodname} notification that reports on the status of an initial snapshot
+[id="debezium-notifications-about-the-status-of-an-initial-snapshot"]
+=== {prodname} notifications about the status of an initial snapshot
 
 The following example shows a typical notification that provides the status of an initial snapshot:
 
@@ -73,8 +87,9 @@ The following example shows a typical notification that provides the status of a
 * `ABORTED`
 * `SKIPPED`
 
+// Title: Example: {prodname} notifications that report on the progress of incremental snapshots
 [id="debezium-notifications-about-the-progress-of-incremental-snapshots"]
-==== {prodname} notifications about the progress of incremental snapshots
+=== {prodname} notifications about the progress of incremental snapshots
 
 The following table shows examples of the different payloads that might be present in notifications that report the status of incremental snapshots:
 
@@ -185,11 +200,13 @@ a|[source, json]
 ----
 |===
 
-// Type: procedure
+// Type: assembly
+// ModuleID: debezium-notifications-enabling-debezium-to-emit-events-to-notification-channels
+// Title: Enabling {prodname} to emit events to notification channels
 [id="enabling-debezium-notifications"]
-=== Enabling {prodname} notifications
+== Enabling {prodname} notifications
 
-To enable Debezium to emit notifications, specify a list of notification channels by setting the `notification.enabled.channels` configuration property.
+To enable {prodname} to emit notifications, specify a list of notification channels by setting the `notification.enabled.channels` configuration property.
 By default, the following notification channels are available:
 
 * `sink`
@@ -202,6 +219,8 @@ To use the `sink` notification channel, you must also set the `notification.sink
 ====
 
 // Type: procedure
+// ModuleID: enabling-debezium-notifications-to-report-events-exposed-through-jmx-beans
+// Title: Enabling {prodname} notifications to report events exposed through JMX beans
 [id="access-debezium-jmx-notifications"]
 === Access to {prodname} JMX notifications
 
@@ -222,7 +241,9 @@ To discard a notification, call the `reset` operation on the bean.
 The notifications are also exposed as a JMX notification with type `debezium.notification`.
 To enable an application to listen for the JMX notifications that an MBean emits,  link:https://docs.oracle.com/javase/tutorial/jmx/notifs/index.html[subscribe the application to the notifications].
 
-// Type: concept
+// Type: assembly
+// Title: Setting up custom channels to deliver {prodname} notifications
+// ModuleID: debezium-notifications-setting-up-custom-channels-to-deliver-notifications
 [id="debezium-notification-custom-channel"]
 == Custom notification channels
 
@@ -234,9 +255,9 @@ Adding a notification channel involves several steps:
 2. xref:deploying-a-debezium-custom-notification-channel[Deploy the notification channel].
 3. xref:configuring-connectors-to-use-a-custom-notification-channel[Enable connectors to use the custom notification channel by modifying the connector configuration].
 
-
-
 // Type: procedure
+// ModuleID: debezium-notifications-configuring-custom-notification-channels
+// Title: Configuring {prodname} custom notification channels
 [id="debezium-configuring-custom-notification-channels"]
 === Configuring custom notification channels
 
@@ -301,5 +322,4 @@ NOTE: To use a custom notification channel with multiple connectors, you must pl
 [id="configuring-connectors-to-use-a-custom-notification-channel"]
 === Configuring connectors to use a custom notification channel
 
-Add the name of the custom notification channel to the `notification.enabled.channels` configuration property.
-
+In the connector configuration, add the name of the custom notification channel to the `notification.enabled.channels` property.
