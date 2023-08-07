@@ -73,7 +73,7 @@ public class RedisConnection {
 
         Jedis client;
         try {
-            client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex) .connectionTimeoutMillis(this.connectionTimeout)
+            client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex).connectionTimeoutMillis(this.connectionTimeout)
                     .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
 
             if (this.user != null) {
