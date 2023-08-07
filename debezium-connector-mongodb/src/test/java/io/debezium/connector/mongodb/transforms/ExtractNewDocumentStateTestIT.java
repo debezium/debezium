@@ -1938,6 +1938,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // insert
         try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(DB_NAME);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(this.getCollectionName(), options);
+
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
         }
 
