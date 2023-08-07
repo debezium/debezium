@@ -36,8 +36,8 @@ public class RedisOffsetBackingStore extends MemoryOffsetBackingStore {
     private RedisClient client;
 
     void connect() {
-        RedisConnection redisConnection = new RedisConnection(config.getAddress(), config.getUser(), config.getPassword(), config.getConnectionTimeout(),
-                config.getSocketTimeout(), config.isSslEnabled());
+        RedisConnection redisConnection = new RedisConnection(config.getAddress(), config.getDbIndex(), config.getUser(), config.getPassword(),
+                config.getConnectionTimeout(), config.getSocketTimeout(), config.isSslEnabled());
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_OFFSETS_CLIENT_NAME, config.isWaitEnabled(), config.getWaitTimeout(),
                 config.isWaitRetryEnabled(), config.getWaitRetryDelay());
     }
