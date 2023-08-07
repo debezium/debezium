@@ -32,6 +32,8 @@ public class UnchangedToastedPlaceholder {
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
                 Arrays.asList(toastPlaceholderString));
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BINARY_ARRAY_TOAST_VALUE,
+                Arrays.asList(toastPlaceholderBinary));
         final List<Integer> toastedIntArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
         final List<Long> toastedLongArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
         for (byte b : toastPlaceholderBinary) {
