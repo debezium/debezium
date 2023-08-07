@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -50,6 +51,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
+import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Before;
@@ -1739,26 +1741,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-6122")
     public void shouldHandleToastedByteArrayColumn() throws Exception {
+        Testing.Print.enable();
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_toast_table;",
                 "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY);");
         startConnector(Function.identity(), false);
         List<Integer> intList = IntStream.range(1, 100000).boxed().map((x) -> 19338).collect(Collectors.toList());
-        final String toastedValue = intList.stream().map((x) -> "'2022-12-12'::date").collect(Collectors.joining(","));
+        final String toastedValue = RandomStringUtils.randomNumeric(10000);
 
         String statement = "ALTER TABLE test_toast_table ADD COLUMN not_toast integer;"
-                + "ALTER TABLE test_toast_table ADD COLUMN date_array date[];"
-                + "ALTER TABLE test_toast_table ALTER COLUMN date_array SET STORAGE EXTENDED;"
-                + "INSERT INTO test_toast_table (not_toast, date_array) values (10, ARRAY [" + toastedValue + "]);";
+                + "ALTER TABLE test_toast_table ADD COLUMN bytea_array bytea[];"
+                + "ALTER TABLE test_toast_table ALTER COLUMN bytea_array SET STORAGE EXTENDED;"
+                + "INSERT INTO test_toast_table (not_toast, bytea_array) values (10, ARRAY ['" + toastedValue + "'::bytea]);";
         consumer = testConsumer(1);
         executeAndWait(statement);
 
         // after record should contain the toasted value
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                new SchemaAndValueField("date_array",
-                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
-                        intList)),
+                new SchemaAndValueField("bytea_array",
+                        SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(), Arrays.asList(ByteBuffer.wrap(toastedValue.getBytes())))),
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
         statement = "UPDATE test_toast_table SET not_toast = 2;";
@@ -1768,16 +1770,20 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.process(record -> {
             assertWithTask(task -> {
                 Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
-                assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
+                assertEquals(Arrays.asList("id", "not_toast", "bytea_array"), tbl.retrieveColumnNames());
             });
         });
+        final var record = consumer.remove();
         assertRecordSchemaAndValues(Arrays.asList(
-                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
-                new SchemaAndValueField("date_array",
-                        SchemaBuilder.array(SchemaBuilder.int32().name("io.debezium.time.Date").optional().version(1).build()).optional().build(),
-                        DecoderDifferences.toastedValueIntPlaceholder())),
-                consumer.remove(),
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2)),
+                record,
                 Envelope.FieldName.AFTER);
+        final var after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        final var byteaArray = after.getArray("bytea_array");
+        Assertions.assertThat(byteaArray).hasSize(1);
+        Assertions.assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
+        Assertions.assertThat(after.schema().field("bytea_array").schema())
+                .isEqualTo(SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
     }
 
     @Test
