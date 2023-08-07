@@ -19,12 +19,13 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
 public class UnchangedToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
 
     private static final String TYPE_ARRAY_SUFFIX = "[]";
-    private static final String TYPR_ARRAY_PREFIX = "_";
+    private static final String TYPE_ARRAY_PREFIX = "_";
     /**
      * Marker value indicating an unchanged TOAST column value.
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_TEXT_ARRAY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_BINARY_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_INT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_HSTORE_TOAST_VALUE = new Object();
@@ -59,6 +60,10 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             case "_jsonb":
                 unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
                 break;
+            case "bytea[]":
+            case "_bytea":
+                unchangedToastValue = UNCHANGED_BINARY_ARRAY_TOAST_VALUE;
+                break;
             case "integer[]":
             case "_int4":
             case "date[]":
@@ -78,7 +83,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     private boolean isArrayType(String typeWithModifiers) {
-        return typeWithModifiers.startsWith(TYPR_ARRAY_PREFIX) || typeWithModifiers.endsWith(TYPE_ARRAY_SUFFIX);
+        return typeWithModifiers.startsWith(TYPE_ARRAY_PREFIX) || typeWithModifiers.endsWith(TYPE_ARRAY_SUFFIX);
     }
 
     protected String removeSizeModifierFromArrayTypes(String typeWithModifiers) {

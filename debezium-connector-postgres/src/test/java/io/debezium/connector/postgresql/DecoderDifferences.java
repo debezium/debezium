@@ -32,6 +32,10 @@ public class DecoderDifferences {
         return TOASTED_VALUE_PLACEHOLDER;
     }
 
+    public static byte[] mandatoryToastedValueBinaryPlaceholder() {
+        return PostgresConnectorConfig.UNAVAILABLE_VALUE_PLACEHOLDER.defaultValueAsString().getBytes();
+    }
+
     public static List<Integer> toastedValueIntPlaceholder() {
         return Stream.of(TOASTED_VALUE_NUMBER_STRING.split(","))
                 .map(String::trim)
