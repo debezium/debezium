@@ -61,6 +61,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
                 break;
             case "integer[]":
             case "_int4":
+            case "date[]":
             case "_date":
                 unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
                 break;
