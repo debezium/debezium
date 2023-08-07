@@ -101,6 +101,7 @@ public abstract class AbstractOffsetBackingStoreIT extends AbstractConnectorTest
 
         return builder;
     }
+
     @Test
     public void shouldStartCorrectlyWithJDBCOffsetStorage() throws InterruptedException, IOException {
         String masterPort = System.getProperty("database.port", "3306");
