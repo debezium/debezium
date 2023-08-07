@@ -50,6 +50,7 @@ public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
                 .withNetworkAliases("mysql");
         mySQLContainer.start();
     }
+
     @Before
     public void beforeEach() throws SQLException {
         initializeConnectorTestFramework();
@@ -113,7 +114,6 @@ public class MySqlOffsetBackingStoreIT extends AbstractOffsetBackingStoreIT {
                                 "record_insert_seq INTEGER NOT NULL" +
                                 ")");
     }
-
 
     @Override
     protected String getJdbcUrl() {
