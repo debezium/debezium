@@ -353,6 +353,10 @@ public final class TestHelper {
         dropPublication(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }
 
+    protected static void createPublicationForAllTables() {
+        createPublicationForAllTables(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+    }
+
     protected static void dropPublication(String publicationName) {
         if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
             try {
@@ -361,6 +365,12 @@ public final class TestHelper {
             catch (Exception e) {
                 LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
             }
+        }
+    }
+
+    protected static void createPublicationForAllTables(String publicationName) {
+        if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
+            execute("CREATE PUBLICATION " + publicationName + " FOR ALL TABLES");
         }
     }
 

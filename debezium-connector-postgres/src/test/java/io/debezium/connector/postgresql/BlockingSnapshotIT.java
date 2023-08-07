@@ -36,7 +36,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
         TestHelper.createDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
-        TestHelper.execute("CREATE PUBLICATION dbz_publication FOR ALL TABLES;");
+        TestHelper.createPublicationForAllTables();
     }
 
     @After
