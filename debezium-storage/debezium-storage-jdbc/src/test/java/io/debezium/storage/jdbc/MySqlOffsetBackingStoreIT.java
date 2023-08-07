@@ -11,6 +11,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
+import java.sql.SQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -19,8 +20,6 @@ import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
-
-import java.sql.SQLException;
 
 /**
  * Integration test for JdbcOffsetBackingStore using MySQL.
