@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 
+import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
@@ -27,6 +28,7 @@ public class RedisConnection {
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
 
     private String address;
+    private int dbIndex;
     private String user;
     private String password;
     private int connectionTimeout;
@@ -42,8 +44,9 @@ public class RedisConnection {
      * @param socketTimeout
      * @param sslEnabled
      */
-    public RedisConnection(String address, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
         this.address = address;
+        this.dbIndex = dbIndex;
         this.user = user;
         this.password = password;
         this.connectionTimeout = connectionTimeout;
@@ -70,7 +73,8 @@ public class RedisConnection {
 
         Jedis client;
         try {
-            client = new Jedis(address.getHost(), address.getPort(), this.connectionTimeout, this.socketTimeout, this.sslEnabled);
+            client = new Jedis(address, DefaultJedisClientConfig.builder().database(this.dbIndex) .connectionTimeoutMillis(this.connectionTimeout)
+                    .socketTimeoutMillis(this.socketTimeout).ssl(this.sslEnabled).build());
 
             if (this.user != null) {
                 client.auth(this.user, this.password);
