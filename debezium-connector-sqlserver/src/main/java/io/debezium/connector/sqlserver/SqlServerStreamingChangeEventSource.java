@@ -163,7 +163,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (context.isRunning()) {
                 commitTransaction();
                 final Lsn toLsn = getToLsn(dataConnection, databaseName, lastProcessedPosition, maxTransactionsPerIteration);
-
+                LOGGER.trace("Polling cycle started, toLsn is {}", toLsn);
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!toLsn.isAvailable()) {
                     if (checkAgent) {
@@ -203,9 +203,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     migrateTable(partition, schemaChangeCheckpoints, offsetContext);
                 }
                 if (!dataConnection.getNewChangeTables(databaseName, fromLsn, toLsn).isEmpty()) {
-                    final SqlServerChangeTable[] tables = getChangeTablesToQuery(partition, offsetContext, toLsn);
-                    tablesSlot.set(tables);
-                    for (SqlServerChangeTable table : tables) {
+                    final SqlServerChangeTable[] changeTablestoQuery = getChangeTablesToQuery(partition, offsetContext, toLsn);
+                    tablesSlot.set(changeTablestoQuery);
+                    for (SqlServerChangeTable table : changeTablestoQuery) {
                         if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
@@ -215,13 +215,22 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (tablesSlot.get() == null) {
                     tablesSlot.set(getChangeTablesToQuery(partition, offsetContext, toLsn));
                 }
+
+                final AtomicReference<SqlServerChangeTable[]> tablesToQueryForChanges;
+                if (connectorConfig.isQueryAllTables()) {
+                    tablesToQueryForChanges = tablesSlot;
+                }
+                else {
+                    tablesToQueryForChanges = getTablesWithChanges(tablesSlot.get(), fromLsn);
+                }
+
                 try {
-                    dataConnection.getChangesForTables(databaseName, tablesSlot.get(), fromLsn, toLsn, resultSets -> {
+                    final SqlServerChangeTable[] tables = tablesToQueryForChanges.get();
+                    dataConnection.getChangesForTables(databaseName, tables, fromLsn, toLsn, resultSets -> {
 
                         long eventSerialNoInInitialTx = 1;
                         final int tableCount = resultSets.length;
                         final SqlServerChangeTablePointer[] changeTables = new SqlServerChangeTablePointer[tableCount];
-                        final SqlServerChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
                             changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i]);
@@ -462,6 +471,33 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         return tables.toArray(new SqlServerChangeTable[tables.size()]);
+    }
+
+    /**
+     * @return Array of tables whose LSNs indicate they have changes or have been changed since the fromLsn
+     */
+    private AtomicReference<SqlServerChangeTable[]> getTablesWithChanges(SqlServerChangeTable[] tables, Lsn fromLsn) throws SQLException {
+        final List<SqlServerChangeTable> tablesWithChanges = new ArrayList<>();
+        for (SqlServerChangeTable table : tables) {
+            final String quotedCtTable = dataConnection.quotedTableIdString(table.getChangeTableId());
+            try {
+                final Lsn tableMaxStartLsn = dataConnection.getTableMaxStartLsn(quotedCtTable);
+                LOGGER.debug("Comparing table and DB LSNs - table: {}, tableMaxStartLSN: {}, table startLsn: {}, fromLSN: {}",
+                        table.getChangeTableId().table(), tableMaxStartLsn, fromLsn, table.getStartLsn());
+
+                if (table.getStartLsn().compareTo(fromLsn) >= 0 || (tableMaxStartLsn.isAvailable() && tableMaxStartLsn.compareTo(fromLsn) >= 0)) {
+                    tablesWithChanges.add(table);
+                }
+
+            }
+            catch (SQLException e) {
+                // In case of SQLException, add table to array in order to allow downstream processes to adjust tablesSlot as needed
+                tablesWithChanges.add(table);
+            }
+        }
+        LOGGER.debug("Number of included tables with changes: {}", tablesWithChanges.size());
+
+        return new AtomicReference<io.debezium.connector.sqlserver.SqlServerChangeTable[]>(tablesWithChanges.toArray(new SqlServerChangeTable[tablesWithChanges.size()]));
     }
 
     /**

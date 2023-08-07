@@ -185,6 +185,51 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void createAndDeleteQueryAllTables() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.QUERY_ALL_TABLES, true)
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor(SqlServerStreamingChangeEventSource.class);
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB1.dbo.tableb");
+        assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        assertThat(tableB).isNullOrEmpty();
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+        }
+
+        assertThat(logInterceptor.containsMessage("Getting changes for 1 table(s)"));
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-1642")
     public void readOnlyApplicationIntent() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(SqlServerSnapshotChangeEventSource.class);

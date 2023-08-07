@@ -2919,6 +2919,10 @@ When set to a value greater than zero, the connector uses the n-th LSN specified
 |`false`
 |Uses OPTION(RECOMPILE) query option to all SELECT statements used during an incremental snapshot. This can help to solve parameter sniffing issues that may occur but can cause increased CPU load on the source database, depending on the frequency of query execution.
 
+|[[sqlserver-property-query-all-tables]]<<sqlserver-property-query-all-tables, `+query.all.tables+`>>
+|`false`
+|Attempt to retrieve changes for all included tables rather than checking beforehand to see which tables actually have changes to be retrieved. This should be turned on only when there is confidence that a very high percentage of included tables will have changes in each iteration.
+
 |[[sqlserver-property-topic-naming-strategy]]<<sqlserver-property-topic-naming-strategy, `topic.naming.strategy`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
 |The name of the TopicNamingStrategy class that should be used to determine the topic name for data change, schema change, transaction, heartbeat event etc., defaults to `SchemaTopicNamingStrategy`.
