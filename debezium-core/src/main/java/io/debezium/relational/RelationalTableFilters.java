@@ -87,10 +87,11 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 ? systemTablesFilter::isIncluded
                 : x -> true;
 
+
         if (config.getBoolean(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL)) {
             this.schemaSnapshotFilter = eligibleSchemaPredicate.and(tableFilter::isIncluded)::test;
         }
-        else if (config.getBoolean(SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL)) {
+        else if (config.getBoolean(SchemaHistory.STORE_ONLY_CAPTURED_DATABASES_DDL) ) {
             this.schemaSnapshotFilter = finalEligibleTablePredicate::test;
         }
         else {
