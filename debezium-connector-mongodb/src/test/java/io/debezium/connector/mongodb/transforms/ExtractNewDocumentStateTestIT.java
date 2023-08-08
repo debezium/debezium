@@ -1917,6 +1917,69 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.updateDescription_updatedFields")).isEqualTo(expectedUpdateFields);
     }
 
+    @Test
+    @FixFor("DBZ-6725")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
+    public void shouldGenerateRecordForDeleteEventsDeleteHandlingRewrite() throws InterruptedException{
+        Configuration config = getBaseConfigBuilder()
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE)
+                .build();
+        restartConnectorWithConfig(config);
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("dataStr", "Hello");
+
+        // insert
+        try (var client = connect()) {
+            MongoDatabase db1 = client.getDatabase(DB_NAME);
+            CreateCollectionOptions options = new CreateCollectionOptions();
+            options.changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true));
+            db1.createCollection(this.getCollectionName(), options);
+
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        }
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // assert value and its schema
+        assertThat(value.schema().field("_id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("dataStr").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("__deleted").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.get("_id")).isEqualTo(objId.toString());
+        assertThat(value.get("dataStr")).isEqualTo("Hello");
+        assertThat(value.get("__deleted")).isEqualTo(true);
+    }
+
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
         final List<Document> documents = loadTestDocuments(pathOnClasspath);
         try (var client = connect()) {
