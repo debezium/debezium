@@ -37,7 +37,8 @@ public class SourceSignalChannel implements SignalChannelReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceSignalChannel.class);
     public static final String CHANNEL_NAME = "source";
-    public static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
+
+    public final Queue<SignalRecord> signals = new ConcurrentLinkedQueue<>();
 
     public CommonConnectorConfig connectorConfig;
 
@@ -57,7 +58,7 @@ public class SourceSignalChannel implements SignalChannelReader {
 
         LOGGER.trace("Reading signaling events from queue");
 
-        SignalRecord signalRecord = SIGNALS.poll();
+        SignalRecord signalRecord = signals.poll();
         if (signalRecord == null) {
             return List.of();
         }
@@ -68,7 +69,7 @@ public class SourceSignalChannel implements SignalChannelReader {
     @Override
     public void close() {
 
-        SIGNALS.clear();
+        signals.clear();
     }
 
     /** Used in streaming flow to add signals from signaling table
@@ -87,7 +88,7 @@ public class SourceSignalChannel implements SignalChannelReader {
 
             final SignalRecord signalRecord = result.get();
 
-            SIGNALS.add(signalRecord);
+            signals.add(signalRecord);
 
             return true;
         }

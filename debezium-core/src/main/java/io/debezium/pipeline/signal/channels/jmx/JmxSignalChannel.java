@@ -25,7 +25,7 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     private static final Logger LOGGER = LoggerFactory.getLogger(JmxSignalChannel.class);
     private static final String CHANNEL_NAME = "jmx";
 
-    private static final Queue<SignalRecord> SIGNALS = new ConcurrentLinkedQueue<>();
+    private final Queue<SignalRecord> signals = new ConcurrentLinkedQueue<>();
     private CommonConnectorConfig connectorConfig;
 
     @Override
@@ -49,7 +49,7 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
 
         LOGGER.trace("Reading signaling events from queue");
 
-        SignalRecord signalRecord = SIGNALS.poll();
+        SignalRecord signalRecord = signals.poll();
         if (signalRecord == null) {
             return List.of();
         }
@@ -66,7 +66,7 @@ public class JmxSignalChannel implements SignalChannelReader, JmxSignalChannelMX
     @Override
     public void signal(String id, String type, String data) {
 
-        SIGNALS.add(new SignalRecord(id, type, data, Map.of()));
+        signals.add(new SignalRecord(id, type, data, Map.of()));
     }
 
 }

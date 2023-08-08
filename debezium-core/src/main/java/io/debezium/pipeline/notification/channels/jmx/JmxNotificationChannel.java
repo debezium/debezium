@@ -28,7 +28,7 @@ public class JmxNotificationChannel extends NotificationBroadcasterSupport imple
     private static final String CHANNEL_NAME = "jmx";
     private static final String DEBEZIUM_NOTIFICATION_TYPE = "debezium.notification";
 
-    private static final List<Notification> NOTIFICATIONS = new ArrayList<>();
+    private final List<Notification> notifications = new ArrayList<>();
 
     private final AtomicLong notificationSequence = new AtomicLong(0);
 
@@ -53,7 +53,7 @@ public class JmxNotificationChannel extends NotificationBroadcasterSupport imple
     @Override
     public void send(Notification notification) {
 
-        NOTIFICATIONS.add(notification);
+        notifications.add(notification);
 
         sendNotification(buildJmxNotification(notification));
     }
@@ -84,13 +84,13 @@ public class JmxNotificationChannel extends NotificationBroadcasterSupport imple
 
     @Override
     public List<Notification> getNotifications() {
-        return NOTIFICATIONS;
+        return notifications;
     }
 
     @Override
     public void reset() {
 
-        NOTIFICATIONS.clear();
+        notifications.clear();
     }
 
     @Override
