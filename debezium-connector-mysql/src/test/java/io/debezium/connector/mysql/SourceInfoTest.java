@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -36,6 +37,8 @@ public class SourceInfoTest {
     private static final String FILENAME = "mysql-bin.00001";
     private static final String GTID_SET = "gtid-set"; // can technically be any string
     private static final String SERVER_NAME = "my-server"; // can technically be any string
+    private static final UUID IdA= UUID.fromString("123e4567-e89b-12d3-a456-426655440000");
+    private static final UUID IdB= UUID.fromString("123e4567-e89b-12d3-a456-426655440001");
 
     private SourceInfo source;
     private MySqlOffsetContext offsetContext;
@@ -466,43 +469,43 @@ public class SourceInfoTest {
 
     @Test
     public void shouldConsiderPositionsWithSameGtidSetsAsSame() {
-        assertPositionWithGtids("IdA:1-5").isAtOrBefore(positionWithGtids("IdA:1-5")); // same, single
-        assertPositionWithGtids("IdA:1-5,IdB:1-20").isAtOrBefore(positionWithGtids("IdA:1-5,IdB:1-20")); // same, multiple
-        assertPositionWithGtids("IdA:1-5,IdB:1-20").isAtOrBefore(positionWithGtids("IdB:1-20,IdA:1-5")); // equivalent
+        assertPositionWithGtids(String.format("%s:1-5", IdA)).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA))); // same, single
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB))); // same, multiple
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)).isAtOrBefore(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA))); // equivalent
     }
 
     @Test
     public void shouldConsiderPositionsWithSameGtidSetsAndSnapshotAsSame() {
-        assertPositionWithGtids("IdA:1-5", true).isAtOrBefore(positionWithGtids("IdA:1-5", true)); // same, single
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", true).isAtOrBefore(positionWithGtids("IdA:1-5,IdB:1-20", true)); // same,
-                                                                                                                     // multiple
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", true).isAtOrBefore(positionWithGtids("IdB:1-20,IdA:1-5", true)); // equivalent
+        assertPositionWithGtids(String.format("%s:1-5", IdA), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA), true)); // same, single
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true)); // same, multiple
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA), true)); // equivalent
     }
 
     @Test
     public void shouldOrderPositionWithGtidAndSnapshotBeforePositionWithSameGtidButNoSnapshot() {
-        assertPositionWithGtids("IdA:1-5", true).isAtOrBefore(positionWithGtids("IdA:1-5")); // same, single
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", true).isAtOrBefore(positionWithGtids("IdA:1-5,IdB:1-20")); // same, multiple
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", true).isAtOrBefore(positionWithGtids("IdB:1-20,IdA:1-5")); // equivalent
+        assertPositionWithGtids(String.format("%s:1-5", IdA), true).isBefore(positionWithGtids(String.format("%s:1-5", IdA), false)); // same, single
+        assertPositionWithGtids(String.format("%s:1-5", IdA), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5", IdA))); // same, single
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB))); // same, multiple
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true).isAtOrBefore(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA))); // equivalent
     }
 
     @Test
     public void shouldOrderPositionWithoutGtidAndSnapshotAfterPositionWithSameGtidAndSnapshot() {
-        assertPositionWithGtids("IdA:1-5", false).isAfter(positionWithGtids("IdA:1-5", true)); // same, single
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", false).isAfter(positionWithGtids("IdA:1-5,IdB:1-20", true)); // same, multiple
-        assertPositionWithGtids("IdA:1-5,IdB:1-20", false).isAfter(positionWithGtids("IdB:1-20,IdA:1-5", true)); // equivalent
+        assertPositionWithGtids(String.format("%s:1-5", IdA), false).isAfter(positionWithGtids(String.format("%s:1-5", IdA), true)); // same, single
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), false).isAfter(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), true)); // same, multiple
+        assertPositionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB), false).isAfter(positionWithGtids(String.format("%s:1-20,%s:1-5", IdB, IdA), true)); // equivalent
     }
 
     @Test
     public void shouldOrderPositionWithGtidsAsBeforePositionWithExtraServerUuidInGtids() {
-        assertPositionWithGtids("IdA:1-5").isBefore(positionWithGtids("IdA:1-5,IdB:1-20"));
+        assertPositionWithGtids(String.format("%s:1-5", IdA)).isBefore(positionWithGtids(String.format("%s:1-5,%s:1-20", IdA, IdB)));
     }
 
     @Test
     public void shouldOrderPositionsWithSameServerButLowerUpperLimitAsBeforePositionWithSameServerUuidInGtids() {
-        assertPositionWithGtids("IdA:1-5").isBefore(positionWithGtids("IdA:1-6"));
-        assertPositionWithGtids("IdA:1-5:7-9").isBefore(positionWithGtids("IdA:1-10"));
-        assertPositionWithGtids("IdA:2-5:8-9").isBefore(positionWithGtids("IdA:1-10"));
+        assertPositionWithGtids(String.format("%s:1-5", IdA)).isBefore(positionWithGtids(String.format("%s:1-6", IdA)));
+        assertPositionWithGtids(String.format("%s:1-5:7-9", IdA)).isBefore(positionWithGtids(String.format("%s:1-10", IdA)));
+        assertPositionWithGtids(String.format("%s:2-5:8-9", IdA)).isBefore(positionWithGtids(String.format("%s:1-10", IdA)));
     }
 
     @Test
@@ -512,7 +515,7 @@ public class SourceInfoTest {
 
     @Test
     public void shouldOrderPositionWithGtidAsAfterPositionWithoutGtid() {
-        assertPositionWithGtids("IdA:1-5").isAfter(positionWithoutGtids("filename.01", 0, 0, 0));
+        assertPositionWithGtids(String.format("%s:1-5", IdA)).isAfter(positionWithoutGtids("filename.01", 0, 0, 0));
     }
 
     @Test
