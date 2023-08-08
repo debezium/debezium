@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -52,6 +53,7 @@ public class TestHelper {
         var parts = prop.split("\\.");
 
         return Stream.concat(Arrays.stream(parts), Stream.of("0", "0", "0"))
+                .filter(NumberUtils::isParsable)
                 .limit(3)
                 .map(Integer::parseInt)
                 .collect(Collectors.toList());
