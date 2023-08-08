@@ -9,6 +9,16 @@
 
 toc::[]
 
+[IMPORTANT]
+====
+*THIS DOCUMENTATION IS OBSOLETE.*
+
+OpenTracing project is discontinued and OpenTelemetry is its successor.
+As of Debezium 2.4.0.Alpha2, Debezium has switched from OpenTracing to OpenTelemetry framework.
+However, we unfortunately haven't managed to update the documentation before the release.
+We applogize for this dire situation and hope we will fix it ASAP.
+====
+
 == Overview
 
 Observability is an important aspect of microservice-oriented applications.
