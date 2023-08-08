@@ -5705,6 +5705,54 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-6176")
+    public void shouldNotMissInsertsDuringRestart() throws Exception {
+        // N.B. I actually wasn't able to reproduce DBZ-6176 with this test.
+        // Testing.Print.enable();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                // .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, 1)
+                // .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT, 10)
+                // .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX, 20)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // verify streaming works
+        int expectedRecordCount = 10;
+        sendTxBatch(config, expectedRecordCount, 100);
+
+        // this seems to be large enough number to run the inserts during whole restart
+        expectedRecordCount = 5000;
+        // send many async. inserts ...
+        Future<Boolean> futute = sendInsertsAsync(expectedRecordCount, 200);
+
+        // ... while connector is restarting
+        stopConnector();
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // wait for inserts to finish and check we didn't miss anything
+        LOGGER.info("Waiting for async. inserts.");
+        boolean success = futute.get(1, TimeUnit.MINUTES);
+        if (!success) {
+            fail("Asynchronous inserts failed!");
+        }
+        LOGGER.info("Waiting async. inserts finished successfully.");
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<Integer> ids = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER").stream()
+                .map(r -> getAfter(r).getInt32("ID"))
+                .collect(Collectors.toList());
+        assertThat(ids).doesNotHaveDuplicates();
+        assertThat(ids).hasSize(expectedRecordCount);
+    }
+    
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
@@ -5726,5 +5774,27 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private Struct getBefore(SourceRecord record) {
         return ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+    }
+
+    private Future<Boolean> sendInsertsAsync(int expectedRecordCount, int offset) throws SQLException, InterruptedException {
+        LOGGER.info("Sending {} inserts", expectedRecordCount);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        final Future<Boolean> future;
+
+        try (OracleConnection connection2 = TestHelper.testConnection();) {
+            future = executorService.submit(() -> {
+                try {
+                    for (int i = offset; i < expectedRecordCount + offset; i++) {
+                        connection2.execute(String.format("INSERT INTO debezium.customer VALUES (%s, 'Brian%s', 2345.67, null)", i, i));
+                    }
+                }
+                catch (SQLException e) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        return future;
     }
 }
