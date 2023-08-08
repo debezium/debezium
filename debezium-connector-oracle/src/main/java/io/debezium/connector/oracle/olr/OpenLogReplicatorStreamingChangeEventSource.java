@@ -65,6 +65,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenLogReplicatorStreamingChangeEventSource.class);
 
     private final Map<Integer, DateTimeFormatter> timestampWithTimeZoneFormatterCache = new HashMap<>();
+    private final Map<Integer, DateTimeFormatter> timestampWithLocalTimeZoneFormatterCache = new HashMap<>();
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -480,6 +481,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 case OracleTypes.TIMESTAMPTZ:
                     value = convertTimestampWithTimeZone(column, value);
                     break;
+                case OracleTypes.TIMESTAMPLTZ:
+                    value = convertTimestampWithLocalTimeZone(column, value);
+                    break;
                 case OracleTypes.BLOB:
                 case OracleTypes.RAW:
                 case OracleTypes.VARBINARY:
@@ -555,12 +559,31 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         }
     }
 
+    private Object convertTimestampWithLocalTimeZone(Column column, Object value) {
+        if (value instanceof Long) {
+            final Instant instant = Instant.ofEpochSecond(0, (Long) value);
+            return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
+        }
+        else {
+            throw new DebeziumException("Unexpected timestampltz value: " + value);
+        }
+    }
+
     private DateTimeFormatter getTimestampWithTimeZoneFormatter(Column column) {
         int precision = column.scale().orElse(6); // Oracle defaults to 6
         return timestampWithTimeZoneFormatterCache.computeIfAbsent(precision, k -> {
             // Mimics the same behavior we observe with LogMiner
             final String precisionFormat = Strings.pad("", precision, 'S');
             return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss." + precisionFormat + "xxxxx");
+        });
+    }
+
+    private DateTimeFormatter getTimestampWithLocalTimeZoneFormatter(Column column) {
+        int precision = column.scale().orElse(6); // Oracle defaults to 6
+        return timestampWithLocalTimeZoneFormatterCache.computeIfAbsent(precision, k -> {
+            // Mimics the same behavior we observe with LogMiner
+            final String precisionFormat = Strings.pad("", precision, 'S');
+            return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss." + precisionFormat + "XXXX");
         });
     }
 
