@@ -12,7 +12,7 @@
 
 toc::[]
 
-The `schemaChangeEventFilter` is mainly used to filter table schema change events, allowing us to selectively synchronize ddl.
+The `SchemaChangeEventFilter` is mainly used to filter table schema change events, allowing us to selectively synchronize ddl.
 For more information about configuring the SMT, see the following xref:example-schema-change-event-filter[example].
 
 
@@ -29,13 +29,14 @@ transforms.filterTableDropAndTruncateEvent.schema.change.event.include.list=DROP
 ----
 
 The following example shows the changes in the values of event records before and after being filtered by the SchemaChangeEventFilter
+
 .Effect of applying the `SchemaChangeEventFilter` SMT
 ====
 Schema change event record before it is processed by the `SchemaChangeEventFilter` transformation::
 
 Schema change event record before the SMT processes the event record:::
 +
-[source]
+[source,json,indent=0]
 ----
 {
     "schema":{
@@ -102,7 +103,7 @@ Schema change event record before the SMT processes the event record:::
 }
 ----
 
-The record of the schema change event will return null after being processed by the `SchemaChangeEventFilter` transformation, and null values will not be sent::
+The record of the schema change event will return `null` after being processed by the `SchemaChangeEventFilter` transformation, and the `null` values will not be sent::
 
 Schema change event record after the SMT processes the event record:::
 
@@ -130,14 +131,14 @@ The following table lists the configuration options that you can use with the `S
 |Importance
 
 |[[schema-change-event-filter-include-list]]<<schema-change-event-filter-include-list, `schema.change.event.include.list`>>
-|A comma-separated list of schema change events that need to be filtered, Set one or more of the following options.
-----
-CREATE
-ALTER
-DROP
-TRUNCATE
-DATABASE
-----
+|A comma-separated list of schema change events that need to be filtered, set to one or more of the following options:
+
+* `CREATE`
+* `ALTER`
+* `DROP`
+* `TRUNCATE`
+* `DATABASE`
+
 |String
 |No default value
 |non-empty string
