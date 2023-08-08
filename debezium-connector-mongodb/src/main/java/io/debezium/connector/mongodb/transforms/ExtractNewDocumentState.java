@@ -200,7 +200,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         // insert || replace || update with capture.mode="change_streams_update_full" or "change_streams_update_full_with_pre_image"
         if (afterRecord.value() != null) {
-            valueDocument = getAfterFullDocument(afterRecord, keyDocument);
+            valueDocument = getFullDocument(afterRecord, keyDocument);
         }
 
         // update
@@ -214,6 +214,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             if (handleDeletes.equals(DeleteHandling.DROP)) {
                 LOGGER.trace("Delete {} arrived and requested to be dropped", record.key());
                 return null;
+            }
+
+            if (beforeRecord.value() != null && handleDeletes.equals(DeleteHandling.REWRITE)) {
+                valueDocument = getFullDocument(beforeRecord, keyDocument);
             }
 
             isDeletion = true;
@@ -335,7 +339,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         return valueDocument;
     }
 
-    private BsonDocument getAfterFullDocument(R record, BsonDocument key) {
+    private BsonDocument getFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
     }
 
