@@ -957,6 +957,10 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |
 |An address, formatted as `host:port`, at which the Redis target streams are provided.
 
+|[[redis-db-index]]<<redis-db-index, `debezium.sink.redis.db.index`>>
+|
+|A number in the range 0..15 used for selecting the database to work with. Default is database 0. This feature is only available for standalone Redis connections; Redis clusters use only database 0.
+
 |[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
 |
 |(Optional) A user name used to communicate with Redis.
