@@ -299,6 +299,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                         .jdbcType(Types.VARCHAR)
                         .type("ROWID");
             }
+            else if (ctx.native_datatype_element().XMLTYPE() != null) {
+                columnEditor
+                        .jdbcType(OracleTypes.SQLXML)
+                        .type("XMLTYPE");
+            }
             else {
                 columnEditor
                         .jdbcType(OracleTypes.OTHER)

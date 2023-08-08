@@ -5020,6 +5020,7 @@ native_datatype_element
     | CLOB
     | NCLOB
     | MLSLABEL
+    | XMLTYPE
     ;
 
 bind_variable
