@@ -25,7 +25,7 @@ For example, to filter out `DROP` and `TRUNCATE` from captured DDL event message
 ----
 transforms=filterTableDropAndTruncateEvent
 transforms.filterTableDropAndTruncateEvent.type=io.debezium.transforms.SchemaChangeEventFilter
-transforms.filterTableDropAndTruncateEvent.schema.change.event.include.list=DROP,TRUNCATE
+transforms.filterTableDropAndTruncateEvent.schema.change.event.exclude.list=DROP,TRUNCATE
 ----
 
 The following example shows the changes in the values of event records before and after being filtered by the SchemaChangeEventFilter
@@ -130,7 +130,7 @@ The following table lists the configuration options that you can use with the `S
 |Valid Values
 |Importance
 
-|[[schema-change-event-filter-include-list]]<<schema-change-event-filter-include-list, `schema.change.event.include.list`>>
+|[[schema-change-event-exclude-list]]<<schema-change-event-exclude-list, `schema.change.event.exclude.list`>>
 |A comma-separated list of schema change events that need to be filtered, set to one or more of the following options:
 
 * `CREATE`

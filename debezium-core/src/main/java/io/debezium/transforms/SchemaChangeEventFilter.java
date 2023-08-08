@@ -33,8 +33,8 @@ import io.debezium.schema.SchemaChangeEvent;
 public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Transformation<R> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaChangeEventFilter.class);
 
-    private static final Field SCHEMA_CHANGE_EVENT_INCLUDE_LIST = Field.create("schema.change.event.include.list")
-            .withDisplayName("Schema change event include list")
+    private static final Field SCHEMA_CHANGE_EVENT_EXCLUDE_LIST = Field.create("schema.change.event.exclude.list")
+            .withDisplayName("Schema change event exclude list")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -49,8 +49,8 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
         smtManager = new SmtManager<>(config);
-        smtManager.validate(config, Field.setOf(SCHEMA_CHANGE_EVENT_INCLUDE_LIST));
-        final String includeSchemaChangeEvents = config.getString(SCHEMA_CHANGE_EVENT_INCLUDE_LIST);
+        smtManager.validate(config, Field.setOf(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST));
+        final String includeSchemaChangeEvents = config.getString(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST);
         this.includeSchemaChangeEvents = Arrays.stream(includeSchemaChangeEvents.split(",")).map(typeName -> SchemaChangeEvent.SchemaChangeEventType.valueOf(typeName))
                 .collect(Collectors.toSet());
 
@@ -85,7 +85,7 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, SCHEMA_CHANGE_EVENT_INCLUDE_LIST);
+        Field.group(config, null, SCHEMA_CHANGE_EVENT_EXCLUDE_LIST);
         return config;
     }
 
