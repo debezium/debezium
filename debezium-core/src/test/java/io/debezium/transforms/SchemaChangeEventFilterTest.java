@@ -30,7 +30,7 @@ import io.debezium.relational.history.HistoryRecord;
  */
 public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
 
-    private static final String SCHEMA_CHANGE_EVENT_INCLUDE_LIST = "schema.change.event.include.list";
+    private static final String SCHEMA_CHANGE_EVENT_EXCLUDE_LIST = "schema.change.event.exclude.list";
     private static final String SCHEMA_HISTORY_CHANGE_SCHEMA_NAME = "io.debezium.connector.schema.Change";
 
     @Test
@@ -38,7 +38,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
         try (SchemaChangeEventFilter<SourceRecord> transform = new SchemaChangeEventFilter<>()) {
             final Map<String, String> props = new HashMap<>();
             assertThatThrownBy(() -> transform.configure(props)).isInstanceOf(ConfigException.class).hasMessageContaining(
-                    "Invalid value null for configuration schema.change.event.include.list: The 'schema.change.event.include.list' value is invalid: A value is required");
+                    "Invalid value null for configuration schema.change.event.exclude.list: The 'schema.change.event.exclude.list' value is invalid: A value is required");
         }
     }
 
@@ -46,7 +46,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
     public void testSchemaChangeContainsEventTypeFilter() {
         try (SchemaChangeEventFilter<SourceRecord> transform = new SchemaChangeEventFilter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(SCHEMA_CHANGE_EVENT_INCLUDE_LIST, "ALTER,CREATE");
+            props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordContainsEventType();
             assertThat(transform.apply(record));
@@ -57,7 +57,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
     public void testSchemaChangeNonEventTypeFilter() {
         try (SchemaChangeEventFilter<SourceRecord> transform = new SchemaChangeEventFilter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(SCHEMA_CHANGE_EVENT_INCLUDE_LIST, "ALTER,CREATE");
+            props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordNonEventType();
             assertThat(transform.apply(record)).isNull();
@@ -68,7 +68,7 @@ public class SchemaChangeEventFilterTest extends AbstractExtractStateTest {
     public void testSchemaChangeNonContainsEventTypeFilter() {
         try (SchemaChangeEventFilter<SourceRecord> transform = new SchemaChangeEventFilter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(SCHEMA_CHANGE_EVENT_INCLUDE_LIST, "ALTER,CREATE");
+            props.put(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST, "ALTER,CREATE");
             transform.configure(props);
             final SourceRecord record = createSchemaChangeRecordNonContainsEventType();
             assertThat(transform.apply(record)).isNull();
