@@ -36,8 +36,10 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
+import oracle.jdbc.OracleTypes;
 import oracle.xdb.XMLType;
 import oracle.xml.parser.v2.XMLDocument;
 
@@ -638,6 +640,89 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz3605");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-6782")
+    public void shouldProperlyResolveAddedXmlColumnTypeAndStreamChanges() throws Exception {
+        TestHelper.dropTable(connection, "dbz6782");
+        try {
+            // Explicitly no key.
+            connection.execute("CREATE TABLE dbz6782 (ID numeric(9,0), DATA xmltype, primary key(ID))");
+            TestHelper.streamTable(connection, "dbz6782");
+
+            final String xml = XML_LONG_DATA;
+            connection.prepareQuery("insert into dbz6782 values (1,?)", ps -> ps.setObject(1, toXmlType(xml)), null);
+            connection.commit();
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6782")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true")
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("ALTER TABLE dbz6782 add DATA2 xmltype");
+
+            final String xml2 = XML_LONG_DATA2;
+            connection.prepareQuery("insert into dbz6782 values (2,?,?)",
+                    ps -> {
+                        ps.setObject(1, toXmlType(xml));
+                        ps.setObject(2, toXmlType(xml2));
+                    }, null);
+            connection.commit();
+
+            // Schema changes + data changes
+            SourceRecords records = consumeRecordsByTopic(4);
+            List<SourceRecord> topicRecords = records.recordsForTopic(topicName("DBZ6782"));
+            assertThat(topicRecords).hasSize(2);
+
+            // Snapshot
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", xml);
+
+            // Insert during streaming
+            record = topicRecords.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+
+            after = after(record);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertXmlFieldIsEqual(after, "DATA", xml);
+            assertXmlFieldIsEqual(after, "DATA2", xml2);
+
+            // Schema changes
+            List<SourceRecord> schemaChanges = records.recordsForTopic("server1");
+
+            List<Object> tableChanges = ((Struct) schemaChanges.get(1).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+
+            Struct tableChange = (Struct) tableChanges.get(0);
+            assertThat(tableChange.getString("type")).isEqualTo("ALTER");
+            assertThat(tableChange.getString("id")).contains("\"DBZ6782\"");
+
+            // Verify columns
+            for (Object column : tableChange.getStruct("table").getArray("columns")) {
+                Struct columnStruct = (Struct) column;
+                if (columnStruct.getString("name").startsWith("DATA")) {
+                    assertThat(columnStruct.get("jdbcType")).isEqualTo(OracleTypes.SQLXML);
+                    assertThat(columnStruct.get("typeName")).isEqualTo("XMLTYPE");
+                    assertThat(columnStruct.get("typeExpression")).isEqualTo("XMLTYPE");
+                }
+            }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz6782");
         }
     }
 
