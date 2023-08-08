@@ -224,11 +224,11 @@ public class ColumnMappers {
         }
 
         public Builder propagateSourceTypeToSchemaParameter(String fullyQualifiedColumnNames, String value) {
-            return map(value, new PropagateSourceTypeToSchemaParameter());
+            return map(value, new PropagateSourceMetadataToSchemaParameter());
         }
 
         public Builder propagateSourceTypeToSchemaParameterByDatatype(String columnDatatypes, String value) {
-            return mapByDatatype(value, new PropagateSourceTypeToSchemaParameter());
+            return mapByDatatype(value, new PropagateSourceMetadataToSchemaParameter());
         }
 
         /**

@@ -14,13 +14,13 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.util.Strings;
 
 /**
- * A column mapper that adds the {@link #TYPE_NAME_PARAMETER_KEY} and {@link #TYPE_LENGTH_PARAMETER_KEY}
- * and {@link #TYPE_SCALE_PARAMETER_KEY} and {@link #COLUMN_COMMENT_PARAMETER_KEY} schema parameter keys.
+ * A column mapper that adds the {@link #COLUMN_NAME_PARAMETER_KEY}, {@link #TYPE_NAME_PARAMETER_KEY}, {@link #TYPE_LENGTH_PARAMETER_KEY},
+ * {@link #TYPE_SCALE_PARAMETER_KEY} and {@link #COLUMN_COMMENT_PARAMETER_KEY} schema parameter keys.
  *
  * @author Orr Ganani
  * @author Gunnar Morling
  */
-public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
+public class PropagateSourceMetadataToSchemaParameter implements ColumnMapper {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";

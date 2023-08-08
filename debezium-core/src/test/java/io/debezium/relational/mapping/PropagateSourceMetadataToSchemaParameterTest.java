@@ -18,7 +18,7 @@ import io.debezium.relational.Column;
 /**
  * @author Orr Ganani
  */
-public class PropagateSourceTypeToSchemaParameterTest {
+public class PropagateSourceMetadataToSchemaParameterTest {
 
     @Test
     @FixFor("DBZ-644")
@@ -32,7 +32,7 @@ public class PropagateSourceTypeToSchemaParameterTest {
                 .create();
 
         SchemaBuilder schemaBuilder = SchemaBuilder.string();
-        new PropagateSourceTypeToSchemaParameter().alterFieldSchema(column, schemaBuilder);
+        new PropagateSourceMetadataToSchemaParameter().alterFieldSchema(column, schemaBuilder);
 
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.type")).isEqualTo("VARCHAR");
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.length")).isEqualTo(String.valueOf(length));
@@ -54,7 +54,7 @@ public class PropagateSourceTypeToSchemaParameterTest {
                 .create();
 
         SchemaBuilder schemaBuilder = SchemaBuilder.string();
-        new PropagateSourceTypeToSchemaParameter().alterFieldSchema(column, schemaBuilder);
+        new PropagateSourceMetadataToSchemaParameter().alterFieldSchema(column, schemaBuilder);
 
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.type")).isEqualTo("NUMERIC");
         assertThat(schemaBuilder.parameters().get("__debezium.source.column.length")).isEqualTo(String.valueOf(length));
