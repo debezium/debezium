@@ -9,10 +9,10 @@ package io.debezium.connector.postgresql;
 import static java.time.ZoneId.systemDefault;
 
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -378,7 +378,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
             return VariableScaleDecimal.builder();
         }
-        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElseGet(() -> 0));
+        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(0));
     }
 
     private SchemaBuilder hstoreSchema() {
@@ -598,14 +598,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof SpecialValueDecimal) {
             value = (SpecialValueDecimal) data;
 
-            if (!value.getDecimalValue().isPresent()) {
+            if (value.getDecimalValue().isEmpty()) {
                 return SpecialValueDecimal.fromLogical(value, mode, column.name());
             }
         }
         else {
             final Object o = toBigDecimal(column, fieldDefn, data);
 
-            if (o == null || !(o instanceof BigDecimal)) {
+            if (!(o instanceof BigDecimal)) {
                 return o;
             }
             value = new SpecialValueDecimal((BigDecimal) o);
@@ -851,7 +851,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                                     interval.getDays(),
                                     interval.getHours(),
                                     interval.getMinutes(),
-                                    new BigDecimal(interval.getSeconds())));
+                                    BigDecimal.valueOf(interval.getSeconds())));
                 }
                 else {
                     r.deliver(
@@ -917,7 +917,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             try {
                 final Schema schema = fieldDefn.schema();
                 if (data instanceof byte[]) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, "ASCII"));
+                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
                 else if (data instanceof PGobject) {
@@ -930,8 +930,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
             }
-            catch (IllegalArgumentException | UnsupportedEncodingException e) {
-                logger.warn("Error converting to a Geometry type", column);
+            catch (IllegalArgumentException e) {
+                logger.warn("Error converting to a Geometry type: {}", column);
             }
         });
     }
@@ -942,7 +942,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             final Schema schema = fieldDefn.schema();
             try {
                 if (data instanceof byte[]) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, "ASCII"));
+                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
                 else if (data instanceof PGobject) {
@@ -955,8 +955,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
             }
-            catch (IllegalArgumentException | UnsupportedEncodingException e) {
-                logger.warn("Error converting to a Geography type", column);
+            catch (IllegalArgumentException e) {
+                logger.warn("Error converting to a Geography type: {}", column);
             }
         });
     }
@@ -1108,10 +1108,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         final Instant instant = timestamp.toInstant();
-        final LocalDateTime utcTime = LocalDateTime
-                .ofInstant(instant, ZoneOffset.systemDefault());
 
-        return utcTime;
+        return LocalDateTime.ofInstant(instant, ZoneOffset.systemDefault());
     }
 
     @Override
@@ -1174,9 +1172,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Optional<Object> toastedArrayPlaceholder = unchangedToastedPlaceholder.getValue(data);
-        if (toastedArrayPlaceholder.isPresent()) {
-            return toastedArrayPlaceholder.get();
-        }
-        return super.handleUnknownData(column, fieldDefn, data);
+        return toastedArrayPlaceholder.orElseGet(() -> super.handleUnknownData(column, fieldDefn, data));
     }
 }
