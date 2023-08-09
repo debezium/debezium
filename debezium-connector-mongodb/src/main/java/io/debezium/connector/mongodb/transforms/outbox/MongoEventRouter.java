@@ -103,7 +103,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
      *
      * @param originalRecord an original Record from MongoDB Connector
      * @return a new Record of which <i>after</i> field is replaced with new one
-     * @throws Exception if <i>after</i> field of original Record is not an expected form
+     * @throws IllegalStateException if <i>after</i> field of original Record is not an expected form
      */
     private R expandAfterField(R originalRecord) throws IllegalStateException {
         final R afterRecord = afterExtractor.apply(originalRecord);
