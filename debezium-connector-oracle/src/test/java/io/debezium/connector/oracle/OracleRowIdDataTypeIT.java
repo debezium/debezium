@@ -21,7 +21,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.XSTREAM, reason = "XStream does not support ROWID data types")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Other adapters do not support ROWID data types")
 public class OracleRowIdDataTypeIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
