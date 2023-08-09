@@ -53,6 +53,8 @@ import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
+import oracle.sql.INTERVALDS;
+import oracle.sql.INTERVALYM;
 import oracle.sql.RAW;
 
 /**
@@ -489,6 +491,12 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 case OracleTypes.VARBINARY:
                     value = convertHexStringToBytes(value);
                     break;
+                case OracleTypes.INTERVALYM:
+                    value = convertIntervalYearMonth(column, value);
+                    break;
+                case OracleTypes.INTERVALDS:
+                    value = convertIntervalDaySecond(column, value);
+                    break;
                 default:
                     if (value instanceof Number) {
                         // Force all numeric values to Strings, uses existing LogMiner conversions
@@ -566,6 +574,25 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         }
         else {
             throw new DebeziumException("Unexpected timestampltz value: " + value);
+        }
+    }
+
+    private Object convertIntervalYearMonth(Column column, Object value) {
+        if (value instanceof String) {
+            return new INTERVALYM((String) value);
+        }
+        else {
+            throw new DebeziumException("Unexpected intervalym value: " + value);
+        }
+    }
+
+    private Object convertIntervalDaySecond(Column column, Object value) {
+        if (value instanceof String) {
+            value = ((String) value).replaceAll(",", " ");
+            return new INTERVALDS((String) value);
+        }
+        else {
+            throw new DebeziumException("Unexpected intervalds value: " + value);
         }
     }
 
