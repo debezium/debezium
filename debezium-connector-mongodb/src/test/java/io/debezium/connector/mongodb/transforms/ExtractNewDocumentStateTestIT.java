@@ -1920,7 +1920,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     @Test
     @FixFor("DBZ-6725")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
-    public void shouldGenerateRecordForDeleteEventsDeleteHandlingRewrite() throws InterruptedException{
+    public void shouldGenerateRecordForDeleteEventsDeleteHandlingRewrite() throws InterruptedException {
         Configuration config = getBaseConfigBuilder()
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE)
                 .build();
