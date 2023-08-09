@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit test for {@code MongoDataConverter} that verifies array types.
@@ -58,20 +59,32 @@ public class MongoArrayConverterTest {
 
     private static final String HOMOGENOUS_ARRAYS = lines(
             "{",
-            "    \"_id\": 1,",
-            "    \"a1\": [",
-            "        {",
-            "            \"a\": 1",
-            "        },",
-            "        {",
-            "            \"b\": \"c\"",
-            "        }",
-            "    ],",
-            "    \"a2\": [",
-            "        \"11\",",
-            "        \"abc\"",
-            "    ],",
-            "    \"empty\": []",
+            "  \"_id\": 1,",
+            "  \"a1\": [",
+            "      {",
+            "          \"a\": 1",
+            "      },",
+            "      {",
+            "          \"b\": \"c\"",
+            "      }",
+            "  ],",
+            "  \"a2\": [",
+            "      \"11\",",
+            "      \"abc\"",
+            "  ],",
+            "  \"empty\": [],",
+            "  \"additionalContacts\": [",
+            "    {",
+            "      \"firstName\": \"John\",",
+            "      \"lastName\": \"Doe\",",
+            "      \"comment\": null",
+            "    },",
+            "    {",
+            "      \"firstName\": \"Jane\",",
+            "      \"lastName\": \"Doe\",",
+            "      \"comment\": \"A comment\"",
+            "    }",
+            "  ]",
             "}");
 
     private SchemaBuilder builder;
@@ -100,6 +113,7 @@ public class MongoArrayConverterTest {
     }
 
     @Test
+    @FixFor("DBZ-6760")
     public void shouldCreateSchemaForHomogenousArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HOMOGENOUS_ARRAYS);
@@ -118,10 +132,16 @@ public class MongoArrayConverterTest {
                                         .build()).optional().build())
                                 .field("a2", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
                                 .field("empty", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
+                                .field("additionalContacts", SchemaBuilder.array(SchemaBuilder.struct().name("array.additionalContacts").optional()
+                                        .field("firstName", Schema.OPTIONAL_STRING_SCHEMA)
+                                        .field("lastName", Schema.OPTIONAL_STRING_SCHEMA)
+                                        .field("comment", Schema.OPTIONAL_STRING_SCHEMA)
+                                        .build()).optional().build())
                                 .build());
     }
 
     @Test
+    @FixFor("DBZ-6760")
     public void shouldCreateStructForHomogenousArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
         final BsonDocument val = BsonDocument.parse(HOMOGENOUS_ARRAYS);
@@ -147,7 +167,11 @@ public class MongoArrayConverterTest {
                             "Struct{b=c}" +
                         "]," +
                         "a2=[11, abc]," +
-                        "empty=[]}");
+                        "empty=[]," +
+                        "additionalContacts=[" +
+                            "Struct{firstName=John,lastName=Doe}, " +
+                            "Struct{firstName=Jane,lastName=Doe,comment=A comment}" +
+                        "]}");
         // @formatter:on
     }
 
