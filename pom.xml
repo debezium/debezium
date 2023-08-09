@@ -93,13 +93,13 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.5.0</version.kafka>
+        <version.kafka>3.5.1</version.kafka>
         <version.zookeeper>3.6.4</version.zookeeper>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
         <version.jackson>2.13.5</version.jackson>
         <version.jackson.databind>2.13.5</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.92.Final</version.netty>
+        <version.netty>4.1.94.Final</version.netty>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
