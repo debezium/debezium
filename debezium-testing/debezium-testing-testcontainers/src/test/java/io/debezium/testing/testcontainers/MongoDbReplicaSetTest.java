@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.bson.Document;
@@ -139,8 +139,8 @@ public class MongoDbReplicaSetTest {
                             .orElse(false));
 
             // Ensure it's invalid
-            var mongoVersions = Arrays.stream(MongoDbContainer.IMAGE_VERSION.split("\\."))
-                    .filter(NumberUtils::isParsable)
+            var parsableVersion = StringUtils.substringBefore(MongoDbContainer.IMAGE_VERSION, "-");
+            var mongoVersions = Arrays.stream(parsableVersion.split("\\."))
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
 
