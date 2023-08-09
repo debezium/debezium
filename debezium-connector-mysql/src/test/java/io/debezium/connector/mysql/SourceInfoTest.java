@@ -37,8 +37,8 @@ public class SourceInfoTest {
     private static final String FILENAME = "mysql-bin.00001";
     private static final String GTID_SET = "gtid-set"; // can technically be any string
     private static final String SERVER_NAME = "my-server"; // can technically be any string
-    private static final UUID IdA= UUID.fromString("123e4567-e89b-12d3-a456-426655440000");
-    private static final UUID IdB= UUID.fromString("123e4567-e89b-12d3-a456-426655440001");
+    private static final UUID IdA = UUID.fromString("123e4567-e89b-12d3-a456-426655440000");
+    private static final UUID IdB = UUID.fromString("123e4567-e89b-12d3-a456-426655440001");
 
     private SourceInfo source;
     private MySqlOffsetContext offsetContext;
