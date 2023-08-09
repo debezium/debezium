@@ -83,6 +83,7 @@ César Martínez
 Cao Manh Dat
 Chad Marmon
 Chai Stofkoper
+Chao Tian
 Calin Laurentiu Ilie
 Cheng Pan
 Ching Tsai
@@ -117,6 +118,7 @@ David Feinblum
 David Haglund
 David Jerome
 David Leibovic
+David Remy
 David Seapy
 David Szabo
 Debjeet Sarkar
@@ -154,6 +156,7 @@ Fabian Aussems
 Fabian Martinez
 Fabio Cantarini
 Fahim Farook
+Fai Ho Fu
 Faizan
 Farid Uyar
 Fatih Güçlü Akkaya
@@ -179,6 +182,7 @@ Gurnaaz Randhawa
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
+ibnubay
 Jacob Barrieault
 Jacob Gminder
 Jakub Zalas
@@ -360,6 +364,7 @@ Oscar Romero
 Oskar Polak
 Patrick Chu
 Pavel Strashkin
+Paul Cheung
 Paul Mellor
 Paul Tzen
 Paweł Malon
@@ -492,6 +497,7 @@ Xinquan She
 Xuan Shen
 Yang Wu
 Yang Yang
+Yanjie Wang
 yangrong688
 yangsanity
 Yashashree Chopada

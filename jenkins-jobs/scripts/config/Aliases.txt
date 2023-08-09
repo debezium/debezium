@@ -217,7 +217,12 @@ cjmencias,Christian Jacob Mencias
 bdbene,Balint Bene
 agukasian,Artur Gukasian
 Ychopada,Yashashree Chopada
-gurpiarbassi, Gurps Bassi
-mfortunat, Massimo Fortunat
-ryanvanhuuksloot, Ryan van Huuksloot
+gurpiarbassi,Gurps Bassi
+mfortunat,Massimo Fortunat
+paul cheung,Paul Cheung
+faihofu,Fai Ho Fu
+j2gg0s,Yanjie Wang
+REMY David,David Remy
+tyrantlucifer,Chao Tian
+ryanvanhuuksloot,Ryan van Huuksloot
 matan-cohen,Matan Cohen
