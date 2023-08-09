@@ -306,6 +306,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                 new RowDeserializers.DeleteRowsDeserializer(
                         tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.TRANSACTION_PAYLOAD,
+                new TransactionPayloadDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
         client.setEventDeserializer(eventDeserializer);
     }
 
