@@ -12,15 +12,17 @@
 
 toc::[]
 
-The `SchemaChangeEventFilter` is mainly used to filter table schema change events, allowing us to selectively synchronize ddl.
-For more information about configuring the SMT, see the following xref:example-schema-change-event-filter[example].
+Use the `SchemaChangeEventFilter` to filter schema change events that the connector captures from a table and sends to Kafka.
+After you enable the SMT, the connector synchronizes only the unfiltered DDL events to Kafka, giving you control over which DDL operations are exposed to consuming applications.
 
 
-[[example-schema-change-event-filter]]
-== Example
+[[schema-change-event-filter-configuration]]
+== Schema change event filter configuration
+To use the transformation, add the `SchemaChangeEventFilter` to the connector configuration, and specify the types of events that you want to remove.
+The following excerpt from a connector configuration shows how you would add the transformation to the connector and set it to remove `DROP` and `TRUNCATE` events from the DDL messages that the connector captures.
+[[example-configuration-schema-change-event-filter]]
+.Schema change event filter configuration to remove `DROP` and `TRUNCATE` events
 
-If you want to filter the captured ddl, please configure the following options when creating the connector.
-For example, to filter out `DROP` and `TRUNCATE` from captured DDL event messages, add the following line to the connector configuration:
 [source]
 ----
 transforms=filterTableDropAndTruncateEvent
@@ -28,9 +30,13 @@ transforms.filterTableDropAndTruncateEvent.type=io.debezium.transforms.SchemaCha
 transforms.filterTableDropAndTruncateEvent.schema.change.event.exclude.list=DROP,TRUNCATE
 ----
 
-The following example shows the changes in the values of event records before and after being filtered by the SchemaChangeEventFilter
-
-.Effect of applying the `SchemaChangeEventFilter` SMT
+For more information about configuring the transformation, see the xref:schema-change-event-filter-configuration-options[schema change event filter configuration options].
+[[schema-change-event-filter-effect-of-applying-the-schemachangeeventfilter-smt]]
+== Effect of applying the `SchemaChangeEventFilter` SMT
+After you configure the SMT for a connector, whenever the connector captures `DROP` or `TRUNCATE` events, it resets the values for these events to `null`.
+The connector does not send events with the resulting `null` values to Kafka.
+The following examples show how the transformation changes the values of event records that you designate for exclusion.
+.Schema change event record before it is processed by the `SchemaChangeEventFilter` transformation
 ====
 Schema change event record before it is processed by the `SchemaChangeEventFilter` transformation::
 
@@ -103,11 +109,10 @@ Schema change event record before the SMT processes the event record:::
 }
 ----
 
-The record of the schema change event will return `null` after being processed by the `SchemaChangeEventFilter` transformation, and the `null` values will not be sent::
+====
+.Schema change event record after processing by the SMT
+====
 
-Schema change event record after the SMT processes the event record:::
-
-+
 [source]
 ----
 null
@@ -121,17 +126,17 @@ null
 The following table lists the configuration options that you can use with the `SchemaChangeEventFilter` SMT.
 
 .SchemaChangeEventFilter SMT configuration options
-[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+[cols="14%a,40%a,10%a, 16%a, 16%a"]
 |===
 |Property
 |Description
 |Type
 |Default
-|Valid Values
-|Importance
+|Valid values
 
 |[[schema-change-event-exclude-list]]<<schema-change-event-exclude-list, `schema.change.event.exclude.list`>>
-|A comma-separated list of schema change events that need to be filtered, set to one or more of the following options:
+|A comma-separated list of schema change events to filter.
+Specify one or more of the following options:
 
 * `CREATE`
 * `ALTER`
@@ -141,6 +146,5 @@ The following table lists the configuration options that you can use with the `S
 
 |String
 |No default value
-|non-empty string
-|high
+|Non-empty string
 |===
