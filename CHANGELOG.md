@@ -2,6 +2,89 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.4.0.Alpha2
+August 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12410665)
+
+### New features since 2.4.0.Alpha1
+
+* Switch tracing to OpenTelemetry [DBZ-2862](https://issues.redhat.com/browse/DBZ-2862)
+* Update the Edit connector UI to incorporate the feedback received from team in demo [DBZ-6514](https://issues.redhat.com/browse/DBZ-6514)
+* Support blocking ad-hoc snapshots [DBZ-6566](https://issues.redhat.com/browse/DBZ-6566)
+* Add new parameters to RabbitMQ consumer [DBZ-6581](https://issues.redhat.com/browse/DBZ-6581)
+* Document read preference changes in 2.4 [DBZ-6591](https://issues.redhat.com/browse/DBZ-6591)
+* Log appropriate error when JDBC connector receive SchemaChange record  [DBZ-6655](https://issues.redhat.com/browse/DBZ-6655)
+* Send tombstone events when partition queries are finished [DBZ-6658](https://issues.redhat.com/browse/DBZ-6658)
+* Propagate source column name and allow sink to use it [DBZ-6684](https://issues.redhat.com/browse/DBZ-6684)
+* Disable jdk-outreach-workflow.yml in forked personal repo [DBZ-6702](https://issues.redhat.com/browse/DBZ-6702)
+* Support alternative JDBC drivers in MySQL connector [DBZ-6727](https://issues.redhat.com/browse/DBZ-6727)
+* Add STOPPED and RESTARTING connector states to testing library [DBZ-6734](https://issues.redhat.com/browse/DBZ-6734)
+* Add a new parameter for selecting the db index when using Redis Storage [DBZ-6759](https://issues.redhat.com/browse/DBZ-6759)
+* Table schemas should be updated for each shard individually [DBZ-6775](https://issues.redhat.com/browse/DBZ-6775)
+
+
+### Breaking changes since 2.4.0.Alpha1
+
+* Allow packaging of multiple Cassandra distributions [DBZ-6638](https://issues.redhat.com/browse/DBZ-6638)
+* Specify decimal precision in schema for MySQL unsigned bigints in precise mode [DBZ-6714](https://issues.redhat.com/browse/DBZ-6714)
+* Increase Oracle default query fetch size from 2000 to 10000 [DBZ-6729](https://issues.redhat.com/browse/DBZ-6729)
+* Debezium should convert _bin collate varchar columns to strings not byte arrays [DBZ-6748](https://issues.redhat.com/browse/DBZ-6748)
+
+
+### Fixes since 2.4.0.Alpha1
+
+* Connector drop down causes a scroll bar [DBZ-5421](https://issues.redhat.com/browse/DBZ-5421)
+* Provide outline for drawer component showing connector details [DBZ-5831](https://issues.redhat.com/browse/DBZ-5831)
+* Modify scroll for the running connector component [DBZ-5832](https://issues.redhat.com/browse/DBZ-5832)
+* Connector restart regression [DBZ-6213](https://issues.redhat.com/browse/DBZ-6213)
+* Document Optimal MongoDB Oplog Config for Resiliency  [DBZ-6455](https://issues.redhat.com/browse/DBZ-6455)
+* JDBC Schema History: When the table name is passed as dbName.tableName, the connector does not start [DBZ-6484](https://issues.redhat.com/browse/DBZ-6484)
+* Oracle DDL parser does not properly detect end of statement when comments obfuscate the semicolon [DBZ-6599](https://issues.redhat.com/browse/DBZ-6599)
+* Received an unexpected message type that does not have an 'after' Debezium block [DBZ-6637](https://issues.redhat.com/browse/DBZ-6637)
+* When Debezium Mongodb connector encounter authentication or under privilege errors, the connection between debezium and mongodb keeps going up. [DBZ-6643](https://issues.redhat.com/browse/DBZ-6643)
+* Snapshot will not capture data when signal.data.collection is present without table.include.list [DBZ-6669](https://issues.redhat.com/browse/DBZ-6669)
+* Retriable operations are retried infinitely since error handlers are not reused [DBZ-6670](https://issues.redhat.com/browse/DBZ-6670)
+* Oracle DDL parser does not support column visibility on ALTER TABLE [DBZ-6677](https://issues.redhat.com/browse/DBZ-6677)
+* Partition duplication after rebalances with single leader task [DBZ-6685](https://issues.redhat.com/browse/DBZ-6685)
+* JDBC Sink Connector Fails on Loading Flat Data Containing Struct Type Fields from Kafka [DBZ-6686](https://issues.redhat.com/browse/DBZ-6686)
+* SQLSyntaxErrorException using Debezium JDBC Sink connector [DBZ-6687](https://issues.redhat.com/browse/DBZ-6687)
+* Should use topic.prefix rather than connector.server.name in MBean namings [DBZ-6690](https://issues.redhat.com/browse/DBZ-6690)
+* CDC - Debezium x RabbitMQ - Debezium Server crashes when an UPDATE/DELETE on source database (PostgreSQL) [DBZ-6691](https://issues.redhat.com/browse/DBZ-6691)
+* Missing operationTime field on ping command when executed against Atlas  [DBZ-6700](https://issues.redhat.com/browse/DBZ-6700)
+* MongoDB SRV protocol not working in Debezium Server [DBZ-6701](https://issues.redhat.com/browse/DBZ-6701)
+* Custom properties step not working correctly in validation of the properties added by user [DBZ-6711](https://issues.redhat.com/browse/DBZ-6711)
+* Add tzdata-java to UI installation Dockerfile [DBZ-6713](https://issues.redhat.com/browse/DBZ-6713)
+* Refactor EmbeddedEngine::run method [DBZ-6715](https://issues.redhat.com/browse/DBZ-6715)
+* Oracle fails to process a DROP USER [DBZ-6716](https://issues.redhat.com/browse/DBZ-6716)
+* Oracle LogMiner mining distance calculation should be skipped when upper bounds is not within distance [DBZ-6733](https://issues.redhat.com/browse/DBZ-6733)
+* MariaDB: Unparseable DDL statement (ALTER TABLE IF EXISTS) [DBZ-6736](https://issues.redhat.com/browse/DBZ-6736)
+* MySQL dialect does not properly recognize non-default value longblob types due to typo [DBZ-6753](https://issues.redhat.com/browse/DBZ-6753)
+* Postgres tests for toasted byte array and toasted date array fail with decoderbufs plugin [DBZ-6767](https://issues.redhat.com/browse/DBZ-6767)
+* Notifications and signals leaks between MBean instances when using JMX channels [DBZ-6777](https://issues.redhat.com/browse/DBZ-6777)
+* Oracle XML column types are not properly resolved when adding XMLTYPE column during streaming [DBZ-6782](https://issues.redhat.com/browse/DBZ-6782)
+
+
+### Other changes since 2.4.0.Alpha1
+
+* Highlight information about how to configure the schema history topic to store data only for intended tables [DBZ-6219](https://issues.redhat.com/browse/DBZ-6219)
+* Blogpost about custom signalling/notification channels [DBZ-6478](https://issues.redhat.com/browse/DBZ-6478)
+* NotificationIT with Oracle xstream fails randomly [DBZ-6672](https://issues.redhat.com/browse/DBZ-6672)
+* Flaky Oracle test: shouldCaptureChangesForTransactionsAcrossSnapshotBoundaryWithoutReemittingDDLChanges [DBZ-6673](https://issues.redhat.com/browse/DBZ-6673)
+* Update documentation on XML and RAW data types [DBZ-6676](https://issues.redhat.com/browse/DBZ-6676)
+* Use descriptive text instead of ‘-1’ in ‘Time since last event’ for no event case  [DBZ-6681](https://issues.redhat.com/browse/DBZ-6681)
+* MongoDB upstream documentation duplication [DBZ-6705](https://issues.redhat.com/browse/DBZ-6705)
+* Upstream documentation missing types for configurations [DBZ-6707](https://issues.redhat.com/browse/DBZ-6707)
+* Exit test suite consumption loop when connector has stopped [DBZ-6730](https://issues.redhat.com/browse/DBZ-6730)
+* Update Quarkus to 3.2.3.Final [DBZ-6740](https://issues.redhat.com/browse/DBZ-6740)
+* Decouple Debezium Server and Extension Quarkus versions [DBZ-6744](https://issues.redhat.com/browse/DBZ-6744)
+* SingleProcessor remove redundant filter logic [DBZ-6745](https://issues.redhat.com/browse/DBZ-6745)
+* OracheSchemaMigrationIT fails after adding RAW data type support [DBZ-6751](https://issues.redhat.com/browse/DBZ-6751)
+* Missing or misspelled IDs result in downstream build errors [DBZ-6754](https://issues.redhat.com/browse/DBZ-6754)
+* Bump the MySQL binlog client version to 0.28.1 which includes significant GTID event performance improvements [DBZ-6783](https://issues.redhat.com/browse/DBZ-6783)
+* Add new Redis Sink connector parameter description to the documentation [DBZ-6784](https://issues.redhat.com/browse/DBZ-6784)
+* Upgrade Kafka to 3.5.1 [DBZ-6785](https://issues.redhat.com/browse/DBZ-6785)
+
+
+
 ## 2.4.0.Alpha1
 July 14th 2023 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12409716)
 
