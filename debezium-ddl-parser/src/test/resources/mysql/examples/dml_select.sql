@@ -23,6 +23,7 @@ select * from `select` where `varchar` = 'abc \' ' and `varchar2` = '\'bca';
 #begin
 -- -- -- Number literal
 SELECT 1;
+SELECT 1.;
 select 1.e-3 as 123e;
 select del1.e123 as c from del1;
 select -1, 3e-2, 2.34E0;
@@ -31,6 +32,7 @@ SELECT .1e10;
 SELECT -.1e10;
 select 15e3, .2e5 as col1;
 select .2e3 c1, .2e-4 as c5;
+select * from tab where `field` = 1.;
 #end
 #begin
 -- -- -- Number float collision test
