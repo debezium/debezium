@@ -6,6 +6,7 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 
@@ -66,6 +67,22 @@ public class Timestamp {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
     public static long toEpochMillis(Object value, TemporalAdjuster adjuster) {
+        return toEpochMillis(value, adjuster, ZoneOffset.UTC);
+    }
+
+    /**
+     * Get the number of milliseconds past epoch of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
+     * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
+     * {@link java.sql.Timestamp}.
+     *
+     * @param value the local or SQL date, time, or timestamp value; may not be null
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     * adjustment is necessary
+     * @param zoneId database timezone
+     * @return the epoch milliseconds
+     * @throws IllegalArgumentException if the value is not an instance of the acceptable types
+     */
+    public static long toEpochMillis(Object value, TemporalAdjuster adjuster, ZoneId zoneId) {
         if (value instanceof Long) {
             return (Long) value;
         }
@@ -74,7 +91,7 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
 
-        return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        return dateTime.atZone(zoneId).toInstant().toEpochMilli();
     }
 
     private Timestamp() {

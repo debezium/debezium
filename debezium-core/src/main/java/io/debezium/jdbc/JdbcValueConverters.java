@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.Base64;
@@ -84,6 +85,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     protected final ZoneOffset defaultOffset;
+    /**
+     * Used to parse values of datetime.
+     */
+    protected final ZoneId zoneId;
 
     /**
      * Fallback value for TIMESTAMP WITH TZ is epoch
@@ -128,6 +133,28 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode, ZoneOffset.UTC);
+    }
+
+    /**
+     * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
+     * information to values that require timezones. This default offset should not be needed when values are highly-correlated
+     * with the expected SQL/JDBC types.
+     *
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     *            {@link DecimalMode#PRECISE} is to be used
+     * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
+     * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
+     *            have timezones; may be null if UTC is to be used
+     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
+     *            adjustment is necessary
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link BigIntUnsignedMode#PRECISE} is to be used
+     * @param binaryMode how binary columns should be represented
+     * @param zoneId datetime time zone
+     */
+    public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode, ZoneId zoneId) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
@@ -145,6 +172,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
                 adjuster);
+
+        this.zoneId = zoneId;
     }
 
     @Override
@@ -460,7 +489,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
-                r.deliver(Timestamp.toEpochMillis(data, adjuster));
+                r.deliver(Timestamp.toEpochMillis(data, adjuster, zoneId));
             }
             catch (IllegalArgumentException e) {
             }
@@ -485,7 +514,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
-                r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
+                r.deliver(MicroTimestamp.toEpochMicros(data, adjuster, zoneId));
             }
             catch (IllegalArgumentException e) {
             }
@@ -535,7 +564,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
-                r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
+                r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster, zoneId)));
             }
             catch (IllegalArgumentException e) {
             }

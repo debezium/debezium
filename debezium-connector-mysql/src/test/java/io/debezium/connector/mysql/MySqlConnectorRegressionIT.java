@@ -58,6 +58,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
 
     private Configuration config;
+    private ZoneOffset zoneOffset = ZonedDateTime.now(DATABASE.timezone()).getOffset();
 
     @Before
     public void beforeEach() {
@@ -183,7 +184,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 long c3Millis = c3 % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
                         (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
-                        ZoneOffset.UTC);
+                        zoneOffset);
 
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
@@ -192,7 +193,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3);
+                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER, DATABASE.timezone())).isEqualTo(c3);
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
@@ -461,7 +462,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 long c3Millis = c3.getTime() % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
                         (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
-                        ZoneOffset.UTC);
+                        zoneOffset);
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
@@ -469,7 +470,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c3DateTime.getMinute()).isEqualTo(51);
                 assertThat(c3DateTime.getSecond()).isEqualTo(4);
                 assertThat(c3DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER)).isEqualTo(c3.getTime());
+                assertThat(io.debezium.time.Timestamp.toEpochMillis(c3DateTime, ADJUSTER, DATABASE.timezone())).isEqualTo(c3.getTime());
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
