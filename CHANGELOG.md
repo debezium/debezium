@@ -19,7 +19,6 @@ August 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/Releas
 * Support alternative JDBC drivers in MySQL connector [DBZ-6727](https://issues.redhat.com/browse/DBZ-6727)
 * Add STOPPED and RESTARTING connector states to testing library [DBZ-6734](https://issues.redhat.com/browse/DBZ-6734)
 * Add a new parameter for selecting the db index when using Redis Storage [DBZ-6759](https://issues.redhat.com/browse/DBZ-6759)
-* Table schemas should be updated for each shard individually [DBZ-6775](https://issues.redhat.com/browse/DBZ-6775)
 
 
 ### Breaking changes since 2.4.0.Alpha1
@@ -28,6 +27,7 @@ August 9th 2023 [Detailed release notes](https://issues.redhat.com/secure/Releas
 * Specify decimal precision in schema for MySQL unsigned bigints in precise mode [DBZ-6714](https://issues.redhat.com/browse/DBZ-6714)
 * Increase Oracle default query fetch size from 2000 to 10000 [DBZ-6729](https://issues.redhat.com/browse/DBZ-6729)
 * Debezium should convert _bin collate varchar columns to strings not byte arrays [DBZ-6748](https://issues.redhat.com/browse/DBZ-6748)
+* Table schemas should be updated for each shard individually [DBZ-6775](https://issues.redhat.com/browse/DBZ-6775)
 
 
 ### Fixes since 2.4.0.Alpha1
