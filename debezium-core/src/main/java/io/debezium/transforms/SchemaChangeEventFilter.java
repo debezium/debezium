@@ -42,7 +42,7 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
                     "Support filtering during DDL synchronization")
             .required();
 
-    private Set<SchemaChangeEvent.SchemaChangeEventType> includeSchemaChangeEvents;
+    private Set<SchemaChangeEvent.SchemaChangeEventType> excludeSchemaChangeEvents;
     private SmtManager<R> smtManager;
 
     @Override
@@ -50,8 +50,8 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
         final Configuration config = Configuration.from(configs);
         smtManager = new SmtManager<>(config);
         smtManager.validate(config, Field.setOf(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST));
-        final String includeSchemaChangeEvents = config.getString(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST);
-        this.includeSchemaChangeEvents = Arrays.stream(includeSchemaChangeEvents.split(",")).map(typeName -> SchemaChangeEvent.SchemaChangeEventType.valueOf(typeName))
+        final String excludeSchemaChangeEvents = config.getString(SCHEMA_CHANGE_EVENT_EXCLUDE_LIST);
+        this.excludeSchemaChangeEvents = Arrays.stream(excludeSchemaChangeEvents.split(",")).map(typeName -> SchemaChangeEvent.SchemaChangeEventType.valueOf(typeName))
                 .collect(Collectors.toSet());
 
     }
@@ -76,7 +76,7 @@ public class SchemaChangeEventFilter<R extends ConnectRecord<R>> implements Tran
             schemaChangeEventType = SchemaChangeEvent.SchemaChangeEventType.valueOf((String) tableChanges.get(0).get(ConnectTableChangeSerializer.TYPE_KEY));
         }
 
-        if (includeSchemaChangeEvents.contains(schemaChangeEventType)) {
+        if (excludeSchemaChangeEvents.contains(schemaChangeEventType)) {
             return record;
         }
         return null;
