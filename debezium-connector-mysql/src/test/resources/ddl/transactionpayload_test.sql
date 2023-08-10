@@ -7,7 +7,8 @@ CREATE TABLE products (
                           id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
                           name VARCHAR(255) NOT NULL,
                           description VARCHAR(512),
-                          weight FLOAT
+                          weight FLOAT,
+                          code BINARY(16)
 );
 
 -- Create some customers ...
