@@ -96,7 +96,7 @@ The structure of the signaling table must conform to the following standard form
 
 |An arbitrary unique string that identifies a signal instance. +
 You assign an `id` to each signal that you submit to the signaling table. +
-Typically the ID is a UUID string. +
+Typically, the ID is a UUID string. +
 You can use signal instances for logging, debugging, or de-duplication. +
 When a signal triggers {prodname} to perform an incremental snapshot, it generates a signal message with an arbitrary `id` string.
 The `id` string that the generated message contains is unrelated to the `id` string in the submitted signal.
@@ -167,7 +167,7 @@ The value is a JSON object with `type` and `data` fields.
 When the signal type is set to `execute-snapshot`, the `data` field must include the fields that are listed in the following table:
 
 .Execute snapshot data fields
-[cols="2,2,6",options="header"]
+[cols="2,2,6a",options="header"]
 |===
 |Field | Default | Value
 
@@ -178,12 +178,25 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 
 |`data-collections`
 |_N/A_
-| An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
+| An array of comma-separated regular expressions that match the fully-qualified names of the data collections to include in the snapshot. +
 Specify the names by using the same format as is required for the `signal.data.collection` configuration option.
 
-|`additional-condition`
+|`[.line-through]#additional-condition#`
 |_N/A_
-| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot.
+| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
++
+[NOTE]
+====
+This property is deprecated and should be replaced by additional-conditions.
+====
+
+|`additional-conditions`
+|_N/A_
+| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+  Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
+
+ * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+ * The `filter` property will have the same value used in the old property for the `incremental snapshot` and the value used in the `snapshot.select.statement.overrides` for the `blocking snapshot`.
 |===
 
 The following example shows a typical `execute-snapshot` Kafka message:
@@ -217,7 +230,7 @@ p2:: A JSON data field that contains additional information about the specified 
 In the JSON data field, include the information that is listed in the following table:
 +
 .Execute snapshot data fields
-[cols="2,2,6",options="header"]
+[cols="2,2,6a",options="header"]
 |===
 |Field | Default | Value
 
@@ -231,9 +244,22 @@ Currently {prodname} supports the `incremental` and `blocking` types.
 | An array of comma-separated regular expressions that match the fully-qualified names of the tables to include in the snapshot. +
 Specify the names by using the same format as is required for the xref:{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
-|`additional-condition`
+|`[.line-through]#additional-condition#`
 |_N/A_
-| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot.
+| An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+
+[NOTE]
+====
+This property is deprecated and should be replaced by additional-conditions.
+====
+
+|`additional-conditions`
+|_N/A_
+| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
+
+ * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+ * The `filter` property will have the same value used in the old property for the `incremental snapshot` and the value used in the `snapshot.select.statement.overrides` for the `blocking snapshot`.
 |===
 +
 The following image shows an example of how to use JConsole to send a signal:
@@ -361,7 +387,11 @@ Optionally, you can configure the signal so that the resulting message includes 
 |The action type of the signal.
 
 |data
-|`{"message": "Signal message at offset {}"}`
+a|
+[source,json]
+----
+{"message": "Signal message at offset {}"}
+----
 | The `message` parameter specifies the string to print to the log. +
 If you add a placeholder (`{}`) to the message, it is replaced with streaming coordinates.
 |===
@@ -400,7 +430,11 @@ endif::community[]
 |`execute-snapshot`
 
 |data
-|`{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}`
+a|
+[source,json]
+----
+{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}
+----
 
 |===
 
@@ -411,7 +445,11 @@ endif::community[]
 |Key | Value
 
 |test_connector
-|`{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-condition":"color='blue' AND brand='MyBrand'"}}`
+a|
+[source,json]
+----
+{"type":"execute-snapshot","data": {"data-collections": ["public.MyFirstTable"], "type": "INCREMENTAL", "additional-conditions":[{"data-collection": "public.MyFirstTable", "filter":"color='blue' AND brand='MyBrand'"]}}
+----
 
 |===
 
@@ -460,8 +498,11 @@ endif::community[]
 |`stop-snapshot`
 
 |data
-|`{"type":"INCREMENTAL", "data-collections": ["public.MyFirstTable"]}`
-
+a|
+[source,json]
+----
+{"type":"INCREMENTAL", "data-collections": ["public.MyFirstTable"]}
+----
 |===
 
 You must specify the `type` of the signal.
@@ -602,7 +643,11 @@ endif::community[]
 |`execute-snapshot`
 
 |data
-|`{"type": "blocking"}`
+a|
+[source,json]
+----
+  {"type": "blocking", "data-collections": ["schema1.table1", "schema1.table2"], "additional-conditions": [{"data-collection": "schema1.table1", "filter": "SELECT * FROM [schema1].[table1] WHERE column1 = 0 ORDER BY column2 DESC"}, {"data-collection": "schema1.table2", "filter": "SELECT * FROM [schema1].[table2] WHERE column2 > 0"}]}
+----
 
 |===
 
@@ -613,8 +658,11 @@ endif::community[]
 |Key | Value
 
 |test_connector
-|`{"type":"execute-snapshot","data": {"type": "blocking"}`
-
+a|
+[source,json]
+----
+{"type":"execute-snapshot","data": {"type": "blocking"}
+----
 |===
 
 

@@ -33,7 +33,7 @@ For example, to include a table that exists in the `*public*` schema and that ha
 +
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<tableName>_", "filter": "_<additional-condition>_"}]}');
 ----
 +
 For example,
@@ -45,7 +45,7 @@ values ('ad-hoc-1',   // <2>
     'execute-snapshot',  // <3>
     '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
     "type":"incremental"}, // <5>
-    "additional-condition":"color=blue"}'); // <6>
+    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color='blue'"}]}'); // <6>
 ----
 +
 The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
@@ -84,16 +84,17 @@ Currently, the only valid option is the default value, `incremental`. +
 If you do not specify a value, the connector runs an incremental snapshot.
 
 |6
-|`additional-condition`
-|An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}s.
-For more information about the `additional-condition` parameter, see xref:{context}-incremental-snapshots-additional-condition[].
+|`additional-conditions`
+| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection. +
+* The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
 |===
 
-[id="{context}-incremental-snapshots-additional-condition"]
-.Ad hoc incremental snapshots with `additional-condition`
+[id="{context}-incremental-snapshots-additional-conditions"]
+.Ad hoc incremental snapshots with `additional-conditions`
 
-If you want a snapshot to include only a subset of the content in a {data-collection}, you can modify the signal request by appending an `additional-condition` parameter to the snapshot signal.
+If you want a snapshot to include only a subset of the content in a {data-collection}, you can modify the signal request by appending an `additional-conditions` parameter to the snapshot signal.
 
 The SQL query for a typical snapshot takes the following form:
 
@@ -102,17 +103,17 @@ The SQL query for a typical snapshot takes the following form:
 SELECT * FROM _<tableName>_ ....
 ----
 
-By adding an `additional-condition` parameter, you append a `WHERE` condition to the SQL query, as in the following example:
+By adding an `additional-conditions` parameter, you append a `WHERE` condition to the SQL query, as in the following example:
 
 [source,sql,subs="+attributes,+quotes"]
 ----
-SELECT * FROM _<tableName>_ WHERE _<additional-condition>_ ....
+SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....
 ----
 
 The following example shows a SQL query to send an ad hoc incremental snapshot request with an additional condition to the signaling {data-collection}:
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-condition":"_<additional-condition>_"}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<tableName>_", "filter": "_<additional-condition>_"}]}');
 ----
 
 For example, suppose you have a `products` {data-collection} that contains the following columns:
@@ -125,15 +126,15 @@ If you want an incremental snapshot of the `products` {data-collection} to inclu
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue"}]}');
 ----
 
-The `additional-condition` parameter also enables you to pass conditions that are based on more than one column.
+The `additional-conditions` parameter also enables you to pass conditions that are based on more than one column.
 For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
 
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-condition":"color=blue AND quantity>10"}');
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue AND quantity>10"}]}');
 ----
 
 The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
