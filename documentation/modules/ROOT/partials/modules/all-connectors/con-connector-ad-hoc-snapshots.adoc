@@ -26,14 +26,9 @@ endif::[]
 You specify the {data-collection}s to capture by sending an `execute-snapshot` message to the signaling {data-collection}.
 Set the type of the `execute-snapshot` signal to `incremental` or `blocking`, and provide the names of the {data-collection}s to include in the snapshot, as described in the following table:
 
-[NOTE]
-====
-Unlike incremental snapshot type, a blocking snapshot  does not support the `data-collections`, `additional-condition`, or `surrogate-key' parameters.  
-For details about the parameters supported for blocking snapshots, see the `snapshot.*` connectors properties.
-====
 
 .Example of an ad hoc `execute-snapshot` signal record
-[cols="2,2,6",options="header"]
+[cols="2,2,6a",options="header"]
 |===
 |Field | Default | Value
 
@@ -49,10 +44,23 @@ Currently, you can request `incremental` or `blocking` snapshots.
 The format of the names is the same as for the `signal.data.collection` configuration option.
 
 ifeval::['{context}' != 'mongodb']
-|`additional-condition`
+|`[.line-through]#additional-condition#`
 |_N/A_
 | An optional string, which specifies a condition based on the column(s) of the {data-collection}(s), to capture a
-subset of the contents of the {data-collection}(s).
+subset of the contents of the {data-collection}(s). +
+
+[NOTE]
+====
+This property is deprecated and should be replaced by additional-conditions.
+====
+
+|`additional-conditions`
+|_N/A_
+| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
+
+ * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+ * The `filter` property will have the same value used in the old property for the `incremental snapshot` and the value used in the `snapshot.select.statement.overrides` for the `blocking snapshot`.
 endif::[]
 
 ifeval::['{context}' != 'mongodb']
