@@ -167,6 +167,15 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             + "null, null, null, null, null, null"
             + ")";
 
+    protected static final String INSERT_NUMERIC_DECIMAL_TYPES_STMT_WITH_INFINITY = "INSERT INTO numeric_decimal_table (d, dzs, dvs, d_nn, n, nzs, nvs, "
+            + "d_int, dzs_int, dvs_int, n_int, nzs_int, nvs_int, "
+            + "d_nan, dzs_nan, dvs_nan, n_nan, nzs_nan, nvs_nan"
+            + ") "
+            + "VALUES (1.1, 10.11, 10.1111, 3.30, 22.22, 22.2, 22.2222, "
+            + "1, 10, 10, 22, 22, 22, "
+            + "null, null, 'Infinity', null, null, '-Infinity'"
+            + ")";
+
     protected static final String INSERT_RANGE_TYPES_STMT = "INSERT INTO range_table (unbounded_exclusive_tsrange, bounded_inclusive_tsrange, unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange, unbounded_exclusive_daterange, bounded_exclusive_daterange, int4_number_range, numerange, int8_number_range) "
             +
             "VALUES ('[2019-03-31 15:30:00, infinity)', '[2019-03-31 15:30:00, 2019-04-30 15:30:00]', '[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]', '[2019-03-31, infinity)', '[2019-03-31, 2019-04-30)', '[1000,6000)', '[5.3,6.3)', '[1000000,6000000)')";
@@ -297,6 +306,24 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("nzs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN"),
                 new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NAN")));
         return fields;
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForStringEncodedNumericTypesWithInfinity() {
+        return Arrays.asList(
+                new SchemaAndValueField("d", Schema.OPTIONAL_STRING_SCHEMA, "1.10"),
+                new SchemaAndValueField("dzs", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs", Schema.OPTIONAL_STRING_SCHEMA, "10.1111"),
+                new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, "22.2200"),
+                new SchemaAndValueField("nzs", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs", Schema.OPTIONAL_STRING_SCHEMA, "22.2222"),
+                new SchemaAndValueField("d_int", Schema.OPTIONAL_STRING_SCHEMA, "1.00"),
+                new SchemaAndValueField("dzs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("dvs_int", Schema.OPTIONAL_STRING_SCHEMA, "10"),
+                new SchemaAndValueField("n_int", Schema.OPTIONAL_STRING_SCHEMA, "22.0000"),
+                new SchemaAndValueField("nzs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("nvs_int", Schema.OPTIONAL_STRING_SCHEMA, "22"),
+                new SchemaAndValueField("dvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "POSITIVE_INFINITY"),
+                new SchemaAndValueField("nvs_nan", Schema.OPTIONAL_STRING_SCHEMA, "NEGATIVE_INFINITY"));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDoubleEncodedNumericTypes() {
