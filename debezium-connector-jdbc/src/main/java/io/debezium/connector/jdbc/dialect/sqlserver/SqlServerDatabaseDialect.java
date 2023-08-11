@@ -48,6 +48,27 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public String getInsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+        String insertStatement = super.getInsertStatement(table, record);
+        return wrapWithIdentityInsert(table, insertStatement);
+    }
+
+    private String wrapWithIdentityInsert(TableDescriptor table, String sqlStatement) {
+        boolean contains = getConfig().getSqlServerIdentityTableNames().contains(table.getId().getTableName());
+        if (!contains) {
+            return sqlStatement;
+        }
+
+        String qualifiedTableName = getQualifiedTableName(table.getId());
+        return new StringBuilder()
+                .append("SET IDENTITY_INSERT ").append(qualifiedTableName).append(" ON ;")
+                .append(sqlStatement)
+                .append("SET IDENTITY_INSERT ").append(qualifiedTableName).append(" OFF ;")
+                .toString();
+
+    }
+
+    @Override
     protected Optional<String> getDatabaseTimeZoneQuery() {
         return Optional.of("SELECT CURRENT_TIMEZONE()");
     }
@@ -111,7 +132,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(")");
         builder.append(";"); // SQL server requires this to be terminated this way.
 
-        return builder.build();
+        return wrapWithIdentityInsert(table, builder.build());
     }
 
     @Override
