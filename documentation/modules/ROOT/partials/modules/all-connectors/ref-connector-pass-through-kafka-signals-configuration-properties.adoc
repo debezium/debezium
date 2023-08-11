@@ -7,8 +7,16 @@ The following table describes the Kafka `signal` properties.
 |===
 |Property |Default |Description
 |[[{context}-property-signal-kafka-topic]]<<{context}-property-signal-kafka-topic, `+signal.kafka.topic+`>>
-|No default
+|<topic.prefix>-signal
 |The name of the Kafka topic that the connector monitors for ad hoc signals.
+[NOTE]
+====
+In case automatic topic creation is disabled, you need to create the topic with one partition to preserve the signals ordering.
+====
+
+|[[{context}-property-signal-kafka-groupId]]<<{context}-property-signal-kafka-groupId, `+signal.kafka.groupId+`>>
+|kafka-signal
+|The name of the group id used in the Kafka consumer.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
 |No default
