@@ -1495,11 +1495,6 @@ In some situations, when `capture.mode` is configured to return full documents, 
 Such discrepancies can result after multiple updates are applied to a document in rapid succession.
 The connector requests the full document from the MongoDB database only after it receives the update described in the event's `updateDescription` field.
 If a later update modifies the source document before the connector can retrieve it from the database, the connector receives the document that is modified by this later update.
-
-When you configure `capture.mode` to return the full document, you might notice a discrepancy between the content in the `updateDescription` and `after` fields of the message.
-Discrepancies can result when multiple changes are applied to a document in rapid succession.
-Because the connector submits the request for the full document only after an update is applied, later updates can modify the source document after the update that is described in the `updateDescription` field.
-The full document that the connector then receives in response to its query reflects the result of the later change.
 ====
 
 `change_streams_update_full_with_pre_image`::
