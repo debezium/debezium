@@ -1,5 +1,5 @@
 [id="storing-debezium-state"]
-= Sotring state of a {prodname} connector
+= Storing state of a {prodname} connector
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -12,30 +12,40 @@ toc::[]
 == Overview
 endif::community[]
 
-Debezium connector
+Debezium connectors require a persistent storage to keep their state between restarts.
+All connectors requires a store for the offsets.
+In addition to it some of the connectors (MySQL, SQL Server, Db2, Oracle) require an additional storage to record the history of schema evolution, so-called internal schema history.
+
+The offset store is provided automatically for the deployments inside the Kafka Connect runtime:
+
+* Kafka offset store for Kafka Connect distributed
+* File offset store for Kafka Connect standalone
+
+If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/embedded.adoc[Debezium Server] then the offset store must be explicitly configured.
+The internal schema history is configured in all cases via connector configuration options.
 
 == Kafka
-=== Offset
-=== Database History
+=== Offset Store
+=== Internal schema history store
 
 == File
-=== Offset
-=== Database History
+=== Offset Store
+=== Internal schema history store
 
 == Memory
-=== Offset
-=== Database History
+=== Offset Store
+=== Internal schema history store
 
 == JDBC
-=== Offset
-=== Database History
+=== Offset Store
+=== Internal schema history store
 
 == Redis
-=== Offset
-=== Database History
+=== Offset Store
+=== Internal schema history store
 
 == S3
-=== Database History
+=== Internal schema history store
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -69,5 +79,5 @@ Debezium connector
 
 |[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
 |No default
-|(Optional) A cutom URL used to access S3 service.
+|(Optional) A custom URL used to access S3 service.
 |===
