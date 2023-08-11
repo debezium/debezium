@@ -103,6 +103,16 @@ public class JdbcSinkConnectorConfigTest {
         assertThat(config.getPrimaryKeyFields()).contains("id", "name");
     }
 
+    @Test
+    public void testNonDefaultSqlSelverIdentityTableNamesProperty() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_TABLE_NAMES, "tableA,tableB");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_TABLE_NAMES_FIELD), LOGGER::error)).isTrue();
+        assertThat(config.getSqlServerIdentityTableNames()).contains("tableA", "tableB");
+    }
+
     // @Test
     // public void testNonDefaultSchemaEvolutionProperty() {
     // final Map<String, String> properties = new HashMap<>();
