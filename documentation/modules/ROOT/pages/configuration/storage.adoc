@@ -1,0 +1,73 @@
+[id="storing-debezium-state"]
+= Sotring state of a {prodname} connector
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+Debezium connector
+
+== Kafka
+=== Offset
+=== Database History
+
+== File
+=== Offset
+=== Database History
+
+== Memory
+=== Offset
+=== Database History
+
+== JDBC
+=== Offset
+=== Database History
+
+== Redis
+=== Offset
+=== Database History
+
+== S3
+=== Database History
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[s3-history-type]]<<s3-history-type, `schema.history.internal`>>
+|
+|Must be set to `io.debezium.storage.s3.history.S3SchemaHistory`.
+
+|[[s3-history-access.key.id]]<<s3-history-access.key.id, `schema.history.internal.s3.access.key.id`>>
+|No default
+|(Optional) An identifier of the key used for the static authentication.
+
+|[[s3-history-secret-access-key]]<<s3-history-secret-access-key, `schema.history.internal.s3.secret.access.key`>>
+|No default
+|(Optional) The secret used for the static authentication.
+
+|[[s3-history-region-name]]<<s3-history-region-name, `schema.history.internal.s3.region.name`>>
+|No default
+|(Optional) A region name in which the S3 service is provided.
+
+|[[s3-history-bucket-name]]<<s3-history-bucket-name, `schema.history.internal.s3.bucket.name`>>
+|No default
+|A name of the bucket used to store the schema history.
+
+|[[s3-history-object-name]]<<s3-history-object-name, `schema.history.internal.s3.object.name`>>
+|No default
+|A name of the key under which the schema history is stored.
+
+|[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
+|No default
+|(Optional) A cutom URL used to access S3 service.
+|===
