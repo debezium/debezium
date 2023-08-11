@@ -157,6 +157,23 @@ CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT N
 == Enabling Kafka signaling channel
 
 You can enable the Kafka signaling channel by adding it to the `signal.enabled.channels` configuration property, and then adding the name of the topic that receives signals to the `signal.kafka.topic` property.
+A Kafka consumer will be created to consume signals sent on the configured signal topic.
+
+.Additional configuration available for the consumer
+
+* {link-prefix}:{link-db2-connector}#debezium-db2-connector-kafka-signals-configuration-properties[Db2 connector Kafka signal configuration properties]
+ifdef::community[]
+* {link-prefix}:{link-mongodb-connector}#debezium-mongodb-connector-kafka-signals-configuration-properties[MongoDB connector Kafka signal configuration properties]
+endif::community[]
+* {link-prefix}:{link-mysql-connector}#debezium-mysql-connector-kafka-signals-configuration-properties[MySQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-oracle-connector}#debezium-oracle-connector-kafka-signals-configuration-properties[Oracle connector Kafka signal configuration properties]
+* {link-prefix}:{link-postgresql-connector}#debezium-postgresql-connector-kafka-signals-configuration-properties[PostgreSQL connector Kafka signal configuration properties]
+* {link-prefix}:{link-sqlserver-connector}#debezium-sqlserver-connector-kafka-signals-configuration-properties[SQL Server connector Kafka signal configuration properties]
+
+[NOTE]
+====
+If you want to trigger an ad hoc incremental snapshot you need to enable also the xref:debezium-signaling-enabling-source-signaling-channel[`source` channel] since it is necessary for internal creating of watermarks for incremental snapshot deduplication.
+====
 
 === Message format
 
