@@ -318,7 +318,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
         builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
 
-        builder.append(")");
+        builder.append(");");
 
         return builder.build();
     }
