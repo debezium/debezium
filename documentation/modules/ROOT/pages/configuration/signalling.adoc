@@ -192,7 +192,7 @@ This property is deprecated and should be replaced by additional-conditions.
 
 |`additional-conditions`
 |_N/A_
-| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
   Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
 
  * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
@@ -255,7 +255,7 @@ This property is deprecated and should be replaced by additional-conditions.
 
 |`additional-conditions`
 |_N/A_
-| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+|An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
 Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
 
  * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.

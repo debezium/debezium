@@ -30,12 +30,12 @@ Specify the names by using the same format as is required for the xref:{context}
 
 [NOTE]
 ====
-This property is deprecated and should be replaced by additional-conditions.
+This property is deprecated and should be replaced by the `additional-conditions` property.
 ====
 
 |`additional-conditions`
 |_N/A_
-| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
+| An optional array of additional conditions that specifies criteria that the connector evaluates to designate a subset of records to include in a snapshot. +
 Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection.
 
 * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
@@ -58,7 +58,7 @@ Typically, when {prodname} runs a snapshot, it runs a SQL query such as:
 
 `SELECT * FROM _<tableName>_ ....`
 
-When the snapshot request includes an `additional-conditions`, the `data-collection` and `filter` property of the `additional-conditions` is appended to the SQL query, for example:
+When the snapshot request includes an `additional-conditions` property, the `data-collection` and `filter` parameters of the  property are appended to the SQL query, for example:
 
 `SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....`
 
