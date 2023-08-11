@@ -126,8 +126,8 @@ If you do not specify a value, the connector runs an incremental snapshot.
 
 |6
 |`additional-conditions`
-| An optional array of additional condition that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
-Each additional condition is an object with `data-collection` and `filter` properties. You can now specify different filters for different data collection. +
+| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
+Each additional condition is an object with `data-collection` and `filter` properties. You can specify different filters for each data collection. +
 * The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
 For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
 |7

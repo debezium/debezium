@@ -14,13 +14,13 @@ After the snapshot completes, the streaming is resumed.
 
 .Configure snapshot
 
-In the `data` section of the signal you can use the following properties:
+You can set the following properties in the `data` component of a signal:
  * data-collections: to specify which {data-collection}s must be snapshot
  * additional-conditions: You can specify different filters for different {data-collection}. +
     * The `data-collection` property is the fully-qualified name of the {data-collection} for which the filter will be applied.
     * The `filter` property will have the same value used in the  `snapshot.select.statement.overrides`
 
-Fo example
+For example:
 [source,json]
 ----
   {"type": "blocking", "data-collections": ["schema1.table1", "schema1.table2"], "additional-conditions": [{"data-collection": "schema1.table1", "filter": "SELECT * FROM [schema1].[table1] WHERE column1 = 0 ORDER BY column2 DESC"}, {"data-collection": "schema1.table2", "filter": "SELECT * FROM [schema1].[table2] WHERE column2 > 0"}]}
