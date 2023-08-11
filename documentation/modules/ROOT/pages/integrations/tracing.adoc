@@ -9,16 +9,6 @@
 
 toc::[]
 
-[IMPORTANT]
-====
-*THIS DOCUMENTATION IS OBSOLETE.*
-
-OpenTracing project is discontinued and OpenTelemetry is its successor.
-As of Debezium 2.4.0.Alpha2, Debezium has switched from OpenTracing to OpenTelemetry framework.
-However, we unfortunately haven't managed to update the documentation before the release.
-We applogize for this dire situation and hope we will fix it ASAP.
-====
-
 == Overview
 
 Observability is an important aspect of microservice-oriented applications.
@@ -26,19 +16,113 @@ One of the key ingredients for observability is https://microservices.io/pattern
 
 It is necessary to provide additional precautions when an application writes a record to a database that is later processed by Debezium.
 The active trace is effectively demarcated by the write to the database.
-If we want Debezium to join the larger scope application tracer we need to pass the trace metadata to Debezium.
+If you want to include {prodname} data in your application tracer, you must pass the trace metadata to {prodname}.
 
-The tracing support is added to Debezium through the https://opentracing.io/[OpenTracing] specification.
-It is also necessary to provide a client implementing the specification.
-Debezium was tested with https://www.jaegertracing.io/[Jaeger] implementation.
+You can add tracing support to {prodname} through the https://opentelemetry.io/docs/specs/otel/[OpenTelemetry specification].
 
-[WARNING]
+== Installation
+
+To enable traceability in {prodname}, you must install the required OpenTelemetry API packages on your Kafka Connect cluster, together with the OpenTelemetry SDK.
+
+There are three main methods for installing OpenTelemetry on Kafka Connect, each having its advantages:
+
+xref:open-telemetry-manual-installation[Manual installation]:: Offers more control and customization.
+xref:open-telemetry-docker-installation[Docker installation]:: Provides easier integration.
+xref:open-telemetry-strimzi-installation[Strimzi installation]:: Presents a ready-to-use solution on Kubernetes that includes all of the necessary OpenTelemetry components.
+
+[id="open-telemetry-manual-installation"]
+=== Manual installation of OpenTelemetry
+
+A manual installation provides greater control and customization.
+
+==== Installing the OpenTelemetry API
+
+Install the following packages to the Kafka Connect classpath:
+
+* https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-api/[opentelemetry-api]
+* https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-context/[opentelemetry-context]
+* https://mvnrepository.com/artifact/io.opentelemetry/opentelemetry-semconv/[opentelemetry-semconv]
+* https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-instrumentation-api/[opentelemetry-instrumentation-api]
+* https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-instrumentation-api-semconv/[opentelemetry-instrumentation-api-semconv]
+* https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-kafka-clients-2.6/[opentelemetry-kafka-clients-2.6]
+* https://mvnrepository.com/artifact/io.opentelemetry.instrumentation/opentelemetry-kafka-clients-common/[opentelemetry-kafka-clients-common]
+
+
+You can download the OpenTelemetry packages directly from the Maven repository, or retrieve the packages by using the Maven dependency plugin to ensure version compatibility.
+
+===== Using the Maven Dependency Plugin
+
+1. Create a POM file similar to the one in the following example.
+In your version of the file, specify the version of the OpenTelemetry package that you want to use.
++
+[source,xml]
+----
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+ <modelVersion>4.0.0</modelVersion>
+ <groupId>group.id</groupId>
+ <artifactId>artifact-id</artifactId>
+ <version>0.0.1</version>
+ <properties>
+  <version.opentelemetry.api>1.23.1</version.opentelemetry.api>
+  <version.opentelemetry.kafka.clients.2.6>1.23.0-alpha</version.opentelemetry.kafka.clients.2.6>
+ </properties>
+ <dependencies>
+  <dependency>
+   <groupId>io.opentelemetry</groupId>
+   <artifactId>opentelemetry-api</artifactId>
+   <version>${version.opentelemetry.api}</version>
+  </dependency>
+  <dependency>
+   <groupId>io.opentelemetry.instrumentation</groupId>
+   <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
+   <version>${version.opentelemetry.kafka.clients.2.6}</version>
+  </dependency>
+ </dependencies>
+</project>
+----
++
+2. In the directory that contains the `pom.xml` file, run the following command to download all dependencies (including transitives) to a specified directory (for example, `./lib`)
++
+[source,bash]
+----
+mvn dependency:copy-dependencies -DoutputDirectory=./lib
+----
+
+
+==== Installing the OpenTelemetry SDK
+After you install the API, install the OpenTelemetry SDK.
+Install the OpenTelemetry SDK on your Kafka connect cluster by using the https://opentelemetry.io/docs/instrumentation/java/automatic/[Java agent] for automatic instrumentation.
+
+[id="open-telemetry-docker-installation"]
+=== Using Docker to install OpenTelemetry 
+Prefer this installation method if you want to use Docker for local development or testing.
+
+The OpenTelemetry API dependencies are installed in the https://quay.io/repository/debezium/connect[{prodname} Kafka Connect] container image.
+The JAR files are downloaded to a separate directory.
+By default, the JAR files are not added to the class path.
+To add the JAR files to the class path, set the environment variable `ENABLE_OTEL` to `true`.
+You must also install the https://opentelemetry.io/docs/instrumentation/java/automatic/[OpenTelemetry Java agent].
+
+[id="open-telemetry-strimzi-installation"]
+=== Using Strimzi to install Open Telemetry
+https://strimzi.io/[Strimzi] provides a way to deploy an Apache Kafka cluster on Kubernetes.
+
+The Strimzi Kafka image includes all of the necessary OpenTelemetry components.
+
+If you want to view the OpenTelemetry components that are available in the Strimzi image, examine the compose file that is provided in the https://github.com/debezium/debezium-examples/tree/main/outbox[{prodname} Outbox example].
+
+=== Configuring OpenTelemetry
+
+For information about how to configure OpenTelemetry, see the https://opentelemetry.io/docs/instrumentation/java/automatic/agent-config/[OpenTelemetry documentation].
+
+[NOTE]
 ====
-Neither the specification JAR files nor the Jaeger client are part of the Debezium Kafka Connect container image.
-The user either needs to extend the image with them or can use the https://strimzi.io/[Strimzi] Kafka image.
-In that case, the tracing of Kafka producer and consumer is also available.
+{prodname} was tested with a {prodname} Kafka Connect image, and a Strimzi distribution that included the following configuration settings:
 
-See compose file of https://github.com/debezium/debezium-examples/tree/main/outbox[Outbox example].
+* `otel.traces.exporter=otlp`
+* `otel.propagators=tracecontext`
+
 ====
 
 == ActivateTracingSpan SMT
@@ -62,8 +146,16 @@ When this SMT is invoked with a message then it will:
 === Kafka Producer tracing
 
 Optionally it is possible to enable tracing at the Kafka producer level.
-If enabled then when the message is being written to the Kafka broker the producer will extract Debezium's processing span context from the Kafka message headers, create a new child span and record information about the write to the broker.
+If you enable tracing in the Kafka producer, when messages are written to the Kafka broker, the producer extracts the {prodname} processing span context from the Kafka message headers, creates a new child span, and then records information about the write operation to the broker.
 Then it injects the new span into the message headers so a consumer of the message can restore the trace and resume end-to-end tracing.
+
+The interceptor cannot propagate the traceability context if the Kafka instrumentation is enabled.
+The interceptor simply propagates the traceability context before delegating the instrumentation to the OpenTelemetry SDK.
+
+==== Enabling end-to-end traceability
+
+1. Download and install the https://mvnrepository.com/artifact/io.debezium/debezium-interceptor/[debezium-interceptor] to the Kafka Connect classpath.
+2. Disable the automatic OpenTelemetry instrumentation at the Kafka producer and consumer by setting the value of `otel.instrumentation.common.default-enabled` to `false`.
 
 === Configuration options
 
@@ -106,9 +198,9 @@ When an outbox event is emitted, the extension will:
 * inject the span context into that `java.util.Properties` instance that is serialized into the `tracingspancontext` column
 * write the record into the database
 
-The tracing integration in the outbox extension is automatically enabled if also the `smallrye-opentracing` Quarkus extension is present.
-If you want to disable tracing support for the outbox extension despite the `smallrye-opentracing` Quarkus extension being is present,
-you can disable it by setting an option `quarkus.debezium-outbox.tracing.enabled=false` in the Quarkus `application.properties` file.
+The tracing integration in the outbox extension is automatically enabled if the `quarkus-opentelemetry` extension is present.
+If you want to disable tracing support for the outbox extension despite the presence of  the `quarkus-opentelemetry` extension,
+set the option `quarkus.debezium-outbox.tracing.enabled=false` in the Quarkus `application.properties` file.
 
 == Event Router SMT
 

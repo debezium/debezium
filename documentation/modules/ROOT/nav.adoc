@@ -44,7 +44,7 @@
 ** xref:integrations/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 ** xref:integrations/cloudevents.adoc[CloudEvents]
-** xref:integrations/tracing.adoc[OpenTracing]
+** xref:integrations/tracing.adoc[OpenTelemetry]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Operations
 ** xref:operations/debezium-server.adoc[Debezium Server]
