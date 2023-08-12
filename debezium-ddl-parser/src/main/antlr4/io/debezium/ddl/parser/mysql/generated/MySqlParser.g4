@@ -2696,8 +2696,8 @@ predicate
     | predicate SOUNDS LIKE predicate                               #soundsLikePredicate
     | predicate NOT? LIKE predicate (ESCAPE STRING_LITERAL)?        #likePredicate
     | predicate NOT? regex=(REGEXP | RLIKE) predicate               #regexpPredicate
-    | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
     | predicate MEMBER OF '(' predicate ')'                         #jsonMemberOfPredicate
+    | expressionAtom                                                #expressionAtomPredicate
     ;
 
 
@@ -2710,6 +2710,7 @@ expressionAtom
     | mysqlVariable                                                 #mysqlVariableExpressionAtom
     | unaryOperator expressionAtom                                  #unaryExpressionAtom
     | BINARY expressionAtom                                         #binaryExpressionAtom
+    | LOCAL_ID VAR_ASSIGN expressionAtom                            #variableAssignExpressionAtom
     | '(' expression (',' expression)* ')'                          #nestedExpressionAtom
     | ROW '(' expression (',' expression)+ ')'                      #nestedRowExpressionAtom
     | EXISTS '(' selectStatement ')'                                #existsExpressionAtom
