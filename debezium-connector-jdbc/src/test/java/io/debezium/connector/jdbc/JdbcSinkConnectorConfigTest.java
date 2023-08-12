@@ -106,11 +106,11 @@ public class JdbcSinkConnectorConfigTest {
     @Test
     public void testNonDefaultSqlSelverIdentityTableNamesProperty() {
         final Map<String, String> properties = new HashMap<>();
-        properties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_TABLE_NAMES, "tableA,tableB");
+        properties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT, "true");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_TABLE_NAMES_FIELD), LOGGER::error)).isTrue();
-        assertThat(config.getSqlServerIdentityTableNames()).contains("tableA", "tableB");
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT_FIELD), LOGGER::error)).isTrue();
+        assertThat(config.isSqlServerIdentityInsert()).isTrue();
     }
 
     // @Test
