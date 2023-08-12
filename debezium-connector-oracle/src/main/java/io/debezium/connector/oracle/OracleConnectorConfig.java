@@ -310,7 +310,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 27))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 28))
             .withDefault(ARCHIVE_LOG_ONLY_POLL_TIME.toMillis())
             .withDescription("The interval in milliseconds to wait between polls checking to see if the SCN is in the archive logs.");
 
@@ -374,6 +374,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "This is useful for managing buffer memory and/or space when dealing with very large transactions. " +
                     "Defaults to 0, meaning that no threshold is applied and transactions can have unlimited events.");
 
+    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL = Field.create("log.mining.buffer.infinispan.cache.global")
+            .withDisplayName("Infinispan 'global' cache configuration")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 27))
+            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
+            .withDescription("Specifies the XML configuration for the Infinispan 'global' configuration");
+
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS = Field.create("log.mining.buffer.infinispan.cache.transactions")
             .withDisplayName("Infinispan 'transactions' cache configuration")
             .withType(Type.STRING)
@@ -424,7 +433,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 28))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 29))
             .withDefault(DEFAULT_SCN_GAP_SIZE)
             .withDescription("Used for SCN gap detection, if the difference between current SCN and previous end SCN is " +
                     "bigger than this value, and the time difference of current SCN and previous end SCN is smaller than " +
@@ -435,7 +444,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 29))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 30))
             .withDefault(DEFAULT_SCN_GAP_TIME_INTERVAL)
             .withDescription("Used for SCN gap detection, if the difference between current SCN and previous end SCN is " +
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
@@ -592,6 +601,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS,
@@ -677,6 +687,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningQueryFilterMode logMiningQueryFilterMode;
     private final Boolean logMiningRestartConnection;
     private final Duration logMiningMaxScnDeviation;
+    private final String logMiningInifispanGlobalConfiguration;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -738,6 +749,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningQueryFilterMode = LogMiningQueryFilterMode.parse(config.getString(LOG_MINING_QUERY_FILTER_MODE));
         this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
         this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
+        this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
     }
 
     private static String toUpperCase(String property) {
@@ -1647,6 +1659,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getLogMiningMaxDelay() {
         return logMiningMaxDelay;
+    }
+
+    /**
+     * @return the infinispan global conifguration.
+     */
+    public String getLogMiningInifispanGlobalConfiguration() {
+        return logMiningInifispanGlobalConfiguration;
     }
 
     /**

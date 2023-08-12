@@ -29,8 +29,18 @@ public class EmbeddedInfinispanProcessorTest extends AbstractProcessorUnitTest<A
     @Override
     protected Configuration.Builder getConfig() {
         final LogMiningBufferType bufferType = LogMiningBufferType.INFINISPAN_EMBEDDED;
+
+        String globalConfiguration = "<?xml version=\"1.0\"?>" +
+                "<infinispan>" +
+                "    <threads>" +
+                "        <blocking-bounded-queue-thread-pool max-threads=\"10\" name=\"myexec\" keepalive-time=\"10000\" queue-length=\"5000\"/>" +
+                "    </threads>" +
+                "    <cache-container blocking-executor=\"myexec\"/>" +
+                "</infinispan>";
+
         return TestHelper.withDefaultInfinispanCacheConfigurations(bufferType,
                 TestHelper.defaultConfig()
+                        .with(OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL, globalConfiguration)
                         .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferType)
                         .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true));
     }

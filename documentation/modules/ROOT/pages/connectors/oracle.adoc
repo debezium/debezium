@@ -3456,6 +3456,11 @@ ifdef::community[]
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
 The default behavior is there is no transaction event threshold.
 
+|[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.global+`>>
+|No default
+|The XML configuration for the Infinispan global configuration.
+For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
+
 |[[oracle-property-log-mining-buffer-infinispan-cache-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-transactions, `+log.mining.buffer.infinispan.cache.transactions+`>>
 |No default
 |The XML configuration for the Infinispan transaction cache.
