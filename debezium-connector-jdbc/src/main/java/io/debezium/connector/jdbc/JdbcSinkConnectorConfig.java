@@ -61,7 +61,7 @@ public class JdbcSinkConnectorConfig {
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String DATABASE_TIME_ZONE = "database.time_zone";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
-    public static final String SQLSERVER_IDENTITY_TABLE_NAMES = "dialect.sqlserver.identity.tables.names";
+    public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
 
     // todo add support for the ValueConverter contract
 
@@ -242,14 +242,14 @@ public class JdbcSinkConnectorConfig {
             .withDefault("public")
             .withDescription("Name of the schema where postgis extension is installed. Default is public");
 
-    public static final Field SQLSERVER_IDENTITY_TABLE_NAMES_FIELD = Field.create(SQLSERVER_IDENTITY_TABLE_NAMES)
-            .withDisplayName("Comma-separated list of indentity field including table's name where sqlserver takes care for identity inserts")
-            .withType(Type.STRING)
+    public static final Field SQLSERVER_IDENTITY_INSERT_FIELD = Field.create(SQLSERVER_IDENTITY_INSERT)
+            .withDisplayName("Allowing to insert explicit value for identity column in table for SQLSERVER.")
+            .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault("")
-            .withDescription("A comma-separated list of table names which has identity field.");
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Allowing to insert explicit value for identity column in table for SQLSERVER.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
@@ -272,7 +272,7 @@ public class JdbcSinkConnectorConfig {
                     COLUMN_NAMING_STRATEGY_FIELD,
                     DATABASE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
-                    SQLSERVER_IDENTITY_TABLE_NAMES_FIELD)
+                    SQLSERVER_IDENTITY_INSERT_FIELD)
             .create();
 
     /**
@@ -443,7 +443,7 @@ public class JdbcSinkConnectorConfig {
     private final String databaseTimezone;
     private final String postgresPostgisSchema;
 
-    private final Set<String> sqlServerIdentityTableNames;
+    private final boolean sqlServerIdentityInsert;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -459,7 +459,7 @@ public class JdbcSinkConnectorConfig {
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.databaseTimezone = config.getString(DATABASE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
-        this.sqlServerIdentityTableNames = Strings.setOf(config.getString(SQLSERVER_IDENTITY_TABLE_NAMES_FIELD), String::new);
+        this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
     }
 
     public void validate() {
@@ -511,8 +511,8 @@ public class JdbcSinkConnectorConfig {
         return quoteIdentifiers;
     }
 
-    public Set<String> getSqlServerIdentityTableNames() {
-        return sqlServerIdentityTableNames;
+    public boolean isSqlServerIdentityInsert() {
+        return sqlServerIdentityInsert;
     }
 
     // public Set<String> getDataTypeMapping() {
