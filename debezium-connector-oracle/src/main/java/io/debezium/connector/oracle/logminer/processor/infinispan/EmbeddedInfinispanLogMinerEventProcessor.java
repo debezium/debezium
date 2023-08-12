@@ -18,6 +18,8 @@ import org.infinispan.commons.api.BasicCache;
 import org.infinispan.commons.util.CloseableIterator;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.global.GlobalConfiguration;
+import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
 import org.infinispan.configuration.parsing.ParserRegistry;
 import org.infinispan.manager.DefaultCacheManager;
@@ -71,7 +73,8 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         super(context, connectorConfig, jdbcConnection, dispatcher, partition, offsetContext, schema, metrics);
 
         LOGGER.info("Using Infinispan in embedded mode.");
-        this.cacheManager = new DefaultCacheManager();
+        this.cacheManager = new DefaultCacheManager(
+                parseAndGetGlobalConfiguration(connectorConfig));
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
         this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
@@ -168,12 +171,22 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
             throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
                     "' contains multiple cache configurations and should only contain one.");
         }
-        else if (builders.size() == 0) {
+        else if (builders.isEmpty()) {
             throw new DebeziumException("Infinispan cache configuration for '" + cacheName +
                     "' contained no valid cache configuration. Please check your connector configuration");
         }
         else {
             return builders.values().iterator().next().build();
         }
+    }
+
+    private GlobalConfiguration parseAndGetGlobalConfiguration(OracleConnectorConfig connectorConfig) {
+        final String globalCacheConfiguration = connectorConfig.getLogMiningInifispanGlobalConfiguration();
+        if (globalCacheConfiguration == null) {
+            // if no configuration provided, use the default
+            return new GlobalConfigurationBuilder().build();
+        }
+        final ConfigurationBuilderHolder builderHolder = new ParserRegistry().parse(globalCacheConfiguration);
+        return builderHolder.getGlobalConfigurationBuilder().build();
     }
 }
