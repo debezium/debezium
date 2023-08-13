@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Helper that returns placeholder values for unchanged toasted columns.
@@ -25,10 +26,12 @@ public class UnchangedToastedPlaceholder {
     private final byte[] toastPlaceholderBinary;
     private final String toastPlaceholderString;
     private final Map<String, String> toastPlaceholderHstore = new HashMap<>();
+    private final String toastPlaceholderUuid;
 
     public UnchangedToastedPlaceholder(PostgresConnectorConfig connectorConfig) {
         toastPlaceholderBinary = connectorConfig.getUnavailableValuePlaceholder();
         toastPlaceholderString = new String(toastPlaceholderBinary);
+        toastPlaceholderUuid = UUID.nameUUIDFromBytes(toastPlaceholderBinary).toString();
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
                 Arrays.asList(toastPlaceholderString));
@@ -44,6 +47,7 @@ public class UnchangedToastedPlaceholder {
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE, toastedLongArrayPlaceholder);
         toastPlaceholderHstore.put(toastPlaceholderString, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE, toastPlaceholderHstore);
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE, Arrays.asList(toastPlaceholderUuid));
     }
 
     public Optional<Object> getValue(Object obj) {

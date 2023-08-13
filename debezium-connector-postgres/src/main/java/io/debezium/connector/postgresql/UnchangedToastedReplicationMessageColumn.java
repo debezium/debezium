@@ -29,6 +29,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     public static final Object UNCHANGED_INT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_HSTORE_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_UUID_TOAST_VALUE = new Object();
 
     private Object unchangedToastValue;
 
@@ -76,6 +77,10 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
                 break;
             case "hstore":
                 unchangedToastValue = UNCHANGED_HSTORE_TOAST_VALUE;
+                break;
+            case "uuid[]":
+            case "_uuid":
+                unchangedToastValue = UNCHANGED_UUID_TOAST_VALUE;
                 break;
             default:
                 unchangedToastValue = UNCHANGED_TOAST_VALUE;
