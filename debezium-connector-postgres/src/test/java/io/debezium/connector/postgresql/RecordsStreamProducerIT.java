@@ -44,7 +44,6 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import io.debezium.data.SchemaAndValueField;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -2005,6 +2004,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 consumer.remove(),
                 Envelope.FieldName.AFTER);
     }
+
     @Test
     @FixFor("DBZ-1029")
     public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception {
