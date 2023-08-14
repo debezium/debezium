@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -283,8 +284,8 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     }
 
     @Override
-    public String getCurrentScn() {
-        return currentScn.get().toString();
+    public BigInteger getCurrentScn() {
+        return currentScn.get().asBigInteger();
     }
 
     @Override
@@ -541,18 +542,18 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     }
 
     @Override
-    public String getOldestScn() {
-        return oldestScn.get().toString();
+    public BigInteger getOldestScn() {
+        return oldestScn.get().asBigInteger();
     }
 
     @Override
-    public String getCommittedScn() {
-        return committedScn.get().toString();
+    public BigInteger getCommittedScn() {
+        return committedScn.get().asBigInteger();
     }
 
     @Override
-    public String getOffsetScn() {
-        return offsetScn.get().toString();
+    public BigInteger getOffsetScn() {
+        return offsetScn.get().asBigInteger();
     }
 
     @Override

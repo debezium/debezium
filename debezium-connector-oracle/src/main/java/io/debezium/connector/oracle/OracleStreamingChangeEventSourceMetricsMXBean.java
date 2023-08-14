@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.math.BigInteger;
 import java.util.Set;
 
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
@@ -17,7 +18,7 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     /**
      * @return the current system change number of the database
      */
-    String getCurrentScn();
+    BigInteger getCurrentScn();
 
     /**
      * @return array of current filenames to be used by the mining session.
@@ -237,17 +238,17 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     /**
      * @return the oldest SCN in the transaction buffer
      */
-    String getOldestScn();
+    BigInteger getOldestScn();
 
     /**
      * @return the last committed SCN from the transaction buffer
      */
-    String getCommittedScn();
+    BigInteger getCommittedScn();
 
     /**
      * @return the current offset SCN
      */
-    String getOffsetScn();
+    BigInteger getOffsetScn();
 
     /**
      * Lag can temporarily be inaccurate on DST changes.
