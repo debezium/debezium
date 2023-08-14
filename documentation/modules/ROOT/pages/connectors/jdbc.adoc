@@ -701,6 +701,10 @@ The placeholder, `${topic}`, is replaced by the topic name.
 |Specifies the schema name where the PostgreSQL PostGIS extension is installed.
 The default is `public`; however, if the PostGIS extension was installed in another schema, this property should be used to specify the alternate schema name.
 
+|[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
+|`false`
+|Specifies whether the connector automatically enables identity inserts before an _insert_ or _upsert_ operation and is disabled immediately afterward.
+The default is `false`, meaning an insert or upsert into a SQL Server table that has an `IDENTITY` column throws a SQL exception.
 |===
 
 [[jdbc-connector-properties-extendable]]
