@@ -7,14 +7,17 @@ package io.debezium.connector.sqlserver;
 
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST;
+import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -588,7 +591,41 @@ public class SnapshotIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-6811")
+    public void shouldSendHeartbeatsWhenNoRecordsAreSent() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 100)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            final SourceRecord record = consumeRecord();
+            if (record != null) {
+                if (record.topic().startsWith("__debezium-heartbeat")) {
+                    assertHeartBeatRecord(record);
+                    heartbeatCount.incrementAndGet();
+                }
+            }
+            return heartbeatCount.get() > 10;
+        });
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    private void assertHeartBeatRecord(SourceRecord heartbeat) {
+        assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER_NAME, heartbeat.topic());
+
+        Struct key = (Struct) heartbeat.key();
+        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER_NAME);
+
+        Struct value = (Struct) heartbeat.value();
+        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
     }
 }
