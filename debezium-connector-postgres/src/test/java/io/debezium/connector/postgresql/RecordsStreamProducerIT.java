@@ -3317,6 +3317,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidTombstone(record, PK_FIELD, 1);
     }
 
+    @Test()
+    @FixFor("DBZ-6635")
+    public void testSendingHeartbeatsWithoutWalUpdates() throws Exception {
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100"));
+
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            final SourceRecord record = consumeRecord();
+            if (record != null) {
+                if (record.topic().equalsIgnoreCase("__debezium-heartbeat.test_server")) {
+                    assertHeartBeatRecord(record);
+                    heartbeatCount.incrementAndGet();
+                }
+            }
+            return heartbeatCount.get() > 10;
+        });
+    }
+
     private void assertHeartBeatRecord(SourceRecord heartbeat) {
         assertEquals("__debezium-heartbeat." + TestHelper.TEST_SERVER, heartbeat.topic());
 
