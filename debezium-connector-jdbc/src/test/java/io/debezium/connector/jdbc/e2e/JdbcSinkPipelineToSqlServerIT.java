@@ -5,10 +5,20 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.Collections;
+import java.util.Properties;
+
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SqlServerSinkDatabaseContextProvider;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.SkipColumnTypePropagation;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 
@@ -22,6 +32,39 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 @Tag("e2e-sqlserver")
 @ExtendWith(SqlServerSinkDatabaseContextProvider.class)
 public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
+
+    @TestTemplate
+    @ForSource(value = { SourceType.SQLSERVER }, reason = "SQL Server identity inserts")
+    @SkipColumnTypePropagation
+    public void testSqlServerIdentityInserts(Source source, Sink sink) throws Exception {
+        final String tableName = source.randomTableName();
+        final String sinkTableName = String.format("sqlserver_testDB_dbo_%s", tableName);
+
+        final String createSql = "CREATE TABLE %s (id integer identity(1,1) primary key, data varchar(50))";
+        final String sourceCreateSql = String.format(createSql, tableName);
+        final String sinkCreateSql = String.format(createSql, sinkTableName);
+        final String insertSql = String.format("INSERT INTO %s (data) values ('test')", tableName);
+
+        registerSourceConnector(source, Collections.singletonList("varchar"), tableName, null, sourceCreateSql, insertSql);
+
+        // Create sink table
+        sink.execute(sinkCreateSql);
+
+        final Properties sinkProperties = getDefaultSinkConfig(sink);
+        sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT, "true");
+        startSink(source, sinkProperties, tableName);
+
+        // Consume and then assert
+        consumeSinkRecord();
+        sink.assertRows(sinkTableName, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2)).isEqualTo("test");
+            return null;
+        });
+    }
 
     @Override
     protected String getBooleanType() {
