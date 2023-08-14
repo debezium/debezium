@@ -196,7 +196,7 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass");
 
-        String sslMode = System.getProperty("database.ssl.mode", "disabled");
+        String sslMode = System.getProperty("database.ssl.mode", "preferred");
 
         if (sslMode.equals("disabled")) {
             builder.with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED);
