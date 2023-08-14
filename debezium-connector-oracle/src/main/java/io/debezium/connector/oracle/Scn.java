@@ -80,6 +80,10 @@ public class Scn implements Comparable<Scn> {
         return isNull() ? 0 : scn.longValue();
     }
 
+    public BigInteger asBigInteger() {
+        return scn;
+    }
+
     /**
      * Returns a {@code SCn} whose value is {@code (this + value)}.
      *
