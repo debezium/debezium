@@ -63,8 +63,6 @@ import io.debezium.util.Strings;
  */
 public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    private String addFieldsPrefix;
-
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
         DOCUMENT("document");
@@ -356,8 +354,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 }
                 continue;
             }
-            headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
-                    fieldReference.getSchema(originalRecordValue.schema()));
+            if (fieldReference.exists(originalRecordValue.schema())) {
+                headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
+                        fieldReference.getSchema(originalRecordValue.schema()));
+            }
         }
 
         return headers;
@@ -398,9 +398,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         converter = new MongoDataConverter(
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
                 FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjuster),
-                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE ? true : false);
+                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE);
 
-        addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
+        String addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
         String addHeadersPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX);
         additionalHeaders = FieldReference.fromConfiguration(addHeadersPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
         additionalFields = FieldReference.fromConfiguration(addFieldsPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
@@ -485,20 +485,18 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
          * Determine the struct hosting the given unqualified field.
          */
         private static String determineStruct(String simpleFieldName) {
-            if (simpleFieldName.equals(Envelope.FieldName.OPERATION) ||
-                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
-                return null;
-            }
-            else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||
-                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY) ||
-                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY)) {
-                return Envelope.FieldName.TRANSACTION;
-            }
-            else if (simpleFieldName.equals(MongoDbFieldName.UPDATE_DESCRIPTION)) {
-                return MongoDbFieldName.UPDATE_DESCRIPTION;
-            }
-            else {
-                return Envelope.FieldName.SOURCE;
+            switch (simpleFieldName) {
+                case FieldName.OPERATION:
+                case FieldName.TIMESTAMP:
+                    return null;
+                case TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY:
+                case TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY:
+                case TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY:
+                    return FieldName.TRANSACTION;
+                case MongoDbFieldName.UPDATE_DESCRIPTION:
+                    return MongoDbFieldName.UPDATE_DESCRIPTION;
+                default:
+                    return FieldName.SOURCE;
             }
         }
 
@@ -535,6 +533,14 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             }
 
             return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
+        }
+
+        boolean exists(Schema originalRecordSchema) {
+            Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
+
+            org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
+
+            return schemaField != null;
         }
     }
 }
