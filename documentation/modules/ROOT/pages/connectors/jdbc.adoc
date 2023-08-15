@@ -703,8 +703,8 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
-|Specifies whether the connector automatically enables identity inserts before an _insert_ or _upsert_ operation and is disabled immediately afterward.
-The default is `false`, meaning an insert or upsert into a SQL Server table that has an `IDENTITY` column throws a SQL exception.
+|Specifies whether the connector automatically sets an `IDENTITY_INSERT` before an `INSERT` or `UPSERT` operation into the identity column of SQL Server tables, and then unsets it immediately after the operation.
+When the default setting (`false`) is in effect, an `INSERT` or `UPSERT` operation into the `IDENTITY` column of a table results in a SQL exception.
 |===
 
 [[jdbc-connector-properties-extendable]]
