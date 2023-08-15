@@ -165,8 +165,15 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                     }
 
                     // Update the oldest scn metric are transaction abandonment
-                    smallestScn = getTransactionCacheMinimumScn();
-                    metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
+                    final Optional<MemoryTransaction> oldestTransaction = getOldestTransactionInCache();
+                    if (oldestTransaction.isPresent()) {
+                        metrics.setOldestScn(oldestTransaction.get().getStartScn());
+                        metrics.setOldestScnAge(oldestTransaction.get().getChangeTime());
+                    }
+                    else {
+                        metrics.setOldestScn(Scn.NULL);
+                        metrics.setOldestScnAge(null);
+                    }
 
                     offsetContext.setScn(thresholdScn);
                 }
@@ -382,6 +389,29 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
                 .map(MemoryTransaction::getStartScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
+    }
+
+    @Override
+    protected Optional<MemoryTransaction> getOldestTransactionInCache() {
+        MemoryTransaction transaction = null;
+        if (!transactionCache.isEmpty()) {
+            // Seed with the first element
+            transaction = transactionCache.values().iterator().next();
+            for (MemoryTransaction entry : transactionCache.values()) {
+                int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
+                if (comparison < 0) {
+                    // if entry has a smaller scn, it came before.
+                    transaction = entry;
+                }
+                else if (comparison == 0) {
+                    // if entry has an equal scn, compare the change times.
+                    if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
+                        transaction = entry;
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(transaction);
     }
 
     /**

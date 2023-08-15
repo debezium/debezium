@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -422,8 +423,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         // Calculate the smallest SCN that remains in the transaction cache
-        final Scn smallestScn = getTransactionCacheMinimumScn();
-        metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
+        final Optional<T> oldestTransaction = getOldestTransactionInCache();
+        final Scn smallestScn;
+        if (oldestTransaction.isPresent()) {
+            smallestScn = oldestTransaction.get().getStartScn();
+            metrics.setOldestScn(smallestScn);
+            metrics.setOldestScnAge(oldestTransaction.get().getChangeTime());
+        }
+        else {
+            smallestScn = Scn.valueOf(-1);
+            metrics.setOldestScn(smallestScn);
+            metrics.setOldestScnAge(null);
+        }
 
         final Scn commitScn = row.getScn();
         if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
@@ -1305,6 +1316,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
      */
     protected abstract Scn getTransactionCacheMinimumScn();
+
+    /**
+     * Get the oldest transaction in the cache.
+     *
+     * @return the oldest transaction in the cache or maybe {@code null} if cache is empty
+     */
+    protected abstract Optional<T> getOldestTransactionInCache();
 
     /**
      * Returns whether the transaction id has no sequence number component.

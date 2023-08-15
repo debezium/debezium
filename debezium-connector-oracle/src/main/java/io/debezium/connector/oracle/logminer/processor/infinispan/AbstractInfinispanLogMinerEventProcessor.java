@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -300,7 +301,15 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
     protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
 
         // Cleanup caches based on current state of the transaction cache
-        final Scn minCacheScn = getTransactionCacheMinimumScn();
+        final Optional<InfinispanTransaction> oldestTransaction = getOldestTransactionInCache();
+        final Scn minCacheScn;
+        if (oldestTransaction.isPresent()) {
+            minCacheScn = oldestTransaction.get().getStartScn();
+        }
+        else {
+            minCacheScn = Scn.NULL;
+        }
+
         if (!minCacheScn.isNull()) {
             getProcessedTransactionsCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
             getSchemaChangesCache().entrySet().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
@@ -333,7 +342,7 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
 
             // update offsets
             offsetContext.setScn(endScn);
-            metrics.setOldestScn(endScn);
+            metrics.setOldestScn(minCacheScn);
             metrics.setOffsetScn(endScn);
 
             // optionally dispatch a heartbeat event

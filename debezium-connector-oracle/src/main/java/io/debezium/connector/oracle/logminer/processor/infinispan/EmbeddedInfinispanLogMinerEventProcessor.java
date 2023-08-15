@@ -12,6 +12,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.infinispan.Cache;
 import org.infinispan.commons.api.BasicCache;
@@ -141,6 +142,32 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
             }
         }
         return minimumScn;
+    }
+
+    @Override
+    protected Optional<InfinispanTransaction> getOldestTransactionInCache() {
+        InfinispanTransaction transaction = null;
+        if (!transactionCache.isEmpty()) {
+            try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
+                // Seed with the first element
+                transaction = iterator.next();
+                while (iterator.hasNext()) {
+                    final InfinispanTransaction entry = iterator.next();
+                    int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
+                    if (comparison < 0) {
+                        // if entry has a smaller scn, it came before.
+                        transaction = entry;
+                    }
+                    else if (comparison == 0) {
+                        // if entry has an equal scn, compare the change times.
+                        if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
+                            transaction = entry;
+                        }
+                    }
+                }
+            }
+        }
+        return Optional.ofNullable(transaction);
     }
 
     private <K, V> Cache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {

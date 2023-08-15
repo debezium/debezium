@@ -3829,6 +3829,11 @@ The {prodname} Oracle connector also provides the following additional streaming
 |`BigInteger`
 |The oldest system change number in the transaction buffer.
 
+|[[oracle-streaming-metrics-oldest-scn-age-in-milliseconds]]<<oracle-streaming-metrics-oldest-scn-age-in-milliseconds, `+OldestScnAgeInMilliseconds+`>>
+|`long`
+|The oldest system change number's age in milliseconds.
+If the buffer is empty, the value will be `0`.
+
 |[[oracle-streaming-metrics-committed-scn]]<<oracle-streaming-metrics-committed-scn, `+CommittedScn+`>>
 |`BigInteger`
 |The last committed system change number from the transaction buffer.
