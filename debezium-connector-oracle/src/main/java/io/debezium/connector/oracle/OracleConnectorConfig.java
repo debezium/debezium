@@ -559,6 +559,30 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "NOTE: This option is internal and should not be used for general use. Using this option will create a net latency " +
                     "on change events increased by the deviation value specified.");
 
+    public static final Field OLR_SOURCE = Field.create("openlogreplicator.source")
+            .withDisplayName("The logical source to stream changes from")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .withDescription("The configured logical source name in the OpenLogReplicator configuration that is to stream changes");
+
+    public static final Field OLR_HOST = Field.create("openlogreplicator.host")
+            .withDisplayName("The hostname of the OpenLogReplicator network service")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .withDescription("The hostname of the OpenLogReplicator network service");
+
+    public static final Field OLR_PORT = Field.create("openlogreplicator.port")
+            .withDisplayName("The port of the OpenLogReplicator network service")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateRequiredWhenUsingOpenLogReplicator)
+            .withDescription("The port of the OpenLogReplicator network service");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -622,7 +646,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_FLUSH_TABLE_NAME,
                     LOG_MINING_QUERY_FILTER_MODE,
                     LOG_MINING_RESTART_CONNECTION,
-                    LOG_MINING_MAX_SCN_DEVIATION_MS)
+                    LOG_MINING_MAX_SCN_DEVIATION_MS,
+                    OLR_SOURCE,
+                    OLR_HOST,
+                    OLR_PORT)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -688,6 +715,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningRestartConnection;
     private final Duration logMiningMaxScnDeviation;
     private final String logMiningInifispanGlobalConfiguration;
+    private final String openLogReplicatorSource;
+    private final String openLogReplicatorHostname;
+    private final Integer openLogReplicatorPort;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -750,6 +780,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningRestartConnection = config.getBoolean(LOG_MINING_RESTART_CONNECTION);
         this.logMiningMaxScnDeviation = Duration.ofMillis(config.getLong(LOG_MINING_MAX_SCN_DEVIATION_MS));
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
+
+        // OpenLogReplicator
+        this.openLogReplicatorSource = config.getString(OLR_SOURCE);
+        this.openLogReplicatorHostname = config.getString(OLR_HOST);
+        this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
     }
 
     private static String toUpperCase(String property) {
@@ -1738,6 +1773,33 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningMaxScnDeviation;
     }
 
+    /**
+     * Returns the logical source to stream changes from when connecting to OpenLogReplicator.
+     *
+     * @return the logical source name
+     */
+    public String getOpenLogReplicatorSource() {
+        return openLogReplicatorSource;
+    }
+
+    /**
+     * Returns the hostname of the OpenLogReplicator network service.
+     *
+     * @return the hostname of the service
+     */
+    public String getOpenLogReplicatorHostname() {
+        return openLogReplicatorHostname;
+    }
+
+    /**
+     * Return the port of the OpenLogReplicator network service.
+     *
+     * @return the port of the service
+     */
+    public Integer getOpenLogReplicatorPort() {
+        return openLogReplicatorPort;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -1878,4 +1940,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
+    public static int validateRequiredWhenUsingOpenLogReplicator(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.OLR.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
 }

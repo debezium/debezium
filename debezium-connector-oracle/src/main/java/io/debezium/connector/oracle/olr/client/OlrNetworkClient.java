@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoRequest;
 import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoResponse;
@@ -47,14 +48,12 @@ public class OlrNetworkClient {
     /**
      * Create the OpenLogReplicator network client.
      *
-     * @param hostName the host to connect to
-     * @param port the port to connect to
-     * @param sourceName the configured source name
+     * @param connectorConfig connector configuration
      */
-    public OlrNetworkClient(String hostName, int port, String sourceName) {
-        this.hostName = hostName;
-        this.port = port;
-        this.sourceName = sourceName;
+    public OlrNetworkClient(OracleConnectorConfig connectorConfig) {
+        this.hostName = connectorConfig.getOpenLogReplicatorHostname();
+        this.port = connectorConfig.getOpenLogReplicatorPort();
+        this.sourceName = connectorConfig.getOpenLogReplicatorSource();
     }
 
     /**

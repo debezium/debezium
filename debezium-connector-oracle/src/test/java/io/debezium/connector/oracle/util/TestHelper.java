@@ -56,6 +56,10 @@ public class TestHelper {
     public static final String INFINISPAN_HOST = "0.0.0.0";
     public static final String INFINISPAN_SERVER_LIST = INFINISPAN_HOST + ":" + INFINISPAN_HOTROD_PORT;
 
+    public static final String OPENLOGREPLICATOR_SOURCE = System.getProperty("openlogreplicator.source", "ORACLE");
+    public static final String OPENLOGREPLICATOR_HOST = System.getProperty("openlogreplicator.host", "localhost");
+    public static final String OPENLOGREPLICATOR_PORT = System.getProperty("openlogreplicator.port", "9000");
+
     /**
      * Key for schema parameter used to store a source column's type name.
      */
@@ -135,6 +139,11 @@ public class TestHelper {
 
         if (adapter().equals(ConnectorAdapter.XSTREAM)) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+        }
+        else if (adapter().equals(ConnectorAdapter.OLR)) {
+            builder.withDefault(OracleConnectorConfig.OLR_SOURCE, OPENLOGREPLICATOR_SOURCE);
+            builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
+            builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
         else {
             // Tests will always use the online catalog strategy due to speed.
