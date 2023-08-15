@@ -865,6 +865,13 @@ Looking at the configuration in-depth, the cache is configured to be persistent.
 All caches should be configured this way to avoid loss of transaction events across connector restarts if a transaction is in-progress.
 Additionally, the location where the cache is kept is defined by the `path` attribute and this should be a shared location accessible all possible runtime environments.
 
+[IMPORTANT]
+====
+The Infinispan buffer implementation utilizes multiple cache configurations with different names.
+There should be a cache defined for `transactions`, `events`, `processed-transactions`, and `schema-changes`.
+Each configuration can be tuned to your performance needs or be identical other than the cache name.
+====
+
 [NOTE]
 ====
 When supplying XML configuration as a JSON connector property value, line breaks must be omitted or replaced with a `\n` character.
