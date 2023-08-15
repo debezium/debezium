@@ -228,8 +228,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.FLOAT:
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
-            case OracleTypes.TIMESTAMPLTZ:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+            case OracleTypes.TIMESTAMPLTZ:
+                return (data) -> convertTimestampWithLocalZone(column, fieldDefn, data);
             case OracleTypes.INTERVALYM:
                 return (data) -> convertIntervalYearMonth(column, fieldDefn, data);
             case OracleTypes.INTERVALDS:
@@ -391,6 +392,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             catch (SQLException e) {
                 throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
+        }
+        else if (data instanceof Double) {
+            return ((Double) data).floatValue();
         }
         else if (data instanceof String) {
             return Float.parseFloat((String) data);
@@ -676,6 +680,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             catch (IllegalArgumentException e) {
             }
         });
+    }
+
+    protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object data) {
+        return convertTimestampWithZone(column, fieldDefn, data);
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {

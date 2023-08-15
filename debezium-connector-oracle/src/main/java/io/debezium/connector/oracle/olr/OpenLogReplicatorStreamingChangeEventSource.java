@@ -5,18 +5,13 @@
  */
 package io.debezium.connector.oracle.olr;
 
-import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +45,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
-
-import oracle.jdbc.OracleTypes;
-import oracle.sql.INTERVALDS;
-import oracle.sql.INTERVALYM;
-import oracle.sql.RAW;
 
 /**
  * An implementation of {@link StreamingChangeEventSource} based on OpenLogReplicator.
@@ -475,36 +464,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     private Object resolveColumnValue(TableId tableId, Column column, Values values) {
         Object value = values.getValues().get(column.name());
-        if (value != null) {
-            switch (column.jdbcType()) {
-                case OracleTypes.TIMESTAMP:
-                    value = convertTimestamp(column, value);
-                    break;
-                case OracleTypes.TIMESTAMPTZ:
-                    value = convertTimestampWithTimeZone(column, value);
-                    break;
-                case OracleTypes.TIMESTAMPLTZ:
-                    value = convertTimestampWithLocalTimeZone(column, value);
-                    break;
-                case OracleTypes.BLOB:
-                case OracleTypes.RAW:
-                case OracleTypes.VARBINARY:
-                    value = convertHexStringToBytes(value);
-                    break;
-                case OracleTypes.INTERVALYM:
-                    value = convertIntervalYearMonth(column, value);
-                    break;
-                case OracleTypes.INTERVALDS:
-                    value = convertIntervalDaySecond(column, value);
-                    break;
-                default:
-                    if (value instanceof Number) {
-                        // Force all numeric values to Strings, uses existing LogMiner conversions
-                        value = value.toString();
-                    }
-            }
-        }
-        else if (!values.getValues().containsKey(column.name())) {
+        if (value == null) {
             final List<Column> lobColumns = schema.getLobColumnsForTable(tableId);
             for (Column lobColumn : lobColumns) {
                 if (lobColumn.equals(column)) {
@@ -514,118 +474,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             }
         }
         return value;
-    }
-
-    private Object convertTimestamp(Column column, Object value) {
-        if (value instanceof Long) {
-            if (column.typeName().equalsIgnoreCase("DATE")) {
-                // Data is being provided in nanoseconds
-                // We need to reduce the column's precision to milliseconds
-                value = ((Long) value) / 1_000_000L;
-            }
-            else {
-                // TIMESTAMP(n)
-                value = Instant.ofEpochSecond(0, (Long) value);
-            }
-            return value;
-        }
-        else {
-            throw new DebeziumException("Unexpected timestamp value: " + value);
-        }
-    }
-
-    private Object convertTimestampWithTimeZone(Column column, Object value) {
-        if (value instanceof String) {
-            final String valueStr = (String) value;
-            if (!valueStr.contains(",")) {
-                throw new DebeziumException("Unexpected timestamptz value: " + valueStr);
-            }
-
-            // Split the timestamp with time zone value based on ',' as we expect the value to be provided
-            // by OpenLogReplicator as '<epoch>,<timezone>'.
-            final String[] valueBits = valueStr.split(",");
-
-            // Convert the epoch value to an Instant.
-            final Instant instant = Instant.ofEpochSecond(0, Long.parseLong(valueBits[0]));
-
-            // Sometimes OpenLogReplicator provides the timezone details in "HH:MM" format and
-            // others it's provided as a Java TimeZone name.
-            final ZoneId zoneId;
-            if (valueBits[1].contains(":")) {
-                // Parse it as "HH:MM"
-                zoneId = ZoneOffset.of(valueBits[1]);
-            }
-            else {
-                // Parse it as a TimeZone
-                zoneId = TimeZone.getTimeZone(valueBits[1]).toZoneId();
-            }
-
-            return getTimestampWithTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, zoneId));
-        }
-        else {
-            throw new DebeziumException("Unexpected timestamptz value: " + value);
-        }
-    }
-
-    private Object convertTimestampWithLocalTimeZone(Column column, Object value) {
-        if (value instanceof Long) {
-            final Instant instant = Instant.ofEpochSecond(0, (Long) value);
-            return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
-        }
-        else {
-            throw new DebeziumException("Unexpected timestampltz value: " + value);
-        }
-    }
-
-    private Object convertIntervalYearMonth(Column column, Object value) {
-        if (value instanceof String) {
-            return new INTERVALYM((String) value);
-        }
-        else {
-            throw new DebeziumException("Unexpected intervalym value: " + value);
-        }
-    }
-
-    private Object convertIntervalDaySecond(Column column, Object value) {
-        if (value instanceof String) {
-            value = ((String) value).replaceAll(",", " ");
-            return new INTERVALDS((String) value);
-        }
-        else {
-            throw new DebeziumException("Unexpected intervalds value: " + value);
-        }
-    }
-
-    private DateTimeFormatter getTimestampWithTimeZoneFormatter(Column column) {
-        int precision = column.scale().orElse(6); // Oracle defaults to 6
-        return timestampWithTimeZoneFormatterCache.computeIfAbsent(precision, k -> {
-            // Mimics the same behavior we observe with LogMiner
-            final String precisionFormat = Strings.pad("", precision, 'S');
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss." + precisionFormat + "xxxxx");
-        });
-    }
-
-    private DateTimeFormatter getTimestampWithLocalTimeZoneFormatter(Column column) {
-        int precision = column.scale().orElse(6); // Oracle defaults to 6
-        return timestampWithLocalTimeZoneFormatterCache.computeIfAbsent(precision, k -> {
-            // Mimics the same behavior we observe with LogMiner
-            final String precisionFormat = Strings.pad("", precision, 'S');
-            return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss." + precisionFormat + "XXXX");
-        });
-    }
-
-    private byte[] convertHexStringToBytes(Object value) {
-        if (value instanceof String) {
-            try {
-                return RAW.hexString2Bytes((String) value);
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Failed to convert hex string to bytes: " + value, e);
-            }
-        }
-        else {
-            throw new DebeziumException("Unexpected hex string value: " + value);
-        }
     }
 
 }

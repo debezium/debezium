@@ -21,6 +21,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
 import io.debezium.pipeline.ErrorHandler;
@@ -112,6 +113,11 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter {
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
+    }
+
+    @Override
+    public OracleValueConverters getValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+        return new OpenLogReplicatorValueConverter(connectorConfig, connection);
     }
 
 }

@@ -317,7 +317,7 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-        final OracleValueConverters converters = new OracleValueConverters(connectorConfig, connection);
+        final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final TableNameCaseSensitivity sensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
 

@@ -68,7 +68,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         validateRedoLogConfiguration(connectorConfig);
 
-        OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
+        OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,

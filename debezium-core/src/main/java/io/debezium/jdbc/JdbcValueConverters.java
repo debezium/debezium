@@ -10,6 +10,7 @@ import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -1067,6 +1068,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, fallback, (r) -> {
             if (data instanceof BigDecimal) {
                 r.deliver(data);
+            }
+            else if (data instanceof BigInteger) {
+                r.deliver(new BigDecimal((BigInteger) data));
             }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getBigDecimal((Boolean) data));
