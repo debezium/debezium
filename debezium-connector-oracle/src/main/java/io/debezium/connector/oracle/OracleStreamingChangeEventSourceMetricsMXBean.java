@@ -236,6 +236,11 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     long getRegisteredDmlCount();
 
     /**
+     * @return the number of milliseconds of the oldest, active transaction in the buffer.
+     */
+    long getOldestScnAgeInMilliseconds();
+
+    /**
      * @return the oldest SCN in the transaction buffer
      */
     BigInteger getOldestScn();

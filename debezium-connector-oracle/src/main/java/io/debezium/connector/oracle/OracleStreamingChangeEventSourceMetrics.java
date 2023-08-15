@@ -91,6 +91,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     private final AtomicInteger scnFreezeCount = new AtomicInteger();
     private final AtomicLong timeDifference = new AtomicLong();
     private final AtomicReference<ZoneOffset> zoneOffset = new AtomicReference<>();
+    private final AtomicReference<Instant> oldestScnAge = new AtomicReference<>();
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
     private final AtomicReference<Scn> committedScn = new AtomicReference<>();
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
@@ -207,6 +208,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
         errorCount.set(0);
         warningCount.set(0);
         scnFreezeCount.set(0);
+        oldestScnAge.set(null);
     }
 
     public void setCurrentScn(Scn scn) {
@@ -542,6 +544,14 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     }
 
     @Override
+    public long getOldestScnAgeInMilliseconds() {
+        if (oldestScnAge.get() == null) {
+            return 0L;
+        }
+        return Duration.between(Instant.now(), oldestScnAge.get()).toMillis();
+    }
+
+    @Override
     public BigInteger getOldestScn() {
         return oldestScn.get().asBigInteger();
     }
@@ -629,6 +639,10 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
     @Override
     public long getMiningSessionProcessGlobalAreaMaxMemoryInBytes() {
         return miningSessionProcessGlobalAreaMaxMemory.get();
+    }
+
+    public void setOldestScnAge(Instant changeTime) {
+        oldestScnAge.set(changeTime);
     }
 
     public void setOldestScn(Scn scn) {
@@ -762,6 +776,7 @@ public class OracleStreamingChangeEventSourceMetrics extends DefaultStreamingCha
                 ", oldestScn=" + oldestScn.get() +
                 ", committedScn=" + committedScn.get() +
                 ", offsetScn=" + offsetScn.get() +
+                ", oldestScnChangeTime=" + oldestScnAge.get() +
                 ", logMinerQueryCount=" + logMinerQueryCount +
                 ", totalProcessedRows=" + totalProcessedRows +
                 ", totalCapturedDmlCount=" + totalCapturedDmlCount +
