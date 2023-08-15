@@ -53,6 +53,7 @@ linhnh,Linh Nguyen Hoang
 victorxiang30,Victor Xiang
 AndreyIg,Andrey Ignatenko
 eric-weaver,Eric Weaver
+ericpangiawan, Eric Pangiawan
 karamel,Michael Wang
 alisator,Alisa Houskova
 ani-sha,Anisha Mohanty
