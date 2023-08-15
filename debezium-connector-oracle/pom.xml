@@ -289,37 +289,23 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.6.2</version>
+                <groupId>com.github.os72</groupId>
+                <artifactId>protoc-jar-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <phase>initialize</phase>
+                        <phase>generate-sources</phase>
                         <goals>
-                            <goal>detect</goal>
+                            <goal>run</goal>
                         </goals>
+                        <configuration>
+                            <protocArtifact>com.google.protobuf:protoc:${version.com.google.protobuf.protoc}</protocArtifact>
+                            <outputDirectory>${protobuf.output.directory}</outputDirectory>
+                            <inputDirectories>
+                                <include>src/main/proto</include>
+                            </inputDirectories>
+                        </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <additionalProtoPathElements>
-                        <additionalProtoPathElement>${project.basedir}/src/main/proto</additionalProtoPathElement>
-                    </additionalProtoPathElements>
-                    <protocArtifact>com.google.protobuf:protoc:3.22.3:exe:${os.detected.classifier}</protocArtifact>
-                </configuration>
             </plugin>
         </plugins>
     </build>
