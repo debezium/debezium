@@ -1749,7 +1749,7 @@ VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');
 +
 or from the shell:
 +
-[source,sql]
+[source,shell]
 ----
 db2 "VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');"
 ----
