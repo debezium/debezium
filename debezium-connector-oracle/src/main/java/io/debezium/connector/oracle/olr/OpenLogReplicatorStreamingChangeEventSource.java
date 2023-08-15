@@ -123,7 +123,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             this.jdbcConnection.setAutoCommit(false);
 
             final Scn startScn = offsetContext.getScn();
-            final OlrNetworkClient client = new OlrNetworkClient("localhost", 9000, "ORACLE");
+            final OlrNetworkClient client = new OlrNetworkClient(connectorConfig);
             if (client.connect(startScn)) {
                 // Start read loop
                 while (client.isConnected() && context.isRunning()) {

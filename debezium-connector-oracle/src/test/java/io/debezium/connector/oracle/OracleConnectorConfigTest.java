@@ -12,6 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -316,5 +317,26 @@ public class OracleConnectorConfigTest {
         // Test rac.nodes using combination of with/without port and no database.port
         config = Configuration.create().with(racNodes, "1.2.3.4,1.2.3.5:1522").build();
         assertThat(config.validateAndRecord(Collections.singletonList(racNodes), LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-2543")
+    public void testOpenLogReplicatorConfigFailureWhenNotProvidingRequiredOptions() throws Exception {
+        List<Field> fields = List.of(OracleConnectorConfig.OLR_SOURCE, OracleConnectorConfig.OLR_HOST, OracleConnectorConfig.OLR_PORT);
+        Configuration config = Configuration.create().with(OracleConnectorConfig.CONNECTOR_ADAPTER, "olr").build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-2543")
+    public void testOpenLogReplicatorConfig() throws Exception {
+        List<Field> fields = List.of(OracleConnectorConfig.OLR_SOURCE, OracleConnectorConfig.OLR_HOST, OracleConnectorConfig.OLR_PORT);
+        Configuration config = Configuration.create()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "olr")
+                .with(OracleConnectorConfig.OLR_SOURCE, "oracle")
+                .with(OracleConnectorConfig.OLR_HOST, "localhost")
+                .with(OracleConnectorConfig.OLR_PORT, "9000")
+                .build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
     }
 }
