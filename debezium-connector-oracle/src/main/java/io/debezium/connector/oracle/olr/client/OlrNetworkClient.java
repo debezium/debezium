@@ -24,7 +24,6 @@ import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoRequest;
 import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RedoResponse;
 import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.RequestCode;
 import io.debezium.connector.oracle.proto.OpenLogReplicatorProtocol.ResponseCode;
-import io.vertx.core.buffer.Buffer;
 
 /**
  * An OpenLogReplicator network client that communicates using JSON streaming payloads.
@@ -263,10 +262,13 @@ public class OlrNetworkClient {
     @SuppressWarnings("UnusedReturnValue")
     private int send(RedoRequest request) {
         try {
-            final Buffer buffer = Buffer.buffer();
-            buffer.appendIntLE(request.getSerializedSize());
-            buffer.appendBytes(request.toByteArray());
-            return channel.write(buffer.getByteBuf().nioBuffer());
+            // We need to write the size (4 bytes) plus the payload
+            final ByteBuffer buffer = ByteBuffer.allocate(4 + request.getSerializedSize());
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            buffer.putInt(request.getSerializedSize());
+            buffer.put(request.toByteArray());
+            buffer.flip();
+            return channel.write(buffer);
         }
         catch (IOException e) {
             throw new OlrNetworkClientException("Failed to send request to server", e);

@@ -72,11 +72,6 @@
         </dependency>
         <!-- Dependencies for OpenLogReplicator -->
         <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-core</artifactId>
-            <version>4.2.4</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
             <version>${version.com.google.protobuf}</version>
