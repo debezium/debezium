@@ -1643,6 +1643,7 @@ The administrator must then enable CDC for each table that you want Debezium to 
 * You are logged in to Db2 as the `db2instl` user.
 * On the Db2 host, the Debezium management UDFs are available in the $HOME/asncdctools/src directory.
  UDFs are available from the link:https://github.com/debezium/debezium-examples/tree/main/tutorial/debezium-db2-init/db2server[Debezium examples repository].
+* The Db2 command `bldrtn` is on PATH, e.g. by running `export PATH=$PATH:/opt/ibm/db2/V11.5.0.0/samples/c/` with Db2 11.5
 
 .Procedure
 
@@ -1656,7 +1657,7 @@ cd $HOME/asncdctools/src
 +
 [source,shell]
 ----
-./bldrtn asncdc
+bldrtn asncdc
 ----
 
 . Start the database if it is not already running. Replace `DB_NAME` with the name of the database that you want {prodname} to connect to.
@@ -1675,6 +1676,7 @@ cd $HOME/sqllib/bnd
 +
 [source,shell]
 ----
+db2 connect to DB_NAME
 db2 bind db2schema.bnd blocking all grant public sqlerror continue
 ----
 
@@ -1738,13 +1740,21 @@ After you set up the Db2 server, use the UDFs to control Db2 replication (ASN) w
 Some of the UDFs expect a return value in which case you use the SQL `VALUE` statement to invoke them.
 For other UDFs, use the SQL `CALL` statement.
 
-. Start the ASN agent:
+. Start the ASN agent from an SQL client:
 +
 [source,sql]
 ----
 VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');
 ----
 +
+or from the shell:
++
+[source,shell]
+----
+db2 "VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');"
+----
++
+
 The preceding statement returns one of the following results:
 +
 * `asncap is already running`
