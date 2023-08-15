@@ -37,6 +37,7 @@ import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -1869,12 +1870,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    @FixFor({ "DBZ-5834" })
+    @FixFor({ "DBZ-5834", "DBZ-6774" })
     public void shouldAddUpdateDescription() throws Exception {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_HEADERS, "updateDescription.updatedFields");
+        props.put(ADD_HEADERS, "updateDescription.updatedFields,nonexistentField,version");
         props.put(ADD_HEADERS_PREFIX, "prefix.");
         transformation.configure(props);
 
@@ -1915,6 +1916,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // verify headers
         final String expectedUpdateFields = "{\"name\": \"Mary\", \"zipcode\": \"11111\"}";
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.updateDescription_updatedFields")).isEqualTo(expectedUpdateFields);
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.nonexistentField")).isNull();
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.version")).isEqualTo(Module.version());
     }
 
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
