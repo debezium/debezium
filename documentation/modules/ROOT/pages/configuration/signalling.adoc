@@ -157,7 +157,7 @@ CREATE TABLE debezium_signal (id VARCHAR(42) PRIMARY KEY, type VARCHAR(32) NOT N
 == Enabling Kafka signaling channel
 
 You can enable the Kafka signaling channel by adding it to the `signal.enabled.channels` configuration property, and then adding the name of the topic that receives signals to the `signal.kafka.topic` property.
-A Kafka consumer will be created to consume signals sent on the configured signal topic.
+After you enable the signaling channel, a Kafka consumer is created to consume signals that are sent to the configured signal topic.
 
 .Additional configuration available for the consumer
 
@@ -172,7 +172,8 @@ endif::community[]
 
 [NOTE]
 ====
-If you want to trigger an ad hoc incremental snapshot you need to enable also the xref:debezium-signaling-enabling-source-signaling-channel[`source` channel] since it is necessary for internal creating of watermarks for incremental snapshot deduplication.
+To use Kafka signaling to trigger ad hoc incremental snapshots for a connector, you must first xref:debezium-signaling-enabling-source-signaling-channel[enable a `source` signaling channel] in the connector configuration.
+The source channel implements a watermarking mechanism to deduplicate events that might be captured by an incremental snapshot and then captured again after streaming resumes.
 ====
 
 === Message format

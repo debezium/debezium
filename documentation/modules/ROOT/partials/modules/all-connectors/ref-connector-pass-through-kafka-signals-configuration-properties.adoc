@@ -11,12 +11,14 @@ The following table describes the Kafka `signal` properties.
 |The name of the Kafka topic that the connector monitors for ad hoc signals.
 [NOTE]
 ====
-In case automatic topic creation is disabled, you need to create the topic with one partition to preserve the signals ordering.
+If {link-prefix}:{ink-topic-auto-creation}#topic-auto-create-config[automatic topic creation] is disabled, you must manually create the required signaling topic.
+A signaling topic is required to preserve signal ordering.
+The signaling topic must have a single partition.
 ====
 
 |[[{context}-property-signal-kafka-groupId]]<<{context}-property-signal-kafka-groupId, `+signal.kafka.groupId+`>>
 |kafka-signal
-|The name of the group id used in the Kafka consumer.
+|The name of the group ID  that is used by Kafka consumers.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
 |No default
