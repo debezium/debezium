@@ -86,4 +86,16 @@ public interface StreamingAdapter {
     OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                                 OracleConnectorConfig connectorConfig, OracleConnection connection)
             throws SQLException;
+
+    /**
+     * Returns the value converter for the streaming adapter.
+     *
+     * @param connectorConfig the connector configuration, shoudl never be {@code null}
+     * @param connection the database connection, should never be {@code null}
+     * @return the value converter to be used
+     */
+    default OracleValueConverters getValueConverter(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+        return new OracleValueConverters(connectorConfig, connection);
+    }
+
 }
