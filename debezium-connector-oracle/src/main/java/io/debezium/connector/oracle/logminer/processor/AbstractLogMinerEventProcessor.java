@@ -988,18 +988,20 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // so to be backward compatible, we only explicitly trigger this behavior if there is an
         // error reason for STATUS=2 in the INFO column as well as STATUS=2.
         if (row.getStatus() == 2 && !Strings.isNullOrBlank(row.getInfo())) {
-            // The SQL in the SQL_REDO column is not valid and cannot be parsed.
-            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                case FAIL:
-                    LOGGER.error("Oracle LogMiner is unable to re-construct the SQL for '{}'", row);
-                    throw new DebeziumException("Oracle failed to re-construct redo SQL '" + row.getRedoSql() + "'");
-                case WARN:
-                    LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
-                    return;
-                default:
-                    // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
-                    LOGGER.debug("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
-                    return;
+            if (!row.getInfo().equalsIgnoreCase("XMLType table row change begin")) {
+                // The SQL in the SQL_REDO column is not valid and cannot be parsed.
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        LOGGER.error("Oracle LogMiner is unable to re-construct the SQL for '{}'", row);
+                        throw new DebeziumException("Oracle failed to re-construct redo SQL '" + row.getRedoSql() + "'");
+                    case WARN:
+                        LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                        return;
+                    default:
+                        // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
+                        LOGGER.debug("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                        return;
+                }
             }
         }
 

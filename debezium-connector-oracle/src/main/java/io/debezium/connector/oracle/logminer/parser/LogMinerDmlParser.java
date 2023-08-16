@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 /**
@@ -95,13 +96,18 @@ public class LogMinerDmlParser implements DmlParser {
             // parse table
             index = parseTableName(sql, index);
 
-            // capture column names
-            String[] columnNames = new String[table.columns().size()];
-            index = parseColumnListClause(sql, index, columnNames);
+            final Object[] newValues = new Object[table.columns().size()];
 
-            // capture values
-            Object[] newValues = new Object[table.columns().size()];
-            parseColumnValuesClause(sql, index, columnNames, newValues, table);
+            // XML-based tables have an insert syntax of "INSERT INTO "schema"."table" VALUES (NULL)"
+            // which is then followed by an XML document sequence. For XML-based tables, there are no
+            // column names nor values to parse, so we skip this step entirely.
+            if (!isXmlTable(table)) {
+                // capture column names
+                String[] columnNames = new String[table.columns().size()];
+                index = parseColumnListClause(sql, index, columnNames);
+                // capture values
+                parseColumnValuesClause(sql, index, columnNames, newValues, table);
+            }
 
             return LogMinerDmlEntryImpl.forInsert(newValues);
         }
@@ -659,4 +665,15 @@ public class LogMinerDmlParser implements DmlParser {
 
         return index;
     }
+
+    private boolean isXmlTable(Table table) {
+        if (table.columns().size() == 1) {
+            final Column column = table.columns().get(0);
+            if (column.name().equals("SYS_NC_ROWINFO$")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

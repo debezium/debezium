@@ -275,7 +275,7 @@ public abstract class PreambleSingleColumnReconstructedSelectParser {
     protected abstract LogMinerDmlEntry createDmlEntryForColumnValues(Object[] columnValues);
 
     private boolean startsWithAtIndex(String startsWithValue, int index, String value) {
-        for (int i = 0; i < startsWithValue.length(); ++i) {
+        for (int i = 0; i < startsWithValue.length() && index + 1 < value.length(); ++i) {
             if (value.charAt(index++) != startsWithValue.charAt(i)) {
                 return false;
             }

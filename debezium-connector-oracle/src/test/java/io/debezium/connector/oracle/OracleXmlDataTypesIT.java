@@ -726,6 +726,100 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5337")
+    public void shouldSnapshotXmlTypeTable() throws Exception {
+        TestHelper.dropTable(connection, "dbz5337");
+        try {
+            connection.execute("CREATE TABLE dbz5337 OF XMLTYPE");
+            connection.execute("INSERT INTO dbz5337 values (xmltype('<warehouse><dept>25</dept></warehouse>'))");
+            TestHelper.streamTable(connection, "dbz5337");
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5337")
+                    .with(OracleConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, "avro")
+                    .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, "false")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5337");
+            assertThat(tableRecords).hasSize(1);
+
+            SourceRecord record = tableRecords.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertXmlFieldIsEqual(after, "SYS_NC_ROWINFO_", "<warehouse><dept>25</dept></warehouse>");
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5337");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-5337")
+    public void shouldStreamXmlTypeTable() throws Exception {
+        TestHelper.dropTable(connection, "dbz5337");
+        try {
+            connection.execute("CREATE TABLE dbz5337 OF XMLTYPE");
+            TestHelper.streamTable(connection, "dbz5337");
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5337")
+                    .with(OracleConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, "avro")
+                    .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, "false")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz5337 values (xmltype('<warehouse>123</warehouse>'))");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5337");
+            assertThat(tableRecords).hasSize(1);
+
+            SourceRecord record = tableRecords.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertXmlFieldIsEqual(after, "SYS_NC_ROWINFO_", "<warehouse>123</warehouse>");
+
+            connection.execute("UPDATE dbz5337 SET SYS_NC_ROWINFO$ = xmltype('<test>hello world</test>')");
+
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5337");
+            assertThat(tableRecords).hasSize(1);
+
+            record = tableRecords.get(0);
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertXmlFieldIsEqual(after, "SYS_NC_ROWINFO_", "<test>hello world</test>");
+
+            connection.execute("DELETE FROM dbz5337");
+
+            records = consumeRecordsByTopic(1);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5337");
+            assertThat(tableRecords).hasSize(1);
+
+            record = tableRecords.get(0);
+            Struct before = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
+            assertFieldIsUnavailablePlaceholder(before, "SYS_NC_ROWINFO_", config);
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after).isNull();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5337");
+        }
+    }
+
     private Configuration.Builder getDefaultXmlConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, true);
     }
