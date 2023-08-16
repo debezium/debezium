@@ -535,7 +535,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
         }
 
-        boolean exists(Schema originalRecordSchema) {
+        private boolean exists(Schema originalRecordSchema) {
             Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
 
             org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
