@@ -427,14 +427,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         final Scn smallestScn;
         if (oldestTransaction.isPresent()) {
             smallestScn = oldestTransaction.get().getStartScn();
-            metrics.setOldestScn(smallestScn);
             metrics.setOldestScnAge(oldestTransaction.get().getChangeTime());
         }
         else {
-            smallestScn = Scn.valueOf(-1);
-            metrics.setOldestScn(smallestScn);
+            smallestScn = Scn.NULL;
             metrics.setOldestScnAge(null);
         }
+        metrics.setOldestScn(smallestScn.isNull() ? Scn.valueOf(-1) : smallestScn);
 
         final Scn commitScn = row.getScn();
         if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
