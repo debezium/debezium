@@ -4246,20 +4246,22 @@ OpenLogReplicator takes on the role of Oracle LogMiner and Oracle XStream when t
 It is responsible for the capturing of changes in the redo and archive logs as they occur and batching those changes into logical transactions.
 {prodname} Oracle connector is a consumer of OpenLogReplicator by connecting to the network endpoint provided by OpenLogReplicator and ingesting the transactions as they're batched.
 
-Once a change has been ingested by the OpenLogReplicator adapter, this {prodname} connector transforms the events into xref:#oracle-events[Data change events] just like any other adapter.
+After the OpenLogReplicator adapter ingests changes, the {prodname} Oracle connector transforms the events into xref:#oracle-events[data change events] just like any other adapter.
 
-From a network topology perspective, the {prodname} Oracle connector relies on a network connection to both Oracle and OpenLogReplicator.
-Similarly, OpenLogReplicator requires a network connection to the Oracle database along with direct access to the raw redo and archive logs.
+From a network topology perspective, the {prodname} Oracle connector relies on network connections to both the Oracle database and to the OpenLogReplicator.
+Similarly, OpenLogReplicator requires a network connection to the Oracle database, as well as direct access to the raw redo and archive logs.
 
-=== Prepare the database
+=== Preparing the database
 
-The Oracle database must be configured to generate specific files called archive logs.
+The Oracle database must be configured to generate specific files, called archive logs.
 An archive log is a saved copy of a full online redo log.
-Archive logs are only generated when the database is placed into `ARCHIVELOG` mode and this mode requires that specific configuration properties by set to identify where these archive log files will be stored.
+The database must be placed in `ARCHIVELOG` mode before it can archive redo log files.
+To place the database in `ARCHIVELOG` mode, you must set specific configuration properties to specify the destination for saving the archive log files.
 
-The following illustrates the steps to enable archive log mode.
+The following example shows a command for placing a database into archive log mode:
 
 .Configuration needed for OpenLogReplicator
+====
 [source,indent=0]
 ----
 ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
@@ -4276,52 +4278,59 @@ archive log list
 
 exit;
 ----
+====
 
-In addition, supplemental logging is required for Oracle to write the necessarily pieces of information about what has changed to the redo logs so that {prodname} can generate change events with before and after state.
-Supplemental logging can be configured a number of different ways, but {prodname} for Oracle only requires minimal logging to work.
+For {prodname} to generate change events that show the `before` and `after` states of a table row, supplemental logging must be active on the database.
+Supplemental logging adds column data to the redo logs to identify the rows that are affected when a table is modified.
 
-The database must be configured with minimal supplemental logging.
+You can use different methods to configure supplemental logging.
+To support {prodname}, you must enable at least minimal database-level supplemental logging.
 Minimal supplemental logging writes the least amount of information needed to be able to create change events.
-The following illustrates how to enable minimal supplemental logging.
+The following example shows a command that you might use to enable minimal supplemental logging.
 
-.Configure database supplemental logging
+.Configure database-level supplemental logging
+====
 [source,sql,indent=0]
 ----
 ALTER DATABASE ADD SUPPLEMENTAL LOG DATA
 ----
+====
 
 [NOTE]
 ====
-{prodname} for Oracle can work with a higher degree of supplemental logging if that is already configured for other purposes.
-If you are replacing a prior solution that required a higher fidelity of logging with {prodname}, you can chose to reduce the logging levels accordingly as minimum is all that is required at the database level.
+{prodname} for Oracle can work with a higher degree of supplemental logging at the database level, if that is already configured for other purposes.
+But if you do not require higher fidelity logging to support other applications, you can reduce database-level logging to the minimum level.
 ====
 
-Finally, each captured table must be explicitly configured with a higher fidelity of supplemental logging called `(ALL) COLUMNS`.
-This logging level guarantees that Oracle captures the state of a column regardless of whether the column changed when a redo entry is written to the redo log.
-This allows {prodname} for Oracle to generate change events safely with both _before_ and _after_ state.
+For each captured table, you must explicitly configure a higher fidelity supplemental logging, called `(ALL) COLUMNS`.
+The `(ALL) COLUMNS` logging level guarantees that Oracle captures the state of a column regardless of whether the column changed when a redo entry is written to the redo log.
+Enabling the higher logging level enables {prodname} for Oracle to generate change events that provide the accurate _before_ and _after_ states for a row.
 
-The following illustrates how to enable supplemental logging for each captured table.
+The following example shows a command for enabling supplemental logging for each captured table.
 
 .Configure captured table supplemental logging
+====
 [source,sql,indent=0]
 ----
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS
 ----
+====
 
 [IMPORTANT]
 ====
-As new tables are added to the {prodname} Oracle's connector configuration, be sure to configure the table's supplemental logging.
-If a table is configured but does not have the proper supplemental logging, the connector will report a warning when streaming starts.
+Whenever new tables are added to the {prodname} Oracle's connector configuration, you must configure supplemental logging for each table.
+If a table that is configured for capture is not correctly configured for supplemental logging, after the connector begins streaming, it returns a warning message.
 ====
 
 === Creating connector users
 
 The {prodname} Oracle connector requires a user account to be set up with specific permissions so that the connector can capture change events.
 This user account will be used by both {prodname} and OpenLogReplicator.
-The following briefly describes the user configurations using a multi-tenant database model.
+The following example shows a possible user account configuration for deploying {prodname} with OpenLogReplicator in a multi-tenant Oracle environment.
 
 [[oracle-create-users-openlogreplicator]]
 .Creating OpenLogReplicator user
+====
 [source,indent=0]
 ----
 # Create Log Miner Tablespace and User
@@ -4368,16 +4377,21 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba <<- EOF
 
   exit;
 EOF
-
 ----
+====
 
 [[selecting-the-adapter]]
 === Configuring the OpenLogReplicator adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
-You can adjust the connector configuration to enable the connector to use OpenLogReplicator.
+You can modify the default settings to configure the connector to use the OpenLogReplicator adapter in place of LogMiner.
 
-The following configuration example adds the property `database.connection.adapter`, `openlogreplicator.source`, `openlogreplicator.host`, and `openlogreplicator.port` to enable the connector to use the OpenLogReplicator adapter.
+In the example that follows, the following properties are added to the connector configuration to enable the connector to use the OpenLogReplicator adapter:
+
+* `database.connection.adapter`
+* `openlogreplicator.source`
+* `openlogreplicator.host`
+* `openlogreplicator.port`
 
 [source,json,indent=0]
 ----
@@ -4407,14 +4421,14 @@ The following configuration example adds the property `database.connection.adapt
 === Building OpenLogReplicator
 
 OpenLogReplicator does not distribute binaries, so you must build the third-party tool from code.
-It is written in C++; however, the author provides a container image to build the source for a variety of operating systems such as Debian, Centos, Fedora, etc.
-This https://github.com/bersler/OpenLogReplicator-docker[repository] provides details on how to build the tool using a container.
+OpenLogReplicator is written in C++; however, the author provides a container image to build the source for a variety of operating systems, including RHEL, Fedora, CentOS, Debian, and others.
+For information about how to build the tool using a container, see the This https://github.com/bersler/OpenLogReplicator-docker[OpenLogReplicator GitHub repository].
 
 [id="obtaining-oracle-jdbc-driver-openlogreplicator"]
 === Obtaining the Oracle JDBC driver for OpenLogReplicator
 
-The {prodname} Oracle connector requires the Oracle JDBC driver to connect to Oracle databases.
-Please refer to the link:#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver] as OpenLogReplicator has the exact same requirements as Oracle LogMiner.
+When you use the {prodname} Oracle connector with the OpenLogReplicator, you must  obtain the Oracle JDBC driver to connect to Oracle databases.
+For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
 
 [[oracle-openlogreplicator-configuration]]
 === OpenLogReplicator configuration
@@ -4422,25 +4436,26 @@ Please refer to the link:#obtaining-the-oracle-jdbc-driver[Obtaining the Oracle 
 OpenLogReplicator is a third-party standalone process that is responsible for reading the Oracle redo and archive logs.
 Unlike other {prodname} Oracle adapters, this means that there are two configurable components that must be configured independently of one another.
 
-OpenLogReplicator is configured by using a JSON-based configuration in a file called `scripts/OpenLogReplicator.json`.
-The format of this JSON configuration can be found https://github.com/bersler/OpenLogReplicator/blob/master/documentation/reference-manual/reference-manual.adoc#openlogreplicator-json-file-format[here].
+You configure OpenLogReplicator by using a JSON file called `scripts/OpenLogReplicator.json`.
+For more information about the required format of this file, see the https://github.com/bersler/OpenLogReplicator/blob/master/documentation/reference-manual/reference-manual.adoc#openlogreplicator-json-file-format[OpenLogReplicator documentation].
 
 .OpenLogReplicator configuration
+====
 [source,json,indent=0]
 ----
 {
   "version": "1.2.1",
   "source": [{
     "alias": "SOURCE",
-    "name": "ORACLE", <.>
+    "name": "ORACLE", <1>
     "reader": {
       "type": "online",
-      "path-mapping": ["/opt/olr/recovery_area", "/opt/olr/recovery_area/ORCLCDB/archivelog"], <.>
-      "user": "c##dbzuser", <.>
-      "password": "dbz", <.>
-      "server": "//<ip>:<port>/ORCLPDB1" <.>
+      "path-mapping": ["/opt/olr/recovery_area", "/opt/olr/recovery_area/ORCLCDB/archivelog"], <2>
+      "user": "c##dbzuser", <3>
+      "password": "dbz", <4>
+      "server": "//<ip>:<port>/ORCLPDB1" <5>
     },
-    "format": { <.>
+    "format": { <6>
       "type": "json",
       "column": 2,
       "db": 3,
@@ -4457,25 +4472,26 @@ The format of this JSON configuration can be found https://github.com/bersler/Op
     "alias": "DEBEZIUM",
     "source": "SOURCE",
     "writer": {
-      "type": "network", <.>
-      "uri": "<host>:<port>" <.>
+      "type": "network", <7>
+      "uri": "<host>:<port>" <8>
     }
   }]
 }
 ----
-<.> This should match the `openlogreplicator.source` connector configuration.
-<.> List of file path pairs `[before1,after1,befor2,after2,...]` where if a log file path matches one of the `beforeX` prefixes, the prefix is replaced with the `afterX` path.  This is useful when OpenLogReplicator is running on a different host than the source database and the path to the redo and archive logs different between the database and the OpenLogReplicator process.
-<.> This should match the `database.user` connector property.
-<.> This should match the `database.password` connector property.
-<.> This should point to the database host, port, and Oracle SID.
-<.> This specifies the payload format ingested by {prodname} Oracle connector. Use these values as specified, as these are the only format options that we require beyond the defaults.
-<.> This must specify `network`, as {prodname} Oracle connector communicates with OpenLogReplicator via a network connection.
-<.> This specifies the bind host and port that OpenLogReplicator listens for connections on.  This should be accessible by {prodname} Oracle connector.
+<1> This should match the `openlogreplicator.source` connector configuration.
+<2> List of file path pairs `[before1,after1,befor2,after2,...]` where if a log file path matches one of the `beforeX` prefixes, the prefix is replaced with the `afterX` path.  This is useful when OpenLogReplicator is running on a different host than the source database and the path to the redo and archive logs different between the database and the OpenLogReplicator process.
+<3> This should match the `database.user` connector property.
+<4> This should match the `database.password` connector property.
+<5> This should point to the database host, port, and Oracle SID.
+<6> This specifies the payload format ingested by {prodname} Oracle connector. Use these values as specified, as these are the only format options that we require beyond the defaults.
+<7> This must specify `network`, as {prodname} Oracle connector communicates with OpenLogReplicator via a network connection.
+<8> This specifies the bind host and port that OpenLogReplicator listens for connections on.  This should be accessible by {prodname} Oracle connector.
+====
 
 [[oracle-openlogreplicator-connector-properties]]
 === OpenLogReplicator connector properties
 
-The following configuration properties are _required_ when using OpenLogReplicator unless a default value is available.
+The following configuration properties are required when using OpenLogReplicator.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -4489,11 +4505,11 @@ The following configuration properties are _required_ when using OpenLogReplicat
 
 |[[oracle-property-openlogreplicator-host]]<<oracle-property-openlogreplicator-host, `+openlogreplicator.host+`>>
 |No default
-|The host or IP of the OpenLogReplicator network service.
+|The host name or IP address of the OpenLogReplicator network service.
 
 |[[oracle-property-openlogreplicator-port]]<<oracle-property-openlogreplicator-port, `+openlogreplicator.port+`>>
 |No default
-|The port of the OpenLogReplicator network service.
+|The port number that is used by the OpenLogReplicator network service.
 
 |===
 
