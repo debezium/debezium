@@ -202,7 +202,7 @@ Specify the names by using the same format as is required for the `signal.data.c
 |`[.line-through]#additional-condition#`
 |_N/A_
 | An optional string that specifies a condition that the connector evaluates to designate a subset of records to include in a snapshot. +
-+
+ +
 [NOTE]
 ====
 This property is deprecated and should be replaced by additional-conditions.
@@ -217,9 +217,11 @@ You can set the following properties for each additional condition:
 `data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
 You can apply different filters to each {data-collection}. 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
- +
-The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
-In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated `additional-condition` parameter. 
+
+The values that you assign to the `filter` property is specific to the type of ad hoc snapshot.
+
+For incremental snapshots the value is a fragment that is appended to the condition clause of a query used to select records from {data-collection}.
+For blocking snapshots the value is the same `SELECT` statement you would use for the connector `snapshot.select.statement.overrides` property for an initial snapshot.
 |===
 
 The following example shows a typical `execute-snapshot` Kafka message:
@@ -287,8 +289,10 @@ You can apply different filters to each {data-collection}.
 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
  +
-The values that you assign to the `filter` parameter are the same types of values that you might specify in the `WHERE` clause of `SELECT` statements when you set the `snapshot.select.statement.overrides` property for a blocking snapshot.
-In earlier {prodname} releases, an explicit `filter` parameter was not defined for snapshot signals; instead, filter criteria were implied by the values that were specified for the now deprecated `additional-condition` parameter. 
+The values that you assign to the `filter` property is specific to the type of ad hoc snapshot.
+
+For incremental snapshots the value is a fragment that is appended to the condition clause of a query used to select records from {data-collection}.
+For blocking snapshots the value is the same `SELECT` statement you would use for the connector `snapshot.select.statement.overrides` property for an initial snapshot.
 |===
 +
 The following image shows an example of how to use JConsole to send a signal:
