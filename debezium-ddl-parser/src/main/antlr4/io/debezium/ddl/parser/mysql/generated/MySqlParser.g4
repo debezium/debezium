@@ -1094,18 +1094,15 @@ indexHintType
     ;
 
 joinPart
-    : (INNER | CROSS)? JOIN LATERAL? tableSourceItem
-      (
-        ON expression
-        | USING '(' uidList ')'
-      )?                                                            #innerJoin
-    | STRAIGHT_JOIN tableSourceItem (ON expression)?                #straightJoin
-    | (LEFT | RIGHT) OUTER? JOIN LATERAL? tableSourceItem
-        (
-          ON expression
-          | USING '(' uidList ')'
-        )                                                           #outerJoin
+    : (INNER | CROSS)? JOIN LATERAL? tableSourceItem joinSpec*      #innerJoin
+    | STRAIGHT_JOIN tableSourceItem (ON expression)*                #straightJoin
+    | (LEFT | RIGHT) OUTER? JOIN LATERAL? tableSourceItem joinSpec* #outerJoin
     | NATURAL ((LEFT | RIGHT) OUTER?)? JOIN tableSourceItem         #naturalJoin
+    ;
+
+joinSpec
+    : (ON expression)
+    | USING '(' uidList ')'
     ;
 
 //    Select Statement's Details
