@@ -144,14 +144,11 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 // check for DB version and LogicalDecoder compatibility
                 if (LogicalDecoder.PGOUTPUT.equals(postgresConfig.plugin())) {
                     final Version dbVersion = ServerVersion.from(
-                        connection.queryAndMap(
-                            "SHOW server_version",
-                            connection.singleResultMapper(
-                                rs -> rs.getString("server_version"),
-                                "Could not fetch db version"
-                            )
-                        )
-                    );
+                            connection.queryAndMap(
+                                    "SHOW server_version",
+                                    connection.singleResultMapper(
+                                            rs -> rs.getString("server_version"),
+                                            "Could not fetch db version")));
                     if (ServerVersion.v10.getVersionNum() > dbVersion.getVersionNum()) {
                         final String errorMessage = "PGOUTPUT plugin is only supported on "
                                 + "postgres server version 10+";
