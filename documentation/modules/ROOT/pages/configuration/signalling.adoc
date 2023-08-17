@@ -205,7 +205,7 @@ Specify the names by using the same format as is required for the `signal.data.c
  +
 [NOTE]
 ====
-This property is deprecated and should be replaced by additional-conditions.
+This property is deprecated and should be replaced by the `additional-conditions` property.
 ====
 
 |`additional-conditions`
@@ -215,13 +215,14 @@ Each additional condition is an object that specifies the criteria for filtering
 You can set the following properties for each additional condition:
 
 `data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
-You can apply different filters to each {data-collection}. 
+You can apply different filters to each {data-collection}.
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
+The snapshot process evaluates records in the {data-collection} against the `filter` value and captures only records that contain matching values. +
+ +
+The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
-The values that you assign to the `filter` property is specific to the type of ad hoc snapshot.
-
-For incremental snapshots the value is a fragment that is appended to the condition clause of a query used to select records from {data-collection}.
-For blocking snapshots the value is the same `SELECT` statement you would use for the connector `snapshot.select.statement.overrides` property for an initial snapshot.
+* For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
+* For blocking snapshots, you specify a full `SELECT` statement, such as the one that you might set in the `snapshot.select.statement.overrides` property.
 |===
 
 The following example shows a typical `execute-snapshot` Kafka message:
@@ -275,7 +276,7 @@ Specify the names by using the same format as is required for the xref:{context}
 
 [NOTE]
 ====
-This property is deprecated and should be replaced by additional-conditions.
+This property is deprecated and should be replaced by the `additional-conditions` property.
 ====
 
 |`additional-conditions`
@@ -285,18 +286,19 @@ Each additional condition is an object that specifies the criteria for filtering
 You can set the following properties for each additional condition:
 
 `data-collection`:: The fully-qualified name of the {data-collection} that the filter applies to.
-You can apply different filters to each {data-collection}. 
+You can apply different filters to each {data-collection}.
 
 `filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
+The snapshot process evaluates records in the {data-collection} against the `filter` value and captures only records that contain matching values. +
  +
-The values that you assign to the `filter` property is specific to the type of ad hoc snapshot.
+The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
 
-For incremental snapshots the value is a fragment that is appended to the condition clause of a query used to select records from {data-collection}.
-For blocking snapshots the value is the same `SELECT` statement you would use for the connector `snapshot.select.statement.overrides` property for an initial snapshot.
+* For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
+* For blocking snapshots, you specify a full `SELECT` statement, such as the one that you might set in the `snapshot.select.statement.overrides` property.
 |===
-+
+
 The following image shows an example of how to use JConsole to send a signal:
-+
+
 image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` signal]
 
 // Type: concept
