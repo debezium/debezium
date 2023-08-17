@@ -820,6 +820,41 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-5337")
+    public void shouldStreamXmlTypeTableLazilyCreatedDuringStreaming() throws Exception {
+        TestHelper.dropTable(connection, "dbz5337");
+        try {
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5337")
+                    .with(OracleConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE, "avro")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("CREATE TABLE dbz5337 OF XMLTYPE");
+            TestHelper.streamTable(connection, "dbz5337");
+
+            connection.execute("INSERT INTO dbz5337 values (xmltype('<warehouse>123</warehouse>'))");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ5337");
+            assertThat(tableRecords).hasSize(1);
+
+            SourceRecord record = tableRecords.get(0);
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertXmlFieldIsEqual(after, "SYS_NC_ROWINFO_", "<warehouse>123</warehouse>");
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz5337");
+        }
+    }
+
     private Configuration.Builder getDefaultXmlConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, true);
     }

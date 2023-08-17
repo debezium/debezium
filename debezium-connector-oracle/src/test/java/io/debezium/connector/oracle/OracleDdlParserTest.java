@@ -29,6 +29,8 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.util.IoUtil;
 
+import oracle.jdbc.OracleTypes;
+
 /**
  * This is the test suite for Oracle Antlr parser unit testing
  */
@@ -432,6 +434,25 @@ public class OracleDdlParserTest {
 
         Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "ASTERISK_TEST"));
         assertThat(table.columns().size()).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("DBZ-5337")
+    public void shouldParseXmlTypeWithSystemGeneratedColumn() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"DBZ5337\" OF XMLTYPE";
+        parser.parse(SQL, tables);
+
+        DdlChanges changes = parser.getDdlChanges();
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "DBZ5337"));
+        assertThat(table.columns().size()).isEqualTo(1);
+        assertThat(table.columnWithName("SYS_NC_ROWINFO$").typeName()).isEqualTo("XMLTYPE");
+        assertThat(table.columnWithName("SYS_NC_ROWINFO$").jdbcType()).isEqualTo(OracleTypes.SQLXML);
     }
 
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {
