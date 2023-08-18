@@ -221,10 +221,10 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
         assertThat(jmxNotifications).hasSize(2);
         assertThat(jmxNotifications.get(0)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
         assertThat(jmxNotifications.get(0).getUserData())
-                .isEqualTo("{aggregateType='Initial Snapshot', type='STARTED', additionalData={connector_name=mongo1}}");
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"STARTED\",\"additionalData\":{\"connector_name\":\"mongo1\"}}");
         assertThat(jmxNotifications.get(1)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
         assertThat(jmxNotifications.get(1).getUserData())
-                .isEqualTo("{aggregateType='Initial Snapshot', type='COMPLETED', additionalData={connector_name=mongo1}}");
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"COMPLETED\",\"additionalData\":{\"connector_name\":\"mongo1\"}}");
     }
 
     private List<Notification> readNotificationFromJmx()

@@ -189,10 +189,10 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         assertThat(jmxNotifications).hasSize(2);
         assertThat(jmxNotifications.get(0)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
         assertThat(jmxNotifications.get(0).getUserData())
-                .isEqualTo("{aggregateType='Initial Snapshot', type='STARTED', additionalData={connector_name=" + server() + "}}");
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"STARTED\",\"additionalData\":{\"connector_name\":\"" + server() + "\"}}");
         assertThat(jmxNotifications.get(1)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
         assertThat(jmxNotifications.get(1).getUserData())
-                .isEqualTo("{aggregateType='Initial Snapshot', type='COMPLETED', additionalData={connector_name=" + server() + "}}");
+                .isEqualTo("{\"aggregateType\":\"Initial Snapshot\",\"type\":\"COMPLETED\",\"additionalData\":{\"connector_name\":\"" + server() + "\"}}");
     }
 
     private List<Notification> readNotificationFromJmx()
