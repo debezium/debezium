@@ -67,7 +67,7 @@ public class JmxNotificationChannel extends NotificationBroadcasterSupport imple
                 System.currentTimeMillis(),
                 composeMessage(notification));
 
-        n.setUserData(notification.toString());
+        n.setUserData(notification.toJson());
 
         return n;
     }

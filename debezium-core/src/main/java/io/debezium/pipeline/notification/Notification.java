@@ -9,13 +9,26 @@ import java.beans.ConstructorProperties;
 import java.util.Map;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannel;
+
 public class Notification {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JmxNotificationChannel.class);
 
     public static final String ID_KEY = "id";
     public static final String TYPE = "type";
     public static final String AGGREGATE_TYPE = "aggregate_type";
     public static final String ADDITIONAL_DATA = "additional_data";
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @JsonIgnore
     private final String id;
     private final String aggregateType;
     private final String type;
@@ -71,6 +84,16 @@ public class Notification {
     @Override
     public int hashCode() {
         return Objects.hash(id, aggregateType, type, additionalData);
+    }
+
+    public String toJson() {
+        try {
+            return MAPPER.writeValueAsString(this);
+        }
+        catch (JsonProcessingException e) {
+            LOGGER.warn("Error converting the notification object to json. Providing default toString value...", e);
+            return toString();
+        }
     }
 
     public static final class Builder {
